@@ -29,6 +29,8 @@
     box-shadow:0 0 80px -20px rgba(245,197,24,.08);}
   .safe-top{padding-top:env(safe-area-inset-top);}
   .safe-bottom{padding-bottom:env(safe-area-inset-bottom);}
+  /* rail sits below the status bar */
+  .rail{padding-top:calc(18px + env(safe-area-inset-top));}
 
   /* ---------- Progress rail ---------- */
   .rail{display:flex;gap:6px;padding:18px 22px 0;margin:0 auto;width:var(--rail-length,100%);}
@@ -59,8 +61,12 @@
   .screen.ob-text-center .ob-foot{order:4}
   .screen[class*="ob-"]{display:flex;flex-direction:column}
 
-  /* full-screen slide background (photo/video) */
-  .ob-bg{position:absolute;inset:0;z-index:0;overflow:hidden;}
+  /* full-screen slide background (photo/video) — bleeds past safe areas */
+  .ob-bg{position:absolute;top:0;left:0;right:0;bottom:0;
+    margin-top:calc(-1 * env(safe-area-inset-top));
+    margin-bottom:calc(-1 * env(safe-area-inset-bottom));
+    height:calc(100% + env(safe-area-inset-top) + env(safe-area-inset-bottom));
+    z-index:0;overflow:hidden;}
   .ob-bg img,.ob-bg video{width:100%;height:100%;object-fit:cover;}
   .ob-bg-dim{position:absolute;inset:0;}
   .screen>*:not(.ob-bg){position:relative;z-index:1;}
@@ -98,7 +104,7 @@
   }
   @keyframes sweep{0%{left:-50%}55%{left:130%}100%{left:130%}}
   .ob-glyph{font-size:120px;filter:grayscale(.1);}
-  .ob-foot{padding:0 0 30px;}
+  .ob-foot{padding:0 0 calc(30px + env(safe-area-inset-bottom));}
   .ob-nav{display:flex;gap:14px;}
 
   /* ---------- Buttons ---------- */
@@ -123,14 +129,14 @@
   .welcome.wel-logo-center .wel-actions{order:3}
   .welcome.wel-logo-bottom .wel-top{order:1} .welcome.wel-logo-bottom .wel-actions{order:2}
   .welcome.wel-logo-bottom .wel-mark{order:3;flex:0;margin-bottom:30px}
-  .wel-top{margin-top:64px;}
+  .wel-top{margin-top:calc(64px + env(safe-area-inset-top));}
   .wel-mark{display:flex;flex-direction:column;align-items:center;gap:18px;
     flex:1;justify-content:center;}
   .wel-logo{width:var(--logo-size,96px);height:var(--logo-size,96px);object-fit:contain;}
   .wel-name{font-size:34px;font-weight:800;letter-spacing:-.02em;}
   .wel-h{font-size:var(--wel-h-size,32px);font-weight:800;letter-spacing:-.02em;line-height:1.1;}
   .wel-sub{margin-top:14px;color:var(--muted);font-size:var(--wel-sub-size,16px);line-height:1.5;max-width:30ch;}
-  .wel-actions{display:flex;flex-direction:column;gap:12px;padding-bottom:var(--wel-bottom-gap,30px);margin-top:var(--wel-btn-topgap,0px);}
+  .wel-actions{display:flex;flex-direction:column;gap:12px;padding-bottom:calc(var(--wel-bottom-gap,30px) + env(safe-area-inset-bottom));margin-top:var(--wel-btn-topgap,0px);}
 
   /* ---------- Auth ---------- */
   .auth{padding-top:60px;}
@@ -183,8 +189,7 @@
 </style>
 </head>
 <body>
-<div class="app safe-bottom">
-  <div class="safe-top"></div>
+<div class="app">
   <div class="rail" id="rail"></div>
   <div class="screens" id="screens"></div>
 </div>
