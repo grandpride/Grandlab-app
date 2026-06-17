@@ -180,6 +180,11 @@
   @media (prefers-reduced-motion:reduce){
     *{animation:none!important;transition-duration:.01ms!important;}
   }
+  /* OTP layout presets */
+  .screen.otp-center{justify-content:center;}
+  .screen.otp-center .otp-row{margin-left:auto;margin-right:auto;}
+  .screen.otp-top{justify-content:flex-start;}
+
   /* ============ MAIN APP (post-login) ============ */
   #appRoot{position:fixed;inset:0;max-width:440px;margin:0 auto;background:var(--bg);
     display:none;flex-direction:column;z-index:20;}
@@ -310,7 +315,13 @@ const STYLE_DEFAULTS = {
   welBtnTopGap:0,
   welBgImage:null, welBgVideo:null, welBgDim:55,
   welShowHeading:true, welShowSub:true, welShowLogo:true,
-  welHeadingSize:32, welSubSize:16
+  welHeadingSize:32, welSubSize:16,
+  // OTP page
+  otpTitle:"Enter the code", otpSub:"We sent a 6-digit code to",
+  otpResend:"Didn't get it?", otpVerifyBtn:"Verify", otpChangeText:"Wrong number?",
+  otpTitleSize:30, otpTitleColor:"#FFFFFF", otpSubSize:15, otpSubColor:"#8A8A8A",
+  otpTitleBold:true, otpTitleItalic:false, otpTitleAlign:"left",
+  otpBgImage:null, otpBgVideo:null, otpBgDim:55, otpLayout:"top"
 };
 let STYLE = Object.assign({}, STYLE_DEFAULTS);
 
@@ -623,17 +634,26 @@ function phoneScreen(){
 }
 
 function otpScreen(){
-  const el=document.createElement('div'); el.className="screen auth"; el.dataset.kind="otp";
+  const el=document.createElement('div'); el.className="screen auth otp-"+(STYLE.otpLayout||'top'); el.dataset.kind="otp";
+  let bg="";
+  if(STYLE.otpBgVideo){
+    bg=`<div class="ob-bg"><video src="${STYLE.otpBgVideo}" autoplay muted loop playsinline></video><div class="ob-bg-dim" style="background:rgba(0,0,0,${(STYLE.otpBgDim??55)/100})"></div></div>`;
+  } else if(STYLE.otpBgImage){
+    bg=`<div class="ob-bg"><img src="${STYLE.otpBgImage}"><div class="ob-bg-dim" style="background:rgba(0,0,0,${(STYLE.otpBgDim??55)/100})"></div></div>`;
+  }
+  const tStyle=`font-size:${STYLE.otpTitleSize||30}px;color:${STYLE.otpTitleColor||'#fff'};font-weight:${STYLE.otpTitleBold?800:400};font-style:${STYLE.otpTitleItalic?'italic':'normal'};text-align:${STYLE.otpTitleAlign||'left'}`;
+  const sStyle=`font-size:${STYLE.otpSubSize||15}px;color:${STYLE.otpSubColor||'#8A8A8A'}`;
   el.innerHTML=`
-    <div class="auth-h">Enter the code</div>
-    <div class="auth-sub">We sent a 6-digit code by SMS to <b id="otpPhone"></b>.</div>
+    ${bg}
+    <div class="auth-h" style="${tStyle}">${STYLE.otpTitle||'Enter the code'}</div>
+    <div class="auth-sub" style="${sStyle}">${STYLE.otpSub||'We sent a 6-digit code to'} <b id="otpPhone"></b>.</div>
     <div class="otp-row" id="otpRow"></div>
     <input class="otp-hidden" id="otpInput" type="tel" inputmode="numeric" maxlength="6" autocomplete="one-time-code" />
     <div class="helper err" id="otpHelper"></div>
-    <div class="resend" id="resend">Didn't get it? <b>Resend in <span id="cd">30</span>s</b></div>
+    <div class="resend" id="resend">${STYLE.otpResend||"Didn't get it?"} <b>Resend in <span id="cd">30</span>s</b></div>
     <div class="auth-foot">
-      <button class="btn btn-primary" id="verifyBtn" disabled>Verify</button>
-      <div class="link-row" data-act="changenum">Wrong number? <span>Change it</span></div>
+      <button class="btn btn-primary" id="verifyBtn" disabled>${STYLE.otpVerifyBtn||'Verify'}</button>
+      <div class="link-row" data-act="changenum">${STYLE.otpChangeText||'Wrong number?'} <span>Change it</span></div>
     </div>`;
   const row=el.querySelector('#otpRow');
   const hidden=el.querySelector('#otpInput');
@@ -886,6 +906,11 @@ function renderProfileSetup(){
   };
 }
 
+
+/* ---------- Navigation between screens ---------- */
+let screenOrder=[]; // dom refs in order
+let cur=0;
+function indexScreens(){ screenOrder=[...screensEl.children]; }
 
 function showStep(idx){
   indexScreens();

@@ -153,9 +153,65 @@
         <button class="tab active" data-tab="onboarding" onclick="switchTab('onboarding')">Onboarding</button>
         <button class="tab" data-tab="services" onclick="switchTab('services')">Services</button>
         <button class="tab" data-tab="theme" onclick="switchTab('theme')">Theme</button>
+        <button class="tab" data-tab="otppage" onclick="switchTab('otppage')">OTP Page</button>
         <button class="tab" data-tab="customers" onclick="switchTab('customers')">Customers</button>
         <button class="tab" data-tab="bookings" onclick="switchTab('bookings')">Bookings</button>
         <button class="tab" data-tab="referrals" onclick="switchTab('referrals')">Referrals</button>
+      </div>
+
+      <!-- OTP PAGE -->
+      <div class="panel" id="panel-otppage">
+        <div class="section-h">Wording</div>
+        <div class="card">
+          <label>Title</label><input id="ot-title" oninput="onOtp()">
+          <label>Subtitle (before phone number)</label><input id="ot-sub" oninput="onOtp()">
+          <label>Resend text</label><input id="ot-resend" oninput="onOtp()">
+          <label>Verify button</label><input id="ot-verify" oninput="onOtp()">
+          <label>Change number text</label><input id="ot-change" oninput="onOtp()">
+        </div>
+        <div class="section-h">Title styling</div>
+        <div class="card">
+          <label>Size — <b id="lbl-ottitle">30</b>px</label>
+          <input type="range" min="18" max="48" id="ot-titleSize" oninput="onOtp()">
+          <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap">
+            <button class="btn btn-ghost btn-sm" id="otb-bold" onclick="otStyle('otpTitleBold')"><b>B</b></button>
+            <button class="btn btn-ghost btn-sm" id="otb-italic" onclick="otStyle('otpTitleItalic')"><i>I</i></button>
+            <button class="btn btn-ghost btn-sm" id="otb-l" onclick="otAlign('left')">⬅</button>
+            <button class="btn btn-ghost btn-sm" id="otb-c" onclick="otAlign('center')">⬌</button>
+            <button class="btn btn-ghost btn-sm" id="otb-r" onclick="otAlign('right')">➡</button>
+          </div>
+          <div class="swatch-row" style="margin-top:12px">
+            <div class="swatch"><input type="color" id="ot-titleColor" oninput="onOtp()"><span>Title color</span></div>
+            <div class="swatch"><input type="color" id="ot-subColor" oninput="onOtp()"><span>Subtitle color</span></div>
+          </div>
+          <label style="margin-top:10px">Subtitle size — <b id="lbl-otsub">15</b>px</label>
+          <input type="range" min="11" max="22" id="ot-subSize" oninput="onOtp()">
+        </div>
+        <div class="section-h">Layout</div>
+        <div class="card">
+          <select id="ot-layout" onchange="onOtp()">
+            <option value="top">Content at top</option>
+            <option value="center">Content centered</option>
+          </select>
+        </div>
+        <div class="section-h">Full-screen background</div>
+        <div class="card">
+          <label>Background photo</label>
+          <div class="upl">
+            <button class="btn btn-ghost btn-sm" onclick="document.getElementById('otbgf').click()">Upload bg photo</button>
+            <button class="btn btn-danger btn-sm" onclick="theme.otpBgImage=null;toast('Removed');">Remove</button>
+            <input id="otbgf" type="file" accept="image/*" style="display:none" onchange="uploadPageBg(this,'otpBgImage')">
+          </div>
+          <label>Background video (MP4)</label>
+          <div class="upl">
+            <button class="btn btn-ghost btn-sm" onclick="document.getElementById('otbgv').click()">Upload bg video</button>
+            <button class="btn btn-danger btn-sm" onclick="theme.otpBgVideo=null;toast('Removed');">Remove</button>
+            <input id="otbgv" type="file" accept="video/mp4,video/*" style="display:none" onchange="uploadPageBg(this,'otpBgVideo')">
+          </div>
+          <label>Darkness — <b id="lbl-otdim">55</b>%</label>
+          <input type="range" min="0" max="90" id="ot-bgDim" oninput="onOtp()">
+        </div>
+        <div class="hint">Switch the preview to OTP using the button under the phone to see changes.</div>
       </div>
 
       <!-- CUSTOMERS -->
@@ -377,6 +433,7 @@
       <div class="pv-toggle">
         <button class="on" id="pvOnb" onclick="setPv('onb')">Onboarding</button>
         <button id="pvWel" onclick="setPv('wel')">Welcome</button>
+        <button id="pvOtp" onclick="setPv('otp')">OTP</button>
         <button id="pvSvc" onclick="setPv('svc')">Services</button>
       </div>
     </div>
@@ -410,7 +467,12 @@ let theme = { bg:"#0A0A0A", accent:"#F5C518", text:"#FFFFFF",
   obLayout:"text-top", welLayout:"logo-center", welBtnTopGap:0,
   welBgImage:null, welBgVideo:null, welBgDim:55,
   welShowHeading:true, welShowSub:true, welShowLogo:true,
-  welHeadingSize:32, welSubSize:16 };
+  welHeadingSize:32, welSubSize:16,
+  otpTitle:"Enter the code", otpSub:"We sent a 6-digit code to",
+  otpResend:"Didn't get it?", otpVerifyBtn:"Verify", otpChangeText:"Wrong number?",
+  otpTitleSize:30, otpTitleColor:"#FFFFFF", otpSubSize:15, otpSubColor:"#8A8A8A",
+  otpTitleBold:true, otpTitleItalic:false, otpTitleAlign:"left",
+  otpBgImage:null, otpBgVideo:null, otpBgDim:55, otpLayout:"top" };
 let pvMode = "onb";
 let pvSlide = 0;
 
@@ -733,6 +795,7 @@ async function saveAll(){
 function setPv(m){pvMode=m;
   document.getElementById('pvOnb').classList.toggle('on',m==='onb');
   document.getElementById('pvWel').classList.toggle('on',m==='wel');
+  document.getElementById('pvOtp').classList.toggle('on',m==='otp');
   document.getElementById('pvSvc').classList.toggle('on',m==='svc');
   renderPreview();}
 function renderPreview(){
@@ -770,6 +833,23 @@ function renderPreview(){
         <div class="pv-btn" style="background:transparent;border:1.5px solid ${theme.accent};color:${theme.accent};height:${(theme.btnHeight||58)*0.8}px">${esc(theme.welRegister||'Create account')}</div>
         <div class="pv-btn" style="background:transparent;border:1.5px solid #333;color:${theme.text};height:${(theme.btnHeight||58)*0.8}px">${esc(theme.welGuest||'Browse as guest')}</div>
       </div>
+      </div>`;
+    return;
+  }
+  if(pvMode==='otp'){
+    let bg="";
+    if(theme.otpBgVideo)bg=`<div style="position:absolute;inset:0;z-index:0"><video src="${theme.otpBgVideo}" autoplay muted loop playsinline style="width:100%;height:100%;object-fit:cover"></video><div style="position:absolute;inset:0;background:rgba(0,0,0,${(theme.otpBgDim??55)/100})"></div></div>`;
+    else if(theme.otpBgImage)bg=`<div style="position:absolute;inset:0;z-index:0"><img src="${theme.otpBgImage}" style="width:100%;height:100%;object-fit:cover"><div style="position:absolute;inset:0;background:rgba(0,0,0,${(theme.otpBgDim??55)/100})"></div></div>`;
+    const just=theme.otpLayout==='center'?'center':'flex-start';
+    pv.innerHTML=`${bg}
+      <div style="position:relative;z-index:1;display:flex;flex-direction:column;flex:1;justify-content:${just};padding-top:${theme.otpLayout==='center'?0:30}px">
+        <div style="font-size:${(theme.otpTitleSize||30)*0.62}px;color:${theme.otpTitleColor||'#fff'};font-weight:${theme.otpTitleBold?800:400};font-style:${theme.otpTitleItalic?'italic':'normal'};text-align:${theme.otpTitleAlign||'left'}">${esc(theme.otpTitle||'Enter the code')}</div>
+        <div style="margin-top:8px;font-size:${(theme.otpSubSize||15)*0.8}px;color:${theme.otpSubColor||'#8A8A8A'};text-align:${theme.otpTitleAlign||'left'}">${esc(theme.otpSub||'')} +60 12 345 6789</div>
+        <div style="display:flex;gap:6px;margin-top:18px;justify-content:${theme.otpLayout==='center'?'center':'flex-start'}">
+          ${[1,2,3,4,5,6].map(()=>`<div style="width:30px;height:36px;border:1.5px solid #2a2a2a;border-radius:8px;background:#16161a"></div>`).join('')}
+        </div>
+        <div style="margin-top:18px;font-size:12px;color:#888;text-align:${theme.otpLayout==='center'?'center':'left'}">${esc(theme.otpResend||"Didn't get it?")} <b style="color:${theme.accent}">Resend</b></div>
+        <div class="pv-btn" style="background:${theme.btnColor||theme.accent};height:${(theme.btnHeight||58)*0.8}px;margin-top:24px">${esc(theme.otpVerifyBtn||'Verify')}</div>
       </div>`;
     return;
   }
@@ -823,9 +903,52 @@ function switchTab(t){
   document.querySelectorAll('.panel').forEach(p=>p.classList.toggle('active',p.id==='panel-'+t));
   if(t==='services')setPv('svc');
   else if(t==='onboarding')setPv('onb');
+  else if(t==='otppage'){fillOtpControls();setPv('otp');}
   else if(t==='customers')loadCustomers();
   else if(t==='bookings')loadBookings();
   else if(t==='referrals')loadReferrals();
+}
+
+/* ---------- OTP PAGE editing ---------- */
+function onOtp(){
+  const g=id=>document.getElementById(id);
+  theme.otpTitle=g('ot-title').value; theme.otpSub=g('ot-sub').value;
+  theme.otpResend=g('ot-resend').value; theme.otpVerifyBtn=g('ot-verify').value; theme.otpChangeText=g('ot-change').value;
+  theme.otpTitleSize=+g('ot-titleSize').value; g('lbl-ottitle').textContent=theme.otpTitleSize;
+  theme.otpTitleColor=g('ot-titleColor').value; theme.otpSubColor=g('ot-subColor').value;
+  theme.otpSubSize=+g('ot-subSize').value; g('lbl-otsub').textContent=theme.otpSubSize;
+  theme.otpLayout=g('ot-layout').value;
+  theme.otpBgDim=+g('ot-bgDim').value; g('lbl-otdim').textContent=theme.otpBgDim;
+  syncOtpBtns(); renderPreview();
+}
+function otStyle(key){theme[key]=!theme[key];syncOtpBtns();renderPreview();}
+function otAlign(v){theme.otpTitleAlign=v;syncOtpBtns();renderPreview();}
+function syncOtpBtns(){
+  const set=(id,on)=>{const e=document.getElementById(id);if(e){e.style.borderColor=on?'var(--yellow)':'var(--line)';e.style.color=on?'var(--yellow)':'var(--text)';}};
+  set('otb-bold',theme.otpTitleBold);set('otb-italic',theme.otpTitleItalic);
+  set('otb-l',theme.otpTitleAlign==='left');set('otb-c',theme.otpTitleAlign==='center');set('otb-r',theme.otpTitleAlign==='right');
+}
+function fillOtpControls(){
+  const g=id=>document.getElementById(id);
+  g('ot-title').value=theme.otpTitle||'Enter the code'; g('ot-sub').value=theme.otpSub||'We sent a 6-digit code to';
+  g('ot-resend').value=theme.otpResend||"Didn't get it?"; g('ot-verify').value=theme.otpVerifyBtn||'Verify'; g('ot-change').value=theme.otpChangeText||'Wrong number?';
+  g('ot-titleSize').value=theme.otpTitleSize||30; g('lbl-ottitle').textContent=theme.otpTitleSize||30;
+  g('ot-titleColor').value=theme.otpTitleColor||'#FFFFFF'; g('ot-subColor').value=theme.otpSubColor||'#8A8A8A';
+  g('ot-subSize').value=theme.otpSubSize||15; g('lbl-otsub').textContent=theme.otpSubSize||15;
+  g('ot-layout').value=theme.otpLayout||'top';
+  g('ot-bgDim').value=theme.otpBgDim??55; g('lbl-otdim').textContent=theme.otpBgDim??55;
+  syncOtpBtns();
+}
+// generic page-background uploader (key = theme field, e.g. 'otpBgImage')
+async function uploadPageBg(input,key){
+  const f=input.files[0];if(!f)return;
+  if(/Video/i.test(key)&&f.size>8*1024*1024&&!confirm("Large video ("+(f.size/1048576).toFixed(1)+"MB) may slow the app. Upload anyway?"))return;
+  toast("Uploading…");
+  const path=`page-${Date.now()}-${f.name.replace(/[^a-z0-9.]/gi,'_')}`;
+  const r=await fetch(`${SUPA_URL}/storage/v1/object/${BUCKET}/${path}`,{method:"POST",headers:{apikey:SVC_KEY,Authorization:`Bearer ${SVC_KEY}`},body:f});
+  if(!r.ok){toast("Upload failed — bucket public?");return;}
+  theme[key]=`${SUPA_URL}/storage/v1/object/public/${BUCKET}/${path}`;
+  renderPreview();toast("Uploaded ✓");
 }
 
 /* ---------- CUSTOMERS ---------- */
