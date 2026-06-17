@@ -180,6 +180,60 @@
   @media (prefers-reduced-motion:reduce){
     *{animation:none!important;transition-duration:.01ms!important;}
   }
+  /* ============ MAIN APP (post-login) ============ */
+  #appRoot{position:fixed;inset:0;max-width:440px;margin:0 auto;background:var(--bg);
+    display:none;flex-direction:column;z-index:20;}
+  #appRoot.show{display:flex;}
+  .app-scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;
+    padding:calc(20px + env(safe-area-inset-top)) 22px 100px;}
+  .app-h1{font-size:26px;font-weight:800;letter-spacing:-.02em;}
+  .app-sub{color:var(--muted);font-size:14px;margin-top:4px;}
+  .greet-row{display:flex;align-items:center;justify-content:space-between;gap:12px;}
+  .avatar{width:44px;height:44px;border-radius:50%;background:var(--surface2);
+    display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--yellow);font-size:18px;}
+  .card-box{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:18px;margin-top:16px;}
+  .wallet-card{background:linear-gradient(135deg,var(--yellow),var(--yellow-dim));color:#111;
+    border:none;border-radius:20px;padding:20px;margin-top:18px;}
+  .wallet-card .lbl{font-size:13px;font-weight:600;opacity:.8;}
+  .wallet-card .amt{font-size:30px;font-weight:800;margin-top:4px;}
+  .wallet-card .pts{font-size:13px;margin-top:8px;font-weight:600;}
+  .quick-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:18px;}
+  .quick{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:16px;
+    display:flex;flex-direction:column;gap:8px;cursor:pointer;transition:.12s;}
+  .quick:active{transform:scale(.97);}
+  .quick .ic{font-size:26px;}
+  .quick .t{font-size:14px;font-weight:700;}
+  .sec-title{font-size:17px;font-weight:800;margin-top:26px;}
+  .svc-card{background:var(--surface);border:1px solid var(--line);border-radius:16px;
+    overflow:hidden;margin-top:12px;cursor:pointer;transition:.12s;}
+  .svc-card:active{transform:scale(.99);}
+  .svc-card .img{width:100%;height:130px;object-fit:cover;background:var(--surface2);}
+  .svc-card .body{padding:14px;}
+  .svc-card .cat{font-size:11px;color:var(--yellow);text-transform:uppercase;letter-spacing:.06em;font-weight:700;}
+  .svc-card .nm{font-size:16px;font-weight:700;margin-top:3px;}
+  .svc-card .ds{font-size:13px;color:var(--muted);margin-top:5px;line-height:1.4;}
+  .svc-card .pr{font-size:15px;font-weight:800;margin-top:8px;color:var(--text);}
+  /* bottom nav */
+  .botnav{display:flex;border-top:1px solid var(--line);background:var(--bg);
+    padding-bottom:env(safe-area-inset-bottom);}
+  .botnav button{flex:1;background:none;border:none;color:var(--muted);padding:12px 0;
+    display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;font-size:11px;font-weight:600;}
+  .botnav button.on{color:var(--yellow);}
+  .botnav .ic{font-size:20px;}
+  .field{margin-top:16px;}
+  .field label{font-size:13px;font-weight:600;color:var(--muted);display:block;margin-bottom:6px;}
+  .field input{width:100%;height:52px;background:var(--surface);border:1.5px solid var(--line);
+    border-radius:14px;padding:0 16px;color:var(--text);font-size:16px;outline:none;}
+  .field input:focus{border-color:var(--yellow);}
+  .field input:disabled{opacity:.6;}
+  .topbar-app{display:flex;align-items:center;gap:12px;padding:calc(14px + env(safe-area-inset-top)) 18px 14px;
+    border-bottom:1px solid var(--line);}
+  .topbar-app .back{background:none;border:none;color:var(--text);font-size:22px;cursor:pointer;}
+  .topbar-app .ttl{font-size:18px;font-weight:700;}
+  .guest-banner{background:var(--surface2);border:1px solid var(--line);border-radius:14px;
+    padding:14px;margin-top:16px;font-size:13px;color:var(--muted);}
+  .guest-banner b{color:var(--yellow);cursor:pointer;}
+
   .toast{position:fixed;left:50%;bottom:calc(36px + env(safe-area-inset-bottom));
     transform:translateX(-50%) translateY(20px);background:var(--surface2);
     color:var(--text);border:1px solid var(--line);padding:13px 20px;border-radius:14px;
@@ -193,6 +247,7 @@
   <div class="rail" id="rail"></div>
   <div class="screens" id="screens"></div>
 </div>
+<div id="appRoot"></div>
 <div class="toast" id="toast"></div>
 
 <script>
@@ -359,6 +414,53 @@ async function verifyOtp(phone, token){
   return r.json(); // { access_token, refresh_token, user, ... }
 }
 
+/* ---------- Session + authenticated data helpers ---------- */
+let SESSION = null;     // { access_token, user, ... }
+let PROFILE = null;     // gl_profiles row
+let SERVICES = [];      // gl_services rows
+let IS_GUEST = false;
+
+function loadSession(){
+  try{ const s=localStorage.getItem('gl_session'); if(s) SESSION=JSON.parse(s); }catch(e){}
+  return SESSION;
+}
+function authHeaders(){
+  const tok = SESSION?.access_token || SUPA_ANON;
+  return { apikey:SUPA_ANON, Authorization:`Bearer ${tok}`, "Content-Type":"application/json" };
+}
+async function fetchProfile(){
+  if(!SESSION?.user?.id) return null;
+  try{
+    const r=await fetch(`${SUPA_URL}/rest/v1/gl_profiles?select=*&id=eq.${SESSION.user.id}`,{headers:authHeaders()});
+    if(r.ok){ const rows=await r.json(); PROFILE=rows[0]||null; }
+  }catch(e){}
+  return PROFILE;
+}
+async function saveProfile(fields){
+  if(!SESSION?.user?.id) return false;
+  try{
+    const r=await fetch(`${SUPA_URL}/rest/v1/gl_profiles?id=eq.${SESSION.user.id}`,{
+      method:"PATCH", headers:Object.assign(authHeaders(),{Prefer:"return=representation"}),
+      body:JSON.stringify(fields)
+    });
+    if(r.ok){ const rows=await r.json(); PROFILE=rows[0]||PROFILE; return true; }
+  }catch(e){}
+  return false;
+}
+async function fetchServices(){
+  try{
+    const r=await fetch(`${SUPA_URL}/rest/v1/gl_services?select=*&active=eq.true&order=sort_order.asc`,
+      {headers:{apikey:SUPA_ANON,Authorization:`Bearer ${SUPA_ANON}`}});
+    if(r.ok) SERVICES=await r.json();
+  }catch(e){}
+  return SERVICES;
+}
+function logout(){
+  localStorage.removeItem('gl_session'); SESSION=null; PROFILE=null; IS_GUEST=false;
+  location.reload();
+}
+
+
 /* ---------- Build the screen stack ---------- */
 function buildRail(){
   railEl.innerHTML="";
@@ -449,13 +551,36 @@ function welcomeScreen(){
       <button class="btn btn-yellow-ghost" data-act="register">${STYLE.welRegister||'Create account'}</button>
       <button class="btn btn-ghost" data-act="guest">${STYLE.welGuest||'Browse as guest'}</button>
     </div>`;
-  el.querySelector('[data-act="login"]').onclick=()=>openAuth();
-  el.querySelector('[data-act="register"]').onclick=()=>openAuth();
-  el.querySelector('[data-act="guest"]').onclick=()=>toast("Guest browsing — coming in the next step");
+  el.querySelector('[data-act="login"]').onclick=()=>openAuth(false);
+  el.querySelector('[data-act="register"]').onclick=()=>openReferral();
+  el.querySelector('[data-act="guest"]').onclick=()=>enterGuest();
   return el;
 }
 
 let authPhone="";
+let referralCode="";   // captured at signup, sent with profile
+
+function referralScreen(){
+  const el=document.createElement('div'); el.className="screen auth"; el.dataset.kind="referral";
+  el.innerHTML=`
+    <div style="flex:1;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;gap:6px">
+      <div style="font-size:54px;margin-bottom:8px">🎁</div>
+      <div class="auth-h" style="text-align:center">Enter promo or referral code</div>
+      <div class="auth-sub" style="text-align:center;max-width:28ch">Get rewarded when you sign up with a code.</div>
+      <input id="refInput" type="text" placeholder="Promo code" autocapitalize="characters"
+        style="margin-top:24px;width:100%;background:var(--surface);border:1.5px solid var(--line);border-radius:16px;padding:0 18px;height:58px;color:var(--text);font-size:17px;text-align:center;letter-spacing:.1em;text-transform:uppercase;outline:none">
+      <div class="helper" id="refHelper" style="text-align:center"></div>
+    </div>
+    <div class="auth-foot">
+      <button class="btn btn-primary" id="refContinue">Continue</button>
+      <div class="link-row" data-act="skip" style="margin-top:18px"><span>Skip</span></div>
+    </div>`;
+  const input=el.querySelector('#refInput');
+  input.addEventListener('input',()=>{input.value=input.value.toUpperCase().replace(/\s/g,'');});
+  el.querySelector('#refContinue').onclick=()=>{ referralCode=input.value.trim(); openAuth(true); };
+  el.querySelector('[data-act="skip"]').onclick=()=>{ referralCode=""; openAuth(true); };
+  return el;
+}
 function phoneScreen(){
   const el=document.createElement('div'); el.className="screen auth"; el.dataset.kind="phone";
   el.innerHTML=`
@@ -534,8 +659,12 @@ function otpScreen(){
     const res=await verifyOtp(authPhone, hidden.value);
     if(res && res.access_token){
       localStorage.setItem('gl_session', JSON.stringify(res));
+      SESSION=res;
+      await fetchProfile();
       toast("You're in ✓");
-      // next step: route to home/services
+      // returning user (has name) → Home; new user → profile setup
+      if(PROFILE && PROFILE.name){ enterApp('home'); }
+      else { enterApp('profile'); }
     }else{
       btn.disabled=false; btn.textContent="Verify";
       helper.textContent="That code didn't match. Try again or resend.";
@@ -566,10 +695,198 @@ function startCountdown(el){
   },1000);
 }
 
-/* ---------- Navigation between screens ---------- */
-let screenOrder=[]; // dom refs in order
-let cur=0;
-function indexScreens(){ screenOrder=[...screensEl.children]; }
+/* ============================================================
+   MAIN APP (post-login): home, services, profile, guest
+   ============================================================ */
+const appRoot = document.getElementById('appRoot');
+let currentTab = 'home';
+
+function enterApp(screen){
+  // hide onboarding stack, show app
+  document.querySelector('.app').style.display='none';
+  appRoot.classList.add('show');
+  if(screen==='profile') renderProfileSetup();
+  else routeTab(screen||'home');
+}
+function enterGuest(){
+  IS_GUEST=true;
+  document.querySelector('.app').style.display='none';
+  appRoot.classList.add('show');
+  routeTab('services');
+}
+
+function botnav(active){
+  return `<div class="botnav">
+    <button class="${active==='home'?'on':''}" onclick="routeTab('home')"><span class="ic">⌂</span>Home</button>
+    <button class="${active==='services'?'on':''}" onclick="routeTab('services')"><span class="ic">▤</span>Services</button>
+    <button class="${active==='bookings'?'on':''}" onclick="routeTab('bookings')"><span class="ic">▦</span>Bookings</button>
+    <button class="${active==='account'?'on':''}" onclick="routeTab('account')"><span class="ic">◍</span>Account</button>
+  </div>`;
+}
+
+async function routeTab(tab){
+  currentTab=tab;
+  if(tab==='home') return renderHome();
+  if(tab==='services') return renderServicesScreen();
+  if(tab==='bookings') return renderBookings();
+  if(tab==='account') return renderAccount();
+}
+
+function priceLabel(s){
+  if(s.price_by_type){
+    const vals=Object.values(s.price_by_type).filter(v=>v!=null&&v!=='');
+    if(vals.length) return 'from RM'+Math.min(...vals.map(Number));
+    return '—';
+  }
+  return s.base_price?('RM'+s.base_price):'—';
+}
+
+async function renderHome(){
+  const name = PROFILE?.name ? PROFILE.name.split(' ')[0] : 'there';
+  const initial = (PROFILE?.name||'G')[0].toUpperCase();
+  if(!SERVICES.length) await fetchServices();
+  const featured = SERVICES.slice(0,3);
+  appRoot.innerHTML=`
+    <div class="app-scroll">
+      <div class="greet-row">
+        <div>
+          <div class="app-h1">Hi, ${esc(name)} 👋</div>
+          <div class="app-sub">Welcome back to Grandlab</div>
+        </div>
+        <div class="avatar">${esc(initial)}</div>
+      </div>
+      <div class="wallet-card">
+        <div class="lbl">Grandlab Wallet</div>
+        <div class="amt">RM 0.00</div>
+        <div class="pts">⭐ 0 points</div>
+      </div>
+      <div class="quick-grid">
+        <div class="quick" onclick="routeTab('services')"><span class="ic">🧴</span><span class="t">Book a service</span></div>
+        <div class="quick" onclick="routeTab('bookings')"><span class="ic">📋</span><span class="t">My bookings</span></div>
+        <div class="quick" onclick="toast('Wallet coming soon')"><span class="ic">💳</span><span class="t">Top up wallet</span></div>
+        <div class="quick" onclick="routeTab('account')"><span class="ic">🎁</span><span class="t">Refer & earn</span></div>
+      </div>
+      <div class="sec-title">Popular services</div>
+      ${featured.length? featured.map(s=>svcCard(s)).join('') : '<div class="guest-banner">No services yet. Add them in the admin.</div>'}
+    </div>
+    ${botnav('home')}`;
+}
+
+function svcCard(s){
+  return `<div class="svc-card" onclick="openService('${s.id}')">
+    ${s.image_url?`<img class="img" src="${s.image_url}">`:''}
+    <div class="body">
+      ${s.category?`<div class="cat">${esc(s.category)}</div>`:''}
+      <div class="nm">${esc(s.name||'')}</div>
+      ${s.description?`<div class="ds">${esc(s.description)}</div>`:''}
+      <div class="pr">${priceLabel(s)}</div>
+    </div>
+  </div>`;
+}
+
+async function renderServicesScreen(){
+  if(!SERVICES.length) await fetchServices();
+  appRoot.innerHTML=`
+    <div class="app-scroll">
+      <div class="app-h1">Our Services</div>
+      <div class="app-sub">Choose a service to book</div>
+      ${IS_GUEST?`<div class="guest-banner">You're browsing as a guest. <b onclick="logout()">Sign in</b> to book.</div>`:''}
+      ${SERVICES.length? SERVICES.map(s=>svcCard(s)).join('') : '<div class="guest-banner">No services yet. Add them in the admin.</div>'}
+    </div>
+    ${botnav('services')}`;
+}
+
+function openService(id){
+  const s=SERVICES.find(x=>x.id===id); if(!s) return;
+  if(IS_GUEST){ toast("Sign in to book this service"); return; }
+  // booking detail — placeholder for next build step
+  appRoot.innerHTML=`
+    <div class="topbar-app"><button class="back" onclick="routeTab('services')">‹</button><div class="ttl">${esc(s.name||'Service')}</div></div>
+    <div class="app-scroll" style="padding-top:18px">
+      ${s.image_url?`<img class="img" src="${s.image_url}" style="width:100%;height:200px;object-fit:cover;border-radius:16px">`:''}
+      ${s.category?`<div class="cat" style="margin-top:14px;color:var(--yellow);font-size:12px;text-transform:uppercase;font-weight:700;letter-spacing:.06em">${esc(s.category)}</div>`:''}
+      <div class="app-h1" style="margin-top:4px">${esc(s.name||'')}</div>
+      ${s.description?`<div class="app-sub" style="margin-top:8px;line-height:1.5">${esc(s.description)}</div>`:''}
+      <div class="card-box">
+        <div style="font-size:13px;color:var(--muted)">Price</div>
+        <div style="font-size:24px;font-weight:800;margin-top:4px">${priceLabel(s)}</div>
+      </div>
+      <button class="btn btn-primary" style="margin-top:20px" onclick="toast('Booking flow — next build step')">Book this service</button>
+    </div>`;
+}
+
+async function renderBookings(){
+  appRoot.innerHTML=`
+    <div class="app-scroll">
+      <div class="app-h1">My Bookings</div>
+      <div class="app-sub">Your service history & upcoming visits</div>
+      <div class="guest-banner" style="margin-top:24px">No bookings yet. Book a service to see it here.</div>
+    </div>
+    ${botnav('bookings')}`;
+}
+
+async function renderAccount(){
+  const p=PROFILE||{};
+  appRoot.innerHTML=`
+    <div class="app-scroll">
+      <div class="app-h1">Account</div>
+      <div class="card-box">
+        <div class="field"><label>Name</label><input id="acc-name" value="${esc(p.name||'')}"></div>
+        <div class="field"><label>Email</label><input id="acc-email" type="email" value="${esc(p.email||'')}"></div>
+        <div class="field"><label>Mobile</label><input id="acc-phone" value="${esc(p.phone||'')}"></div>
+        <button class="btn btn-primary" style="margin-top:18px" onclick="saveAccount()">Save changes</button>
+      </div>
+      <div class="card-box">
+        <div style="font-size:13px;color:var(--muted)">Your referral code</div>
+        <div style="font-size:22px;font-weight:800;margin-top:4px;letter-spacing:.05em">${esc(p.referral_code||'— set in admin —')}</div>
+        <div class="app-sub" style="margin-top:6px">Share this code with friends. You both get rewarded.</div>
+      </div>
+      <button class="btn btn-ghost" style="margin-top:18px" onclick="logout()">Log out</button>
+    </div>
+    ${botnav('account')}`;
+}
+async function saveAccount(){
+  const fields={name:document.getElementById('acc-name').value.trim(),
+    email:document.getElementById('acc-email').value.trim(),
+    phone:document.getElementById('acc-phone').value.trim()};
+  if(await saveProfile(fields)) toast("Saved ✓"); else toast("Couldn't save");
+}
+
+/* Profile setup (new user, after OTP) */
+function renderProfileSetup(){
+  const autoPhone = SESSION?.user?.phone ? ('+'+SESSION.user.phone) : authPhone;
+  appRoot.innerHTML=`
+    <div class="app-scroll">
+      <div class="app-h1">Complete your profile</div>
+      <div class="app-sub">Just a few details to finish setting up.</div>
+      <div class="field"><label>Name *</label><input id="ps-name" placeholder="Your name"></div>
+      <div class="field"><label>Email *</label><input id="ps-email" type="email" placeholder="you@email.com"></div>
+      <div class="field"><label>Mobile</label><input id="ps-phone" value="${esc(autoPhone)}"></div>
+      <div class="field"><label>Referral code (optional)</label><input id="ps-ref" placeholder="Enter a friend's code"></div>
+      <div class="helper err" id="ps-err" style="margin-top:10px"></div>
+      <button class="btn btn-primary" style="margin-top:18px" id="ps-save">Continue</button>
+    </div>`;
+  document.getElementById('ps-save').onclick=async()=>{
+    const name=document.getElementById('ps-name').value.trim();
+    const email=document.getElementById('ps-email').value.trim();
+    const phone=document.getElementById('ps-phone').value.trim();
+    const ref=document.getElementById('ps-ref').value.trim();
+    const err=document.getElementById('ps-err');
+    if(!name||!email){ err.textContent="Name and email are required."; return; }
+    const fields={name,email,phone};
+    if(ref) fields.referred_by=ref;
+    const ok=await saveProfile(fields);
+    if(ref && ok){
+      // log referral for rewarding later
+      try{ await fetch(`${SUPA_URL}/rest/v1/gl_referrals`,{method:"POST",
+        headers:authHeaders(),body:JSON.stringify({referrer_code:ref,new_user_id:SESSION.user.id})}); }catch(e){}
+    }
+    if(ok){ toast("Welcome to Grandlab ✓"); enterApp('home'); }
+    else err.textContent="Couldn't save — try again.";
+  };
+}
+
+
 function showStep(idx){
   indexScreens();
   screenOrder.forEach((s,i)=>{
@@ -596,6 +913,18 @@ Object.defineProperty(window,'stepIndex',{get:()=>cur,set:v=>{cur=v;}});
 
 /* ---------- Init ---------- */
 (async function init(){
+  // already logged in? go straight to the app
+  loadSession();
+  if(SESSION?.access_token){
+    await fetchSlides();          // loads STYLE too
+    await fetchProfile();
+    await fetchServices();
+    render();                     // build onboarding stack (hidden) for fallback
+    indexScreens();
+    if(PROFILE && PROFILE.name){ enterApp('home'); }
+    else { enterApp('profile'); }
+    return;
+  }
   await fetchSlides();
   render();
   indexScreens();
