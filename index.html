@@ -31,9 +31,9 @@
   .safe-bottom{padding-bottom:env(safe-area-inset-bottom);}
 
   /* ---------- Progress rail ---------- */
-  .rail{display:flex;gap:6px;padding:18px 22px 0;}
-  .rail .seg{flex:1;height:3px;border-radius:3px;background:var(--line);overflow:hidden;}
-  .rail .seg i{display:block;height:100%;width:0;background:var(--yellow);
+  .rail{display:flex;gap:6px;padding:18px 22px 0;margin:0 auto;width:var(--rail-length,100%);}
+  .rail .seg{flex:1;height:var(--rail-thickness,3px);border-radius:3px;background:var(--line);overflow:hidden;}
+  .rail .seg i{display:block;height:100%;width:0;background:var(--rail-color,var(--yellow));
     transition:width .45s var(--ease);}
   .rail .seg.done i{width:100%;}
   .rail .seg.active i{width:100%;}
@@ -48,10 +48,10 @@
   .screen.exit-left{transform:translateX(-28px);}
 
   /* ---------- Onboarding ---------- */
-  .ob-eyebrow{margin-top:54px;font-size:15px;letter-spacing:.14em;
-    text-transform:uppercase;color:var(--yellow);font-weight:600;}
-  .ob-title{margin-top:14px;font-size:40px;line-height:1.04;font-weight:800;
-    letter-spacing:-.02em;max-width:11ch;}
+  .ob-eyebrow{margin-top:54px;font-size:var(--eyebrow-size,15px);letter-spacing:.14em;
+    text-transform:uppercase;color:var(--eyebrow-color,var(--yellow));font-weight:600;}
+  .ob-title{margin-top:14px;font-size:var(--title-size,40px);line-height:1.04;font-weight:800;
+    letter-spacing:-.02em;max-width:11ch;color:var(--title-color,var(--text));}
   .ob-art{flex:1;display:flex;align-items:center;justify-content:center;position:relative;}
   .ob-panel{
     width:78%;max-width:320px;aspect-ratio:1/1.05;border-radius:26px;
@@ -61,6 +61,9 @@
     box-shadow:0 30px 60px -30px #000;
   }
   /* specular streak — light moving over fresh coating */
+  .ob-panel.ob-video{padding:0;}
+  .ob-panel.ob-video video{width:100%;height:100%;object-fit:cover;}
+  .ob-panel.ob-video::after{display:none;}
   .ob-panel::after{
     content:"";position:absolute;top:-60%;left:-40%;width:60%;height:220%;
     transform:rotate(18deg);
@@ -73,11 +76,11 @@
   .ob-nav{display:flex;gap:14px;}
 
   /* ---------- Buttons ---------- */
-  .btn{height:58px;border-radius:18px;border:none;font-size:17px;font-weight:700;
+  .btn{height:var(--btn-height,58px);border-radius:18px;border:none;font-size:17px;font-weight:700;
     display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;
     width:100%;transition:transform .12s var(--ease),opacity .2s;letter-spacing:.01em;}
   .btn:active{transform:scale(.975);}
-  .btn-primary{background:var(--yellow);color:#0A0A0A;}
+  .btn-primary{background:var(--btn-color,var(--yellow));color:#0A0A0A;}
   .btn-primary:disabled{background:var(--surface2);color:var(--muted);}
   .btn-ghost{background:transparent;color:var(--text);border:1.5px solid var(--line);}
   .btn-yellow-ghost{background:transparent;color:var(--yellow);border:1.5px solid var(--yellow-dim);}
@@ -88,7 +91,7 @@
   .wel-top{margin-top:64px;}
   .wel-mark{display:flex;flex-direction:column;align-items:center;gap:18px;
     flex:1;justify-content:center;}
-  .wel-logo{width:96px;height:96px;}
+  .wel-logo{width:var(--logo-size,96px);height:var(--logo-size,96px);}
   .wel-name{font-size:34px;font-weight:800;letter-spacing:-.02em;}
   .wel-h{font-size:32px;font-weight:800;letter-spacing:-.02em;line-height:1.1;}
   .wel-sub{margin-top:14px;color:var(--muted);font-size:16px;line-height:1.5;max-width:30ch;}
@@ -194,6 +197,32 @@ function toast(msg){
   clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove('show'),2600);
 }
 
+/* ---------- Global style settings (admin-editable) ---------- */
+const STYLE_DEFAULTS = {
+  bg:"#0A0A0A", accent:"#F5C518", text:"#FFFFFF",
+  logoSize:96, eyebrowSize:15, eyebrowColor:"#F5C518", titleSize:40, titleColor:"#FFFFFF",
+  btnColor:"#F5C518", btnHeight:58,
+  railColor:"#F5C518", railThickness:3, railLength:100
+};
+let STYLE = Object.assign({}, STYLE_DEFAULTS);
+
+function applyStyle(){
+  const r=document.documentElement.style;
+  r.setProperty('--bg', STYLE.bg);
+  r.setProperty('--yellow', STYLE.accent);
+  r.setProperty('--text', STYLE.text);
+  r.setProperty('--logo-size', STYLE.logoSize+'px');
+  r.setProperty('--eyebrow-size', STYLE.eyebrowSize+'px');
+  r.setProperty('--eyebrow-color', STYLE.eyebrowColor);
+  r.setProperty('--title-size', STYLE.titleSize+'px');
+  r.setProperty('--title-color', STYLE.titleColor);
+  r.setProperty('--btn-color', STYLE.btnColor);
+  r.setProperty('--btn-height', STYLE.btnHeight+'px');
+  r.setProperty('--rail-color', STYLE.railColor);
+  r.setProperty('--rail-thickness', STYLE.railThickness+'px');
+  r.setProperty('--rail-length', STYLE.railLength+'%');
+}
+
 /* ---------- Supabase REST helpers (no SDK needed) ---------- */
 async function fetchSlides(){
   if(!IS_LIVE) return; // skip if not configured yet
@@ -202,14 +231,25 @@ async function fetchSlides(){
       `${SUPA_URL}/rest/v1/gl_onboarding_slides?select=*&active=eq.true&order=sort_order.asc`,
       { headers:{ apikey:SUPA_ANON, Authorization:`Bearer ${SUPA_ANON}` } }
     );
-    if(!r.ok) return;
-    const rows = await r.json();
-    if(Array.isArray(rows) && rows.length){
-      SLIDES = rows.map(x=>({
-        eyebrow:x.eyebrow||"", title:x.title||"", glyph:x.glyph||"✨", image:x.image_url||null
-      }));
+    if(r.ok){
+      const rows = await r.json();
+      if(Array.isArray(rows) && rows.length){
+        SLIDES = rows.map(x=>({
+          eyebrow:x.eyebrow||"", title:x.title||"", glyph:x.glyph||"✨",
+          image:x.image_url||null, video:x.video_url||null
+        }));
+      }
     }
   }catch(e){ /* fall back silently */ }
+  // load global style settings
+  try{
+    const r2 = await fetch(
+      `${SUPA_URL}/rest/v1/gl_settings?select=data&id=eq.style`,
+      { headers:{ apikey:SUPA_ANON, Authorization:`Bearer ${SUPA_ANON}` } }
+    );
+    if(r2.ok){ const rows=await r2.json(); if(rows[0]&&rows[0].data) STYLE=Object.assign({},STYLE_DEFAULTS,rows[0].data); }
+  }catch(e){}
+  applyStyle();
 }
 
 async function sendOtp(phone){
@@ -264,9 +304,14 @@ function render(){
 
 function onboardingScreen(s,i){
   const el=document.createElement('div'); el.className="screen"; el.dataset.kind="ob";
-  const art = s.image
-    ? `<div class="ob-panel"><img src="${s.image}" style="width:100%;height:100%;object-fit:cover" alt=""></div>`
-    : `<div class="ob-panel"><div class="ob-glyph">${s.glyph}</div></div>`;
+  let art;
+  if(s.video){
+    art = `<div class="ob-panel ob-video"><video src="${s.video}" autoplay muted loop playsinline></video></div>`;
+  } else if(s.image){
+    art = `<div class="ob-panel"><img src="${s.image}" style="width:100%;height:100%;object-fit:cover" alt=""></div>`;
+  } else {
+    art = `<div class="ob-panel"><div class="ob-glyph">${s.glyph}</div></div>`;
+  }
   const isLast = i===SLIDES.length-1;
   el.innerHTML=`
     <div class="ob-eyebrow">${s.eyebrow}</div>

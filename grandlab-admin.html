@@ -65,6 +65,7 @@
   .swatch{display:flex;flex-direction:column;gap:6px;align-items:center;}
   .swatch input[type=color]{width:54px;height:40px;padding:2px;border-radius:8px;cursor:pointer;}
   .swatch span{font-size:11px;color:var(--muted);}
+  input[type=range]{width:100%;accent-color:var(--yellow);height:6px;margin:4px 0 2px;cursor:pointer;}
   .add-row{margin:6px 0 26px;}
   .price-grid{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;}
   .price-grid .pc label{margin-top:0;}
@@ -167,17 +168,61 @@
         <div class="add-row"><button class="btn btn-ghost" onclick="addService()">+ Add service</button></div>
       </div>
 
-      <!-- THEME -->
+      <!-- THEME / STYLE -->
       <div class="panel" id="panel-theme">
         <div class="section-h">Colors</div>
         <div class="card">
           <div class="swatch-row">
             <div class="swatch"><input type="color" id="th-bg" value="#0A0A0A" oninput="onTheme()"><span>Background</span></div>
             <div class="swatch"><input type="color" id="th-accent" value="#F5C518" oninput="onTheme()"><span>Accent</span></div>
-            <div class="swatch"><input type="color" id="th-text" value="#FFFFFF" oninput="onTheme()"><span>Text</span></div>
+            <div class="swatch"><input type="color" id="th-text" value="#FFFFFF" oninput="onTheme()"><span>Body text</span></div>
           </div>
-          <div class="hint">These drive the customer app’s look. Saved to your settings table; the PWA reads them on launch.</div>
         </div>
+
+        <div class="section-h">Logo</div>
+        <div class="card">
+          <label>Logo size — <b id="lbl-logo">96</b>px</label>
+          <input type="range" min="48" max="160" id="th-logoSize" oninput="onTheme()">
+        </div>
+
+        <div class="section-h">Eyebrow (small label)</div>
+        <div class="card">
+          <label>Size — <b id="lbl-eb">15</b>px</label>
+          <input type="range" min="10" max="26" id="th-eyebrowSize" oninput="onTheme()">
+          <div class="swatch-row" style="margin-top:12px">
+            <div class="swatch"><input type="color" id="th-eyebrowColor" value="#F5C518" oninput="onTheme()"><span>Eyebrow color</span></div>
+          </div>
+        </div>
+
+        <div class="section-h">Title</div>
+        <div class="card">
+          <label>Size — <b id="lbl-title">40</b>px</label>
+          <input type="range" min="22" max="60" id="th-titleSize" oninput="onTheme()">
+          <div class="swatch-row" style="margin-top:12px">
+            <div class="swatch"><input type="color" id="th-titleColor" value="#FFFFFF" oninput="onTheme()"><span>Title color</span></div>
+          </div>
+        </div>
+
+        <div class="section-h">Button (Next / Get started)</div>
+        <div class="card">
+          <label>Height — <b id="lbl-btnh">58</b>px</label>
+          <input type="range" min="44" max="72" id="th-btnHeight" oninput="onTheme()">
+          <div class="swatch-row" style="margin-top:12px">
+            <div class="swatch"><input type="color" id="th-btnColor" value="#F5C518" oninput="onTheme()"><span>Button color</span></div>
+          </div>
+        </div>
+
+        <div class="section-h">Progress line (top)</div>
+        <div class="card">
+          <label>Thickness — <b id="lbl-rt">3</b>px</label>
+          <input type="range" min="1" max="10" id="th-railThickness" oninput="onTheme()">
+          <label>Length — <b id="lbl-rl">100</b>%</label>
+          <input type="range" min="40" max="100" id="th-railLength" oninput="onTheme()">
+          <div class="swatch-row" style="margin-top:12px">
+            <div class="swatch"><input type="color" id="th-railColor" value="#F5C518" oninput="onTheme()"><span>Line color</span></div>
+          </div>
+        </div>
+        <div class="hint">These apply to all onboarding slides. The customer app reads them on launch.</div>
       </div>
     </div>
   </div>
@@ -210,7 +255,10 @@ const ICONS = ["🛡️","📋","✨","🚗","💧","🧴","🪄","⭐","🏁","
 
 let slides = [];     // {id?, eyebrow,title,glyph,image_url,sort_order,active}
 let services = [];   // {id?, name,category,base_price,price_by_type,active,sort_order}
-let theme = { bg:"#0A0A0A", accent:"#F5C518", text:"#FFFFFF" };
+let theme = { bg:"#0A0A0A", accent:"#F5C518", text:"#FFFFFF",
+  logoSize:96, eyebrowSize:15, eyebrowColor:"#F5C518", titleSize:40, titleColor:"#FFFFFF",
+  btnColor:"#F5C518", btnHeight:58,
+  railColor:"#F5C518", railThickness:3, railLength:100 };
 let pvMode = "onb";
 let pvSlide = 0;
 
@@ -244,13 +292,11 @@ async function loadAll(){
     slides=r.ok?await r.json():[];
     r=await sb("gl_services?select=*&order=sort_order.asc",{headers:H()});
     services=r.ok?await r.json():[];
-    // theme from gl_settings (key/value); create row lazily on save
-    r=await sb("gl_settings?select=*&id=eq.theme",{headers:H()});
+    // style from gl_settings (id='style', data jsonb)
+    r=await sb("gl_settings?select=*&id=eq.style",{headers:H()});
     if(r.ok){const rows=await r.json();if(rows[0]&&rows[0].data)theme=Object.assign(theme,rows[0].data);}
   }catch(e){}
-  document.getElementById('th-bg').value=theme.bg;
-  document.getElementById('th-accent').value=theme.accent;
-  document.getElementById('th-text').value=theme.text;
+  fillThemeControls();
   renderSlides();renderServices();renderPreview();
 }
 
@@ -283,6 +329,14 @@ function renderSlides(){
         <input id="sf${i}" type="file" accept="image/*" style="display:none" onchange="uploadImg(this,'slide',${i})">
       </div>
       ${s.image_url?`<img class="thumb" src="${s.image_url}">`:''}
+      <label>Background video (optional, MP4 — overrides photo/icon)</label>
+      <div class="upl">
+        <button class="btn btn-ghost btn-sm" onclick="document.getElementById('vf${i}').click()">Upload video</button>
+        ${s.video_url?`<button class="btn btn-danger btn-sm" onclick="upd('slide',${i},'video_url',null)">Remove</button>`:''}
+        <input id="vf${i}" type="file" accept="video/mp4,video/*" style="display:none" onchange="uploadVid(this,${i})">
+      </div>
+      ${s.video_url?`<video class="thumb" src="${s.video_url}" muted autoplay loop playsinline></video>`:''}
+      <div class="hint">Video: 1080×1920 portrait, 5–10s loop, MP4, keep under 3 MB for fast loading.</div>
     `;
     el.appendChild(c);
   });
@@ -334,10 +388,29 @@ function upd(kind,i,field,val){
   renderPreview();
 }
 function onTheme(){
-  theme.bg=document.getElementById('th-bg').value;
-  theme.accent=document.getElementById('th-accent').value;
-  theme.text=document.getElementById('th-text').value;
+  const g=id=>document.getElementById(id);
+  theme.bg=g('th-bg').value; theme.accent=g('th-accent').value; theme.text=g('th-text').value;
+  theme.logoSize=+g('th-logoSize').value;
+  theme.eyebrowSize=+g('th-eyebrowSize').value; theme.eyebrowColor=g('th-eyebrowColor').value;
+  theme.titleSize=+g('th-titleSize').value; theme.titleColor=g('th-titleColor').value;
+  theme.btnColor=g('th-btnColor').value; theme.btnHeight=+g('th-btnHeight').value;
+  theme.railColor=g('th-railColor').value; theme.railThickness=+g('th-railThickness').value; theme.railLength=+g('th-railLength').value;
+  g('lbl-logo').textContent=theme.logoSize; g('lbl-eb').textContent=theme.eyebrowSize;
+  g('lbl-title').textContent=theme.titleSize; g('lbl-btnh').textContent=theme.btnHeight;
+  g('lbl-rt').textContent=theme.railThickness; g('lbl-rl').textContent=theme.railLength;
   renderPreview();
+}
+function fillThemeControls(){
+  const g=id=>document.getElementById(id);
+  g('th-bg').value=theme.bg; g('th-accent').value=theme.accent; g('th-text').value=theme.text;
+  g('th-logoSize').value=theme.logoSize;
+  g('th-eyebrowSize').value=theme.eyebrowSize; g('th-eyebrowColor').value=theme.eyebrowColor;
+  g('th-titleSize').value=theme.titleSize; g('th-titleColor').value=theme.titleColor;
+  g('th-btnColor').value=theme.btnColor; g('th-btnHeight').value=theme.btnHeight;
+  g('th-railColor').value=theme.railColor; g('th-railThickness').value=theme.railThickness; g('th-railLength').value=theme.railLength;
+  g('lbl-logo').textContent=theme.logoSize; g('lbl-eb').textContent=theme.eyebrowSize;
+  g('lbl-title').textContent=theme.titleSize; g('lbl-btnh').textContent=theme.btnHeight;
+  g('lbl-rt').textContent=theme.railThickness; g('lbl-rl').textContent=theme.railLength;
 }
 
 /* ---------- image upload to Supabase Storage ---------- */
@@ -354,6 +427,19 @@ async function uploadImg(input,kind,i){
   renderSlides();renderPreview();toast("Photo uploaded ✓");
 }
 
+async function uploadVid(input,i){
+  const f=input.files[0];if(!f)return;
+  if(f.size>8*1024*1024 && !confirm("This video is "+(f.size/1048576).toFixed(1)+" MB — large videos slow the app on mobile. Upload anyway?"))return;
+  toast("Uploading video…");
+  const path=`video-${Date.now()}-${f.name.replace(/[^a-z0-9.]/gi,'_')}`;
+  const r=await fetch(`${SUPA_URL}/storage/v1/object/${BUCKET}/${path}`,{
+    method:"POST",headers:{apikey:SVC_KEY,Authorization:`Bearer ${SVC_KEY}`},body:f
+  });
+  if(!r.ok){toast("Video upload failed — is the gl-images bucket public?");return;}
+  slides[i].video_url=`${SUPA_URL}/storage/v1/object/public/${BUCKET}/${path}`;
+  renderSlides();renderPreview();toast("Video uploaded ✓");
+}
+
 /* ---------- SAVE everything ---------- */
 async function saveAll(){
   toast("Saving…");
@@ -365,7 +451,7 @@ async function saveAll(){
     // wipe + reinsert is simplest for a small admin set:
     // upsert slides
     for(const s of slides){
-      const body={eyebrow:s.eyebrow,title:s.title,glyph:s.glyph,image_url:s.image_url,sort_order:s.sort_order,active:true};
+      const body={eyebrow:s.eyebrow,title:s.title,glyph:s.glyph,image_url:s.image_url,video_url:s.video_url||null,sort_order:s.sort_order,active:true};
       if(s.id){await sb(`gl_onboarding_slides?id=eq.${s.id}`,{method:"PATCH",headers:H(),body:JSON.stringify(body)});}
       else{const r=await sb("gl_onboarding_slides",{method:"POST",headers:H({Prefer:"return=representation"}),body:JSON.stringify(body)});if(r.ok){const j=await r.json();s.id=j[0].id;}}
     }
@@ -374,8 +460,8 @@ async function saveAll(){
       if(s.id){await sb(`gl_services?id=eq.${s.id}`,{method:"PATCH",headers:H(),body:JSON.stringify(body)});}
       else{const r=await sb("gl_services",{method:"POST",headers:H({Prefer:"return=representation"}),body:JSON.stringify(body)});if(r.ok){const j=await r.json();s.id=j[0].id;}}
     }
-    // theme -> gl_settings (id='theme', data jsonb). upsert.
-    await sb("gl_settings",{method:"POST",headers:H({Prefer:"resolution=merge-duplicates"}),body:JSON.stringify({id:"theme",data:theme})});
+    // style -> gl_settings (id='style', data jsonb). upsert.
+    await sb("gl_settings",{method:"POST",headers:H({Prefer:"resolution=merge-duplicates"}),body:JSON.stringify({id:"style",data:theme})});
     toast("Saved ✓  Customer app will reflect changes on reload");
   }catch(e){toast("Save error — check console");console.error(e);}
 }
@@ -384,22 +470,27 @@ async function saveAll(){
 function setPv(m){pvMode=m;document.getElementById('pvOnb').classList.toggle('on',m==='onb');document.getElementById('pvSvc').classList.toggle('on',m==='svc');renderPreview();}
 function renderPreview(){
   const pv=document.getElementById('pv');
+  const ph=document.querySelector('.phone');
   pv.style.setProperty('--pv-bg',theme.bg);
   pv.style.setProperty('--pv-accent',theme.accent);
   pv.style.setProperty('--pv-text',theme.text);
-  document.querySelector('.phone').style.setProperty('--pv-bg',theme.bg);
+  ph.style.setProperty('--pv-bg',theme.bg);
 
   if(pvMode==='onb'){
     if(!slides.length){pv.innerHTML='<div style="margin:auto;color:#666;font-size:13px">No slides</div>';return;}
     if(pvSlide>=slides.length)pvSlide=0;
     const s=slides[pvSlide];
-    const art=s.image_url?`<img src="${s.image_url}">`:`<div class="pv-glyph">${s.glyph||'✨'}</div>`;
+    let art;
+    if(s.video_url) art=`<video src="${s.video_url}" autoplay muted loop playsinline style="width:100%;height:100%;object-fit:cover"></video>`;
+    else if(s.image_url) art=`<img src="${s.image_url}">`;
+    else art=`<div class="pv-glyph">${s.glyph||'✨'}</div>`;
+    const railW=(theme.railLength||100);
     pv.innerHTML=`
-      <div class="pv-rail">${slides.map((_,k)=>`<i class="${k<=pvSlide?'on':''}"></i>`).join('')}</div>
-      <div class="pv-eyebrow">${esc(s.eyebrow||'')}</div>
-      <div class="pv-title">${esc(s.title||'')}</div>
+      <div class="pv-rail" style="width:${railW}%;margin:0 auto">${slides.map((_,k)=>`<i class="${k<=pvSlide?'on':''}" style="height:${theme.railThickness||3}px;background:${k<=pvSlide?(theme.railColor||theme.accent):'#2a2a2a'}"></i>`).join('')}</div>
+      <div class="pv-eyebrow" style="font-size:${(theme.eyebrowSize||15)*0.62}px;color:${theme.eyebrowColor||theme.accent}">${esc(s.eyebrow||'')}</div>
+      <div class="pv-title" style="font-size:${(theme.titleSize||40)*0.62}px;color:${theme.titleColor||theme.text}">${esc(s.title||'')}</div>
       <div class="pv-art"><div class="pv-panel">${art}</div></div>
-      <div class="pv-btn" onclick="pvNext()">${pvSlide===slides.length-1?'Get started':'Next'}</div>`;
+      <div class="pv-btn" style="background:${theme.btnColor||theme.accent};height:${(theme.btnHeight||58)*0.8}px" onclick="pvNext()">${pvSlide===slides.length-1?'Get started':'Next'}</div>`;
   }else{
     pv.innerHTML=`
       <div class="pv-rail"><i class="on"></i><i class="on"></i><i class="on"></i></div>
