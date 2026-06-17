@@ -84,10 +84,10 @@
   .phone{width:300px;height:620px;border-radius:42px;background:var(--pv-bg,#0A0A0A);
     border:10px solid #1c1c1f;box-shadow:0 30px 80px -20px #000;overflow:hidden;
     position:relative;display:flex;flex-direction:column;}
-  .pv-toggle{position:absolute;bottom:18px;left:50%;transform:translateX(-50%);
-    display:flex;gap:6px;z-index:3;}
+  .pv-toggle{position:absolute;bottom:14px;left:50%;transform:translateX(-50%);
+    display:flex;gap:6px;z-index:3;background:rgba(0,0,0,.5);padding:5px;border-radius:24px;}
   .pv-toggle button{background:#222;border:1px solid #333;color:#aaa;font-size:11px;
-    padding:5px 10px;border-radius:20px;cursor:pointer;}
+    padding:6px 12px;border-radius:20px;cursor:pointer;font-weight:600;}
   .pv-toggle button.on{background:var(--yellow);color:#111;border-color:var(--yellow);}
 
   /* preview inner — mirrors PWA */
@@ -644,15 +644,19 @@ function renderPreview(){
     const logo = theme.logoUrl
       ? `<img src="${theme.logoUrl}" style="width:${(theme.logoSize||96)*0.7}px;height:${(theme.logoSize||96)*0.7}px;object-fit:contain">`
       : `<div style="width:${(theme.logoSize||96)*0.7}px;height:${(theme.logoSize||96)*0.7}px;display:flex;align-items:center;justify-content:center;font-size:${(theme.logoSize||96)*0.5}px">🛡️</div>`;
+    const WL=theme.welLayout||'logo-center';
+    const wo = WL==='logo-top'   ? {logo:1,top:2,act:3}
+             : WL==='logo-bottom'? {top:1,act:2,logo:3}
+             : /*logo-center*/     {top:1,logo:2,act:3};
     pv.innerHTML=`
-      <div style="margin-top:50px">
+      <div style="order:${wo.top};margin-top:30px">
         <div style="font-size:22px;font-weight:800;color:${theme.text}">${esc(theme.welHeading||'Welcome to Grandlab')}</div>
         <div style="margin-top:10px;font-size:13px;color:#999;line-height:1.5">${esc(theme.welSub||'')}</div>
       </div>
-      <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px">
+      <div style="order:${wo.logo};flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px">
         ${logo}
       </div>
-      <div style="display:flex;flex-direction:column;gap:9px;padding-bottom:${(theme.welBottomGap??30)*0.7}px">
+      <div style="order:${wo.act};display:flex;flex-direction:column;gap:9px;padding-bottom:${(theme.welBottomGap??30)*0.7}px">
         <div class="pv-btn" style="background:${theme.btnColor||theme.accent};height:${(theme.btnHeight||58)*0.8}px">${esc(theme.welLogin||'Log in')}</div>
         <div class="pv-btn" style="background:transparent;border:1.5px solid ${theme.accent};color:${theme.accent};height:${(theme.btnHeight||58)*0.8}px">${esc(theme.welRegister||'Create account')}</div>
         <div class="pv-btn" style="background:transparent;border:1.5px solid #333;color:${theme.text};height:${(theme.btnHeight||58)*0.8}px">${esc(theme.welGuest||'Browse as guest')}</div>
@@ -672,14 +676,20 @@ function renderPreview(){
     else if(s.image_url) art=`<img src="${s.image_url}" style="object-fit:contain;height:auto;max-height:200px">`;
     else art=`<div class="pv-glyph">${s.glyph||'✨'}</div>`;
     const railW=(theme.railLength||100);
+    // layout order based on obLayout
+    const L=theme.obLayout||'text-top';
+    const ord = L==='text-top'   ? {eb:1,ti:2,art:3}
+              : L==='text-bottom'? {art:1,eb:2,ti:3}
+              : /*text-center*/    {art:1,eb:2,ti:3};
+    const center = L==='text-center';
     pv.innerHTML=`
       ${bg}
       <div style="position:relative;z-index:1;display:flex;flex-direction:column;flex:1">
-      <div class="pv-rail" style="width:${railW}%;margin:0 auto">${slides.map((_,k)=>`<i class="${k<=pvSlide?'on':''}" style="height:${theme.railThickness||3}px;background:${k<=pvSlide?(theme.railColor||theme.accent):'#2a2a2a'}"></i>`).join('')}</div>
-      <div class="pv-eyebrow" style="font-size:${(theme.eyebrowSize||15)*0.62}px;color:${theme.eyebrowColor||theme.accent};font-weight:${theme.eyebrowBold?700:400};font-style:${theme.eyebrowItalic?'italic':'normal'};text-decoration:${theme.eyebrowUnderline?'underline':'none'};text-align:${theme.eyebrowAlign||'left'}">${esc(s.eyebrow||'')}</div>
-      <div class="pv-title" style="font-size:${(theme.titleSize||40)*0.62}px;color:${theme.titleColor||theme.text};font-weight:${theme.titleBold?800:400};font-style:${theme.titleItalic?'italic':'normal'};text-decoration:${theme.titleUnderline?'underline':'none'};text-align:${theme.titleAlign||'left'}">${esc(s.title||'')}</div>
-      <div class="pv-art" style="${hasBg?'visibility:hidden':''}"><div class="pv-panel" style="width:${theme.panelSize||78}%;${(s.image_url||s.video_url)?'background:transparent;border:none;box-shadow:none;aspect-ratio:auto;height:auto':''}">${art}</div></div>
-      <div class="pv-btn" style="background:${theme.btnColor||theme.accent};height:${(theme.btnHeight||58)*0.8}px" onclick="pvNext()">${pvSlide===slides.length-1?(theme.btnStart||'Get started'):(theme.btnNext||'Next')}</div>
+      <div class="pv-rail" style="width:${railW}%;margin:0 auto;order:0">${slides.map((_,k)=>`<i class="${k<=pvSlide?'on':''}" style="height:${theme.railThickness||3}px;background:${k<=pvSlide?(theme.railColor||theme.accent):'#2a2a2a'}"></i>`).join('')}</div>
+      <div class="pv-eyebrow" style="order:${ord.eb};font-size:${(theme.eyebrowSize||15)*0.62}px;color:${theme.eyebrowColor||theme.accent};font-weight:${theme.eyebrowBold?700:400};font-style:${theme.eyebrowItalic?'italic':'normal'};text-decoration:${theme.eyebrowUnderline?'underline':'none'};text-align:${center?'center':(theme.eyebrowAlign||'left')}">${esc(s.eyebrow||'')}</div>
+      <div class="pv-title" style="order:${ord.ti};font-size:${(theme.titleSize||40)*0.62}px;color:${theme.titleColor||theme.text};font-weight:${theme.titleBold?800:400};font-style:${theme.titleItalic?'italic':'normal'};text-decoration:${theme.titleUnderline?'underline':'none'};text-align:${center?'center':(theme.titleAlign||'left')}">${esc(s.title||'')}</div>
+      <div class="pv-art" style="order:${ord.art};${hasBg?'visibility:hidden':''}"><div class="pv-panel" style="width:${theme.panelSize||78}%;${(s.image_url||s.video_url)?'background:transparent;border:none;box-shadow:none;aspect-ratio:auto;height:auto':''}">${art}</div></div>
+      <div class="pv-btn" style="order:5;background:${theme.btnColor||theme.accent};height:${(theme.btnHeight||58)*0.8}px" onclick="pvNext()">${pvSlide===slides.length-1?(theme.btnStart||'Get started'):(theme.btnNext||'Next')}</div>
       </div>`;
   }else{
     pv.innerHTML=`
@@ -701,7 +711,8 @@ function pvNext(){pvSlide=(pvSlide+1)%slides.length;renderPreview();}
 function switchTab(t){
   document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active',x.dataset.tab===t));
   document.querySelectorAll('.panel').forEach(p=>p.classList.toggle('active',p.id==='panel-'+t));
-  setPv(t==='services'?'svc':(t==='theme'?'wel':'onb'));
+  if(t==='services')setPv('svc');
+  else if(t==='onboarding')setPv('onb');
 }
 
 function esc(s){return(s==null?'':String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
