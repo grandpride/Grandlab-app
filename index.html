@@ -314,7 +314,7 @@ const STYLE_DEFAULTS = {
   railColor:"#F5C518", railThickness:3, railLength:100,
   welHeading:"Welcome to Grandlab",
   welSub:"Your car deserves the best — wash, coat, tint and PPF, all in one app. Log in or create an account to get started.",
-  welLogin:"Log in", welRegister:"Create account", welGuest:"Browse as guest", welBottomGap:30,
+  welLogin:"Sign up / Sign in", welRegister:"Create account", welGuest:"Browse as guest", welBottomGap:30,
   // text styling
   eyebrowBold:true, eyebrowItalic:true, eyebrowUnderline:false, eyebrowAlign:"left",
   titleBold:true, titleItalic:false, titleUnderline:false, titleAlign:"left",
@@ -576,12 +576,10 @@ function welcomeScreen(){
     </div>
     <div class="wel-mark">${showLogo?(STYLE.logoUrl?`<img class="wel-logo" src="${STYLE.logoUrl}" alt="Grandlab">`:SPARTAN):''}</div>
     <div class="wel-actions">
-      <button class="btn btn-primary" data-act="login">${STYLE.welLogin||'Log in'}</button>
-      <button class="btn btn-yellow-ghost" data-act="register">${STYLE.welRegister||'Create account'}</button>
+      <button class="btn btn-primary" data-act="login">${STYLE.welLogin||'Sign up / Sign in'}</button>
       <button class="btn btn-ghost" data-act="guest">${STYLE.welGuest||'Browse as guest'}</button>
     </div>`;
   el.querySelector('[data-act="login"]').onclick=()=>openAuth(false);
-  el.querySelector('[data-act="register"]').onclick=()=>openReferral();
   el.querySelector('[data-act="guest"]').onclick=()=>enterGuest();
   return el;
 }
@@ -620,8 +618,8 @@ function referralScreen(){
     </div>`;
   const input=el.querySelector('#refInput');
   input.addEventListener('input',()=>{input.value=input.value.toUpperCase().replace(/\s/g,'');});
-  el.querySelector('#refContinue').onclick=()=>{ referralCode=input.value.trim(); openAuth(true); };
-  el.querySelector('[data-act="skip"]').onclick=()=>{ referralCode=""; openAuth(true); };
+  el.querySelector('#refContinue').onclick=()=>{ referralCode=input.value.trim(); enterApp('profile'); };
+  el.querySelector('[data-act="skip"]').onclick=()=>{ referralCode=""; enterApp('profile'); };
   return el;
 }
 function phoneScreen(){
@@ -714,9 +712,9 @@ function otpScreen(){
       SESSION=res;
       await fetchProfile();
       toast("You're in ✓");
-      // returning user (has name) → Home; new user → profile setup
+      // returning user (has name) → Home; new user → referral, then profile
       if(PROFILE && PROFILE.name){ enterApp('home'); }
-      else { enterApp('profile'); }
+      else { openReferral(); }
     }else{
       btn.disabled=false; btn.textContent="Verify";
       helper.textContent="That code didn't match. Try again or resend.";
@@ -914,7 +912,7 @@ function renderProfileSetup(){
       <div class="field"><label>Name *</label><input id="ps-name" placeholder="Your name"></div>
       <div class="field"><label>Email *</label><input id="ps-email" type="email" placeholder="you@email.com"></div>
       <div class="field"><label>Mobile</label><input id="ps-phone" value="${esc(autoPhone)}"></div>
-      <div class="field"><label>Referral code (optional)</label><input id="ps-ref" placeholder="Enter a friend's code"></div>
+      <div class="field"><label>Referral code (optional)</label><input id="ps-ref" value="${esc(referralCode||'')}" placeholder="Enter a friend's code"></div>
       <div class="helper err" id="ps-err" style="margin-top:10px"></div>
       <button class="btn btn-primary" style="margin-top:18px" id="ps-save">Continue</button>
     </div>`;

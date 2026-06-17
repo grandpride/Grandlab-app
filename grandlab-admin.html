@@ -344,8 +344,7 @@
           <label>Subtext size — <b id="lbl-welsub">16</b>px</label>
           <input type="range" min="10" max="24" id="th-welSubSize" oninput="onTheme()">
           <div class="row" style="margin-top:4px">
-            <div><label>Login button</label><input id="th-welLogin" oninput="onTheme()"></div>
-            <div><label>Register button</label><input id="th-welRegister" oninput="onTheme()"></div>
+            <div><label>Sign in button</label><input id="th-welLogin" oninput="onTheme()"></div>
           </div>
           <label>Guest button</label>
           <input id="th-welGuest" oninput="onTheme()">
@@ -526,7 +525,7 @@ let theme = { bg:"#0A0A0A", accent:"#F5C518", text:"#FFFFFF",
   railColor:"#F5C518", railThickness:3, railLength:100,
   welHeading:"Welcome to Grandlab",
   welSub:"Your car deserves the best — wash, coat, tint and PPF, all in one app. Log in or create an account to get started.",
-  welLogin:"Log in", welRegister:"Create account", welGuest:"Browse as guest", welBottomGap:30,
+  welLogin:"Sign up / Sign in", welRegister:"Create account", welGuest:"Browse as guest", welBottomGap:30,
   eyebrowBold:true, eyebrowItalic:true, eyebrowUnderline:false, eyebrowAlign:"left",
   titleBold:true, titleItalic:false, titleUnderline:false, titleAlign:"left",
   obLayout:"text-top", welLayout:"logo-center", welBtnTopGap:0,
@@ -719,7 +718,7 @@ function onTheme(){
   theme.welHeading=g('th-welHeading').value; theme.welSub=g('th-welSub').value;
   theme.welHeadingSize=+g('th-welHeadingSize').value; g('lbl-welh').textContent=theme.welHeadingSize;
   theme.welSubSize=+g('th-welSubSize').value; g('lbl-welsub').textContent=theme.welSubSize;
-  theme.welLogin=g('th-welLogin').value; theme.welRegister=g('th-welRegister').value; theme.welGuest=g('th-welGuest').value;
+  theme.welLogin=g('th-welLogin').value; theme.welGuest=g('th-welGuest').value;
   theme.welBottomGap=+g('th-welBottomGap').value; g('lbl-welgap').textContent=theme.welBottomGap;
   theme.obLayout=g('th-obLayout').value; theme.welLayout=g('th-welLayout').value;
   theme.welBtnTopGap=+g('th-welBtnTopGap').value; g('lbl-weltop').textContent=theme.welBtnTopGap;
@@ -744,7 +743,7 @@ function fillThemeControls(){
   g('th-welHeading').value=theme.welHeading||''; g('th-welSub').value=theme.welSub||'';
   g('th-welHeadingSize').value=theme.welHeadingSize??32; g('lbl-welh').textContent=theme.welHeadingSize??32;
   g('th-welSubSize').value=theme.welSubSize??16; g('lbl-welsub').textContent=theme.welSubSize??16;
-  g('th-welLogin').value=theme.welLogin||'Log in'; g('th-welRegister').value=theme.welRegister||'Create account'; g('th-welGuest').value=theme.welGuest||'Browse as guest';
+  g('th-welLogin').value=theme.welLogin||'Sign up / Sign in'; g('th-welGuest').value=theme.welGuest||'Browse as guest';
   g('th-welBottomGap').value=theme.welBottomGap??30; g('lbl-welgap').textContent=theme.welBottomGap??30;
   g('th-obLayout').value=theme.obLayout||'text-top'; g('th-welLayout').value=theme.welLayout||'logo-center';
   g('th-welBtnTopGap').value=theme.welBtnTopGap??0; g('lbl-weltop').textContent=theme.welBtnTopGap??0;
@@ -901,8 +900,7 @@ function renderPreview(){
         ${sL?logo:''}
       </div>
       <div style="order:${wo.act};display:flex;flex-direction:column;gap:9px;margin-top:${(theme.welBtnTopGap??0)*0.7}px;padding-bottom:${(theme.welBottomGap??30)*0.7}px">
-        <div class="pv-btn" style="background:${theme.btnColor||theme.accent};height:${(theme.btnHeight||58)*0.8}px">${esc(theme.welLogin||'Log in')}</div>
-        <div class="pv-btn" style="background:transparent;border:1.5px solid ${theme.accent};color:${theme.accent};height:${(theme.btnHeight||58)*0.8}px">${esc(theme.welRegister||'Create account')}</div>
+        <div class="pv-btn" style="background:${theme.btnColor||theme.accent};height:${(theme.btnHeight||58)*0.8}px">${esc(theme.welLogin||'Sign up / Sign in')}</div>
         <div class="pv-btn" style="background:transparent;border:1.5px solid #333;color:${theme.text};height:${(theme.btnHeight||58)*0.8}px">${esc(theme.welGuest||'Browse as guest')}</div>
       </div>
       </div>`;
