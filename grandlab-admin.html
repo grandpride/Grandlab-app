@@ -191,8 +191,36 @@
           </div>
           <label>Guest button</label>
           <input id="th-welGuest" oninput="onTheme()">
+          <label style="margin-top:12px">Space above buttons — <b id="lbl-weltop">0</b>px (pulls buttons up/down)</label>
+          <input type="range" min="0" max="300" id="th-welBtnTopGap" oninput="onTheme()">
           <label style="margin-top:12px">Bottom spacing — <b id="lbl-welgap">30</b>px</label>
           <input type="range" min="0" max="120" id="th-welBottomGap" oninput="onTheme()">
+        </div>
+
+        <div class="section-h">Welcome — show / hide elements</div>
+        <div class="card">
+          <label><input type="checkbox" style="width:auto;margin-right:7px" id="th-welShowHeading" onchange="onTheme()">Show heading</label>
+          <label><input type="checkbox" style="width:auto;margin-right:7px" id="th-welShowSub" onchange="onTheme()">Show subtext</label>
+          <label><input type="checkbox" style="width:auto;margin-right:7px" id="th-welShowLogo" onchange="onTheme()">Show logo</label>
+          <div class="hint">Hide elements to let a full-screen background be the hero (just buttons over a video/photo).</div>
+        </div>
+
+        <div class="section-h">Welcome — full-screen background</div>
+        <div class="card">
+          <label>Background photo</label>
+          <div class="upl">
+            <button class="btn btn-ghost btn-sm" onclick="document.getElementById('welbgf').click()">Upload bg photo</button>
+            <button class="btn btn-danger btn-sm" onclick="theme.welBgImage=null;renderPreview()">Remove</button>
+            <input id="welbgf" type="file" accept="image/*" style="display:none" onchange="uploadWelBg(this,'img')">
+          </div>
+          <label>Background video (MP4 — overrides photo)</label>
+          <div class="upl">
+            <button class="btn btn-ghost btn-sm" onclick="document.getElementById('welbgv').click()">Upload bg video</button>
+            <button class="btn btn-danger btn-sm" onclick="theme.welBgVideo=null;renderPreview()">Remove</button>
+            <input id="welbgv" type="file" accept="video/mp4,video/*" style="display:none" onchange="uploadWelBg(this,'vid')">
+          </div>
+          <label>Darkness over background — <b id="lbl-welbgdim">55</b>%</label>
+          <input type="range" min="0" max="90" id="th-welBgDim" oninput="onTheme()">
         </div>
 
         <div class="section-h">Logo</div>
@@ -341,7 +369,9 @@ let theme = { bg:"#0A0A0A", accent:"#F5C518", text:"#FFFFFF",
   welLogin:"Log in", welRegister:"Create account", welGuest:"Browse as guest", welBottomGap:30,
   eyebrowBold:true, eyebrowItalic:false, eyebrowUnderline:false, eyebrowAlign:"left",
   titleBold:true, titleItalic:false, titleUnderline:false, titleAlign:"left",
-  obLayout:"text-top", welLayout:"logo-center" };
+  obLayout:"text-top", welLayout:"logo-center", welBtnTopGap:0,
+  welBgImage:null, welBgVideo:null, welBgDim:55,
+  welShowHeading:true, welShowSub:true, welShowLogo:true };
 let pvMode = "onb";
 let pvSlide = 0;
 
@@ -514,6 +544,9 @@ function onTheme(){
   theme.welLogin=g('th-welLogin').value; theme.welRegister=g('th-welRegister').value; theme.welGuest=g('th-welGuest').value;
   theme.welBottomGap=+g('th-welBottomGap').value; g('lbl-welgap').textContent=theme.welBottomGap;
   theme.obLayout=g('th-obLayout').value; theme.welLayout=g('th-welLayout').value;
+  theme.welBtnTopGap=+g('th-welBtnTopGap').value; g('lbl-weltop').textContent=theme.welBtnTopGap;
+  theme.welShowHeading=g('th-welShowHeading').checked; theme.welShowSub=g('th-welShowSub').checked; theme.welShowLogo=g('th-welShowLogo').checked;
+  theme.welBgDim=+g('th-welBgDim').value; g('lbl-welbgdim').textContent=theme.welBgDim;
   g('lbl-panel').textContent=theme.panelSize;
   theme.railColor=g('th-railColor').value; theme.railThickness=+g('th-railThickness').value; theme.railLength=+g('th-railLength').value;
   g('lbl-logo').textContent=theme.logoSize; g('lbl-eb').textContent=theme.eyebrowSize;
@@ -534,6 +567,9 @@ function fillThemeControls(){
   g('th-welLogin').value=theme.welLogin||'Log in'; g('th-welRegister').value=theme.welRegister||'Create account'; g('th-welGuest').value=theme.welGuest||'Browse as guest';
   g('th-welBottomGap').value=theme.welBottomGap??30; g('lbl-welgap').textContent=theme.welBottomGap??30;
   g('th-obLayout').value=theme.obLayout||'text-top'; g('th-welLayout').value=theme.welLayout||'logo-center';
+  g('th-welBtnTopGap').value=theme.welBtnTopGap??0; g('lbl-weltop').textContent=theme.welBtnTopGap??0;
+  g('th-welShowHeading').checked=theme.welShowHeading!==false; g('th-welShowSub').checked=theme.welShowSub!==false; g('th-welShowLogo').checked=theme.welShowLogo!==false;
+  g('th-welBgDim').value=theme.welBgDim??55; g('lbl-welbgdim').textContent=theme.welBgDim??55;
   syncTextBtns();
   g('th-railColor').value=theme.railColor; g('th-railThickness').value=theme.railThickness; g('th-railLength').value=theme.railLength;
   g('lbl-logo').textContent=theme.logoSize; g('lbl-eb').textContent=theme.eyebrowSize;
@@ -570,6 +606,20 @@ async function uploadLogo(input){
 function renderLogoThumb(){
   const el=document.getElementById('logoThumb');if(!el)return;
   el.innerHTML=theme.logoUrl?`<img class="thumb" src="${theme.logoUrl}" style="height:90px;width:90px;object-fit:contain;background:transparent">`:'';
+}
+
+async function uploadWelBg(input,type){
+  const f=input.files[0];if(!f)return;
+  if(type==='vid' && f.size>8*1024*1024 && !confirm("This video is "+(f.size/1048576).toFixed(1)+" MB — large videos slow the app. Upload anyway?"))return;
+  toast("Uploading welcome background…");
+  const path=`welbg-${Date.now()}-${f.name.replace(/[^a-z0-9.]/gi,'_')}`;
+  const r=await fetch(`${SUPA_URL}/storage/v1/object/${BUCKET}/${path}`,{
+    method:"POST",headers:{apikey:SVC_KEY,Authorization:`Bearer ${SVC_KEY}`},body:f
+  });
+  if(!r.ok){toast("Upload failed — is gl-images bucket public?");return;}
+  const url=`${SUPA_URL}/storage/v1/object/public/${BUCKET}/${path}`;
+  if(type==='img')theme.welBgImage=url; else theme.welBgVideo=url;
+  renderPreview();toast("Welcome background uploaded ✓");
 }
 
 async function uploadBg(input,i,type){
@@ -644,22 +694,29 @@ function renderPreview(){
     const logo = theme.logoUrl
       ? `<img src="${theme.logoUrl}" style="width:${(theme.logoSize||96)*0.7}px;height:${(theme.logoSize||96)*0.7}px;object-fit:contain">`
       : `<div style="width:${(theme.logoSize||96)*0.7}px;height:${(theme.logoSize||96)*0.7}px;display:flex;align-items:center;justify-content:center;font-size:${(theme.logoSize||96)*0.5}px">🛡️</div>`;
+    let welbg="";
+    if(theme.welBgVideo) welbg=`<div style="position:absolute;inset:0;z-index:0"><video src="${theme.welBgVideo}" autoplay muted loop playsinline style="width:100%;height:100%;object-fit:cover"></video><div style="position:absolute;inset:0;background:rgba(0,0,0,${(theme.welBgDim??55)/100})"></div></div>`;
+    else if(theme.welBgImage) welbg=`<div style="position:absolute;inset:0;z-index:0"><img src="${theme.welBgImage}" style="width:100%;height:100%;object-fit:cover"><div style="position:absolute;inset:0;background:rgba(0,0,0,${(theme.welBgDim??55)/100})"></div></div>`;
+    const sH=theme.welShowHeading!==false, sS=theme.welShowSub!==false, sL=theme.welShowLogo!==false;
     const WL=theme.welLayout||'logo-center';
     const wo = WL==='logo-top'   ? {logo:1,top:2,act:3}
              : WL==='logo-bottom'? {top:1,act:2,logo:3}
-             : /*logo-center*/     {top:1,logo:2,act:3};
+             : {top:1,logo:2,act:3};
     pv.innerHTML=`
+      ${welbg}
+      <div style="position:relative;z-index:1;display:flex;flex-direction:column;flex:1">
       <div style="order:${wo.top};margin-top:30px">
-        <div style="font-size:22px;font-weight:800;color:${theme.text}">${esc(theme.welHeading||'Welcome to Grandlab')}</div>
-        <div style="margin-top:10px;font-size:13px;color:#999;line-height:1.5">${esc(theme.welSub||'')}</div>
+        ${sH?`<div style="font-size:22px;font-weight:800;color:${theme.text}">${esc(theme.welHeading||'Welcome to Grandlab')}</div>`:''}
+        ${sS?`<div style="margin-top:10px;font-size:13px;color:#ccc;line-height:1.5">${esc(theme.welSub||'')}</div>`:''}
       </div>
       <div style="order:${wo.logo};flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px">
-        ${logo}
+        ${sL?logo:''}
       </div>
-      <div style="order:${wo.act};display:flex;flex-direction:column;gap:9px;padding-bottom:${(theme.welBottomGap??30)*0.7}px">
+      <div style="order:${wo.act};display:flex;flex-direction:column;gap:9px;margin-top:${(theme.welBtnTopGap??0)*0.7}px;padding-bottom:${(theme.welBottomGap??30)*0.7}px">
         <div class="pv-btn" style="background:${theme.btnColor||theme.accent};height:${(theme.btnHeight||58)*0.8}px">${esc(theme.welLogin||'Log in')}</div>
         <div class="pv-btn" style="background:transparent;border:1.5px solid ${theme.accent};color:${theme.accent};height:${(theme.btnHeight||58)*0.8}px">${esc(theme.welRegister||'Create account')}</div>
         <div class="pv-btn" style="background:transparent;border:1.5px solid #333;color:${theme.text};height:${(theme.btnHeight||58)*0.8}px">${esc(theme.welGuest||'Browse as guest')}</div>
+      </div>
       </div>`;
     return;
   }
