@@ -47,6 +47,18 @@
   .screen.show{opacity:1;transform:none;pointer-events:auto;}
   .screen.exit-left{transform:translateX(-28px);}
 
+  /* onboarding layout presets (reorder text vs art) */
+  .screen.ob-text-top .ob-eyebrow{order:1} .screen.ob-text-top .ob-title{order:2}
+  .screen.ob-text-top .ob-art{order:3} .screen.ob-text-top .ob-foot{order:4}
+  .screen.ob-text-bottom{display:flex;flex-direction:column}
+  .screen.ob-text-bottom .ob-art{order:1;margin-top:40px} .screen.ob-text-bottom .ob-eyebrow{order:2;margin-top:10px}
+  .screen.ob-text-bottom .ob-title{order:3} .screen.ob-text-bottom .ob-foot{order:4}
+  .screen.ob-text-center{display:flex;flex-direction:column}
+  .screen.ob-text-center .ob-art{order:1;margin-top:30px} .screen.ob-text-center .ob-eyebrow{order:2;text-align:center}
+  .screen.ob-text-center .ob-title{order:3;text-align:center;margin-left:auto;margin-right:auto}
+  .screen.ob-text-center .ob-foot{order:4}
+  .screen[class*="ob-"]{display:flex;flex-direction:column}
+
   /* full-screen slide background (photo/video) */
   .ob-bg{position:absolute;inset:0;z-index:0;overflow:hidden;}
   .ob-bg img,.ob-bg video{width:100%;height:100%;object-fit:cover;}
@@ -55,9 +67,13 @@
 
   /* ---------- Onboarding ---------- */
   .ob-eyebrow{margin-top:54px;font-size:var(--eyebrow-size,15px);letter-spacing:.14em;
-    text-transform:uppercase;color:var(--eyebrow-color,var(--yellow));font-weight:600;}
-  .ob-title{margin-top:14px;font-size:var(--title-size,40px);line-height:1.04;font-weight:800;
-    letter-spacing:-.02em;max-width:11ch;color:var(--title-color,var(--text));}
+    text-transform:uppercase;color:var(--eyebrow-color,var(--yellow));
+    font-weight:var(--eyebrow-weight,600);font-style:var(--eyebrow-style,normal);
+    text-decoration:var(--eyebrow-deco,none);text-align:var(--eyebrow-align,left);}
+  .ob-title{margin-top:14px;font-size:var(--title-size,40px);line-height:1.04;
+    letter-spacing:-.02em;max-width:11ch;color:var(--title-color,var(--text));
+    font-weight:var(--title-weight,800);font-style:var(--title-style,normal);
+    text-decoration:var(--title-deco,none);text-align:var(--title-align,left);}
   .ob-art{flex:1;display:flex;align-items:center;justify-content:center;position:relative;}
   .ob-panel{
     width:var(--panel-size,78%);max-width:360px;aspect-ratio:1/1.05;border-radius:26px;
@@ -68,7 +84,9 @@
   }
   /* specular streak — light moving over fresh coating */
   /* when panel holds a photo/video, drop the card frame — show media clean */
-  .ob-panel.has-media{background:transparent;border:none;box-shadow:none;}
+  .ob-panel.has-media{background:transparent;border:none;box-shadow:none;aspect-ratio:auto;overflow:visible;}
+  .ob-panel.has-media img{width:100%;height:auto !important;max-height:46vh;object-fit:contain !important;}
+  .ob-panel.has-media.ob-video video{width:100%;height:auto;max-height:46vh;object-fit:contain;border-radius:18px;}
   .ob-panel.ob-video{padding:0;}
   .ob-panel.ob-video video{width:100%;height:100%;object-fit:cover;}
   .ob-panel.ob-video::after{display:none;}
@@ -96,6 +114,14 @@
 
   /* ---------- Welcome ---------- */
   .welcome{justify-content:space-between;}
+  /* welcome layout presets */
+  .welcome.wel-logo-top .wel-mark{order:1;flex:0;margin-top:30px}
+  .welcome.wel-logo-top .wel-top{order:2;margin-top:24px}
+  .welcome.wel-logo-top .wel-actions{order:3}
+  .welcome.wel-logo-center .wel-top{order:1} .welcome.wel-logo-center .wel-mark{order:2}
+  .welcome.wel-logo-center .wel-actions{order:3}
+  .welcome.wel-logo-bottom .wel-top{order:1} .welcome.wel-logo-bottom .wel-actions{order:2}
+  .welcome.wel-logo-bottom .wel-mark{order:3;flex:0;margin-bottom:30px}
   .wel-top{margin-top:64px;}
   .wel-mark{display:flex;flex-direction:column;align-items:center;gap:18px;
     flex:1;justify-content:center;}
@@ -103,7 +129,7 @@
   .wel-name{font-size:34px;font-weight:800;letter-spacing:-.02em;}
   .wel-h{font-size:32px;font-weight:800;letter-spacing:-.02em;line-height:1.1;}
   .wel-sub{margin-top:14px;color:var(--muted);font-size:16px;line-height:1.5;max-width:30ch;}
-  .wel-actions{display:flex;flex-direction:column;gap:12px;padding-bottom:30px;}
+  .wel-actions{display:flex;flex-direction:column;gap:12px;padding-bottom:var(--wel-bottom-gap,30px);}
 
   /* ---------- Auth ---------- */
   .auth{padding-top:60px;}
@@ -210,7 +236,16 @@ const STYLE_DEFAULTS = {
   bg:"#0A0A0A", accent:"#F5C518", text:"#FFFFFF",
   logoSize:96, logoUrl:null, eyebrowSize:15, eyebrowColor:"#F5C518", titleSize:40, titleColor:"#FFFFFF",
   btnColor:"#F5C518", btnHeight:58, panelSize:78, btnNext:"Next", btnStart:"Get started", btnBack:"Back",
-  railColor:"#F5C518", railThickness:3, railLength:100
+  railColor:"#F5C518", railThickness:3, railLength:100,
+  welHeading:"Welcome to Grandlab",
+  welSub:"Your car deserves the best — wash, coat, tint and PPF, all in one app. Log in or create an account to get started.",
+  welLogin:"Log in", welRegister:"Create account", welGuest:"Browse as guest", welBottomGap:30,
+  // text styling
+  eyebrowBold:true, eyebrowItalic:false, eyebrowUnderline:false, eyebrowAlign:"left",
+  titleBold:true, titleItalic:false, titleUnderline:false, titleAlign:"left",
+  // layout presets
+  obLayout:"text-top",   // text-top | text-bottom | text-center
+  welLayout:"logo-center" // logo-top | logo-center | logo-bottom
 };
 let STYLE = Object.assign({}, STYLE_DEFAULTS);
 
@@ -230,6 +265,16 @@ function applyStyle(){
   r.setProperty('--rail-thickness', STYLE.railThickness+'px');
   r.setProperty('--rail-length', STYLE.railLength+'%');
   r.setProperty('--panel-size', STYLE.panelSize+'%');
+  r.setProperty('--wel-bottom-gap', (STYLE.welBottomGap??30)+'px');
+  // text styling
+  r.setProperty('--eyebrow-weight', STYLE.eyebrowBold?'700':'400');
+  r.setProperty('--eyebrow-style', STYLE.eyebrowItalic?'italic':'normal');
+  r.setProperty('--eyebrow-deco', STYLE.eyebrowUnderline?'underline':'none');
+  r.setProperty('--eyebrow-align', STYLE.eyebrowAlign||'left');
+  r.setProperty('--title-weight', STYLE.titleBold?'800':'400');
+  r.setProperty('--title-style', STYLE.titleItalic?'italic':'normal');
+  r.setProperty('--title-deco', STYLE.titleUnderline?'underline':'none');
+  r.setProperty('--title-align', STYLE.titleAlign||'left');
   // set installable app icon + tab icon from uploaded logo
   if(STYLE.logoUrl){
     setIcon('apple-touch-icon', STYLE.logoUrl);
@@ -332,7 +377,7 @@ function render(){
 }
 
 function onboardingScreen(s,i){
-  const el=document.createElement('div'); el.className="screen"; el.dataset.kind="ob";
+  const el=document.createElement('div'); el.className="screen ob-"+(STYLE.obLayout||'text-top'); el.dataset.kind="ob";
   // full-screen background layer (photo or video) with dim overlay
   let bg="";
   if(s.bgVideo){
@@ -344,7 +389,7 @@ function onboardingScreen(s,i){
   if(s.video){
     art = `<div class="ob-panel ob-video has-media"><video src="${s.video}" autoplay muted loop playsinline></video></div>`;
   } else if(s.image){
-    art = `<div class="ob-panel has-media"><img src="${s.image}" style="width:100%;height:100%;object-fit:cover" alt=""></div>`;
+    art = `<div class="ob-panel has-media"><img src="${s.image}" alt=""></div>`;
   } else {
     art = `<div class="ob-panel"><div class="ob-glyph">${s.glyph}</div></div>`;
   }
@@ -368,17 +413,17 @@ function onboardingScreen(s,i){
 }
 
 function welcomeScreen(){
-  const el=document.createElement('div'); el.className="screen welcome"; el.dataset.kind="welcome";
+  const el=document.createElement('div'); el.className="screen welcome wel-"+(STYLE.welLayout||'logo-center'); el.dataset.kind="welcome";
   el.innerHTML=`
     <div class="wel-top">
-      <div class="wel-h">Welcome to Grandlab</div>
-      <div class="wel-sub">Your car deserves the best — wash, coat, tint and PPF, all in one app. Log in or create an account to get started.</div>
+      <div class="wel-h">${STYLE.welHeading||'Welcome to Grandlab'}</div>
+      <div class="wel-sub">${STYLE.welSub||''}</div>
     </div>
     <div class="wel-mark">${STYLE.logoUrl?`<img class="wel-logo" src="${STYLE.logoUrl}" alt="Grandlab">`:SPARTAN}</div>
     <div class="wel-actions">
-      <button class="btn btn-primary" data-act="login">Log in</button>
-      <button class="btn btn-yellow-ghost" data-act="register">Create account</button>
-      <button class="btn btn-ghost" data-act="guest">Browse as guest</button>
+      <button class="btn btn-primary" data-act="login">${STYLE.welLogin||'Log in'}</button>
+      <button class="btn btn-yellow-ghost" data-act="register">${STYLE.welRegister||'Create account'}</button>
+      <button class="btn btn-ghost" data-act="guest">${STYLE.welGuest||'Browse as guest'}</button>
     </div>`;
   el.querySelector('[data-act="login"]').onclick=()=>openAuth();
   el.querySelector('[data-act="register"]').onclick=()=>openAuth();

@@ -179,6 +179,22 @@
           </div>
         </div>
 
+        <div class="section-h">Welcome page</div>
+        <div class="card">
+          <label>Heading</label>
+          <input id="th-welHeading" oninput="onTheme()">
+          <label>Subtext</label>
+          <textarea id="th-welSub" oninput="onTheme()"></textarea>
+          <div class="row" style="margin-top:4px">
+            <div><label>Login button</label><input id="th-welLogin" oninput="onTheme()"></div>
+            <div><label>Register button</label><input id="th-welRegister" oninput="onTheme()"></div>
+          </div>
+          <label>Guest button</label>
+          <input id="th-welGuest" oninput="onTheme()">
+          <label style="margin-top:12px">Bottom spacing — <b id="lbl-welgap">30</b>px</label>
+          <input type="range" min="0" max="120" id="th-welBottomGap" oninput="onTheme()">
+        </div>
+
         <div class="section-h">Logo</div>
         <div class="card">
           <label>Logo image (used on welcome screen + as app icon)</label>
@@ -197,6 +213,14 @@
         <div class="card">
           <label>Size — <b id="lbl-eb">15</b>px</label>
           <input type="range" min="10" max="26" id="th-eyebrowSize" oninput="onTheme()">
+          <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap">
+            <button class="btn btn-ghost btn-sm" id="tb-ebBold" onclick="tStyle('eyebrowBold')"><b>B</b></button>
+            <button class="btn btn-ghost btn-sm" id="tb-ebItalic" onclick="tStyle('eyebrowItalic')"><i>I</i></button>
+            <button class="btn btn-ghost btn-sm" id="tb-ebUnder" onclick="tStyle('eyebrowUnderline')"><u>U</u></button>
+            <button class="btn btn-ghost btn-sm" id="tb-ebL" onclick="tAlign('eyebrowAlign','left')">⬅</button>
+            <button class="btn btn-ghost btn-sm" id="tb-ebC" onclick="tAlign('eyebrowAlign','center')">⬌</button>
+            <button class="btn btn-ghost btn-sm" id="tb-ebR" onclick="tAlign('eyebrowAlign','right')">➡</button>
+          </div>
           <div class="swatch-row" style="margin-top:12px">
             <div class="swatch"><input type="color" id="th-eyebrowColor" value="#F5C518" oninput="onTheme()"><span>Eyebrow color</span></div>
           </div>
@@ -206,9 +230,33 @@
         <div class="card">
           <label>Size — <b id="lbl-title">40</b>px</label>
           <input type="range" min="22" max="60" id="th-titleSize" oninput="onTheme()">
+          <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap">
+            <button class="btn btn-ghost btn-sm" id="tb-tBold" onclick="tStyle('titleBold')"><b>B</b></button>
+            <button class="btn btn-ghost btn-sm" id="tb-tItalic" onclick="tStyle('titleItalic')"><i>I</i></button>
+            <button class="btn btn-ghost btn-sm" id="tb-tUnder" onclick="tStyle('titleUnderline')"><u>U</u></button>
+            <button class="btn btn-ghost btn-sm" id="tb-tL" onclick="tAlign('titleAlign','left')">⬅</button>
+            <button class="btn btn-ghost btn-sm" id="tb-tC" onclick="tAlign('titleAlign','center')">⬌</button>
+            <button class="btn btn-ghost btn-sm" id="tb-tR" onclick="tAlign('titleAlign','right')">➡</button>
+          </div>
           <div class="swatch-row" style="margin-top:12px">
             <div class="swatch"><input type="color" id="th-titleColor" value="#FFFFFF" oninput="onTheme()"><span>Title color</span></div>
           </div>
+        </div>
+
+        <div class="section-h">Layout arrangement</div>
+        <div class="card">
+          <label>Onboarding slides</label>
+          <select id="th-obLayout" onchange="onTheme()">
+            <option value="text-top">Text top, image below</option>
+            <option value="text-bottom">Image top, text below</option>
+            <option value="text-center">Image top, centered text</option>
+          </select>
+          <label style="margin-top:10px">Welcome screen</label>
+          <select id="th-welLayout" onchange="onTheme()">
+            <option value="logo-top">Logo top</option>
+            <option value="logo-center">Logo center</option>
+            <option value="logo-bottom">Logo bottom</option>
+          </select>
         </div>
 
         <div class="section-h">Onboarding image / card</div>
@@ -287,7 +335,13 @@ let services = [];   // {id?, name,category,base_price,price_by_type,active,sort
 let theme = { bg:"#0A0A0A", accent:"#F5C518", text:"#FFFFFF",
   logoSize:96, logoUrl:null, eyebrowSize:15, eyebrowColor:"#F5C518", titleSize:40, titleColor:"#FFFFFF",
   btnColor:"#F5C518", btnHeight:58, panelSize:78, btnNext:"Next", btnStart:"Get started", btnBack:"Back",
-  railColor:"#F5C518", railThickness:3, railLength:100 };
+  railColor:"#F5C518", railThickness:3, railLength:100,
+  welHeading:"Welcome to Grandlab",
+  welSub:"Your car deserves the best — wash, coat, tint and PPF, all in one app. Log in or create an account to get started.",
+  welLogin:"Log in", welRegister:"Create account", welGuest:"Browse as guest", welBottomGap:30,
+  eyebrowBold:true, eyebrowItalic:false, eyebrowUnderline:false, eyebrowAlign:"left",
+  titleBold:true, titleItalic:false, titleUnderline:false, titleAlign:"left",
+  obLayout:"text-top", welLayout:"logo-center" };
 let pvMode = "onb";
 let pvSlide = 0;
 
@@ -437,6 +491,16 @@ function upd(kind,i,field,val){
   if(kind==='slide'&&field==='glyph')renderSlides();
   renderPreview();
 }
+function tStyle(key){theme[key]=!theme[key];syncTextBtns();renderPreview();}
+function tAlign(key,val){theme[key]=val;syncTextBtns();renderPreview();}
+function syncTextBtns(){
+  const set=(id,on)=>{const e=document.getElementById(id);if(e)e.style.borderColor=on?'var(--yellow)':'var(--line)',e.style.color=on?'var(--yellow)':'var(--text)';};
+  set('tb-ebBold',theme.eyebrowBold);set('tb-ebItalic',theme.eyebrowItalic);set('tb-ebUnder',theme.eyebrowUnderline);
+  set('tb-ebL',theme.eyebrowAlign==='left');set('tb-ebC',theme.eyebrowAlign==='center');set('tb-ebR',theme.eyebrowAlign==='right');
+  set('tb-tBold',theme.titleBold);set('tb-tItalic',theme.titleItalic);set('tb-tUnder',theme.titleUnderline);
+  set('tb-tL',theme.titleAlign==='left');set('tb-tC',theme.titleAlign==='center');set('tb-tR',theme.titleAlign==='right');
+}
+
 function onTheme(){
   const g=id=>document.getElementById(id);
   theme.bg=g('th-bg').value; theme.accent=g('th-accent').value; theme.text=g('th-text').value;
@@ -446,6 +510,10 @@ function onTheme(){
   theme.btnColor=g('th-btnColor').value; theme.btnHeight=+g('th-btnHeight').value;
   theme.panelSize=+g('th-panelSize').value;
   theme.btnNext=g('th-btnNext').value; theme.btnStart=g('th-btnStart').value; theme.btnBack=g('th-btnBack').value;
+  theme.welHeading=g('th-welHeading').value; theme.welSub=g('th-welSub').value;
+  theme.welLogin=g('th-welLogin').value; theme.welRegister=g('th-welRegister').value; theme.welGuest=g('th-welGuest').value;
+  theme.welBottomGap=+g('th-welBottomGap').value; g('lbl-welgap').textContent=theme.welBottomGap;
+  theme.obLayout=g('th-obLayout').value; theme.welLayout=g('th-welLayout').value;
   g('lbl-panel').textContent=theme.panelSize;
   theme.railColor=g('th-railColor').value; theme.railThickness=+g('th-railThickness').value; theme.railLength=+g('th-railLength').value;
   g('lbl-logo').textContent=theme.logoSize; g('lbl-eb').textContent=theme.eyebrowSize;
@@ -462,6 +530,11 @@ function fillThemeControls(){
   g('th-btnColor').value=theme.btnColor; g('th-btnHeight').value=theme.btnHeight;
   g('th-panelSize').value=theme.panelSize||78; g('lbl-panel').textContent=theme.panelSize||78;
   g('th-btnNext').value=theme.btnNext||'Next'; g('th-btnStart').value=theme.btnStart||'Get started'; g('th-btnBack').value=theme.btnBack||'Back';
+  g('th-welHeading').value=theme.welHeading||''; g('th-welSub').value=theme.welSub||'';
+  g('th-welLogin').value=theme.welLogin||'Log in'; g('th-welRegister').value=theme.welRegister||'Create account'; g('th-welGuest').value=theme.welGuest||'Browse as guest';
+  g('th-welBottomGap').value=theme.welBottomGap??30; g('lbl-welgap').textContent=theme.welBottomGap??30;
+  g('th-obLayout').value=theme.obLayout||'text-top'; g('th-welLayout').value=theme.welLayout||'logo-center';
+  syncTextBtns();
   g('th-railColor').value=theme.railColor; g('th-railThickness').value=theme.railThickness; g('th-railLength').value=theme.railLength;
   g('lbl-logo').textContent=theme.logoSize; g('lbl-eb').textContent=theme.eyebrowSize;
   g('lbl-title').textContent=theme.titleSize; g('lbl-btnh').textContent=theme.btnHeight;
@@ -573,15 +646,16 @@ function renderPreview(){
       : `<div style="width:${(theme.logoSize||96)*0.7}px;height:${(theme.logoSize||96)*0.7}px;display:flex;align-items:center;justify-content:center;font-size:${(theme.logoSize||96)*0.5}px">🛡️</div>`;
     pv.innerHTML=`
       <div style="margin-top:50px">
-        <div style="font-size:22px;font-weight:800;color:${theme.text}">Welcome to Grandlab</div>
-        <div style="margin-top:10px;font-size:13px;color:#999;line-height:1.5">Your car deserves the best — wash, coat, tint and PPF, all in one app.</div>
+        <div style="font-size:22px;font-weight:800;color:${theme.text}">${esc(theme.welHeading||'Welcome to Grandlab')}</div>
+        <div style="margin-top:10px;font-size:13px;color:#999;line-height:1.5">${esc(theme.welSub||'')}</div>
       </div>
       <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px">
         ${logo}
       </div>
-      <div style="display:flex;flex-direction:column;gap:9px;padding-bottom:22px">
-        <div class="pv-btn" style="background:${theme.btnColor||theme.accent};height:${(theme.btnHeight||58)*0.8}px">Log in</div>
-        <div class="pv-btn" style="background:transparent;border:1.5px solid ${theme.accent};color:${theme.accent};height:${(theme.btnHeight||58)*0.8}px">Create account</div>
+      <div style="display:flex;flex-direction:column;gap:9px;padding-bottom:${(theme.welBottomGap??30)*0.7}px">
+        <div class="pv-btn" style="background:${theme.btnColor||theme.accent};height:${(theme.btnHeight||58)*0.8}px">${esc(theme.welLogin||'Log in')}</div>
+        <div class="pv-btn" style="background:transparent;border:1.5px solid ${theme.accent};color:${theme.accent};height:${(theme.btnHeight||58)*0.8}px">${esc(theme.welRegister||'Create account')}</div>
+        <div class="pv-btn" style="background:transparent;border:1.5px solid #333;color:${theme.text};height:${(theme.btnHeight||58)*0.8}px">${esc(theme.welGuest||'Browse as guest')}</div>
       </div>`;
     return;
   }
@@ -595,16 +669,16 @@ function renderPreview(){
     const hasBg=!!(s.bg_video_url||s.bg_image_url);
     let art;
     if(s.video_url) art=`<video src="${s.video_url}" autoplay muted loop playsinline style="width:100%;height:100%;object-fit:cover"></video>`;
-    else if(s.image_url) art=`<img src="${s.image_url}">`;
+    else if(s.image_url) art=`<img src="${s.image_url}" style="object-fit:contain;height:auto;max-height:200px">`;
     else art=`<div class="pv-glyph">${s.glyph||'✨'}</div>`;
     const railW=(theme.railLength||100);
     pv.innerHTML=`
       ${bg}
       <div style="position:relative;z-index:1;display:flex;flex-direction:column;flex:1">
       <div class="pv-rail" style="width:${railW}%;margin:0 auto">${slides.map((_,k)=>`<i class="${k<=pvSlide?'on':''}" style="height:${theme.railThickness||3}px;background:${k<=pvSlide?(theme.railColor||theme.accent):'#2a2a2a'}"></i>`).join('')}</div>
-      <div class="pv-eyebrow" style="font-size:${(theme.eyebrowSize||15)*0.62}px;color:${theme.eyebrowColor||theme.accent}">${esc(s.eyebrow||'')}</div>
-      <div class="pv-title" style="font-size:${(theme.titleSize||40)*0.62}px;color:${theme.titleColor||theme.text}">${esc(s.title||'')}</div>
-      <div class="pv-art" style="${hasBg?'visibility:hidden':''}"><div class="pv-panel" style="width:${theme.panelSize||78}%;${(s.image_url||s.video_url)?'background:transparent;border:none;box-shadow:none':''}">${art}</div></div>
+      <div class="pv-eyebrow" style="font-size:${(theme.eyebrowSize||15)*0.62}px;color:${theme.eyebrowColor||theme.accent};font-weight:${theme.eyebrowBold?700:400};font-style:${theme.eyebrowItalic?'italic':'normal'};text-decoration:${theme.eyebrowUnderline?'underline':'none'};text-align:${theme.eyebrowAlign||'left'}">${esc(s.eyebrow||'')}</div>
+      <div class="pv-title" style="font-size:${(theme.titleSize||40)*0.62}px;color:${theme.titleColor||theme.text};font-weight:${theme.titleBold?800:400};font-style:${theme.titleItalic?'italic':'normal'};text-decoration:${theme.titleUnderline?'underline':'none'};text-align:${theme.titleAlign||'left'}">${esc(s.title||'')}</div>
+      <div class="pv-art" style="${hasBg?'visibility:hidden':''}"><div class="pv-panel" style="width:${theme.panelSize||78}%;${(s.image_url||s.video_url)?'background:transparent;border:none;box-shadow:none;aspect-ratio:auto;height:auto':''}">${art}</div></div>
       <div class="pv-btn" style="background:${theme.btnColor||theme.accent};height:${(theme.btnHeight||58)*0.8}px" onclick="pvNext()">${pvSlide===slides.length-1?(theme.btnStart||'Get started'):(theme.btnNext||'Next')}</div>
       </div>`;
   }else{
