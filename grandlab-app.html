@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no" />
+<meta name="theme-color" content="#0A0A0A" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<title>Grandlab Detailing</title>
+<style>
+  :root{
+    --bg:#0A0A0A; --surface:#141414; --surface2:#1C1C1C;
+    --yellow:#F5C518; --yellow-dim:#C9A20F;
+    --text:#FFFFFF; --muted:#8A8A8A; --line:#2A2A2A;
+    --ease:cubic-bezier(.22,.61,.36,1);
+  }
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{height:100%;}
+  body{
+    background:var(--bg); color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Helvetica Neue",sans-serif;
+    overflow:hidden; position:fixed; inset:0;
+    -webkit-font-smoothing:antialiased;
+  }
+  .app{height:100%;display:flex;flex-direction:column;}
+  .safe-top{padding-top:env(safe-area-inset-top);}
+  .safe-bottom{padding-bottom:env(safe-area-inset-bottom);}
+
+  /* ---------- Progress rail ---------- */
+  .rail{display:flex;gap:6px;padding:18px 22px 0;}
+  .rail .seg{flex:1;height:3px;border-radius:3px;background:var(--line);overflow:hidden;}
+  .rail .seg i{display:block;height:100%;width:0;background:var(--yellow);
+    transition:width .45s var(--ease);}
+  .rail .seg.done i{width:100%;}
+  .rail .seg.active i{width:100%;}
+
+  /* ---------- Screens ---------- */
+  .screens{flex:1;position:relative;overflow:hidden;}
+  .screen{position:absolute;inset:0;display:flex;flex-direction:column;
+    padding:0 26px;opacity:0;transform:translateX(28px);
+    transition:opacity .4s var(--ease),transform .4s var(--ease);
+    pointer-events:none;}
+  .screen.show{opacity:1;transform:none;pointer-events:auto;}
+  .screen.exit-left{transform:translateX(-28px);}
+
+  /* ---------- Onboarding ---------- */
+  .ob-eyebrow{margin-top:54px;font-size:15px;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--yellow);font-weight:600;}
+  .ob-title{margin-top:14px;font-size:40px;line-height:1.04;font-weight:800;
+    letter-spacing:-.02em;max-width:11ch;}
+  .ob-art{flex:1;display:flex;align-items:center;justify-content:center;position:relative;}
+  .ob-panel{
+    width:78%;max-width:320px;aspect-ratio:1/1.05;border-radius:26px;
+    background:linear-gradient(150deg,var(--surface2),#0d0d0d);
+    border:1px solid var(--line);position:relative;overflow:hidden;
+    display:flex;align-items:center;justify-content:center;
+    box-shadow:0 30px 60px -30px #000;
+  }
+  /* specular streak — light moving over fresh coating */
+  .ob-panel::after{
+    content:"";position:absolute;top:-60%;left:-40%;width:60%;height:220%;
+    transform:rotate(18deg);
+    background:linear-gradient(90deg,transparent,rgba(245,197,24,.16),transparent);
+    animation:sweep 4.5s var(--ease) infinite;
+  }
+  @keyframes sweep{0%{left:-50%}55%{left:130%}100%{left:130%}}
+  .ob-glyph{font-size:120px;filter:grayscale(.1);}
+  .ob-foot{padding:0 0 30px;}
+  .ob-nav{display:flex;gap:14px;}
+
+  /* ---------- Buttons ---------- */
+  .btn{height:58px;border-radius:18px;border:none;font-size:17px;font-weight:700;
+    display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;
+    width:100%;transition:transform .12s var(--ease),opacity .2s;letter-spacing:.01em;}
+  .btn:active{transform:scale(.975);}
+  .btn-primary{background:var(--yellow);color:#0A0A0A;}
+  .btn-primary:disabled{background:var(--surface2);color:var(--muted);}
+  .btn-ghost{background:transparent;color:var(--text);border:1.5px solid var(--line);}
+  .btn-yellow-ghost{background:transparent;color:var(--yellow);border:1.5px solid var(--yellow-dim);}
+  .btn-half{flex:1;}
+
+  /* ---------- Welcome ---------- */
+  .welcome{justify-content:space-between;}
+  .wel-top{margin-top:64px;}
+  .wel-mark{display:flex;flex-direction:column;align-items:center;gap:18px;
+    flex:1;justify-content:center;}
+  .wel-logo{width:96px;height:96px;}
+  .wel-name{font-size:34px;font-weight:800;letter-spacing:-.02em;}
+  .wel-h{font-size:32px;font-weight:800;letter-spacing:-.02em;line-height:1.1;}
+  .wel-sub{margin-top:14px;color:var(--muted);font-size:16px;line-height:1.5;max-width:30ch;}
+  .wel-actions{display:flex;flex-direction:column;gap:12px;padding-bottom:30px;}
+
+  /* ---------- Auth ---------- */
+  .auth{padding-top:60px;}
+  .auth-h{font-size:30px;font-weight:800;letter-spacing:-.02em;}
+  .auth-sub{margin-top:12px;color:var(--muted);font-size:15px;line-height:1.55;}
+  .field-label{margin-top:34px;font-size:13px;font-weight:600;letter-spacing:.08em;
+    text-transform:uppercase;color:var(--muted);}
+  .phone-row{margin-top:12px;display:flex;align-items:center;gap:10px;
+    background:var(--surface);border:1.5px solid var(--line);border-radius:16px;
+    padding:0 16px;height:60px;transition:border-color .2s;}
+  .phone-row:focus-within{border-color:var(--yellow);}
+  .cc{font-size:18px;font-weight:700;color:var(--text);}
+  .cc-div{width:1px;height:24px;background:var(--line);}
+  .phone-row input{flex:1;background:none;border:none;outline:none;color:var(--text);
+    font-size:18px;font-weight:500;font-family:inherit;letter-spacing:.02em;}
+  .phone-row input::placeholder{color:#5a5a5a;}
+  .helper{margin-top:12px;font-size:13px;color:var(--muted);min-height:18px;}
+  .helper.err{color:#ff6b6b;}
+
+  /* ---------- OTP ---------- */
+  .otp-row{margin-top:18px;display:flex;gap:10px;justify-content:space-between;}
+  .otp-cell{flex:1;aspect-ratio:1/1.15;background:var(--surface);
+    border:1.5px solid var(--line);border-radius:14px;display:flex;
+    align-items:center;justify-content:center;font-size:26px;font-weight:700;
+    transition:border-color .2s,background .2s;}
+  .otp-cell.filled{border-color:var(--yellow);background:#181403;}
+  .otp-cell.cursor{border-color:var(--yellow);}
+  .otp-hidden{position:absolute;opacity:0;pointer-events:none;}
+  .resend{margin-top:26px;text-align:center;font-size:14px;color:var(--muted);}
+  .resend b{color:var(--yellow);font-weight:600;}
+  .auth-foot{margin-top:auto;padding-bottom:32px;}
+
+  .link-row{margin-top:20px;text-align:center;font-size:14px;color:var(--muted);}
+  .link-row span{color:var(--yellow);font-weight:600;}
+
+  /* spartan glyph using simple svg */
+  .spinner{width:20px;height:20px;border:2.5px solid rgba(10,10,10,.3);
+    border-top-color:#0A0A0A;border-radius:50%;animation:spin .7s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  @media (prefers-reduced-motion:reduce){
+    *{animation:none!important;transition-duration:.01ms!important;}
+  }
+  .toast{position:fixed;left:50%;bottom:calc(36px + env(safe-area-inset-bottom));
+    transform:translateX(-50%) translateY(20px);background:var(--surface2);
+    color:var(--text);border:1px solid var(--line);padding:13px 20px;border-radius:14px;
+    font-size:14px;font-weight:500;opacity:0;transition:.3s var(--ease);z-index:50;
+    box-shadow:0 20px 40px -20px #000;max-width:84%;text-align:center;}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+</style>
+</head>
+<body>
+<div class="app safe-bottom">
+  <div class="safe-top"></div>
+  <div class="rail" id="rail"></div>
+  <div class="screens" id="screens"></div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* =========================================================================
+   GRANDLAB DETAILING — Customer PWA (Step 1: onboarding + phone OTP)
+   Stack: single-file PWA, Supabase backend (same project as Grandpride Hub)
+   Onboarding slides are admin-editable: loaded from `gl_onboarding_slides`.
+   ========================================================================= */
+
+const SUPA_URL  = "https://eychljpzorzmaveixlnu.supabase.co";
+const IS_LIVE = true;
+const SUPA_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV5Y2hsanB6b3J6bWF2ZWl4bG51Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2NDk2NjQsImV4cCI6MjA5NzIyNTY2NH0.6dA1zhz5ZIwf8byFB8vhfOzPI-uPPdPihEr1b8GG_oA";
+
+/* Hardcoded fallback so the app works before admin sets any slides.
+   Admin page will overwrite these by writing rows to gl_onboarding_slides. */
+const FALLBACK_SLIDES = [
+  { eyebrow:"Car Detailing Super App",
+    title:"Wash, coat, tint, treat & apply PPF on your car",
+    glyph:"🛡️" },
+  { eyebrow:"Book in seconds",
+    title:"Schedule your service and complete your booking",
+    glyph:"📋" },
+  { eyebrow:"Every finish, one app",
+    title:"Browse washing, detailing, coating, and more",
+    glyph:"✨" },
+];
+
+const SPARTAN = `<svg class="wel-logo" viewBox="0 0 100 100" fill="none">
+  <path d="M50 8c-14 0-24 9-24 24 0 6 2 11 6 16-8 4-14 12-14 24 0 2 1 4 3 4h12l4 12h26l4-12h12c2 0 3-2 3-4 0-12-6-20-14-24 4-5 6-10 6-16 0-15-10-24-24-24z" fill="#F5C518"/>
+  <path d="M50 8v76h13l4-12h12c2 0 3-2 3-4 0-12-6-20-14-24 4-5 6-10 6-16 0-15-10-24-24-24z" fill="#C9A20F"/>
+</svg>`;
+
+let SLIDES = FALLBACK_SLIDES;
+let totalSteps = 0;        // onboarding slides + welcome + auth(s)
+let stepIndex = 0;
+const screensEl = document.getElementById('screens');
+const railEl = document.getElementById('rail');
+
+function toast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove('show'),2600);
+}
+
+/* ---------- Supabase REST helpers (no SDK needed) ---------- */
+async function fetchSlides(){
+  if(!IS_LIVE) return; // skip if not configured yet
+  try{
+    const r = await fetch(
+      `${SUPA_URL}/rest/v1/gl_onboarding_slides?select=*&active=eq.true&order=sort_order.asc`,
+      { headers:{ apikey:SUPA_ANON, Authorization:`Bearer ${SUPA_ANON}` } }
+    );
+    if(!r.ok) return;
+    const rows = await r.json();
+    if(Array.isArray(rows) && rows.length){
+      SLIDES = rows.map(x=>({
+        eyebrow:x.eyebrow||"", title:x.title||"", glyph:x.glyph||"✨", image:x.image_url||null
+      }));
+    }
+  }catch(e){ /* fall back silently */ }
+}
+
+async function sendOtp(phone){
+  // Supabase phone auth: sends SMS OTP
+  const r = await fetch(`${SUPA_URL}/auth/v1/otp`,{
+    method:"POST",
+    headers:{ "Content-Type":"application/json", apikey:SUPA_ANON },
+    body:JSON.stringify({ phone })
+  });
+  return r.ok;
+}
+async function verifyOtp(phone, token){
+  const r = await fetch(`${SUPA_URL}/auth/v1/verify`,{
+    method:"POST",
+    headers:{ "Content-Type":"application/json", apikey:SUPA_ANON },
+    body:JSON.stringify({ phone, token, type:"sms" })
+  });
+  if(!r.ok) return null;
+  return r.json(); // { access_token, refresh_token, user, ... }
+}
+
+/* ---------- Build the screen stack ---------- */
+function buildRail(){
+  railEl.innerHTML="";
+  for(let i=0;i<totalSteps;i++){
+    const seg=document.createElement('div'); seg.className="seg";
+    seg.innerHTML="<i></i>"; railEl.appendChild(seg);
+  }
+  updateRail();
+}
+function updateRail(){
+  [...railEl.children].forEach((seg,i)=>{
+    seg.classList.toggle('done', i<stepIndex);
+    seg.classList.toggle('active', i===stepIndex);
+  });
+}
+
+function render(){
+  screensEl.innerHTML="";
+  // onboarding slides
+  SLIDES.forEach((s,i)=> screensEl.appendChild(onboardingScreen(s,i)));
+  // welcome
+  screensEl.appendChild(welcomeScreen());
+  // auth (phone)
+  screensEl.appendChild(phoneScreen());
+  // auth (otp)
+  screensEl.appendChild(otpScreen());
+  totalSteps = SLIDES.length + 1; // rail counts onboarding + welcome (auth has own flow)
+  buildRail();
+  showStep(0);
+}
+
+function onboardingScreen(s,i){
+  const el=document.createElement('div'); el.className="screen"; el.dataset.kind="ob";
+  const art = s.image
+    ? `<div class="ob-panel"><img src="${s.image}" style="width:100%;height:100%;object-fit:cover" alt=""></div>`
+    : `<div class="ob-panel"><div class="ob-glyph">${s.glyph}</div></div>`;
+  const isLast = i===SLIDES.length-1;
+  el.innerHTML=`
+    <div class="ob-eyebrow">${s.eyebrow}</div>
+    <div class="ob-title">${s.title}</div>
+    <div class="ob-art">${art}</div>
+    <div class="ob-foot">
+      <div class="ob-nav">
+        ${i>0?`<button class="btn btn-ghost btn-half" data-act="back">Back</button>`:``}
+        <button class="btn btn-primary btn-half" data-act="next">${isLast?"Get started":"Next"}</button>
+      </div>
+    </div>`;
+  el.querySelector('[data-act="next"]').onclick=()=>goTo(stepIndex+1);
+  const b=el.querySelector('[data-act="back"]'); if(b) b.onclick=()=>goTo(stepIndex-1);
+  return el;
+}
+
+function welcomeScreen(){
+  const el=document.createElement('div'); el.className="screen welcome"; el.dataset.kind="welcome";
+  el.innerHTML=`
+    <div class="wel-top">
+      <div class="wel-h">Welcome to Grandlab</div>
+      <div class="wel-sub">Your car deserves the best — wash, coat, tint and PPF, all in one app. Log in or create an account to get started.</div>
+    </div>
+    <div class="wel-mark">${SPARTAN}<div class="wel-name">Grandlab</div></div>
+    <div class="wel-actions">
+      <button class="btn btn-primary" data-act="login">Log in</button>
+      <button class="btn btn-yellow-ghost" data-act="register">Create account</button>
+      <button class="btn btn-ghost" data-act="guest">Browse as guest</button>
+    </div>`;
+  el.querySelector('[data-act="login"]').onclick=()=>openAuth();
+  el.querySelector('[data-act="register"]').onclick=()=>openAuth();
+  el.querySelector('[data-act="guest"]').onclick=()=>toast("Guest browsing — coming in the next step");
+  return el;
+}
+
+let authPhone="";
+function phoneScreen(){
+  const el=document.createElement('div'); el.className="screen auth"; el.dataset.kind="phone";
+  el.innerHTML=`
+    <div class="auth-h">Sign up / Log in</div>
+    <div class="auth-sub">Enter your phone number to continue. If it isn't linked to an account yet, we'll create one for you automatically.</div>
+    <div class="field-label">Phone number</div>
+    <div class="phone-row">
+      <span class="cc">+60</span><div class="cc-div"></div>
+      <input id="phoneInput" type="tel" inputmode="numeric" placeholder="12 345 6789" autocomplete="tel-national" />
+    </div>
+    <div class="helper" id="phoneHelper"></div>
+    <div class="auth-foot">
+      <button class="btn btn-primary" id="sendBtn" disabled>Next</button>
+      <div class="link-row" data-act="back">Back to <span>welcome</span></div>
+    </div>`;
+  const input=el.querySelector('#phoneInput');
+  const btn=el.querySelector('#sendBtn');
+  input.addEventListener('input',()=>{
+    input.value=input.value.replace(/[^\d]/g,'').slice(0,11);
+    btn.disabled = input.value.length<9;
+    el.querySelector('#phoneHelper').textContent="";
+  });
+  btn.onclick=async ()=>{
+    const local=input.value.replace(/^0+/,'');
+    authPhone="+60"+local;
+    const helper=el.querySelector('#phoneHelper');
+    if(!IS_LIVE){
+      helper.classList.remove('err');
+      helper.textContent="Demo mode — paste your Supabase anon key to send a real OTP.";
+      goTo(stepIndex+1, true); return;
+    }
+    btn.disabled=true; btn.innerHTML='<div class="spinner"></div>';
+    const ok=await sendOtp(authPhone);
+    btn.disabled=false; btn.textContent="Next";
+    if(ok){ goTo(stepIndex+1, true); }
+    else { helper.classList.add('err'); helper.textContent="Couldn't send the code. Check the number and try again."; }
+  };
+  el.querySelector('[data-act="back"]').onclick=()=>goTo(SLIDES.length); // back to welcome
+  return el;
+}
+
+function otpScreen(){
+  const el=document.createElement('div'); el.className="screen auth"; el.dataset.kind="otp";
+  el.innerHTML=`
+    <div class="auth-h">Enter the code</div>
+    <div class="auth-sub">We sent a 6-digit code by SMS to <b id="otpPhone"></b>.</div>
+    <div class="otp-row" id="otpRow"></div>
+    <input class="otp-hidden" id="otpInput" type="tel" inputmode="numeric" maxlength="6" autocomplete="one-time-code" />
+    <div class="helper err" id="otpHelper"></div>
+    <div class="resend" id="resend">Didn't get it? <b>Resend in <span id="cd">30</span>s</b></div>
+    <div class="auth-foot">
+      <button class="btn btn-primary" id="verifyBtn" disabled>Verify</button>
+      <div class="link-row" data-act="changenum">Wrong number? <span>Change it</span></div>
+    </div>`;
+  const row=el.querySelector('#otpRow');
+  const hidden=el.querySelector('#otpInput');
+  const cells=[];
+  for(let i=0;i<6;i++){const c=document.createElement('div');c.className="otp-cell";row.appendChild(c);cells.push(c);}
+  const paint=()=>{
+    const v=hidden.value;
+    cells.forEach((c,i)=>{
+      c.textContent=v[i]||"";
+      c.classList.toggle('filled',!!v[i]);
+      c.classList.toggle('cursor', i===v.length);
+    });
+    el.querySelector('#verifyBtn').disabled = v.length!==6;
+  };
+  row.onclick=()=>hidden.focus();
+  hidden.addEventListener('input',()=>{hidden.value=hidden.value.replace(/[^\d]/g,'').slice(0,6);paint();el.querySelector('#otpHelper').textContent="";});
+  el.querySelector('#verifyBtn').onclick=async ()=>{
+    const btn=el.querySelector('#verifyBtn'); const helper=el.querySelector('#otpHelper');
+    if(!IS_LIVE){
+      toast("Demo verified ✓  (wire Supabase to go live)"); return;
+    }
+    btn.disabled=true; btn.innerHTML='<div class="spinner"></div>';
+    const res=await verifyOtp(authPhone, hidden.value);
+    if(res && res.access_token){
+      localStorage.setItem('gl_session', JSON.stringify(res));
+      toast("You're in ✓");
+      // next step: route to home/services
+    }else{
+      btn.disabled=false; btn.textContent="Verify";
+      helper.textContent="That code didn't match. Try again or resend.";
+    }
+  };
+  el.querySelector('[data-act="changenum"]').onclick=()=>goTo(stepIndex-1, true);
+  el._onShow=()=>{
+    el.querySelector('#otpPhone').textContent=authPhone;
+    hidden.value=""; paint(); setTimeout(()=>hidden.focus(),350);
+    startCountdown(el);
+  };
+  return el;
+}
+
+function startCountdown(el){
+  let n=30; const cd=el.querySelector('#cd'); const resend=el.querySelector('#resend');
+  clearInterval(el._cdT);
+  el._cdT=setInterval(()=>{
+    n--; if(cd) cd.textContent=n;
+    if(n<=0){
+      clearInterval(el._cdT);
+      resend.innerHTML='Didn\'t get it? <b id="rsBtn">Resend code</b>';
+      resend.querySelector('#rsBtn').onclick=async()=>{
+        if(IS_LIVE) await sendOtp(authPhone);
+        toast("Code resent"); startCountdown(el);
+      };
+    }
+  },1000);
+}
+
+/* ---------- Navigation between screens ---------- */
+let screenOrder=[]; // dom refs in order
+let cur=0;
+function indexScreens(){ screenOrder=[...screensEl.children]; }
+function showStep(idx){
+  indexScreens();
+  screenOrder.forEach((s,i)=>{
+    s.classList.remove('show','exit-left');
+    if(i<idx) s.classList.add('exit-left');
+  });
+  const target=screenOrder[idx];
+  target.classList.add('show');
+  cur=idx;
+  // rail tracks onboarding + welcome only
+  stepIndex = Math.min(idx, totalSteps-1);
+  updateRail();
+  if(target._onShow) target._onShow();
+}
+function goTo(idx, isAuth){
+  if(idx<0) idx=0;
+  if(idx>=screenOrder.length) idx=screenOrder.length-1;
+  showStep(idx);
+}
+function openAuth(){ showStep(SLIDES.length+1); } // phone screen
+
+/* keep stepIndex usable by onboarding handlers */
+Object.defineProperty(window,'stepIndex',{get:()=>cur,set:v=>{cur=v;}});
+
+/* ---------- Init ---------- */
+(async function init(){
+  await fetchSlides();
+  render();
+  indexScreens();
+})();
+</script>
+</body>
+</html>
