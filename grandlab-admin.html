@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Grandlab Admin</title>
+<style>
+  :root{
+    --bg:#0e0e10; --panel:#17171a; --panel2:#1f1f24; --line:#2c2c33;
+    --yellow:#F5C518; --text:#f4f4f5; --muted:#8a8a93; --ok:#3ecf8e; --danger:#ff5c5c;
+    --r:12px;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;}
+  body{background:var(--bg);color:var(--text);height:100vh;overflow:hidden;}
+  .wrap{display:grid;grid-template-columns:1fr 420px;height:100vh;}
+  @media(max-width:920px){.wrap{grid-template-columns:1fr;}.preview-col{display:none;}}
+
+  /* ---- left: editor ---- */
+  .editor-col{overflow-y:auto;padding:0;}
+  .topbar{position:sticky;top:0;z-index:5;background:var(--bg);
+    border-bottom:1px solid var(--line);padding:16px 24px;display:flex;
+    align-items:center;justify-content:space-between;gap:16px;}
+  .brand{font-size:18px;font-weight:800;letter-spacing:-.01em;}
+  .brand b{color:var(--yellow);}
+  .conn{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px;}
+  .dot{width:8px;height:8px;border-radius:50%;background:var(--danger);}
+  .dot.on{background:var(--ok);}
+
+  .tabs{display:flex;gap:4px;padding:14px 24px 0;}
+  .tab{padding:9px 16px;border-radius:9px 9px 0 0;background:transparent;border:none;
+    color:var(--muted);font-size:14px;font-weight:600;cursor:pointer;}
+  .tab.active{background:var(--panel);color:var(--text);}
+  .panel{display:none;padding:20px 24px 80px;}
+  .panel.active{display:block;}
+
+  .section-h{font-size:13px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
+    color:var(--muted);margin:22px 0 10px;}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);
+    padding:16px;margin-bottom:12px;}
+  .card.dragging{opacity:.5;}
+  .card-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
+  .card-title{font-size:14px;font-weight:700;}
+  .row{display:flex;gap:10px;}
+  .row>*{flex:1;}
+  label{display:block;font-size:12px;color:var(--muted);margin:10px 0 5px;font-weight:600;}
+  input,textarea,select{width:100%;background:var(--panel2);border:1px solid var(--line);
+    border-radius:9px;padding:10px 12px;color:var(--text);font-size:14px;outline:none;}
+  input:focus,textarea:focus,select:focus{border-color:var(--yellow);}
+  textarea{resize:vertical;min-height:54px;}
+  .btn{border:none;border-radius:9px;padding:10px 16px;font-size:14px;font-weight:700;
+    cursor:pointer;display:inline-flex;align-items:center;gap:7px;transition:.12s;}
+  .btn:active{transform:scale(.97);}
+  .btn-y{background:var(--yellow);color:#111;}
+  .btn-ghost{background:var(--panel2);color:var(--text);border:1px solid var(--line);}
+  .btn-danger{background:transparent;color:var(--danger);border:1px solid var(--line);}
+  .btn-sm{padding:7px 11px;font-size:12.5px;}
+  .icon-grid{display:flex;flex-wrap:wrap;gap:6px;}
+  .icon-grid button{width:42px;height:42px;font-size:20px;background:var(--panel2);
+    border:1px solid var(--line);border-radius:8px;cursor:pointer;}
+  .icon-grid button.sel{border-color:var(--yellow);background:#2a2410;}
+  .thumb{width:100%;height:120px;border-radius:9px;object-fit:cover;border:1px solid var(--line);
+    background:var(--panel2);margin-top:8px;}
+  .upl{display:flex;align-items:center;gap:10px;margin-top:8px;}
+  .swatch-row{display:flex;gap:14px;flex-wrap:wrap;}
+  .swatch{display:flex;flex-direction:column;gap:6px;align-items:center;}
+  .swatch input[type=color]{width:54px;height:40px;padding:2px;border-radius:8px;cursor:pointer;}
+  .swatch span{font-size:11px;color:var(--muted);}
+  .add-row{margin:6px 0 26px;}
+  .price-grid{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;}
+  .price-grid .pc label{margin-top:0;}
+  .hint{font-size:12px;color:var(--muted);margin-top:6px;line-height:1.5;}
+  .savebar{position:fixed;bottom:0;left:0;right:420px;background:var(--bg);
+    border-top:1px solid var(--line);padding:14px 24px;display:flex;gap:12px;
+    align-items:center;justify-content:flex-end;}
+  @media(max-width:920px){.savebar{right:0;}}
+  .savebar .status{margin-right:auto;font-size:13px;color:var(--muted);}
+
+  /* ---- right: preview ---- */
+  .preview-col{background:#000;display:flex;align-items:center;justify-content:center;
+    border-left:1px solid var(--line);position:relative;}
+  .preview-label{position:absolute;top:16px;left:50%;transform:translateX(-50%);
+    font-size:12px;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;}
+  .phone{width:300px;height:620px;border-radius:42px;background:var(--pv-bg,#0A0A0A);
+    border:10px solid #1c1c1f;box-shadow:0 30px 80px -20px #000;overflow:hidden;
+    position:relative;display:flex;flex-direction:column;}
+  .pv-toggle{position:absolute;bottom:18px;left:50%;transform:translateX(-50%);
+    display:flex;gap:6px;z-index:3;}
+  .pv-toggle button{background:#222;border:1px solid #333;color:#aaa;font-size:11px;
+    padding:5px 10px;border-radius:20px;cursor:pointer;}
+  .pv-toggle button.on{background:var(--yellow);color:#111;border-color:var(--yellow);}
+
+  /* preview inner — mirrors PWA */
+  .pv{flex:1;display:flex;flex-direction:column;padding:0 22px;color:var(--pv-text,#fff);
+    background:var(--pv-bg,#0A0A0A);}
+  .pv-rail{display:flex;gap:5px;padding:16px 0 0;}
+  .pv-rail i{flex:1;height:3px;border-radius:3px;background:#2a2a2a;}
+  .pv-rail i.on{background:var(--pv-accent,#F5C518);}
+  .pv-eyebrow{margin-top:34px;font-size:11px;letter-spacing:.13em;text-transform:uppercase;
+    color:var(--pv-accent,#F5C518);font-weight:700;}
+  .pv-title{margin-top:10px;font-size:25px;line-height:1.08;font-weight:800;letter-spacing:-.02em;}
+  .pv-art{flex:1;display:flex;align-items:center;justify-content:center;}
+  .pv-panel{width:78%;aspect-ratio:1/1.05;border-radius:20px;overflow:hidden;
+    background:linear-gradient(150deg,#1f1f24,#0d0d0d);border:1px solid #2a2a2a;
+    display:flex;align-items:center;justify-content:center;}
+  .pv-panel img{width:100%;height:100%;object-fit:cover;}
+  .pv-glyph{font-size:74px;}
+  .pv-btn{height:46px;border-radius:14px;background:var(--pv-accent,#F5C518);color:#111;
+    display:flex;align-items:center;justify-content:center;font-weight:700;font-size:15px;
+    margin-bottom:24px;}
+  /* services preview */
+  .pv-svc-h{margin-top:30px;font-size:22px;font-weight:800;}
+  .pv-svc-list{margin-top:14px;display:flex;flex-direction:column;gap:10px;overflow-y:auto;flex:1;}
+  .pv-svc{background:#16161a;border:1px solid #2a2a2a;border-radius:14px;padding:12px;}
+  .pv-svc .n{font-size:14px;font-weight:700;}
+  .pv-svc .c{font-size:11px;color:var(--pv-accent,#F5C518);text-transform:uppercase;letter-spacing:.06em;}
+  .pv-svc .p{font-size:13px;color:#bbb;margin-top:4px;}
+
+  .toast{position:fixed;bottom:24px;left:24px;background:var(--panel2);border:1px solid var(--line);
+    padding:12px 18px;border-radius:10px;font-size:13px;opacity:0;transform:translateY(10px);
+    transition:.3s;z-index:50;}
+  .toast.show{opacity:1;transform:none;}
+  .empty{color:var(--muted);font-size:13px;padding:20px;text-align:center;
+    border:1px dashed var(--line);border-radius:10px;}
+  .keybox{padding:20px 24px;}
+  .keybox input{margin-top:8px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <!-- LEFT -->
+  <div class="editor-col">
+    <div class="topbar">
+      <div class="brand">Grand<b>lab</b> Admin</div>
+      <div class="conn"><span class="dot" id="connDot"></span><span id="connTxt">Not connected</span></div>
+    </div>
+
+    <!-- key entry (first run) -->
+    <div class="keybox" id="keyBox">
+      <div class="section-h">Connect</div>
+      <div class="card">
+        <div class="hint">Paste your Supabase <b>service_role</b> key to enable editing. This key stays only in this browser on your PC — never upload this file to GitHub.</div>
+        <label>Service role key</label>
+        <input id="svcKey" type="password" placeholder="eyJ..." />
+        <div class="add-row" style="margin-top:12px">
+          <button class="btn btn-y" onclick="connect()">Connect</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="main" style="display:none">
+      <div class="tabs">
+        <button class="tab active" data-tab="onboarding" onclick="switchTab('onboarding')">Onboarding</button>
+        <button class="tab" data-tab="services" onclick="switchTab('services')">Services</button>
+        <button class="tab" data-tab="theme" onclick="switchTab('theme')">Theme</button>
+      </div>
+
+      <!-- ONBOARDING -->
+      <div class="panel active" id="panel-onboarding">
+        <div id="slideList"></div>
+        <div class="add-row"><button class="btn btn-ghost" onclick="addSlide()">+ Add slide</button></div>
+      </div>
+
+      <!-- SERVICES -->
+      <div class="panel" id="panel-services">
+        <div class="hint">Set one flat price, or tick “Size-based pricing” to charge per car type (Sedan / SUV / MPV / Supercar).</div>
+        <div id="svcList" style="margin-top:14px"></div>
+        <div class="add-row"><button class="btn btn-ghost" onclick="addService()">+ Add service</button></div>
+      </div>
+
+      <!-- THEME -->
+      <div class="panel" id="panel-theme">
+        <div class="section-h">Colors</div>
+        <div class="card">
+          <div class="swatch-row">
+            <div class="swatch"><input type="color" id="th-bg" value="#0A0A0A" oninput="onTheme()"><span>Background</span></div>
+            <div class="swatch"><input type="color" id="th-accent" value="#F5C518" oninput="onTheme()"><span>Accent</span></div>
+            <div class="swatch"><input type="color" id="th-text" value="#FFFFFF" oninput="onTheme()"><span>Text</span></div>
+          </div>
+          <div class="hint">These drive the customer app’s look. Saved to your settings table; the PWA reads them on launch.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT: live preview -->
+  <div class="preview-col">
+    <div class="preview-label">Live preview</div>
+    <div class="phone">
+      <div class="pv" id="pv"></div>
+      <div class="pv-toggle">
+        <button class="on" id="pvOnb" onclick="setPv('onb')">Onboarding</button>
+        <button id="pvSvc" onclick="setPv('svc')">Services</button>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ===========================================================
+   GRANDLAB ADMIN — local live-preview editor
+   Manages: gl_onboarding_slides, gl_services, gl_settings(theme)
+   Runs locally; uses service_role key kept in this browser only.
+   =========================================================== */
+const SUPA_URL = "https://eychljpzorzmaveixlnu.supabase.co";
+let SVC_KEY = localStorage.getItem("gl_svc_key") || "";
+const BUCKET = "gl-images";
+const CAR_TYPES = ["Sedan","SUV","MPV","Supercar"];
+const ICONS = ["🛡️","📋","✨","🚗","💧","🧴","🪄","⭐","🏁","🔧","🌟","🧽"];
+
+let slides = [];     // {id?, eyebrow,title,glyph,image_url,sort_order,active}
+let services = [];   // {id?, name,category,base_price,price_by_type,active,sort_order}
+let theme = { bg:"#0A0A0A", accent:"#F5C518", text:"#FFFFFF" };
+let pvMode = "onb";
+let pvSlide = 0;
+
+function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),2200);}
+
+/* ---------- REST helpers (service_role) ---------- */
+function H(extra){return Object.assign({apikey:SVC_KEY,Authorization:`Bearer ${SVC_KEY}`,"Content-Type":"application/json"},extra||{});}
+async function sb(path,opts){return fetch(`${SUPA_URL}/rest/v1/${path}`,opts);}
+
+async function connect(){
+  const k=document.getElementById('svcKey').value.trim();
+  if(!k){toast("Paste the key first");return;}
+  SVC_KEY=k;
+  // quick auth test
+  const r=await sb("gl_onboarding_slides?select=id&limit=1",{headers:H()});
+  if(!r.ok){toast("Key rejected — check it's the service_role key");return;}
+  localStorage.setItem("gl_svc_key",k);
+  document.getElementById('keyBox').style.display="none";
+  document.getElementById('main').style.display="block";
+  setConn(true);
+  await loadAll();
+}
+function setConn(on){
+  document.getElementById('connDot').classList.toggle('on',on);
+  document.getElementById('connTxt').textContent=on?"Connected":"Not connected";
+}
+
+async function loadAll(){
+  try{
+    let r=await sb("gl_onboarding_slides?select=*&order=sort_order.asc",{headers:H()});
+    slides=r.ok?await r.json():[];
+    r=await sb("gl_services?select=*&order=sort_order.asc",{headers:H()});
+    services=r.ok?await r.json():[];
+    // theme from gl_settings (key/value); create row lazily on save
+    r=await sb("gl_settings?select=*&id=eq.theme",{headers:H()});
+    if(r.ok){const rows=await r.json();if(rows[0]&&rows[0].data)theme=Object.assign(theme,rows[0].data);}
+  }catch(e){}
+  document.getElementById('th-bg').value=theme.bg;
+  document.getElementById('th-accent').value=theme.accent;
+  document.getElementById('th-text').value=theme.text;
+  renderSlides();renderServices();renderPreview();
+}
+
+/* ---------- ONBOARDING editor ---------- */
+function renderSlides(){
+  const el=document.getElementById('slideList');
+  if(!slides.length){el.innerHTML='<div class="empty">No slides yet. Add one to get started.</div>';return;}
+  el.innerHTML="";
+  slides.forEach((s,i)=>{
+    const c=document.createElement('div');c.className="card";
+    c.innerHTML=`
+      <div class="card-head">
+        <div class="card-title">Slide ${i+1}</div>
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-ghost btn-sm" onclick="moveSlide(${i},-1)">↑</button>
+          <button class="btn btn-ghost btn-sm" onclick="moveSlide(${i},1)">↓</button>
+          <button class="btn btn-danger btn-sm" onclick="delSlide(${i})">Delete</button>
+        </div>
+      </div>
+      <label>Eyebrow (small label)</label>
+      <input value="${esc(s.eyebrow||'')}" oninput="upd('slide',${i},'eyebrow',this.value)">
+      <label>Title</label>
+      <textarea oninput="upd('slide',${i},'title',this.value)">${esc(s.title||'')}</textarea>
+      <label>Icon (used if no photo)</label>
+      <div class="icon-grid">${ICONS.map(ic=>`<button class="${s.glyph===ic?'sel':''}" onclick="upd('slide',${i},'glyph','${ic}')">${ic}</button>`).join('')}</div>
+      <label>Background photo (optional)</label>
+      <div class="upl">
+        <button class="btn btn-ghost btn-sm" onclick="document.getElementById('sf${i}').click()">Upload photo</button>
+        ${s.image_url?`<button class="btn btn-danger btn-sm" onclick="upd('slide',${i},'image_url',null)">Remove</button>`:''}
+        <input id="sf${i}" type="file" accept="image/*" style="display:none" onchange="uploadImg(this,'slide',${i})">
+      </div>
+      ${s.image_url?`<img class="thumb" src="${s.image_url}">`:''}
+    `;
+    el.appendChild(c);
+  });
+}
+function addSlide(){slides.push({eyebrow:"",title:"New slide",glyph:"✨",image_url:null,sort_order:slides.length+1,active:true});renderSlides();renderPreview();}
+function delSlide(i){slides.splice(i,1);renderSlides();renderPreview();}
+function moveSlide(i,d){const j=i+d;if(j<0||j>=slides.length)return;[slides[i],slides[j]]=[slides[j],slides[i]];renderSlides();renderPreview();}
+
+/* ---------- SERVICES editor ---------- */
+function renderServices(){
+  const el=document.getElementById('svcList');
+  if(!services.length){el.innerHTML='<div class="empty">No services yet. Add your first one.</div>';return;}
+  el.innerHTML="";
+  services.forEach((s,i)=>{
+    const sized=!!s.price_by_type;
+    const pbt=s.price_by_type||{};
+    const c=document.createElement('div');c.className="card";
+    c.innerHTML=`
+      <div class="card-head">
+        <div class="card-title">${esc(s.name||'Service')}</div>
+        <button class="btn btn-danger btn-sm" onclick="delService(${i})">Delete</button>
+      </div>
+      <div class="row">
+        <div><label>Name</label><input value="${esc(s.name||'')}" oninput="upd('svc',${i},'name',this.value)"></div>
+        <div><label>Category</label><input value="${esc(s.category||'')}" oninput="upd('svc',${i},'category',this.value)" placeholder="Wash / Coating / PPF"></div>
+      </div>
+      <label><input type="checkbox" style="width:auto;margin-right:7px" ${sized?'checked':''} onchange="toggleSized(${i},this.checked)">Size-based pricing</label>
+      ${sized?`
+        <div class="price-grid" style="margin-top:8px">
+          ${CAR_TYPES.map(t=>`<div class="pc"><label>${t}</label><input type="number" value="${pbt[t]??''}" oninput="updPrice(${i},'${t}',this.value)"></div>`).join('')}
+        </div>`:`
+        <label>Price (RM)</label>
+        <input type="number" value="${s.base_price??''}" oninput="upd('svc',${i},'base_price',this.value)">
+      `}
+    `;
+    el.appendChild(c);
+  });
+}
+function addService(){services.push({name:"New service",category:"",base_price:0,price_by_type:null,active:true,sort_order:services.length+1});renderServices();renderPreview();}
+function delService(i){services.splice(i,1);renderServices();renderPreview();}
+function toggleSized(i,on){services[i].price_by_type=on?{Sedan:0,SUV:0,MPV:0,Supercar:0}:null;renderServices();renderPreview();}
+function updPrice(i,t,v){if(!services[i].price_by_type)services[i].price_by_type={};services[i].price_by_type[t]=v===''?null:Number(v);renderPreview();}
+
+/* ---------- generic update ---------- */
+function upd(kind,i,field,val){
+  const arr=kind==='slide'?slides:services;
+  arr[i][field]=(val===''&&field==='base_price')?null:val;
+  if(kind==='slide'&&field==='glyph')renderSlides();
+  renderPreview();
+}
+function onTheme(){
+  theme.bg=document.getElementById('th-bg').value;
+  theme.accent=document.getElementById('th-accent').value;
+  theme.text=document.getElementById('th-text').value;
+  renderPreview();
+}
+
+/* ---------- image upload to Supabase Storage ---------- */
+async function uploadImg(input,kind,i){
+  const f=input.files[0];if(!f)return;
+  toast("Uploading…");
+  const path=`${kind}-${Date.now()}-${f.name.replace(/[^a-z0-9.]/gi,'_')}`;
+  const r=await fetch(`${SUPA_URL}/storage/v1/object/${BUCKET}/${path}`,{
+    method:"POST",headers:{apikey:SVC_KEY,Authorization:`Bearer ${SVC_KEY}`},body:f
+  });
+  if(!r.ok){toast("Upload failed — is the gl-images bucket created & public?");return;}
+  const url=`${SUPA_URL}/storage/v1/object/public/${BUCKET}/${path}`;
+  if(kind==='slide')slides[i].image_url=url;
+  renderSlides();renderPreview();toast("Photo uploaded ✓");
+}
+
+/* ---------- SAVE everything ---------- */
+async function saveAll(){
+  toast("Saving…");
+  try{
+    // re-sort
+    slides.forEach((s,i)=>s.sort_order=i+1);
+    services.forEach((s,i)=>s.sort_order=i+1);
+
+    // wipe + reinsert is simplest for a small admin set:
+    // upsert slides
+    for(const s of slides){
+      const body={eyebrow:s.eyebrow,title:s.title,glyph:s.glyph,image_url:s.image_url,sort_order:s.sort_order,active:true};
+      if(s.id){await sb(`gl_onboarding_slides?id=eq.${s.id}`,{method:"PATCH",headers:H(),body:JSON.stringify(body)});}
+      else{const r=await sb("gl_onboarding_slides",{method:"POST",headers:H({Prefer:"return=representation"}),body:JSON.stringify(body)});if(r.ok){const j=await r.json();s.id=j[0].id;}}
+    }
+    for(const s of services){
+      const body={name:s.name,category:s.category,base_price:s.price_by_type?null:Number(s.base_price||0),price_by_type:s.price_by_type,sort_order:s.sort_order,active:true};
+      if(s.id){await sb(`gl_services?id=eq.${s.id}`,{method:"PATCH",headers:H(),body:JSON.stringify(body)});}
+      else{const r=await sb("gl_services",{method:"POST",headers:H({Prefer:"return=representation"}),body:JSON.stringify(body)});if(r.ok){const j=await r.json();s.id=j[0].id;}}
+    }
+    // theme -> gl_settings (id='theme', data jsonb). upsert.
+    await sb("gl_settings",{method:"POST",headers:H({Prefer:"resolution=merge-duplicates"}),body:JSON.stringify({id:"theme",data:theme})});
+    toast("Saved ✓  Customer app will reflect changes on reload");
+  }catch(e){toast("Save error — check console");console.error(e);}
+}
+
+/* ---------- LIVE PREVIEW ---------- */
+function setPv(m){pvMode=m;document.getElementById('pvOnb').classList.toggle('on',m==='onb');document.getElementById('pvSvc').classList.toggle('on',m==='svc');renderPreview();}
+function renderPreview(){
+  const pv=document.getElementById('pv');
+  pv.style.setProperty('--pv-bg',theme.bg);
+  pv.style.setProperty('--pv-accent',theme.accent);
+  pv.style.setProperty('--pv-text',theme.text);
+  document.querySelector('.phone').style.setProperty('--pv-bg',theme.bg);
+
+  if(pvMode==='onb'){
+    if(!slides.length){pv.innerHTML='<div style="margin:auto;color:#666;font-size:13px">No slides</div>';return;}
+    if(pvSlide>=slides.length)pvSlide=0;
+    const s=slides[pvSlide];
+    const art=s.image_url?`<img src="${s.image_url}">`:`<div class="pv-glyph">${s.glyph||'✨'}</div>`;
+    pv.innerHTML=`
+      <div class="pv-rail">${slides.map((_,k)=>`<i class="${k<=pvSlide?'on':''}"></i>`).join('')}</div>
+      <div class="pv-eyebrow">${esc(s.eyebrow||'')}</div>
+      <div class="pv-title">${esc(s.title||'')}</div>
+      <div class="pv-art"><div class="pv-panel">${art}</div></div>
+      <div class="pv-btn" onclick="pvNext()">${pvSlide===slides.length-1?'Get started':'Next'}</div>`;
+  }else{
+    pv.innerHTML=`
+      <div class="pv-rail"><i class="on"></i><i class="on"></i><i class="on"></i></div>
+      <div class="pv-svc-h">Our services</div>
+      <div class="pv-svc-list">
+        ${services.length?services.map(s=>{
+          let price=s.price_by_type
+            ? 'from RM'+Math.min(...Object.values(s.price_by_type).filter(v=>v!=null&&v!==''))
+            : (s.base_price?('RM'+s.base_price):'—');
+          return `<div class="pv-svc"><div class="c">${esc(s.category||'')}</div><div class="n">${esc(s.name||'')}</div><div class="p">${price}</div></div>`;
+        }).join(''):'<div style="color:#666;font-size:13px;padding:20px">No services yet</div>'}
+      </div>`;
+  }
+}
+function pvNext(){pvSlide=(pvSlide+1)%slides.length;renderPreview();}
+
+/* ---------- tabs ---------- */
+function switchTab(t){
+  document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active',x.dataset.tab===t));
+  document.querySelectorAll('.panel').forEach(p=>p.classList.toggle('active',p.id==='panel-'+t));
+  setPv(t==='services'?'svc':'onb');
+}
+
+function esc(s){return(s==null?'':String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+/* ---------- save bar (floating) ---------- */
+(function(){
+  const bar=document.createElement('div');bar.className="savebar";
+  bar.innerHTML=`<span class="status">Changes are local until you save.</span>
+    <button class="btn btn-ghost" onclick="loadAll()">Reload</button>
+    <button class="btn btn-y" onclick="saveAll()">Save all changes</button>`;
+  document.body.appendChild(bar);
+})();
+
+/* ---------- init ---------- */
+if(SVC_KEY){
+  document.getElementById('svcKey')?.remove?.();
+  (async()=>{const r=await sb("gl_onboarding_slides?select=id&limit=1",{headers:H()});
+    if(r.ok){document.getElementById('keyBox').style.display="none";document.getElementById('main').style.display="block";setConn(true);await loadAll();}
+  })();
+}
+</script>
+</body>
+</html>
