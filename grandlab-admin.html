@@ -371,7 +371,7 @@ let theme = { bg:"#0A0A0A", accent:"#F5C518", text:"#FFFFFF",
   welHeading:"Welcome to Grandlab",
   welSub:"Your car deserves the best — wash, coat, tint and PPF, all in one app. Log in or create an account to get started.",
   welLogin:"Log in", welRegister:"Create account", welGuest:"Browse as guest", welBottomGap:30,
-  eyebrowBold:true, eyebrowItalic:false, eyebrowUnderline:false, eyebrowAlign:"left",
+  eyebrowBold:true, eyebrowItalic:true, eyebrowUnderline:false, eyebrowAlign:"left",
   titleBold:true, titleItalic:false, titleUnderline:false, titleAlign:"left",
   obLayout:"text-top", welLayout:"logo-center", welBtnTopGap:0,
   welBgImage:null, welBgVideo:null, welBgDim:55,
@@ -405,6 +405,7 @@ function setConn(on){
 }
 
 async function loadAll(){
+  deletedSlideIds=[]; deletedServiceIds=[];
   try{
     let r=await sb("gl_onboarding_slides?select=*&order=sort_order.asc",{headers:H()});
     slides=r.ok?await r.json():[];
@@ -480,8 +481,11 @@ function renderSlides(){
     el.appendChild(c);
   });
 }
+let deletedSlideIds = [];
+let deletedServiceIds = [];
+
 function addSlide(){slides.push({eyebrow:"",title:"New slide",glyph:"✨",image_url:null,sort_order:slides.length+1,active:true});renderSlides();renderPreview();}
-function delSlide(i){slides.splice(i,1);renderSlides();renderPreview();}
+function delSlide(i){if(slides[i].id)deletedSlideIds.push(slides[i].id);slides.splice(i,1);renderSlides();renderPreview();}
 function moveSlide(i,d){const j=i+d;if(j<0||j>=slides.length)return;[slides[i],slides[j]]=[slides[j],slides[i]];renderSlides();renderPreview();}
 
 /* ---------- SERVICES editor ---------- */
@@ -515,7 +519,7 @@ function renderServices(){
   });
 }
 function addService(){services.push({name:"New service",category:"",base_price:0,price_by_type:null,active:true,sort_order:services.length+1});renderServices();renderPreview();}
-function delService(i){services.splice(i,1);renderServices();renderPreview();}
+function delService(i){if(services[i].id)deletedServiceIds.push(services[i].id);services.splice(i,1);renderServices();renderPreview();}
 function toggleSized(i,on){services[i].price_by_type=on?{Sedan:0,SUV:0,MPV:0,Supercar:0}:null;renderServices();renderPreview();}
 function updPrice(i,t,v){if(!services[i].price_by_type)services[i].price_by_type={};services[i].price_by_type[t]=v===''?null:Number(v);renderPreview();}
 
@@ -679,6 +683,10 @@ async function saveAll(){
       if(s.id){await sb(`gl_services?id=eq.${s.id}`,{method:"PATCH",headers:H(),body:JSON.stringify(body)});}
       else{const r=await sb("gl_services",{method:"POST",headers:H({Prefer:"return=representation"}),body:JSON.stringify(body)});if(r.ok){const j=await r.json();s.id=j[0].id;}}
     }
+    // delete removed rows from Supabase
+    for(const id of deletedSlideIds){ await sb(`gl_onboarding_slides?id=eq.${id}`,{method:"DELETE",headers:H()}); }
+    for(const id of deletedServiceIds){ await sb(`gl_services?id=eq.${id}`,{method:"DELETE",headers:H()}); }
+    deletedSlideIds=[]; deletedServiceIds=[];
     // style -> gl_settings (id='style', data jsonb). upsert.
     await sb("gl_settings",{method:"POST",headers:H({Prefer:"resolution=merge-duplicates"}),body:JSON.stringify({id:"style",data:theme})});
     toast("Saved ✓  Customer app will reflect changes on reload");
