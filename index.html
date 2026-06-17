@@ -47,6 +47,12 @@
   .screen.show{opacity:1;transform:none;pointer-events:auto;}
   .screen.exit-left{transform:translateX(-28px);}
 
+  /* full-screen slide background (photo/video) */
+  .ob-bg{position:absolute;inset:0;z-index:0;overflow:hidden;}
+  .ob-bg img,.ob-bg video{width:100%;height:100%;object-fit:cover;}
+  .ob-bg-dim{position:absolute;inset:0;}
+  .screen>*:not(.ob-bg){position:relative;z-index:1;}
+
   /* ---------- Onboarding ---------- */
   .ob-eyebrow{margin-top:54px;font-size:var(--eyebrow-size,15px);letter-spacing:.14em;
     text-transform:uppercase;color:var(--eyebrow-color,var(--yellow));font-weight:600;}
@@ -91,7 +97,7 @@
   .wel-top{margin-top:64px;}
   .wel-mark{display:flex;flex-direction:column;align-items:center;gap:18px;
     flex:1;justify-content:center;}
-  .wel-logo{width:var(--logo-size,96px);height:var(--logo-size,96px);}
+  .wel-logo{width:var(--logo-size,96px);height:var(--logo-size,96px);object-fit:contain;border-radius:18px;}
   .wel-name{font-size:34px;font-weight:800;letter-spacing:-.02em;}
   .wel-h{font-size:32px;font-weight:800;letter-spacing:-.02em;line-height:1.1;}
   .wel-sub{margin-top:14px;color:var(--muted);font-size:16px;line-height:1.5;max-width:30ch;}
@@ -200,7 +206,7 @@ function toast(msg){
 /* ---------- Global style settings (admin-editable) ---------- */
 const STYLE_DEFAULTS = {
   bg:"#0A0A0A", accent:"#F5C518", text:"#FFFFFF",
-  logoSize:96, eyebrowSize:15, eyebrowColor:"#F5C518", titleSize:40, titleColor:"#FFFFFF",
+  logoSize:96, logoUrl:null, eyebrowSize:15, eyebrowColor:"#F5C518", titleSize:40, titleColor:"#FFFFFF",
   btnColor:"#F5C518", btnHeight:58,
   railColor:"#F5C518", railThickness:3, railLength:100
 };
@@ -221,7 +227,26 @@ function applyStyle(){
   r.setProperty('--rail-color', STYLE.railColor);
   r.setProperty('--rail-thickness', STYLE.railThickness+'px');
   r.setProperty('--rail-length', STYLE.railLength+'%');
+  // set installable app icon + tab icon from uploaded logo
+  if(STYLE.logoUrl){
+    setIcon('apple-touch-icon', STYLE.logoUrl);
+    setIcon('icon', STYLE.logoUrl);
+    // dynamic web manifest so Android install uses the logo
+    try{
+      const man={name:"Grandlab Detailing",short_name:"Grandlab",
+        start_url:".",display:"standalone",background_color:STYLE.bg,theme_color:STYLE.bg,
+        icons:[{src:STYLE.logoUrl,sizes:"512x512",type:"image/png"},{src:STYLE.logoUrl,sizes:"192x192",type:"image/png"}]};
+      const blob=new Blob([JSON.stringify(man)],{type:"application/json"});
+      let ml=document.querySelector('link[rel=manifest]');
+      if(!ml){ml=document.createElement('link');ml.rel="manifest";document.head.appendChild(ml);}
+      ml.href=URL.createObjectURL(blob);
+    }catch(e){}
+  }
 }
+function setIcon(rel,href){
+  let l=document.querySelector(`link[rel='${rel}']`);
+  if(!l){l=document.createElement('link');l.rel=rel;document.head.appendChild(l);}
+  l.href=href;
 
 /* ---------- Supabase REST helpers (no SDK needed) ---------- */
 async function fetchSlides(){
@@ -236,7 +261,8 @@ async function fetchSlides(){
       if(Array.isArray(rows) && rows.length){
         SLIDES = rows.map(x=>({
           eyebrow:x.eyebrow||"", title:x.title||"", glyph:x.glyph||"✨",
-          image:x.image_url||null, video:x.video_url||null
+          image:x.image_url||null, video:x.video_url||null,
+          bgImage:x.bg_image_url||null, bgVideo:x.bg_video_url||null, bgDim:x.bg_dim??55
         }));
       }
     }
@@ -304,6 +330,13 @@ function render(){
 
 function onboardingScreen(s,i){
   const el=document.createElement('div'); el.className="screen"; el.dataset.kind="ob";
+  // full-screen background layer (photo or video) with dim overlay
+  let bg="";
+  if(s.bgVideo){
+    bg=`<div class="ob-bg"><video src="${s.bgVideo}" autoplay muted loop playsinline></video><div class="ob-bg-dim" style="background:rgba(0,0,0,${(s.bgDim??55)/100})"></div></div>`;
+  } else if(s.bgImage){
+    bg=`<div class="ob-bg"><img src="${s.bgImage}"><div class="ob-bg-dim" style="background:rgba(0,0,0,${(s.bgDim??55)/100})"></div></div>`;
+  }
   let art;
   if(s.video){
     art = `<div class="ob-panel ob-video"><video src="${s.video}" autoplay muted loop playsinline></video></div>`;
@@ -314,6 +347,7 @@ function onboardingScreen(s,i){
   }
   const isLast = i===SLIDES.length-1;
   el.innerHTML=`
+    ${bg}
     <div class="ob-eyebrow">${s.eyebrow}</div>
     <div class="ob-title">${s.title}</div>
     <div class="ob-art">${art}</div>
@@ -323,6 +357,8 @@ function onboardingScreen(s,i){
         <button class="btn btn-primary btn-half" data-act="next">${isLast?"Get started":"Next"}</button>
       </div>
     </div>`;
+  // when a bg exists, hide the center card so the bg is the hero (like the PPF screens)
+  if(s.bgVideo||s.bgImage){ el.querySelector('.ob-art').style.visibility='hidden'; }
   el.querySelector('[data-act="next"]').onclick=()=>goTo(stepIndex+1);
   const b=el.querySelector('[data-act="back"]'); if(b) b.onclick=()=>goTo(stepIndex-1);
   return el;
@@ -335,7 +371,7 @@ function welcomeScreen(){
       <div class="wel-h">Welcome to Grandlab</div>
       <div class="wel-sub">Your car deserves the best — wash, coat, tint and PPF, all in one app. Log in or create an account to get started.</div>
     </div>
-    <div class="wel-mark">${SPARTAN}<div class="wel-name">Grandlab</div></div>
+    <div class="wel-mark">${STYLE.logoUrl?`<img class="wel-logo" src="${STYLE.logoUrl}" alt="Grandlab">`:SPARTAN}<div class="wel-name">Grandlab</div></div>
     <div class="wel-actions">
       <button class="btn btn-primary" data-act="login">Log in</button>
       <button class="btn btn-yellow-ghost" data-act="register">Create account</button>
