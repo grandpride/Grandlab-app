@@ -211,9 +211,29 @@
           </div>
         </div>
 
+        <div class="section-h">Onboarding image / card</div>
+        <div class="card">
+          <label>Card &amp; photo size — <b id="lbl-panel">78</b>% of width</label>
+          <input type="range" min="40" max="100" id="th-panelSize" oninput="onTheme()">
+          <div class="hint">Controls how big the center photo/icon card appears on onboarding slides.</div>
+        </div>
+
+        <div class="section-h">Onboarding image / card</div>
+        <div class="card">
+          <label>Size — <b id="lbl-panel">78</b>% of width</label>
+          <input type="range" min="40" max="100" id="th-panelSize" oninput="onTheme()">
+          <div class="hint">Controls how big the photo/icon appears on onboarding slides. When a photo or video is used, the card frame is removed automatically.</div>
+        </div>
+
         <div class="section-h">Button (Next / Get started)</div>
         <div class="card">
-          <label>Height — <b id="lbl-btnh">58</b>px</label>
+          <div class="row">
+            <div><label>"Next" button text</label><input id="th-btnNext" value="Next" oninput="onTheme()"></div>
+            <div><label>"Get started" text (last slide)</label><input id="th-btnStart" value="Get started" oninput="onTheme()"></div>
+          </div>
+          <label>"Back" button text</label>
+          <input id="th-btnBack" value="Back" oninput="onTheme()">
+          <label style="margin-top:12px">Height — <b id="lbl-btnh">58</b>px</label>
           <input type="range" min="44" max="72" id="th-btnHeight" oninput="onTheme()">
           <div class="swatch-row" style="margin-top:12px">
             <div class="swatch"><input type="color" id="th-btnColor" value="#F5C518" oninput="onTheme()"><span>Button color</span></div>
@@ -266,7 +286,7 @@ let slides = [];     // {id?, eyebrow,title,glyph,image_url,sort_order,active}
 let services = [];   // {id?, name,category,base_price,price_by_type,active,sort_order}
 let theme = { bg:"#0A0A0A", accent:"#F5C518", text:"#FFFFFF",
   logoSize:96, logoUrl:null, eyebrowSize:15, eyebrowColor:"#F5C518", titleSize:40, titleColor:"#FFFFFF",
-  btnColor:"#F5C518", btnHeight:58,
+  btnColor:"#F5C518", btnHeight:58, panelSize:78, btnNext:"Next", btnStart:"Get started", btnBack:"Back",
   railColor:"#F5C518", railThickness:3, railLength:100 };
 let pvMode = "onb";
 let pvSlide = 0;
@@ -424,6 +444,9 @@ function onTheme(){
   theme.eyebrowSize=+g('th-eyebrowSize').value; theme.eyebrowColor=g('th-eyebrowColor').value;
   theme.titleSize=+g('th-titleSize').value; theme.titleColor=g('th-titleColor').value;
   theme.btnColor=g('th-btnColor').value; theme.btnHeight=+g('th-btnHeight').value;
+  theme.panelSize=+g('th-panelSize').value;
+  theme.btnNext=g('th-btnNext').value; theme.btnStart=g('th-btnStart').value; theme.btnBack=g('th-btnBack').value;
+  g('lbl-panel').textContent=theme.panelSize;
   theme.railColor=g('th-railColor').value; theme.railThickness=+g('th-railThickness').value; theme.railLength=+g('th-railLength').value;
   g('lbl-logo').textContent=theme.logoSize; g('lbl-eb').textContent=theme.eyebrowSize;
   g('lbl-title').textContent=theme.titleSize; g('lbl-btnh').textContent=theme.btnHeight;
@@ -437,6 +460,8 @@ function fillThemeControls(){
   g('th-eyebrowSize').value=theme.eyebrowSize; g('th-eyebrowColor').value=theme.eyebrowColor;
   g('th-titleSize').value=theme.titleSize; g('th-titleColor').value=theme.titleColor;
   g('th-btnColor').value=theme.btnColor; g('th-btnHeight').value=theme.btnHeight;
+  g('th-panelSize').value=theme.panelSize||78; g('lbl-panel').textContent=theme.panelSize||78;
+  g('th-btnNext').value=theme.btnNext||'Next'; g('th-btnStart').value=theme.btnStart||'Get started'; g('th-btnBack').value=theme.btnBack||'Back';
   g('th-railColor').value=theme.railColor; g('th-railThickness').value=theme.railThickness; g('th-railLength').value=theme.railLength;
   g('lbl-logo').textContent=theme.logoSize; g('lbl-eb').textContent=theme.eyebrowSize;
   g('lbl-title').textContent=theme.titleSize; g('lbl-btnh').textContent=theme.btnHeight;
@@ -553,7 +578,6 @@ function renderPreview(){
       </div>
       <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px">
         ${logo}
-        <div style="font-size:24px;font-weight:800;color:${theme.text}">Grandlab</div>
       </div>
       <div style="display:flex;flex-direction:column;gap:9px;padding-bottom:22px">
         <div class="pv-btn" style="background:${theme.btnColor||theme.accent};height:${(theme.btnHeight||58)*0.8}px">Log in</div>
@@ -580,8 +604,8 @@ function renderPreview(){
       <div class="pv-rail" style="width:${railW}%;margin:0 auto">${slides.map((_,k)=>`<i class="${k<=pvSlide?'on':''}" style="height:${theme.railThickness||3}px;background:${k<=pvSlide?(theme.railColor||theme.accent):'#2a2a2a'}"></i>`).join('')}</div>
       <div class="pv-eyebrow" style="font-size:${(theme.eyebrowSize||15)*0.62}px;color:${theme.eyebrowColor||theme.accent}">${esc(s.eyebrow||'')}</div>
       <div class="pv-title" style="font-size:${(theme.titleSize||40)*0.62}px;color:${theme.titleColor||theme.text}">${esc(s.title||'')}</div>
-      <div class="pv-art" style="${hasBg?'visibility:hidden':''}"><div class="pv-panel">${art}</div></div>
-      <div class="pv-btn" style="background:${theme.btnColor||theme.accent};height:${(theme.btnHeight||58)*0.8}px" onclick="pvNext()">${pvSlide===slides.length-1?'Get started':'Next'}</div>
+      <div class="pv-art" style="${hasBg?'visibility:hidden':''}"><div class="pv-panel" style="width:${theme.panelSize||78}%;${(s.image_url||s.video_url)?'background:transparent;border:none;box-shadow:none':''}">${art}</div></div>
+      <div class="pv-btn" style="background:${theme.btnColor||theme.accent};height:${(theme.btnHeight||58)*0.8}px" onclick="pvNext()">${pvSlide===slides.length-1?(theme.btnStart||'Get started'):(theme.btnNext||'Next')}</div>
       </div>`;
   }else{
     pv.innerHTML=`

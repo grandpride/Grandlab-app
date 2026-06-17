@@ -60,13 +60,15 @@
     letter-spacing:-.02em;max-width:11ch;color:var(--title-color,var(--text));}
   .ob-art{flex:1;display:flex;align-items:center;justify-content:center;position:relative;}
   .ob-panel{
-    width:78%;max-width:320px;aspect-ratio:1/1.05;border-radius:26px;
+    width:var(--panel-size,78%);max-width:360px;aspect-ratio:1/1.05;border-radius:26px;
     background:linear-gradient(150deg,var(--surface2),#0d0d0d);
     border:1px solid var(--line);position:relative;overflow:hidden;
     display:flex;align-items:center;justify-content:center;
     box-shadow:0 30px 60px -30px #000;
   }
   /* specular streak — light moving over fresh coating */
+  /* when panel holds a photo/video, drop the card frame — show media clean */
+  .ob-panel.has-media{background:transparent;border:none;box-shadow:none;}
   .ob-panel.ob-video{padding:0;}
   .ob-panel.ob-video video{width:100%;height:100%;object-fit:cover;}
   .ob-panel.ob-video::after{display:none;}
@@ -207,7 +209,7 @@ function toast(msg){
 const STYLE_DEFAULTS = {
   bg:"#0A0A0A", accent:"#F5C518", text:"#FFFFFF",
   logoSize:96, logoUrl:null, eyebrowSize:15, eyebrowColor:"#F5C518", titleSize:40, titleColor:"#FFFFFF",
-  btnColor:"#F5C518", btnHeight:58,
+  btnColor:"#F5C518", btnHeight:58, panelSize:78, btnNext:"Next", btnStart:"Get started", btnBack:"Back",
   railColor:"#F5C518", railThickness:3, railLength:100
 };
 let STYLE = Object.assign({}, STYLE_DEFAULTS);
@@ -227,6 +229,7 @@ function applyStyle(){
   r.setProperty('--rail-color', STYLE.railColor);
   r.setProperty('--rail-thickness', STYLE.railThickness+'px');
   r.setProperty('--rail-length', STYLE.railLength+'%');
+  r.setProperty('--panel-size', STYLE.panelSize+'%');
   // set installable app icon + tab icon from uploaded logo
   if(STYLE.logoUrl){
     setIcon('apple-touch-icon', STYLE.logoUrl);
@@ -339,9 +342,9 @@ function onboardingScreen(s,i){
   }
   let art;
   if(s.video){
-    art = `<div class="ob-panel ob-video"><video src="${s.video}" autoplay muted loop playsinline></video></div>`;
+    art = `<div class="ob-panel ob-video has-media"><video src="${s.video}" autoplay muted loop playsinline></video></div>`;
   } else if(s.image){
-    art = `<div class="ob-panel"><img src="${s.image}" style="width:100%;height:100%;object-fit:cover" alt=""></div>`;
+    art = `<div class="ob-panel has-media"><img src="${s.image}" style="width:100%;height:100%;object-fit:cover" alt=""></div>`;
   } else {
     art = `<div class="ob-panel"><div class="ob-glyph">${s.glyph}</div></div>`;
   }
@@ -353,8 +356,8 @@ function onboardingScreen(s,i){
     <div class="ob-art">${art}</div>
     <div class="ob-foot">
       <div class="ob-nav">
-        ${i>0?`<button class="btn btn-ghost btn-half" data-act="back">Back</button>`:``}
-        <button class="btn btn-primary btn-half" data-act="next">${isLast?"Get started":"Next"}</button>
+        ${i>0?`<button class="btn btn-ghost btn-half" data-act="back">${STYLE.btnBack||'Back'}</button>`:``}
+        <button class="btn btn-primary btn-half" data-act="next">${isLast?(STYLE.btnStart||'Get started'):(STYLE.btnNext||'Next')}</button>
       </div>
     </div>`;
   // when a bg exists, hide the center card so the bg is the hero (like the PPF screens)
@@ -371,7 +374,7 @@ function welcomeScreen(){
       <div class="wel-h">Welcome to Grandlab</div>
       <div class="wel-sub">Your car deserves the best — wash, coat, tint and PPF, all in one app. Log in or create an account to get started.</div>
     </div>
-    <div class="wel-mark">${STYLE.logoUrl?`<img class="wel-logo" src="${STYLE.logoUrl}" alt="Grandlab">`:SPARTAN}<div class="wel-name">Grandlab</div></div>
+    <div class="wel-mark">${STYLE.logoUrl?`<img class="wel-logo" src="${STYLE.logoUrl}" alt="Grandlab">`:SPARTAN}</div>
     <div class="wel-actions">
       <button class="btn btn-primary" data-act="login">Log in</button>
       <button class="btn btn-yellow-ghost" data-act="register">Create account</button>
