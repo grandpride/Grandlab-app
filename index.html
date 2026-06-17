@@ -113,7 +113,8 @@
   .btn-half{flex:1;}
 
   /* ---------- Welcome ---------- */
-  .welcome{justify-content:space-between;}
+  .welcome{justify-content:flex-start;}
+  .welcome .wel-mark{flex:1;}
   /* welcome layout presets */
   .welcome.wel-logo-top .wel-mark{order:1;flex:0;margin-top:30px}
   .welcome.wel-logo-top .wel-top{order:2;margin-top:24px}
@@ -127,8 +128,8 @@
     flex:1;justify-content:center;}
   .wel-logo{width:var(--logo-size,96px);height:var(--logo-size,96px);object-fit:contain;}
   .wel-name{font-size:34px;font-weight:800;letter-spacing:-.02em;}
-  .wel-h{font-size:32px;font-weight:800;letter-spacing:-.02em;line-height:1.1;}
-  .wel-sub{margin-top:14px;color:var(--muted);font-size:16px;line-height:1.5;max-width:30ch;}
+  .wel-h{font-size:var(--wel-h-size,32px);font-weight:800;letter-spacing:-.02em;line-height:1.1;}
+  .wel-sub{margin-top:14px;color:var(--muted);font-size:var(--wel-sub-size,16px);line-height:1.5;max-width:30ch;}
   .wel-actions{display:flex;flex-direction:column;gap:12px;padding-bottom:var(--wel-bottom-gap,30px);margin-top:var(--wel-btn-topgap,0px);}
 
   /* ---------- Auth ---------- */
@@ -248,7 +249,8 @@ const STYLE_DEFAULTS = {
   welLayout:"logo-center", // logo-top | logo-center | logo-bottom
   welBtnTopGap:0,
   welBgImage:null, welBgVideo:null, welBgDim:55,
-  welShowHeading:true, welShowSub:true, welShowLogo:true
+  welShowHeading:true, welShowSub:true, welShowLogo:true,
+  welHeadingSize:32, welSubSize:16
 };
 let STYLE = Object.assign({}, STYLE_DEFAULTS);
 
@@ -270,6 +272,8 @@ function applyStyle(){
   r.setProperty('--panel-size', STYLE.panelSize+'%');
   r.setProperty('--wel-bottom-gap', (STYLE.welBottomGap??30)+'px');
   r.setProperty('--wel-btn-topgap', (STYLE.welBtnTopGap??0)+'px');
+  r.setProperty('--wel-h-size', (STYLE.welHeadingSize??32)+'px');
+  r.setProperty('--wel-sub-size', (STYLE.welSubSize??16)+'px');
   // text styling
   r.setProperty('--eyebrow-weight', STYLE.eyebrowBold?'700':'400');
   r.setProperty('--eyebrow-style', STYLE.eyebrowItalic?'italic':'normal');

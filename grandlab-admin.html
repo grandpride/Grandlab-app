@@ -91,7 +91,7 @@
   .pv-toggle button.on{background:var(--yellow);color:#111;border-color:var(--yellow);}
 
   /* preview inner — mirrors PWA */
-  .pv{flex:1;display:flex;flex-direction:column;padding:0 22px;color:var(--pv-text,#fff);
+  .pv{flex:1;display:flex;flex-direction:column;padding:0 22px 54px;color:var(--pv-text,#fff);
     background:var(--pv-bg,#0A0A0A);}
   .pv-rail{display:flex;gap:5px;padding:16px 0 0;}
   .pv-rail i{flex:1;height:3px;border-radius:3px;background:#2a2a2a;}
@@ -183,8 +183,12 @@
         <div class="card">
           <label>Heading</label>
           <input id="th-welHeading" oninput="onTheme()">
+          <label>Heading size — <b id="lbl-welh">32</b>px</label>
+          <input type="range" min="16" max="48" id="th-welHeadingSize" oninput="onTheme()">
           <label>Subtext</label>
           <textarea id="th-welSub" oninput="onTheme()"></textarea>
+          <label>Subtext size — <b id="lbl-welsub">16</b>px</label>
+          <input type="range" min="10" max="24" id="th-welSubSize" oninput="onTheme()">
           <div class="row" style="margin-top:4px">
             <div><label>Login button</label><input id="th-welLogin" oninput="onTheme()"></div>
             <div><label>Register button</label><input id="th-welRegister" oninput="onTheme()"></div>
@@ -371,7 +375,8 @@ let theme = { bg:"#0A0A0A", accent:"#F5C518", text:"#FFFFFF",
   titleBold:true, titleItalic:false, titleUnderline:false, titleAlign:"left",
   obLayout:"text-top", welLayout:"logo-center", welBtnTopGap:0,
   welBgImage:null, welBgVideo:null, welBgDim:55,
-  welShowHeading:true, welShowSub:true, welShowLogo:true };
+  welShowHeading:true, welShowSub:true, welShowLogo:true,
+  welHeadingSize:32, welSubSize:16 };
 let pvMode = "onb";
 let pvSlide = 0;
 
@@ -541,6 +546,8 @@ function onTheme(){
   theme.panelSize=+g('th-panelSize').value;
   theme.btnNext=g('th-btnNext').value; theme.btnStart=g('th-btnStart').value; theme.btnBack=g('th-btnBack').value;
   theme.welHeading=g('th-welHeading').value; theme.welSub=g('th-welSub').value;
+  theme.welHeadingSize=+g('th-welHeadingSize').value; g('lbl-welh').textContent=theme.welHeadingSize;
+  theme.welSubSize=+g('th-welSubSize').value; g('lbl-welsub').textContent=theme.welSubSize;
   theme.welLogin=g('th-welLogin').value; theme.welRegister=g('th-welRegister').value; theme.welGuest=g('th-welGuest').value;
   theme.welBottomGap=+g('th-welBottomGap').value; g('lbl-welgap').textContent=theme.welBottomGap;
   theme.obLayout=g('th-obLayout').value; theme.welLayout=g('th-welLayout').value;
@@ -564,6 +571,8 @@ function fillThemeControls(){
   g('th-panelSize').value=theme.panelSize||78; g('lbl-panel').textContent=theme.panelSize||78;
   g('th-btnNext').value=theme.btnNext||'Next'; g('th-btnStart').value=theme.btnStart||'Get started'; g('th-btnBack').value=theme.btnBack||'Back';
   g('th-welHeading').value=theme.welHeading||''; g('th-welSub').value=theme.welSub||'';
+  g('th-welHeadingSize').value=theme.welHeadingSize??32; g('lbl-welh').textContent=theme.welHeadingSize??32;
+  g('th-welSubSize').value=theme.welSubSize??16; g('lbl-welsub').textContent=theme.welSubSize??16;
   g('th-welLogin').value=theme.welLogin||'Log in'; g('th-welRegister').value=theme.welRegister||'Create account'; g('th-welGuest').value=theme.welGuest||'Browse as guest';
   g('th-welBottomGap').value=theme.welBottomGap??30; g('lbl-welgap').textContent=theme.welBottomGap??30;
   g('th-obLayout').value=theme.obLayout||'text-top'; g('th-welLayout').value=theme.welLayout||'logo-center';
@@ -706,8 +715,8 @@ function renderPreview(){
       ${welbg}
       <div style="position:relative;z-index:1;display:flex;flex-direction:column;flex:1">
       <div style="order:${wo.top};margin-top:30px">
-        ${sH?`<div style="font-size:22px;font-weight:800;color:${theme.text}">${esc(theme.welHeading||'Welcome to Grandlab')}</div>`:''}
-        ${sS?`<div style="margin-top:10px;font-size:13px;color:#ccc;line-height:1.5">${esc(theme.welSub||'')}</div>`:''}
+        ${sH?`<div style="font-size:${(theme.welHeadingSize??32)*0.62}px;font-weight:800;color:${theme.text};line-height:1.1">${esc(theme.welHeading||'Welcome to Grandlab')}</div>`:''}
+        ${sS?`<div style="margin-top:10px;font-size:${(theme.welSubSize??16)*0.78}px;color:#ccc;line-height:1.5">${esc(theme.welSub||'')}</div>`:''}
       </div>
       <div style="order:${wo.logo};flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px">
         ${sL?logo:''}
