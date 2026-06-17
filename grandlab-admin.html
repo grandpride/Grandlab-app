@@ -153,7 +153,41 @@
         <button class="tab active" data-tab="onboarding" onclick="switchTab('onboarding')">Onboarding</button>
         <button class="tab" data-tab="services" onclick="switchTab('services')">Services</button>
         <button class="tab" data-tab="theme" onclick="switchTab('theme')">Theme</button>
+        <button class="tab" data-tab="customers" onclick="switchTab('customers')">Customers</button>
+        <button class="tab" data-tab="bookings" onclick="switchTab('bookings')">Bookings</button>
+        <button class="tab" data-tab="referrals" onclick="switchTab('referrals')">Referrals</button>
       </div>
+
+      <!-- CUSTOMERS -->
+      <div class="panel" id="panel-customers">
+        <div class="hint">All signed-up customers. Set a referral code for anyone so they can refer friends.</div>
+        <div id="custList" style="margin-top:14px"></div>
+      </div>
+
+      <!-- BOOKINGS -->
+      <div class="panel" id="panel-bookings">
+        <div class="hint">All bookings from the app (and POS later). Newest first.</div>
+        <div id="bookList" style="margin-top:14px"></div>
+      </div>
+
+      <!-- REFERRALS -->
+      <div class="panel" id="panel-referrals">
+        <div class="hint">Set how much both sides earn when a referral code is used at signup. Saved to settings; rewards apply when you enable them.</div>
+        <div class="card" style="margin-top:14px">
+          <label>Reward type</label>
+          <select id="rf-type" onchange="onReferral()">
+            <option value="points">Loyalty points</option>
+            <option value="wallet">Wallet credit (RM)</option>
+          </select>
+          <div class="row" style="margin-top:10px">
+            <div><label>New user gets</label><input id="rf-newuser" type="number" oninput="onReferral()"></div>
+            <div><label>Referrer gets</label><input id="rf-referrer" type="number" oninput="onReferral()"></div>
+          </div>
+          <label style="margin-top:10px"><input type="checkbox" id="rf-enabled" style="width:auto;margin-right:7px" onchange="onReferral()">Referral rewards active</label>
+        </div>
+        <div id="refList" style="margin-top:14px"></div>
+      </div>
+
 
       <!-- ONBOARDING -->
       <div class="panel active" id="panel-onboarding">
@@ -689,6 +723,8 @@ async function saveAll(){
     deletedSlideIds=[]; deletedServiceIds=[];
     // style -> gl_settings (id='style', data jsonb). upsert.
     await sb("gl_settings",{method:"POST",headers:H({Prefer:"resolution=merge-duplicates"}),body:JSON.stringify({id:"style",data:theme})});
+    // referral settings
+    await sb("gl_settings",{method:"POST",headers:H({Prefer:"resolution=merge-duplicates"}),body:JSON.stringify({id:"referral",data:refSettings})});
     toast("Saved ✓  Customer app will reflect changes on reload");
   }catch(e){toast("Save error — check console");console.error(e);}
 }
@@ -787,6 +823,94 @@ function switchTab(t){
   document.querySelectorAll('.panel').forEach(p=>p.classList.toggle('active',p.id==='panel-'+t));
   if(t==='services')setPv('svc');
   else if(t==='onboarding')setPv('onb');
+  else if(t==='customers')loadCustomers();
+  else if(t==='bookings')loadBookings();
+  else if(t==='referrals')loadReferrals();
+}
+
+/* ---------- CUSTOMERS ---------- */
+let customers=[];
+async function loadCustomers(){
+  const el=document.getElementById('custList');
+  el.innerHTML='<div class="empty">Loading…</div>';
+  try{
+    const r=await sb("gl_profiles?select=*&order=created_at.desc",{headers:H()});
+    customers=r.ok?await r.json():[];
+  }catch(e){customers=[];}
+  if(!customers.length){el.innerHTML='<div class="empty">No customers yet.</div>';return;}
+  el.innerHTML=customers.map((c,i)=>`
+    <div class="card">
+      <div class="card-head">
+        <div class="card-title">${esc(c.name||'(no name)')}</div>
+        <div style="font-size:12px;color:var(--muted)">${esc(c.phone||'')}</div>
+      </div>
+      <div style="font-size:12px;color:var(--muted)">${esc(c.email||'no email')}</div>
+      <div class="row" style="margin-top:10px">
+        <div><label>Referral code</label><input value="${esc(c.referral_code||'')}" id="cc${i}" placeholder="e.g. JIMMY10"></div>
+        <div style="flex:0;display:flex;align-items:flex-end"><button class="btn btn-y btn-sm" onclick="saveCustCode(${i})">Save</button></div>
+      </div>
+      ${c.referred_by?`<div style="font-size:12px;color:var(--muted);margin-top:8px">Referred by: <b style="color:var(--yellow)">${esc(c.referred_by)}</b></div>`:''}
+    </div>`).join('');
+}
+async function saveCustCode(i){
+  const code=document.getElementById('cc'+i).value.trim();
+  const c=customers[i];
+  try{
+    const r=await sb(`gl_profiles?id=eq.${c.id}`,{method:"PATCH",headers:H(),body:JSON.stringify({referral_code:code||null})});
+    if(r.ok){c.referral_code=code;toast("Code saved ✓");}else toast("Save failed (code may be taken)");
+  }catch(e){toast("Save error");}
+}
+
+/* ---------- BOOKINGS ---------- */
+async function loadBookings(){
+  const el=document.getElementById('bookList');
+  el.innerHTML='<div class="empty">Loading…</div>';
+  let rows=[];
+  try{
+    const r=await sb("gl_bookings?select=*&order=created_at.desc&limit=100",{headers:H()});
+    rows=r.ok?await r.json():[];
+  }catch(e){}
+  if(!rows.length){el.innerHTML='<div class="empty">No bookings yet.</div>';return;}
+  el.innerHTML=rows.map(b=>`
+    <div class="card">
+      <div class="card-head">
+        <div class="card-title">${esc(b.service_name||'Service')}</div>
+        <div style="font-size:11px;padding:3px 9px;border-radius:20px;background:var(--panel2);color:var(--yellow)">${esc(b.status||'pending')}</div>
+      </div>
+      <div style="font-size:12px;color:var(--muted)">${b.scheduled_at?new Date(b.scheduled_at).toLocaleString():'No date set'} · ${esc(b.car_type||'')}</div>
+      <div style="display:flex;gap:16px;margin-top:10px;font-size:13px">
+        <div>Total: <b>RM${b.total_price||0}</b></div>
+        <div>Paid: <b>RM${b.amount_paid||0}</b></div>
+        <div>Balance: <b style="color:var(--yellow)">RM${(b.balance_due ?? ((b.total_price||0)-(b.amount_paid||0)))}</b></div>
+      </div>
+      <div style="font-size:11px;color:var(--muted);margin-top:6px">${esc(b.payment_type||'')} · via ${esc(b.source||'app')}</div>
+    </div>`).join('');
+}
+
+/* ---------- REFERRALS ---------- */
+let refSettings={type:'points',newuser:0,referrer:0,enabled:false};
+async function loadReferrals(){
+  try{
+    const r=await sb("gl_settings?select=*&id=eq.referral",{headers:H()});
+    if(r.ok){const rows=await r.json();if(rows[0]&&rows[0].data)refSettings=Object.assign(refSettings,rows[0].data);}
+  }catch(e){}
+  document.getElementById('rf-type').value=refSettings.type;
+  document.getElementById('rf-newuser').value=refSettings.newuser;
+  document.getElementById('rf-referrer').value=refSettings.referrer;
+  document.getElementById('rf-enabled').checked=!!refSettings.enabled;
+  // recent referrals log
+  const el=document.getElementById('refList');
+  let rows=[];
+  try{const r=await sb("gl_referrals?select=*&order=created_at.desc&limit=50",{headers:H()});rows=r.ok?await r.json():[];}catch(e){}
+  el.innerHTML='<div class="section-h">Recent referrals</div>'+(rows.length?rows.map(x=>`
+    <div class="card"><div style="font-size:13px">Code <b style="color:var(--yellow)">${esc(x.referrer_code||'')}</b> used ${x.rewarded?'· rewarded ✓':'· pending'}</div>
+    <div style="font-size:11px;color:var(--muted);margin-top:4px">${new Date(x.created_at).toLocaleString()}</div></div>`).join(''):'<div class="empty">No referrals yet.</div>');
+}
+function onReferral(){
+  refSettings={type:document.getElementById('rf-type').value,
+    newuser:+document.getElementById('rf-newuser').value||0,
+    referrer:+document.getElementById('rf-referrer').value||0,
+    enabled:document.getElementById('rf-enabled').checked};
 }
 
 function esc(s){return(s==null?'':String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
