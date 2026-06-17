@@ -154,6 +154,7 @@
         <button class="tab" data-tab="services" onclick="switchTab('services')">Services</button>
         <button class="tab" data-tab="theme" onclick="switchTab('theme')">Theme</button>
         <button class="tab" data-tab="otppage" onclick="switchTab('otppage')">OTP Page</button>
+        <button class="tab" data-tab="refpage" onclick="switchTab('refpage')">Referral Page</button>
         <button class="tab" data-tab="customers" onclick="switchTab('customers')">Customers</button>
         <button class="tab" data-tab="bookings" onclick="switchTab('bookings')">Bookings</button>
         <button class="tab" data-tab="referrals" onclick="switchTab('referrals')">Referrals</button>
@@ -212,6 +213,69 @@
           <input type="range" min="0" max="90" id="ot-bgDim" oninput="onOtp()">
         </div>
         <div class="hint">Switch the preview to OTP using the button under the phone to see changes.</div>
+      </div>
+
+      <!-- REFERRAL PAGE -->
+      <div class="panel" id="panel-refpage">
+        <div class="section-h">Wording</div>
+        <div class="card">
+          <label>Title</label><input id="rp-title" oninput="onRef2()">
+          <label>Subtitle</label><input id="rp-sub" oninput="onRef2()">
+          <label>Code placeholder (example code shown)</label><input id="rp-ph" oninput="onRef2()">
+          <label>Apply button</label><input id="rp-apply" oninput="onRef2()">
+          <label>Skip text</label><input id="rp-skip" oninput="onRef2()">
+        </div>
+        <div class="section-h">Reward card</div>
+        <div class="card">
+          <label><input type="checkbox" id="rp-showcard" style="width:auto;margin-right:7px" onchange="onRef2()">Show reward card</label>
+          <div class="row" style="margin-top:8px">
+            <div style="flex:0 0 70px"><label>Icon</label><input id="rp-cardicon" oninput="onRef2()" style="text-align:center"></div>
+            <div><label>Card text</label><input id="rp-cardtext" oninput="onRef2()"></div>
+          </div>
+        </div>
+        <div class="section-h">Title styling</div>
+        <div class="card">
+          <label>Size — <b id="lbl-rptitle">30</b>px</label>
+          <input type="range" min="18" max="48" id="rp-titleSize" oninput="onRef2()">
+          <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap">
+            <button class="btn btn-ghost btn-sm" id="rpb-bold" onclick="rpStyle('refTitleBold')"><b>B</b></button>
+            <button class="btn btn-ghost btn-sm" id="rpb-italic" onclick="rpStyle('refTitleItalic')"><i>I</i></button>
+            <button class="btn btn-ghost btn-sm" id="rpb-l" onclick="rpAlign('left')">⬅</button>
+            <button class="btn btn-ghost btn-sm" id="rpb-c" onclick="rpAlign('center')">⬌</button>
+            <button class="btn btn-ghost btn-sm" id="rpb-r" onclick="rpAlign('right')">➡</button>
+          </div>
+          <div class="swatch-row" style="margin-top:12px">
+            <div class="swatch"><input type="color" id="rp-titleColor" oninput="onRef2()"><span>Title color</span></div>
+            <div class="swatch"><input type="color" id="rp-subColor" oninput="onRef2()"><span>Subtitle color</span></div>
+          </div>
+          <label style="margin-top:10px">Subtitle size — <b id="lbl-rpsub">15</b>px</label>
+          <input type="range" min="11" max="22" id="rp-subSize" oninput="onRef2()">
+        </div>
+        <div class="section-h">Layout</div>
+        <div class="card">
+          <select id="rp-layout" onchange="onRef2()">
+            <option value="top">Content at top</option>
+            <option value="center">Content centered</option>
+          </select>
+        </div>
+        <div class="section-h">Full-screen background</div>
+        <div class="card">
+          <label>Background photo</label>
+          <div class="upl">
+            <button class="btn btn-ghost btn-sm" onclick="document.getElementById('rpbgf').click()">Upload bg photo</button>
+            <button class="btn btn-danger btn-sm" onclick="theme.refBgImage=null;toast('Removed');">Remove</button>
+            <input id="rpbgf" type="file" accept="image/*" style="display:none" onchange="uploadPageBg(this,'refBgImage')">
+          </div>
+          <label>Background video (MP4)</label>
+          <div class="upl">
+            <button class="btn btn-ghost btn-sm" onclick="document.getElementById('rpbgv').click()">Upload bg video</button>
+            <button class="btn btn-danger btn-sm" onclick="theme.refBgVideo=null;toast('Removed');">Remove</button>
+            <input id="rpbgv" type="file" accept="video/mp4,video/*" style="display:none" onchange="uploadPageBg(this,'refBgVideo')">
+          </div>
+          <label>Darkness — <b id="lbl-rpdim">55</b>%</label>
+          <input type="range" min="0" max="90" id="rp-bgDim" oninput="onRef2()">
+        </div>
+        <div class="hint">Switch the preview to Referral using the button under the phone.</div>
       </div>
 
       <!-- CUSTOMERS -->
@@ -434,6 +498,7 @@
         <button class="on" id="pvOnb" onclick="setPv('onb')">Onboarding</button>
         <button id="pvWel" onclick="setPv('wel')">Welcome</button>
         <button id="pvOtp" onclick="setPv('otp')">OTP</button>
+        <button id="pvRef" onclick="setPv('ref')">Referral</button>
         <button id="pvSvc" onclick="setPv('svc')">Services</button>
       </div>
     </div>
@@ -472,7 +537,13 @@ let theme = { bg:"#0A0A0A", accent:"#F5C518", text:"#FFFFFF",
   otpResend:"Didn't get it?", otpVerifyBtn:"Verify", otpChangeText:"Wrong number?",
   otpTitleSize:30, otpTitleColor:"#FFFFFF", otpSubSize:15, otpSubColor:"#8A8A8A",
   otpTitleBold:true, otpTitleItalic:false, otpTitleAlign:"left",
-  otpBgImage:null, otpBgVideo:null, otpBgDim:55, otpLayout:"top" };
+  otpBgImage:null, otpBgVideo:null, otpBgDim:55, otpLayout:"top",
+  refTitle:"Got a friend's code?", refSub:"Enter it and unlock a mystery reward",
+  refCardIcon:"🎁", refCardText:"Mystery gift unlocked at signup",
+  refPlaceholder:"GL2026", refApplyBtn:"Apply code", refSkipText:"I don't have one",
+  refTitleSize:30, refTitleColor:"#FFFFFF", refSubSize:15, refSubColor:"#8A8A8A",
+  refTitleBold:true, refTitleItalic:false, refTitleAlign:"left",
+  refShowCard:true, refBgImage:null, refBgVideo:null, refBgDim:55, refLayout:"top" };
 let pvMode = "onb";
 let pvSlide = 0;
 
@@ -796,6 +867,7 @@ function setPv(m){pvMode=m;
   document.getElementById('pvOnb').classList.toggle('on',m==='onb');
   document.getElementById('pvWel').classList.toggle('on',m==='wel');
   document.getElementById('pvOtp').classList.toggle('on',m==='otp');
+  document.getElementById('pvRef').classList.toggle('on',m==='ref');
   document.getElementById('pvSvc').classList.toggle('on',m==='svc');
   renderPreview();}
 function renderPreview(){
@@ -833,6 +905,27 @@ function renderPreview(){
         <div class="pv-btn" style="background:transparent;border:1.5px solid ${theme.accent};color:${theme.accent};height:${(theme.btnHeight||58)*0.8}px">${esc(theme.welRegister||'Create account')}</div>
         <div class="pv-btn" style="background:transparent;border:1.5px solid #333;color:${theme.text};height:${(theme.btnHeight||58)*0.8}px">${esc(theme.welGuest||'Browse as guest')}</div>
       </div>
+      </div>`;
+    return;
+  }
+  if(pvMode==='ref'){
+    let bg="";
+    if(theme.refBgVideo)bg=`<div style="position:absolute;inset:0;z-index:0"><video src="${theme.refBgVideo}" autoplay muted loop playsinline style="width:100%;height:100%;object-fit:cover"></video><div style="position:absolute;inset:0;background:rgba(0,0,0,${(theme.refBgDim??55)/100})"></div></div>`;
+    else if(theme.refBgImage)bg=`<div style="position:absolute;inset:0;z-index:0"><img src="${theme.refBgImage}" style="width:100%;height:100%;object-fit:cover"><div style="position:absolute;inset:0;background:rgba(0,0,0,${(theme.refBgDim??55)/100})"></div></div>`;
+    const just=theme.refLayout==='center'?'center':'flex-start';
+    const card=theme.refShowCard!==false?`
+      <div style="margin-top:16px;background:#16161a;border:1px solid #2a2a2a;border-radius:14px;padding:14px;display:flex;align-items:center;gap:12px">
+        <div style="font-size:26px">${esc(theme.refCardIcon||'🎁')}</div>
+        <div style="font-size:12px;font-weight:600;line-height:1.4">${esc(theme.refCardText||'')}</div>
+      </div>`:'';
+    pv.innerHTML=`${bg}
+      <div style="position:relative;z-index:1;display:flex;flex-direction:column;flex:1;justify-content:${just};padding-top:${theme.refLayout==='center'?0:30}px">
+        <div style="font-size:${(theme.refTitleSize||30)*0.62}px;color:${theme.refTitleColor||'#fff'};font-weight:${theme.refTitleBold?800:400};font-style:${theme.refTitleItalic?'italic':'normal'};text-align:${theme.refTitleAlign||'left'}">${esc(theme.refTitle||"Got a friend's code?")}</div>
+        <div style="margin-top:8px;font-size:${(theme.refSubSize||15)*0.8}px;color:${theme.refSubColor||'#8A8A8A'};text-align:${theme.refTitleAlign||'left'}">${esc(theme.refSub||'')}</div>
+        <div style="margin-top:18px;height:42px;border:1.5px solid #2a2a2a;border-radius:12px;background:#16161a;display:flex;align-items:center;justify-content:center;font-weight:700;letter-spacing:.1em;color:#666">${esc(theme.refPlaceholder||'GL2026')}</div>
+        ${card}
+        <div class="pv-btn" style="background:${theme.btnColor||theme.accent};height:${(theme.btnHeight||58)*0.8}px;margin-top:20px">${esc(theme.refApplyBtn||'Apply code')}</div>
+        <div style="text-align:center;margin-top:12px;font-size:12px;color:${theme.accent}">${esc(theme.refSkipText||"I don't have one")} →</div>
       </div>`;
     return;
   }
@@ -904,9 +997,43 @@ function switchTab(t){
   if(t==='services')setPv('svc');
   else if(t==='onboarding')setPv('onb');
   else if(t==='otppage'){fillOtpControls();setPv('otp');}
+  else if(t==='refpage'){fillRefControls();setPv('ref');}
   else if(t==='customers')loadCustomers();
   else if(t==='bookings')loadBookings();
   else if(t==='referrals')loadReferrals();
+}
+
+/* ---------- REFERRAL PAGE editing ---------- */
+function onRef2(){
+  const g=id=>document.getElementById(id);
+  theme.refTitle=g('rp-title').value; theme.refSub=g('rp-sub').value;
+  theme.refPlaceholder=g('rp-ph').value; theme.refApplyBtn=g('rp-apply').value; theme.refSkipText=g('rp-skip').value;
+  theme.refShowCard=g('rp-showcard').checked; theme.refCardIcon=g('rp-cardicon').value; theme.refCardText=g('rp-cardtext').value;
+  theme.refTitleSize=+g('rp-titleSize').value; g('lbl-rptitle').textContent=theme.refTitleSize;
+  theme.refTitleColor=g('rp-titleColor').value; theme.refSubColor=g('rp-subColor').value;
+  theme.refSubSize=+g('rp-subSize').value; g('lbl-rpsub').textContent=theme.refSubSize;
+  theme.refLayout=g('rp-layout').value;
+  theme.refBgDim=+g('rp-bgDim').value; g('lbl-rpdim').textContent=theme.refBgDim;
+  syncRpBtns(); renderPreview();
+}
+function rpStyle(key){theme[key]=!theme[key];syncRpBtns();renderPreview();}
+function rpAlign(v){theme.refTitleAlign=v;syncRpBtns();renderPreview();}
+function syncRpBtns(){
+  const set=(id,on)=>{const e=document.getElementById(id);if(e){e.style.borderColor=on?'var(--yellow)':'var(--line)';e.style.color=on?'var(--yellow)':'var(--text)';}};
+  set('rpb-bold',theme.refTitleBold);set('rpb-italic',theme.refTitleItalic);
+  set('rpb-l',theme.refTitleAlign==='left');set('rpb-c',theme.refTitleAlign==='center');set('rpb-r',theme.refTitleAlign==='right');
+}
+function fillRefControls(){
+  const g=id=>document.getElementById(id);
+  g('rp-title').value=theme.refTitle||"Got a friend's code?"; g('rp-sub').value=theme.refSub||'';
+  g('rp-ph').value=theme.refPlaceholder||'GL2026'; g('rp-apply').value=theme.refApplyBtn||'Apply code'; g('rp-skip').value=theme.refSkipText||"I don't have one";
+  g('rp-showcard').checked=theme.refShowCard!==false; g('rp-cardicon').value=theme.refCardIcon||'🎁'; g('rp-cardtext').value=theme.refCardText||'';
+  g('rp-titleSize').value=theme.refTitleSize||30; g('lbl-rptitle').textContent=theme.refTitleSize||30;
+  g('rp-titleColor').value=theme.refTitleColor||'#FFFFFF'; g('rp-subColor').value=theme.refSubColor||'#8A8A8A';
+  g('rp-subSize').value=theme.refSubSize||15; g('lbl-rpsub').textContent=theme.refSubSize||15;
+  g('rp-layout').value=theme.refLayout||'top';
+  g('rp-bgDim').value=theme.refBgDim??55; g('lbl-rpdim').textContent=theme.refBgDim??55;
+  syncRpBtns();
 }
 
 /* ---------- OTP PAGE editing ---------- */

@@ -185,6 +185,15 @@
   .screen.otp-center .otp-row{margin-left:auto;margin-right:auto;}
   .screen.otp-top{justify-content:flex-start;}
 
+  /* Referral page */
+  .ref-content{flex:1;display:flex;flex-direction:column;}
+  .screen.ref-top .ref-content{justify-content:flex-start;padding-top:30px;}
+  .screen.ref-center .ref-content{justify-content:center;}
+  .ref-card{margin-top:18px;background:var(--surface);border:1px solid var(--line);
+    border-radius:16px;padding:16px;display:flex;align-items:center;gap:14px;}
+  .ref-card-ic{font-size:30px;}
+  .ref-card-tx{font-size:14px;color:var(--text);font-weight:600;line-height:1.4;}
+
   /* ============ MAIN APP (post-login) ============ */
   #appRoot{position:fixed;inset:0;max-width:440px;margin:0 auto;background:var(--bg);
     display:none;flex-direction:column;z-index:20;}
@@ -321,7 +330,14 @@ const STYLE_DEFAULTS = {
   otpResend:"Didn't get it?", otpVerifyBtn:"Verify", otpChangeText:"Wrong number?",
   otpTitleSize:30, otpTitleColor:"#FFFFFF", otpSubSize:15, otpSubColor:"#8A8A8A",
   otpTitleBold:true, otpTitleItalic:false, otpTitleAlign:"left",
-  otpBgImage:null, otpBgVideo:null, otpBgDim:55, otpLayout:"top"
+  otpBgImage:null, otpBgVideo:null, otpBgDim:55, otpLayout:"top",
+  // Referral page
+  refTitle:"Got a friend's code?", refSub:"Enter it and unlock a mystery reward",
+  refCardIcon:"🎁", refCardText:"Mystery gift unlocked at signup",
+  refPlaceholder:"GL2026", refApplyBtn:"Apply code", refSkipText:"I don't have one",
+  refTitleSize:30, refTitleColor:"#FFFFFF", refSubSize:15, refSubColor:"#8A8A8A",
+  refTitleBold:true, refTitleItalic:false, refTitleAlign:"left",
+  refShowCard:true, refBgImage:null, refBgVideo:null, refBgDim:55, refLayout:"top"
 };
 let STYLE = Object.assign({}, STYLE_DEFAULTS);
 
@@ -494,6 +510,8 @@ function render(){
   SLIDES.forEach((s,i)=> screensEl.appendChild(onboardingScreen(s,i)));
   // welcome
   screensEl.appendChild(welcomeScreen());
+  // referral (for create account flow)
+  screensEl.appendChild(referralScreen());
   // auth (phone)
   screensEl.appendChild(phoneScreen());
   // auth (otp)
@@ -572,19 +590,33 @@ let authPhone="";
 let referralCode="";   // captured at signup, sent with profile
 
 function referralScreen(){
-  const el=document.createElement('div'); el.className="screen auth"; el.dataset.kind="referral";
+  const el=document.createElement('div'); el.className="screen auth ref-"+(STYLE.refLayout||'top'); el.dataset.kind="referral";
+  let bg="";
+  if(STYLE.refBgVideo){
+    bg=`<div class="ob-bg"><video src="${STYLE.refBgVideo}" autoplay muted loop playsinline></video><div class="ob-bg-dim" style="background:rgba(0,0,0,${(STYLE.refBgDim??55)/100})"></div></div>`;
+  } else if(STYLE.refBgImage){
+    bg=`<div class="ob-bg"><img src="${STYLE.refBgImage}"><div class="ob-bg-dim" style="background:rgba(0,0,0,${(STYLE.refBgDim??55)/100})"></div></div>`;
+  }
+  const tStyle=`font-size:${STYLE.refTitleSize||30}px;color:${STYLE.refTitleColor||'#fff'};font-weight:${STYLE.refTitleBold?800:400};font-style:${STYLE.refTitleItalic?'italic':'normal'};text-align:${STYLE.refTitleAlign||'left'}`;
+  const sStyle=`font-size:${STYLE.refSubSize||15}px;color:${STYLE.refSubColor||'#8A8A8A'};text-align:${STYLE.refTitleAlign||'left'}`;
+  const card = STYLE.refShowCard!==false ? `
+    <div class="ref-card">
+      <div class="ref-card-ic">${STYLE.refCardIcon||'🎁'}</div>
+      <div class="ref-card-tx">${STYLE.refCardText||'Mystery gift unlocked at signup'}</div>
+    </div>` : '';
   el.innerHTML=`
-    <div style="flex:1;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;gap:6px">
-      <div style="font-size:54px;margin-bottom:8px">🎁</div>
-      <div class="auth-h" style="text-align:center">Enter promo or referral code</div>
-      <div class="auth-sub" style="text-align:center;max-width:28ch">Get rewarded when you sign up with a code.</div>
-      <input id="refInput" type="text" placeholder="Promo code" autocapitalize="characters"
-        style="margin-top:24px;width:100%;background:var(--surface);border:1.5px solid var(--line);border-radius:16px;padding:0 18px;height:58px;color:var(--text);font-size:17px;text-align:center;letter-spacing:.1em;text-transform:uppercase;outline:none">
+    ${bg}
+    <div class="ref-content">
+      <div class="auth-h" style="${tStyle}">${STYLE.refTitle||"Got a friend's code?"}</div>
+      <div class="auth-sub" style="${sStyle}">${STYLE.refSub||'Enter it and unlock a mystery reward'}</div>
+      <input id="refInput" type="text" placeholder="${STYLE.refPlaceholder||'GL2026'}" autocapitalize="characters"
+        style="margin-top:24px;width:100%;background:var(--surface);border:1.5px solid var(--line);border-radius:16px;padding:0 18px;height:58px;color:var(--text);font-size:18px;text-align:center;letter-spacing:.12em;font-weight:700;text-transform:uppercase;outline:none">
+      ${card}
       <div class="helper" id="refHelper" style="text-align:center"></div>
     </div>
     <div class="auth-foot">
-      <button class="btn btn-primary" id="refContinue">Continue</button>
-      <div class="link-row" data-act="skip" style="margin-top:18px"><span>Skip</span></div>
+      <button class="btn btn-primary" id="refContinue">${STYLE.refApplyBtn||'Apply code'}</button>
+      <div class="link-row" data-act="skip" style="margin-top:18px"><span>${STYLE.refSkipText||"I don't have one"} →</span></div>
     </div>`;
   const input=el.querySelector('#refInput');
   input.addEventListener('input',()=>{input.value=input.value.toUpperCase().replace(/\s/g,'');});
@@ -931,7 +963,9 @@ function goTo(idx, isAuth){
   if(idx>=screenOrder.length) idx=screenOrder.length-1;
   showStep(idx);
 }
-function openAuth(){ showStep(SLIDES.length+1); } // phone screen
+function screenIndexByKind(kind){ indexScreens(); return screenOrder.findIndex(s=>s.dataset.kind===kind); }
+function openReferral(){ const i=screenIndexByKind('referral'); if(i>=0) showStep(i); }
+function openAuth(){ const i=screenIndexByKind('phone'); if(i>=0) showStep(i); } // phone screen
 
 /* keep stepIndex usable by onboarding handlers */
 Object.defineProperty(window,'stepIndex',{get:()=>cur,set:v=>{cur=v;}});
