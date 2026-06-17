@@ -242,6 +242,7 @@
       <div class="pv" id="pv"></div>
       <div class="pv-toggle">
         <button class="on" id="pvOnb" onclick="setPv('onb')">Onboarding</button>
+        <button id="pvWel" onclick="setPv('wel')">Welcome</button>
         <button id="pvSvc" onclick="setPv('svc')">Services</button>
       </div>
     </div>
@@ -470,7 +471,7 @@ async function uploadLogo(input){
 }
 function renderLogoThumb(){
   const el=document.getElementById('logoThumb');if(!el)return;
-  el.innerHTML=theme.logoUrl?`<img class="thumb" src="${theme.logoUrl}" style="height:90px;width:90px;object-fit:contain;background:${theme.bg}">`:'';
+  el.innerHTML=theme.logoUrl?`<img class="thumb" src="${theme.logoUrl}" style="height:90px;width:90px;object-fit:contain;background:transparent">`:'';
 }
 
 async function uploadBg(input,i,type){
@@ -528,7 +529,11 @@ async function saveAll(){
 }
 
 /* ---------- LIVE PREVIEW ---------- */
-function setPv(m){pvMode=m;document.getElementById('pvOnb').classList.toggle('on',m==='onb');document.getElementById('pvSvc').classList.toggle('on',m==='svc');renderPreview();}
+function setPv(m){pvMode=m;
+  document.getElementById('pvOnb').classList.toggle('on',m==='onb');
+  document.getElementById('pvWel').classList.toggle('on',m==='wel');
+  document.getElementById('pvSvc').classList.toggle('on',m==='svc');
+  renderPreview();}
 function renderPreview(){
   const pv=document.getElementById('pv');
   const ph=document.querySelector('.phone');
@@ -537,6 +542,25 @@ function renderPreview(){
   pv.style.setProperty('--pv-text',theme.text);
   ph.style.setProperty('--pv-bg',theme.bg);
 
+  if(pvMode==='wel'){
+    const logo = theme.logoUrl
+      ? `<img src="${theme.logoUrl}" style="width:${(theme.logoSize||96)*0.7}px;height:${(theme.logoSize||96)*0.7}px;object-fit:contain">`
+      : `<div style="width:${(theme.logoSize||96)*0.7}px;height:${(theme.logoSize||96)*0.7}px;display:flex;align-items:center;justify-content:center;font-size:${(theme.logoSize||96)*0.5}px">🛡️</div>`;
+    pv.innerHTML=`
+      <div style="margin-top:50px">
+        <div style="font-size:22px;font-weight:800;color:${theme.text}">Welcome to Grandlab</div>
+        <div style="margin-top:10px;font-size:13px;color:#999;line-height:1.5">Your car deserves the best — wash, coat, tint and PPF, all in one app.</div>
+      </div>
+      <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px">
+        ${logo}
+        <div style="font-size:24px;font-weight:800;color:${theme.text}">Grandlab</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:9px;padding-bottom:22px">
+        <div class="pv-btn" style="background:${theme.btnColor||theme.accent};height:${(theme.btnHeight||58)*0.8}px">Log in</div>
+        <div class="pv-btn" style="background:transparent;border:1.5px solid ${theme.accent};color:${theme.accent};height:${(theme.btnHeight||58)*0.8}px">Create account</div>
+      </div>`;
+    return;
+  }
   if(pvMode==='onb'){
     if(!slides.length){pv.innerHTML='<div style="margin:auto;color:#666;font-size:13px">No slides</div>';return;}
     if(pvSlide>=slides.length)pvSlide=0;
@@ -579,7 +603,7 @@ function pvNext(){pvSlide=(pvSlide+1)%slides.length;renderPreview();}
 function switchTab(t){
   document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active',x.dataset.tab===t));
   document.querySelectorAll('.panel').forEach(p=>p.classList.toggle('active',p.id==='panel-'+t));
-  setPv(t==='services'?'svc':'onb');
+  setPv(t==='services'?'svc':(t==='theme'?'wel':'onb'));
 }
 
 function esc(s){return(s==null?'':String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
