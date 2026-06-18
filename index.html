@@ -565,7 +565,7 @@ let VEHICLES=[];
 async function fetchVehicles(){
   if(!SESSION?.user?.id){VEHICLES=[];return VEHICLES;}
   try{
-    const r=await fetch(`${SUPA_URL}/rest/v1/gl_vehicles?select=*&user_id=eq.${SESSION.user.id}&order=created_at.desc`,{headers:authHeaders()});
+    const r=await fetch(`${SUPA_URL}/rest/v1/gl_vehicles?select=*&owner_id=eq.${SESSION.user.id}&order=created_at.desc`,{headers:authHeaders()});
     if(r.ok) VEHICLES=await r.json();
   }catch(e){}
   return VEHICLES;
@@ -575,7 +575,7 @@ async function addVehicle(v){
   try{
     const r=await fetch(`${SUPA_URL}/rest/v1/gl_vehicles`,{method:"POST",
       headers:Object.assign(authHeaders(),{Prefer:"return=representation"}),
-      body:JSON.stringify(Object.assign({user_id:SESSION.user.id},v))});
+      body:JSON.stringify(Object.assign({owner_id:SESSION.user.id},v))});
     if(r.ok){const rows=await r.json();if(rows[0])VEHICLES.unshift(rows[0]);return true;}
   }catch(e){}
   return false;
