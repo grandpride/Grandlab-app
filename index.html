@@ -329,6 +329,10 @@ const IS_LIVE = true;
 // Set to true once OTP (WhatsApp/SMS) is connected & working.
 // While false: the Sign in button is hidden, everyone uses guest mode.
 const OTP_READY = false;
+// TEMP preview mode: when true, app skips onboarding/welcome and opens
+// straight to the main Home page as a guest (for previewing the UI).
+// Set back to false to restore the normal onboarding → welcome flow.
+const PREVIEW_HOME = true;
 const SUPA_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV5Y2hsanB6b3J6bWF2ZWl4bG51Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2NDk2NjQsImV4cCI6MjA5NzIyNTY2NH0.6dA1zhz5ZIwf8byFB8vhfOzPI-uPPdPihEr1b8GG_oA";
 
 /* Hardcoded fallback so the app works before admin sets any slides.
@@ -370,7 +374,7 @@ const STYLE_DEFAULTS = {
   railColor:"#F5C518", railThickness:3, railLength:100,
   welHeading:"Welcome to Grandlab",
   welSub:"Your car deserves the best — wash, coat, tint and PPF, all in one app. Log in or create an account to get started.",
-  welLogin:"Sign up / Sign in", welRegister:"Create account", welGuest:"Browse as guest", welBottomGap:30,
+  welLogin:"Sign up / Sign in", welRegister:"Create account", welGuest:"Welcome", welBottomGap:30,
   // text styling
   eyebrowBold:true, eyebrowItalic:true, eyebrowUnderline:false, eyebrowAlign:"left",
   titleBold:true, titleItalic:false, titleUnderline:false, titleAlign:"left",
@@ -648,14 +652,12 @@ function onboardingScreen(s,i){
     <div class="ob-art">${art}</div>
     <div class="ob-foot">
       <div class="ob-nav">
-        ${i>0?`<button class="btn btn-ghost btn-half" data-act="back">${STYLE.btnBack||'Back'}</button>`:``}
-        <button class="btn btn-primary btn-half" data-act="next">${isLast?(STYLE.btnStart||'Get started'):(STYLE.btnNext||'Next')}</button>
+        <button class="btn btn-primary" style="flex:1" data-act="next">${isLast?(STYLE.btnStart||'Get started'):(STYLE.btnNext||'Next')}</button>
       </div>
     </div>`;
   // when a bg exists, hide the center card so the bg is the hero (like the PPF screens)
   if(s.bgVideo||s.bgImage){ el.querySelector('.ob-art').style.visibility='hidden'; }
   el.querySelector('[data-act="next"]').onclick=()=>goTo(stepIndex+1);
-  const b=el.querySelector('[data-act="back"]'); if(b) b.onclick=()=>goTo(stepIndex-1);
   return el;
 }
 
@@ -679,7 +681,7 @@ function welcomeScreen(){
     <div class="wel-mark">${showLogo?(STYLE.logoUrl?`<img class="wel-logo" src="${STYLE.logoUrl}" alt="Grandlab">`:SPARTAN):''}</div>
     <div class="wel-actions">
       ${OTP_READY?`<button class="btn btn-primary" data-act="login">${STYLE.welLogin||'Sign up / Sign in'}</button>`:''}
-      <button class="btn ${OTP_READY?'btn-ghost':'btn-primary'}" data-act="guest">${STYLE.welGuest||'Browse as guest'}</button>
+      <button class="btn ${OTP_READY?'btn-ghost':'btn-primary'}" data-act="guest">${STYLE.welGuest||'Welcome'}</button>
     </div>`;
   const lg=el.querySelector('[data-act="login"]'); if(lg) lg.onclick=()=>openAuth(false);
   el.querySelector('[data-act="guest"]').onclick=()=>enterGuest();
@@ -863,10 +865,12 @@ function enterApp(screen){
   else routeTab(screen||'home');
 }
 function enterGuest(){
-  IS_GUEST=true;
+  // PREVIEW MODE: no login required for now. Enter the full app at Home.
+  // (Later, restore IS_GUEST=true here and require sign-in for full features.)
+  IS_GUEST=false;
   document.querySelector('.app').style.display='none';
   appRoot.classList.add('show');
-  routeTab('services');
+  routeTab('home');
 }
 
 function botnav(active){
@@ -1220,6 +1224,15 @@ Object.defineProperty(window,'stepIndex',{get:()=>cur,set:v=>{cur=v;}});
 
 /* ---------- Init ---------- */
 (async function init(){
+  // TEMP: preview the main page directly as guest
+  if(PREVIEW_HOME){
+    await fetchSlides();   // load STYLE
+    await fetchServices();
+    render(); indexScreens();
+    enterGuest();          // jumps straight into the app (guest) → Home
+    routeTab('home');
+    return;
+  }
   // already logged in? go straight to the app
   loadSession();
   if(SESSION?.access_token){
