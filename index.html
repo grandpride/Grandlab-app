@@ -923,13 +923,15 @@ function renderProfileSetup(){
   const autoPhone = SESSION?.user?.phone ? ('+'+SESSION.user.phone) : authPhone;
   let bg="";
   const imgFit=STYLE.pfBgFit||'cover';
-  const imgZoom=(STYLE.pfBgZoom||100)/100;
+  const imgZoom=(STYLE.pfBgZoom||100);
   const imgPos=`${STYLE.pfBgPosX??50}% ${STYLE.pfBgPosY??50}%`;
-  const imgStyle=`width:100%;height:100%;object-fit:${imgFit};object-position:${imgPos};transform:scale(${imgZoom})`;
+  // size: 'cover' fills (then zoom multiplies), 'contain' shows whole
+  const sizeVal = imgFit==='contain' ? `${imgZoom}% auto` : (imgZoom>100?`${imgZoom}% ${imgZoom}%`:'cover');
   if(STYLE.pfBgVideo){
-    bg=`<div class="ob-bg" style="position:fixed"><video src="${STYLE.pfBgVideo}" autoplay muted loop playsinline style="${imgStyle}"></video><div class="ob-bg-dim" style="background:rgba(0,0,0,${(STYLE.pfBgDim??55)/100})"></div></div>`;
+    const vstyle=`width:100%;height:100%;object-fit:${imgFit};object-position:${imgPos};transform:scale(${imgZoom/100})`;
+    bg=`<div class="ob-bg" style="position:fixed;overflow:hidden"><video src="${STYLE.pfBgVideo}" autoplay muted loop playsinline style="${vstyle}"></video><div class="ob-bg-dim" style="background:rgba(0,0,0,${(STYLE.pfBgDim??55)/100})"></div></div>`;
   } else if(STYLE.pfBgImage){
-    bg=`<div class="ob-bg" style="position:fixed"><img src="${STYLE.pfBgImage}" style="${imgStyle}"><div class="ob-bg-dim" style="background:rgba(0,0,0,${(STYLE.pfBgDim??55)/100})"></div></div>`;
+    bg=`<div class="ob-bg" style="position:fixed;background-image:url('${STYLE.pfBgImage}');background-size:${sizeVal};background-position:${imgPos};background-repeat:no-repeat"><div class="ob-bg-dim" style="background:rgba(0,0,0,${(STYLE.pfBgDim??55)/100})"></div></div>`;
   }
   const tStyle=`font-size:${STYLE.pfTitleSize||26}px;color:${STYLE.pfTitleColor||'#fff'};font-weight:${STYLE.pfTitleBold?800:400};font-style:${STYLE.pfTitleItalic?'italic':'normal'};text-align:${STYLE.pfTitleAlign||'left'}`;
   const sStyle=`font-size:${STYLE.pfSubSize||14}px;color:${STYLE.pfSubColor||'#8A8A8A'};text-align:${STYLE.pfTitleAlign||'left'}`;
