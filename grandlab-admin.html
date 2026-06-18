@@ -155,6 +155,7 @@
         <button class="tab" data-tab="theme" onclick="switchTab('theme')">Theme</button>
         <button class="tab" data-tab="otppage" onclick="switchTab('otppage')">OTP Page</button>
         <button class="tab" data-tab="refpage" onclick="switchTab('refpage')">Referral Page</button>
+        <button class="tab" data-tab="fillpage" onclick="switchTab('fillpage')">Fill-in Page</button>
         <button class="tab" data-tab="customers" onclick="switchTab('customers')">Customers</button>
         <button class="tab" data-tab="bookings" onclick="switchTab('bookings')">Bookings</button>
         <button class="tab" data-tab="referrals" onclick="switchTab('referrals')">Referrals</button>
@@ -276,6 +277,79 @@
           <input type="range" min="0" max="90" id="rp-bgDim" oninput="onRef2()">
         </div>
         <div class="hint">Switch the preview to Referral using the button under the phone.</div>
+      </div>
+
+      <!-- FILL-IN PAGE -->
+      <div class="panel" id="panel-fillpage">
+        <div class="section-h">Wording</div>
+        <div class="card">
+          <label>Title</label><input id="pf-title" oninput="onFill()">
+          <label>Subtitle</label><input id="pf-sub" oninput="onFill()">
+          <label>Button text</label><input id="pf-btn" oninput="onFill()">
+        </div>
+        <div class="section-h">Field labels</div>
+        <div class="card">
+          <div class="row">
+            <div><label>Name label</label><input id="pf-nameL" oninput="onFill()"></div>
+            <div><label>Name placeholder</label><input id="pf-nameP" oninput="onFill()"></div>
+          </div>
+          <div class="row" style="margin-top:8px">
+            <div><label>Email label</label><input id="pf-emailL" oninput="onFill()"></div>
+            <div><label>Email placeholder</label><input id="pf-emailP" oninput="onFill()"></div>
+          </div>
+          <label>Mobile label</label><input id="pf-phoneL" oninput="onFill()">
+          <div class="row" style="margin-top:8px">
+            <div><label>Referral label</label><input id="pf-refL" oninput="onFill()"></div>
+            <div><label>Referral placeholder</label><input id="pf-refP" oninput="onFill()"></div>
+          </div>
+        </div>
+        <div class="section-h">Title styling</div>
+        <div class="card">
+          <label>Size — <b id="lbl-pftitle">26</b>px</label>
+          <input type="range" min="18" max="44" id="pf-titleSize" oninput="onFill()">
+          <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap">
+            <button class="btn btn-ghost btn-sm" id="pfb-bold" onclick="pfStyle('pfTitleBold')"><b>B</b></button>
+            <button class="btn btn-ghost btn-sm" id="pfb-italic" onclick="pfStyle('pfTitleItalic')"><i>I</i></button>
+            <button class="btn btn-ghost btn-sm" id="pfb-l" onclick="pfAlign('left')">⬅</button>
+            <button class="btn btn-ghost btn-sm" id="pfb-c" onclick="pfAlign('center')">⬌</button>
+            <button class="btn btn-ghost btn-sm" id="pfb-r" onclick="pfAlign('right')">➡</button>
+          </div>
+          <div class="swatch-row" style="margin-top:12px">
+            <div class="swatch"><input type="color" id="pf-titleColor" oninput="onFill()"><span>Title color</span></div>
+            <div class="swatch"><input type="color" id="pf-subColor" oninput="onFill()"><span>Subtitle color</span></div>
+          </div>
+          <label style="margin-top:10px">Subtitle size — <b id="lbl-pfsub">14</b>px</label>
+          <input type="range" min="11" max="20" id="pf-subSize" oninput="onFill()">
+        </div>
+        <div class="section-h">Full-screen background</div>
+        <div class="card">
+          <label>Background photo</label>
+          <div class="upl">
+            <button class="btn btn-ghost btn-sm" onclick="document.getElementById('pfbgf').click()">Upload bg photo</button>
+            <button class="btn btn-danger btn-sm" onclick="theme.pfBgImage=null;toast('Removed');">Remove</button>
+            <input id="pfbgf" type="file" accept="image/*" style="display:none" onchange="uploadPageBg(this,'pfBgImage')">
+          </div>
+          <label>Background video (MP4)</label>
+          <div class="upl">
+            <button class="btn btn-ghost btn-sm" onclick="document.getElementById('pfbgv').click()">Upload bg video</button>
+            <button class="btn btn-danger btn-sm" onclick="theme.pfBgVideo=null;toast('Removed');">Remove</button>
+            <input id="pfbgv" type="file" accept="video/mp4,video/*" style="display:none" onchange="uploadPageBg(this,'pfBgVideo')">
+          </div>
+          <label>Darkness — <b id="lbl-pfdim">55</b>%</label>
+          <input type="range" min="0" max="90" id="pf-bgDim" oninput="onFill()">
+          <label style="margin-top:12px">Photo fit</label>
+          <select id="pf-bgFit" onchange="onFill()">
+            <option value="cover">Fill screen (crop edges)</option>
+            <option value="contain">Show whole photo (may leave gaps)</option>
+          </select>
+          <label style="margin-top:10px">Zoom — <b id="lbl-pfzoom">100</b>%</label>
+          <input type="range" min="100" max="250" id="pf-bgZoom" oninput="onFill()">
+          <label style="margin-top:10px">Position left ↔ right — <b id="lbl-pfposx">50</b>%</label>
+          <input type="range" min="0" max="100" id="pf-bgPosX" oninput="onFill()">
+          <label style="margin-top:10px">Position top ↕ bottom — <b id="lbl-pfposy">50</b>%</label>
+          <input type="range" min="0" max="100" id="pf-bgPosY" oninput="onFill()">
+        </div>
+        <div class="hint">Switch the preview to Fill-in using the button under the phone.</div>
       </div>
 
       <!-- CUSTOMERS -->
@@ -498,6 +572,7 @@
         <button id="pvWel" onclick="setPv('wel')">Welcome</button>
         <button id="pvOtp" onclick="setPv('otp')">OTP</button>
         <button id="pvRef" onclick="setPv('ref')">Referral</button>
+        <button id="pvFill" onclick="setPv('fill')">Fill-in</button>
         <button id="pvSvc" onclick="setPv('svc')">Services</button>
       </div>
     </div>
@@ -542,7 +617,16 @@ let theme = { bg:"#0A0A0A", accent:"#F5C518", text:"#FFFFFF",
   refPlaceholder:"GL2026", refApplyBtn:"Apply code", refSkipText:"I don't have one",
   refTitleSize:30, refTitleColor:"#FFFFFF", refSubSize:15, refSubColor:"#8A8A8A",
   refTitleBold:true, refTitleItalic:false, refTitleAlign:"left",
-  refShowCard:true, refBgImage:null, refBgVideo:null, refBgDim:55, refLayout:"top" };
+  refShowCard:true, refBgImage:null, refBgVideo:null, refBgDim:55, refLayout:"top",
+  pfTitle:"Complete your profile", pfSub:"Just a few details to finish setting up.",
+  pfNameLabel:"Name", pfNamePlaceholder:"Your name",
+  pfEmailLabel:"Email", pfEmailPlaceholder:"you@email.com",
+  pfPhoneLabel:"Mobile", pfRefLabel:"Referral code (optional)", pfRefPlaceholder:"Enter a friend's code",
+  pfBtn:"Continue",
+  pfTitleSize:26, pfTitleColor:"#FFFFFF", pfSubSize:14, pfSubColor:"#8A8A8A",
+  pfTitleBold:true, pfTitleItalic:false, pfTitleAlign:"left",
+  pfBgImage:null, pfBgVideo:null, pfBgDim:55,
+  pfBgFit:"cover", pfBgZoom:100, pfBgPosX:50, pfBgPosY:50 };
 let pvMode = "onb";
 let pvSlide = 0;
 
@@ -867,6 +951,7 @@ function setPv(m){pvMode=m;
   document.getElementById('pvWel').classList.toggle('on',m==='wel');
   document.getElementById('pvOtp').classList.toggle('on',m==='otp');
   document.getElementById('pvRef').classList.toggle('on',m==='ref');
+  document.getElementById('pvFill').classList.toggle('on',m==='fill');
   document.getElementById('pvSvc').classList.toggle('on',m==='svc');
   renderPreview();}
 function renderPreview(){
@@ -903,6 +988,25 @@ function renderPreview(){
         <div class="pv-btn" style="background:${theme.btnColor||theme.accent};height:${(theme.btnHeight||58)*0.8}px">${esc(theme.welLogin||'Sign up / Sign in')}</div>
         <div class="pv-btn" style="background:transparent;border:1.5px solid #333;color:${theme.text};height:${(theme.btnHeight||58)*0.8}px">${esc(theme.welGuest||'Browse as guest')}</div>
       </div>
+      </div>`;
+    return;
+  }
+  if(pvMode==='fill'){
+    let bg="";
+    const fit=theme.pfBgFit||'cover', zoom=(theme.pfBgZoom||100)/100, pos=`${theme.pfBgPosX??50}% ${theme.pfBgPosY??50}%`;
+    const ist=`width:100%;height:100%;object-fit:${fit};object-position:${pos};transform:scale(${zoom})`;
+    if(theme.pfBgVideo)bg=`<div style="position:absolute;inset:0;z-index:0;overflow:hidden"><video src="${theme.pfBgVideo}" autoplay muted loop playsinline style="${ist}"></video><div style="position:absolute;inset:0;background:rgba(0,0,0,${(theme.pfBgDim??55)/100})"></div></div>`;
+    else if(theme.pfBgImage)bg=`<div style="position:absolute;inset:0;z-index:0;overflow:hidden"><img src="${theme.pfBgImage}" style="${ist}"><div style="position:absolute;inset:0;background:rgba(0,0,0,${(theme.pfBgDim??55)/100})"></div></div>`;
+    const fld=(lbl,ph)=>`<div style="margin-top:10px"><div style="font-size:10px;color:#888;margin-bottom:3px">${esc(lbl)}</div><div style="height:32px;border:1.5px solid #2a2a2a;border-radius:9px;background:#16161a;display:flex;align-items:center;padding:0 10px;font-size:11px;color:#555">${esc(ph)}</div></div>`;
+    pv.innerHTML=`${bg}
+      <div style="position:relative;z-index:1;display:flex;flex-direction:column;flex:1;padding-top:20px;overflow-y:auto">
+        <div style="font-size:${(theme.pfTitleSize||26)*0.62}px;color:${theme.pfTitleColor||'#fff'};font-weight:${theme.pfTitleBold?800:400};font-style:${theme.pfTitleItalic?'italic':'normal'};text-align:${theme.pfTitleAlign||'left'}">${esc(theme.pfTitle||'Complete your profile')}</div>
+        <div style="margin-top:6px;font-size:${(theme.pfSubSize||14)*0.85}px;color:${theme.pfSubColor||'#8A8A8A'};text-align:${theme.pfTitleAlign||'left'}">${esc(theme.pfSub||'')}</div>
+        ${fld((theme.pfNameLabel||'Name')+' *',theme.pfNamePlaceholder||'Your name')}
+        ${fld((theme.pfEmailLabel||'Email')+' *',theme.pfEmailPlaceholder||'you@email.com')}
+        ${fld(theme.pfPhoneLabel||'Mobile','+60 12 345 6789')}
+        ${fld(theme.pfRefLabel||'Referral code (optional)',theme.pfRefPlaceholder||"Enter a friend's code")}
+        <div class="pv-btn" style="background:${theme.btnColor||theme.accent};height:${(theme.btnHeight||58)*0.7}px;margin-top:16px">${esc(theme.pfBtn||'Continue')}</div>
       </div>`;
     return;
   }
@@ -996,9 +1100,51 @@ function switchTab(t){
   else if(t==='onboarding')setPv('onb');
   else if(t==='otppage'){fillOtpControls();setPv('otp');}
   else if(t==='refpage'){fillRefControls();setPv('ref');}
+  else if(t==='fillpage'){fillFillControls();setPv('fill');}
   else if(t==='customers')loadCustomers();
   else if(t==='bookings')loadBookings();
   else if(t==='referrals')loadReferrals();
+}
+
+/* ---------- FILL-IN PAGE editing ---------- */
+function onFill(){
+  const g=id=>document.getElementById(id);
+  theme.pfTitle=g('pf-title').value; theme.pfSub=g('pf-sub').value; theme.pfBtn=g('pf-btn').value;
+  theme.pfNameLabel=g('pf-nameL').value; theme.pfNamePlaceholder=g('pf-nameP').value;
+  theme.pfEmailLabel=g('pf-emailL').value; theme.pfEmailPlaceholder=g('pf-emailP').value;
+  theme.pfPhoneLabel=g('pf-phoneL').value; theme.pfRefLabel=g('pf-refL').value; theme.pfRefPlaceholder=g('pf-refP').value;
+  theme.pfTitleSize=+g('pf-titleSize').value; g('lbl-pftitle').textContent=theme.pfTitleSize;
+  theme.pfTitleColor=g('pf-titleColor').value; theme.pfSubColor=g('pf-subColor').value;
+  theme.pfSubSize=+g('pf-subSize').value; g('lbl-pfsub').textContent=theme.pfSubSize;
+  theme.pfBgDim=+g('pf-bgDim').value; g('lbl-pfdim').textContent=theme.pfBgDim;
+  theme.pfBgFit=g('pf-bgFit').value;
+  theme.pfBgZoom=+g('pf-bgZoom').value; g('lbl-pfzoom').textContent=theme.pfBgZoom;
+  theme.pfBgPosX=+g('pf-bgPosX').value; g('lbl-pfposx').textContent=theme.pfBgPosX;
+  theme.pfBgPosY=+g('pf-bgPosY').value; g('lbl-pfposy').textContent=theme.pfBgPosY;
+  syncPfBtns(); renderPreview();
+}
+function pfStyle(key){theme[key]=!theme[key];syncPfBtns();renderPreview();}
+function pfAlign(v){theme.pfTitleAlign=v;syncPfBtns();renderPreview();}
+function syncPfBtns(){
+  const set=(id,on)=>{const e=document.getElementById(id);if(e){e.style.borderColor=on?'var(--yellow)':'var(--line)';e.style.color=on?'var(--yellow)':'var(--text)';}};
+  set('pfb-bold',theme.pfTitleBold);set('pfb-italic',theme.pfTitleItalic);
+  set('pfb-l',theme.pfTitleAlign==='left');set('pfb-c',theme.pfTitleAlign==='center');set('pfb-r',theme.pfTitleAlign==='right');
+}
+function fillFillControls(){
+  const g=id=>document.getElementById(id);
+  g('pf-title').value=theme.pfTitle||'Complete your profile'; g('pf-sub').value=theme.pfSub||''; g('pf-btn').value=theme.pfBtn||'Continue';
+  g('pf-nameL').value=theme.pfNameLabel||'Name'; g('pf-nameP').value=theme.pfNamePlaceholder||'Your name';
+  g('pf-emailL').value=theme.pfEmailLabel||'Email'; g('pf-emailP').value=theme.pfEmailPlaceholder||'you@email.com';
+  g('pf-phoneL').value=theme.pfPhoneLabel||'Mobile'; g('pf-refL').value=theme.pfRefLabel||'Referral code (optional)'; g('pf-refP').value=theme.pfRefPlaceholder||"Enter a friend's code";
+  g('pf-titleSize').value=theme.pfTitleSize||26; g('lbl-pftitle').textContent=theme.pfTitleSize||26;
+  g('pf-titleColor').value=theme.pfTitleColor||'#FFFFFF'; g('pf-subColor').value=theme.pfSubColor||'#8A8A8A';
+  g('pf-subSize').value=theme.pfSubSize||14; g('lbl-pfsub').textContent=theme.pfSubSize||14;
+  g('pf-bgDim').value=theme.pfBgDim??55; g('lbl-pfdim').textContent=theme.pfBgDim??55;
+  g('pf-bgFit').value=theme.pfBgFit||'cover';
+  g('pf-bgZoom').value=theme.pfBgZoom||100; g('lbl-pfzoom').textContent=theme.pfBgZoom||100;
+  g('pf-bgPosX').value=theme.pfBgPosX??50; g('lbl-pfposx').textContent=theme.pfBgPosX??50;
+  g('pf-bgPosY').value=theme.pfBgPosY??50; g('lbl-pfposy').textContent=theme.pfBgPosY??50;
+  syncPfBtns();
 }
 
 /* ---------- REFERRAL PAGE editing ---------- */

@@ -273,6 +273,9 @@
 
 const SUPA_URL  = "https://eychljpzorzmaveixlnu.supabase.co";
 const IS_LIVE = true;
+// Set to true once OTP (WhatsApp/SMS) is connected & working.
+// While false: the Sign in button is hidden, everyone uses guest mode.
+const OTP_READY = false;
 const SUPA_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV5Y2hsanB6b3J6bWF2ZWl4bG51Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2NDk2NjQsImV4cCI6MjA5NzIyNTY2NH0.6dA1zhz5ZIwf8byFB8vhfOzPI-uPPdPihEr1b8GG_oA";
 
 /* Hardcoded fallback so the app works before admin sets any slides.
@@ -337,7 +340,17 @@ const STYLE_DEFAULTS = {
   refPlaceholder:"GL2026", refApplyBtn:"Apply code", refSkipText:"I don't have one",
   refTitleSize:30, refTitleColor:"#FFFFFF", refSubSize:15, refSubColor:"#8A8A8A",
   refTitleBold:true, refTitleItalic:false, refTitleAlign:"left",
-  refShowCard:true, refBgImage:null, refBgVideo:null, refBgDim:55, refLayout:"top"
+  refShowCard:true, refBgImage:null, refBgVideo:null, refBgDim:55, refLayout:"top",
+  // Profile / fill-in page
+  pfTitle:"Complete your profile", pfSub:"Just a few details to finish setting up.",
+  pfNameLabel:"Name", pfNamePlaceholder:"Your name",
+  pfEmailLabel:"Email", pfEmailPlaceholder:"you@email.com",
+  pfPhoneLabel:"Mobile", pfRefLabel:"Referral code (optional)", pfRefPlaceholder:"Enter a friend's code",
+  pfBtn:"Continue",
+  pfTitleSize:26, pfTitleColor:"#FFFFFF", pfSubSize:14, pfSubColor:"#8A8A8A",
+  pfTitleBold:true, pfTitleItalic:false, pfTitleAlign:"left",
+  pfBgImage:null, pfBgVideo:null, pfBgDim:55,
+  pfBgFit:"cover", pfBgZoom:100, pfBgPosX:50, pfBgPosY:50
 };
 let STYLE = Object.assign({}, STYLE_DEFAULTS);
 
@@ -422,12 +435,15 @@ async function fetchSlides(){
   applyStyle();
 }
 
+const OTP_CHANNEL = "sms";  // "whatsapp" or "sms"
 async function sendOtp(phone){
-  // Supabase phone auth: sends SMS OTP
+  // Supabase phone auth — sends OTP via the configured channel
+  const body = { phone };
+  if(OTP_CHANNEL==="whatsapp") body.channel = "whatsapp";
   const r = await fetch(`${SUPA_URL}/auth/v1/otp`,{
     method:"POST",
     headers:{ "Content-Type":"application/json", apikey:SUPA_ANON },
-    body:JSON.stringify({ phone })
+    body:JSON.stringify(body)
   });
   return r.ok;
 }
@@ -435,7 +451,7 @@ async function verifyOtp(phone, token){
   const r = await fetch(`${SUPA_URL}/auth/v1/verify`,{
     method:"POST",
     headers:{ "Content-Type":"application/json", apikey:SUPA_ANON },
-    body:JSON.stringify({ phone, token, type:"sms" })
+    body:JSON.stringify({ phone, token, type:(OTP_CHANNEL==="whatsapp"?"whatsapp":"sms") })
   });
   if(!r.ok) return null;
   return r.json(); // { access_token, refresh_token, user, ... }
@@ -576,10 +592,10 @@ function welcomeScreen(){
     </div>
     <div class="wel-mark">${showLogo?(STYLE.logoUrl?`<img class="wel-logo" src="${STYLE.logoUrl}" alt="Grandlab">`:SPARTAN):''}</div>
     <div class="wel-actions">
-      <button class="btn btn-primary" data-act="login">${STYLE.welLogin||'Sign up / Sign in'}</button>
-      <button class="btn btn-ghost" data-act="guest">${STYLE.welGuest||'Browse as guest'}</button>
+      ${OTP_READY?`<button class="btn btn-primary" data-act="login">${STYLE.welLogin||'Sign up / Sign in'}</button>`:''}
+      <button class="btn ${OTP_READY?'btn-ghost':'btn-primary'}" data-act="guest">${STYLE.welGuest||'Browse as guest'}</button>
     </div>`;
-  el.querySelector('[data-act="login"]').onclick=()=>openAuth(false);
+  const lg=el.querySelector('[data-act="login"]'); if(lg) lg.onclick=()=>openAuth(false);
   el.querySelector('[data-act="guest"]').onclick=()=>enterGuest();
   return el;
 }
@@ -905,16 +921,29 @@ async function saveAccount(){
 /* Profile setup (new user, after OTP) */
 function renderProfileSetup(){
   const autoPhone = SESSION?.user?.phone ? ('+'+SESSION.user.phone) : authPhone;
+  let bg="";
+  const imgFit=STYLE.pfBgFit||'cover';
+  const imgZoom=(STYLE.pfBgZoom||100)/100;
+  const imgPos=`${STYLE.pfBgPosX??50}% ${STYLE.pfBgPosY??50}%`;
+  const imgStyle=`width:100%;height:100%;object-fit:${imgFit};object-position:${imgPos};transform:scale(${imgZoom})`;
+  if(STYLE.pfBgVideo){
+    bg=`<div class="ob-bg" style="position:fixed"><video src="${STYLE.pfBgVideo}" autoplay muted loop playsinline style="${imgStyle}"></video><div class="ob-bg-dim" style="background:rgba(0,0,0,${(STYLE.pfBgDim??55)/100})"></div></div>`;
+  } else if(STYLE.pfBgImage){
+    bg=`<div class="ob-bg" style="position:fixed"><img src="${STYLE.pfBgImage}" style="${imgStyle}"><div class="ob-bg-dim" style="background:rgba(0,0,0,${(STYLE.pfBgDim??55)/100})"></div></div>`;
+  }
+  const tStyle=`font-size:${STYLE.pfTitleSize||26}px;color:${STYLE.pfTitleColor||'#fff'};font-weight:${STYLE.pfTitleBold?800:400};font-style:${STYLE.pfTitleItalic?'italic':'normal'};text-align:${STYLE.pfTitleAlign||'left'}`;
+  const sStyle=`font-size:${STYLE.pfSubSize||14}px;color:${STYLE.pfSubColor||'#8A8A8A'};text-align:${STYLE.pfTitleAlign||'left'}`;
   appRoot.innerHTML=`
-    <div class="app-scroll">
-      <div class="app-h1">Complete your profile</div>
-      <div class="app-sub">Just a few details to finish setting up.</div>
-      <div class="field"><label>Name *</label><input id="ps-name" placeholder="Your name"></div>
-      <div class="field"><label>Email *</label><input id="ps-email" type="email" placeholder="you@email.com"></div>
-      <div class="field"><label>Mobile</label><input id="ps-phone" value="${esc(autoPhone)}"></div>
-      <div class="field"><label>Referral code (optional)</label><input id="ps-ref" value="${esc(referralCode||'')}" placeholder="Enter a friend's code"></div>
+    ${bg}
+    <div class="app-scroll" style="position:relative;z-index:1">
+      <div class="app-h1" style="${tStyle}">${STYLE.pfTitle||'Complete your profile'}</div>
+      <div class="app-sub" style="${sStyle}">${STYLE.pfSub||'Just a few details to finish setting up.'}</div>
+      <div class="field"><label>${STYLE.pfNameLabel||'Name'} *</label><input id="ps-name" placeholder="${STYLE.pfNamePlaceholder||'Your name'}"></div>
+      <div class="field"><label>${STYLE.pfEmailLabel||'Email'} *</label><input id="ps-email" type="email" placeholder="${STYLE.pfEmailPlaceholder||'you@email.com'}"></div>
+      <div class="field"><label>${STYLE.pfPhoneLabel||'Mobile'}</label><input id="ps-phone" value="${esc(autoPhone)}"></div>
+      <div class="field"><label>${STYLE.pfRefLabel||'Referral code (optional)'}</label><input id="ps-ref" value="${esc(referralCode||'')}" placeholder="${STYLE.pfRefPlaceholder||"Enter a friend's code"}"></div>
       <div class="helper err" id="ps-err" style="margin-top:10px"></div>
-      <button class="btn btn-primary" style="margin-top:18px" id="ps-save">Continue</button>
+      <button class="btn btn-primary" style="margin-top:18px" id="ps-save">${STYLE.pfBtn||'Continue'}</button>
     </div>`;
   document.getElementById('ps-save').onclick=async()=>{
     const name=document.getElementById('ps-name').value.trim();
@@ -927,7 +956,6 @@ function renderProfileSetup(){
     if(ref) fields.referred_by=ref;
     const ok=await saveProfile(fields);
     if(ref && ok){
-      // log referral for rewarding later
       try{ await fetch(`${SUPA_URL}/rest/v1/gl_referrals`,{method:"POST",
         headers:authHeaders(),body:JSON.stringify({referrer_code:ref,new_user_id:SESSION.user.id})}); }catch(e){}
     }
