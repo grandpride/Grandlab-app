@@ -156,6 +156,7 @@
         <button class="tab" data-tab="otppage" onclick="switchTab('otppage')">OTP Page</button>
         <button class="tab" data-tab="refpage" onclick="switchTab('refpage')">Referral Page</button>
         <button class="tab" data-tab="fillpage" onclick="switchTab('fillpage')">Fill-in Page</button>
+        <button class="tab" data-tab="homepage" onclick="switchTab('homepage')">Home Page</button>
         <button class="tab" data-tab="customers" onclick="switchTab('customers')">Customers</button>
         <button class="tab" data-tab="bookings" onclick="switchTab('bookings')">Bookings</button>
         <button class="tab" data-tab="referrals" onclick="switchTab('referrals')">Referrals</button>
@@ -350,6 +351,56 @@
           <input type="range" min="0" max="100" id="pf-bgPosY" oninput="onFill()">
         </div>
         <div class="hint">Switch the preview to Fill-in using the button under the phone.</div>
+      </div>
+
+      <!-- HOME PAGE -->
+      <div class="panel" id="panel-homepage">
+        <div class="section-h">Greeting</div>
+        <div class="card">
+          <div class="row">
+            <div><label>Greeting word</label><input id="hm-greeting" oninput="onHome()"></div>
+            <div><label>Member tier label</label><input id="hm-tier" oninput="onHome()"></div>
+          </div>
+          <label>Welcome subtitle</label><input id="hm-welsub" oninput="onHome()">
+        </div>
+        <div class="section-h">Subscribe banner</div>
+        <div class="card">
+          <label><input type="checkbox" id="hm-showsub" style="width:auto;margin-right:7px" onchange="onHome()">Show subscribe banner</label>
+          <label style="margin-top:8px">Banner title</label><input id="hm-subtext" oninput="onHome()">
+          <label>Banner subtitle</label><input id="hm-subsub" oninput="onHome()">
+        </div>
+        <div class="section-h">Services section</div>
+        <div class="card">
+          <label>Section title</label><input id="hm-svctitle" oninput="onHome()">
+          <div class="hint">Service tiles pull from your Services tab (first 8). Icons auto-match the service name.</div>
+        </div>
+        <div class="section-h">Wallet bar</div>
+        <div class="card">
+          <label><input type="checkbox" id="hm-showwallet" style="width:auto;margin-right:7px" onchange="onHome()">Show wallet bar</label>
+          <div class="row" style="margin-top:8px">
+            <div><label>Wallet label</label><input id="hm-walletlabel" oninput="onHome()"></div>
+            <div><label>Subscribe button</label><input id="hm-subbtn" oninput="onHome()"></div>
+          </div>
+          <div class="hint">A referral QR button shows here automatically once a customer has a referral code.</div>
+        </div>
+        <div class="section-h">Highlights</div>
+        <div class="card">
+          <label><input type="checkbox" id="hm-showhl" style="width:auto;margin-right:7px" onchange="onHome()">Show highlights carousel</label>
+          <label style="margin-top:8px">Section title</label><input id="hm-hltitle" oninput="onHome()">
+        </div>
+        <div class="section-h">Bottom cards</div>
+        <div class="card">
+          <label><input type="checkbox" id="hm-showcards" style="width:auto;margin-right:7px" onchange="onHome()">Show bottom cards</label>
+          <div class="row" style="margin-top:8px">
+            <div><label>Card 1 title</label><input id="hm-c1t" oninput="onHome()"></div>
+            <div><label>Card 1 subtitle</label><input id="hm-c1s" oninput="onHome()"></div>
+          </div>
+          <div class="row" style="margin-top:8px">
+            <div><label>Card 2 title</label><input id="hm-c2t" oninput="onHome()"></div>
+            <div><label>Card 2 subtitle</label><input id="hm-c2s" oninput="onHome()"></div>
+          </div>
+        </div>
+        <div class="hint">Switch the preview to Home using the button under the phone.</div>
       </div>
 
       <!-- CUSTOMERS -->
@@ -573,6 +624,7 @@
         <button id="pvOtp" onclick="setPv('otp')">OTP</button>
         <button id="pvRef" onclick="setPv('ref')">Referral</button>
         <button id="pvFill" onclick="setPv('fill')">Fill-in</button>
+        <button id="pvHome" onclick="setPv('home')">Home</button>
         <button id="pvSvc" onclick="setPv('svc')">Services</button>
       </div>
     </div>
@@ -626,7 +678,16 @@ let theme = { bg:"#0A0A0A", accent:"#F5C518", text:"#FFFFFF",
   pfTitleSize:26, pfTitleColor:"#FFFFFF", pfSubSize:14, pfSubColor:"#8A8A8A",
   pfTitleBold:true, pfTitleItalic:false, pfTitleAlign:"left",
   pfBgImage:null, pfBgVideo:null, pfBgDim:55,
-  pfBgFit:"cover", pfBgZoom:100, pfBgPosX:50, pfBgPosY:50 };
+  pfBgFit:"cover", pfBgZoom:100, pfBgPosX:50, pfBgPosY:50,
+  homeGreeting:"Hi", homeWelcomeSub:"Welcome back to Grandlab",
+  homeSubscribeText:"Subscribe for RM168", homeSubscribeSub:"Free car wash & amazing gifts",
+  homeServicesTitle:"Our Services",
+  homeWalletLabel:"Wallet Balance", homeSubscribeBtn:"Subscribe Now",
+  homeHighlightsTitle:"Highlights",
+  homeCard1Title:"Get rewarded", homeCard1Sub:"with every spending",
+  homeCard2Title:"Send gifts", homeCard2Sub:"to friends & loved ones",
+  homeShowSubscribe:true, homeShowWallet:true, homeShowHighlights:true, homeShowCards:true,
+  homeMemberTier:"Member" };
 let pvMode = "onb";
 let pvSlide = 0;
 
@@ -952,6 +1013,7 @@ function setPv(m){pvMode=m;
   document.getElementById('pvOtp').classList.toggle('on',m==='otp');
   document.getElementById('pvRef').classList.toggle('on',m==='ref');
   document.getElementById('pvFill').classList.toggle('on',m==='fill');
+  document.getElementById('pvHome').classList.toggle('on',m==='home');
   document.getElementById('pvSvc').classList.toggle('on',m==='svc');
   renderPreview();}
 function renderPreview(){
@@ -988,6 +1050,35 @@ function renderPreview(){
         <div class="pv-btn" style="background:${theme.btnColor||theme.accent};height:${(theme.btnHeight||58)*0.8}px">${esc(theme.welLogin||'Sign up / Sign in')}</div>
         <div class="pv-btn" style="background:transparent;border:1.5px solid #333;color:${theme.text};height:${(theme.btnHeight||58)*0.8}px">${esc(theme.welGuest||'Browse as guest')}</div>
       </div>
+      </div>`;
+    return;
+  }
+  if(pvMode==='home'){
+    const tile=(ic,nm)=>`<div style="background:#141414;border:1px solid #2a2a2a;border-radius:11px;padding:9px 4px;display:flex;flex-direction:column;align-items:center;gap:5px"><div style="font-size:19px">${ic}</div><div style="font-size:8px;text-align:center;font-weight:600">${esc(nm)}</div></div>`;
+    const svcNames=(services&&services.length?services.slice(0,8).map(s=>s.name):['Car Wash','Coating','Tinted','PPF']);
+    const tiles=svcNames.map(n=>tile('🚗',n||'')).join('');
+    pv.innerHTML=`
+      <div style="flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:0">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start">
+          <div><div style="font-size:17px;font-weight:800">${esc(theme.homeGreeting||'Hi')}, Jimmy 👋</div>
+          <div style="font-size:11px;color:#8A8A8A;margin-top:2px">${esc(theme.homeWelcomeSub||'')}</div></div>
+          <div style="width:32px;height:32px;border-radius:50%;background:#1C1C1C;display:flex;align-items:center;justify-content:center;color:${theme.accent};font-weight:700">J</div>
+        </div>
+        <div style="background:linear-gradient(135deg,#1a1a1d,#0d0d0d);border:1px solid #2a2a2a;border-radius:14px;padding:12px;margin-top:12px">
+          <div style="display:flex;justify-content:space-between">
+            <div><div style="font-size:9px;color:${theme.accent};text-transform:uppercase;font-weight:700">${esc(theme.homeMemberTier||'Member')}</div>
+            <div style="font-size:13px;font-weight:700">Jimmy Kuek</div></div>
+            <div style="font-size:11px;color:${theme.accent};font-weight:700">⭐ 0</div>
+          </div>
+          <div style="font-size:10px;color:#8A8A8A;margin-top:10px">No vehicle added yet</div>
+          <div style="margin-top:8px;color:${theme.accent};font-size:11px;font-weight:600">+ Add Vehicle</div>
+        </div>
+        ${theme.homeShowSubscribe!==false?`<div style="background:linear-gradient(135deg,${theme.accent},${theme.btnColor||theme.accent});color:#111;border-radius:13px;padding:12px;margin-top:12px;display:flex;justify-content:space-between;align-items:center"><div><div style="font-size:13px;font-weight:800">${esc(theme.homeSubscribeText||'')}</div><div style="font-size:10px;font-weight:600;opacity:.85">${esc(theme.homeSubscribeSub||'')}</div></div><div style="font-size:20px">›</div></div>`:''}
+        <div style="font-size:13px;font-weight:800;margin-top:16px">${esc(theme.homeServicesTitle||'Our Services')}</div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-top:10px">${tiles}</div>
+        ${theme.homeShowWallet!==false?`<div style="background:#141414;border:1px solid #2a2a2a;border-radius:13px;padding:11px 13px;margin-top:14px;display:flex;justify-content:space-between;align-items:center"><div><div style="font-size:10px;color:#8A8A8A">${esc(theme.homeWalletLabel||'')}</div><div style="font-size:16px;font-weight:800">RM 0.00</div></div><div style="display:flex;gap:6px"><div style="background:#1C1C1C;border:1px solid #2a2a2a;border-radius:8px;padding:6px 9px;font-size:10px;font-weight:600">⊞ QR</div><div style="background:${theme.accent};color:#111;border-radius:8px;padding:6px 10px;font-size:10px;font-weight:700">${esc(theme.homeSubscribeBtn||'')}</div></div></div>`:''}
+        ${theme.homeShowHighlights!==false?`<div style="font-size:13px;font-weight:800;margin-top:16px">${esc(theme.homeHighlightsTitle||'Highlights')}</div><div style="display:flex;gap:9px;margin-top:10px;overflow:hidden"><div style="min-width:150px;height:80px;border-radius:12px;background:linear-gradient(135deg,#3a0d0d,#7a1f1f);display:flex;align-items:flex-end;padding:10px"><div style="font-size:11px;font-weight:800;color:#fff">Free Wash</div></div><div style="min-width:150px;height:80px;border-radius:12px;background:linear-gradient(135deg,#0d1a3a,#1f3a7a)"></div></div>`:''}
+        ${theme.homeShowCards!==false?`<div style="display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:14px"><div style="background:#141414;border:1px solid #2a2a2a;border-radius:13px;padding:12px"><div style="font-size:12px;font-weight:700">${esc(theme.homeCard1Title||'')}</div><div style="font-size:9px;color:#8A8A8A;margin-top:3px">${esc(theme.homeCard1Sub||'')}</div></div><div style="background:#141414;border:1px solid #2a2a2a;border-radius:13px;padding:12px"><div style="font-size:12px;font-weight:700">${esc(theme.homeCard2Title||'')}</div><div style="font-size:9px;color:#8A8A8A;margin-top:3px">${esc(theme.homeCard2Sub||'')}</div></div></div>`:''}
       </div>`;
     return;
   }
@@ -1105,9 +1196,35 @@ function switchTab(t){
   else if(t==='otppage'){fillOtpControls();setPv('otp');}
   else if(t==='refpage'){fillRefControls();setPv('ref');}
   else if(t==='fillpage'){fillFillControls();setPv('fill');}
+  else if(t==='homepage'){fillHomeControls();setPv('home');}
   else if(t==='customers')loadCustomers();
   else if(t==='bookings')loadBookings();
   else if(t==='referrals')loadReferrals();
+}
+
+/* ---------- HOME PAGE editing ---------- */
+function onHome(){
+  const g=id=>document.getElementById(id);
+  theme.homeGreeting=g('hm-greeting').value; theme.homeMemberTier=g('hm-tier').value; theme.homeWelcomeSub=g('hm-welsub').value;
+  theme.homeShowSubscribe=g('hm-showsub').checked; theme.homeSubscribeText=g('hm-subtext').value; theme.homeSubscribeSub=g('hm-subsub').value;
+  theme.homeServicesTitle=g('hm-svctitle').value;
+  theme.homeShowWallet=g('hm-showwallet').checked; theme.homeWalletLabel=g('hm-walletlabel').value; theme.homeSubscribeBtn=g('hm-subbtn').value;
+  theme.homeShowHighlights=g('hm-showhl').checked; theme.homeHighlightsTitle=g('hm-hltitle').value;
+  theme.homeShowCards=g('hm-showcards').checked;
+  theme.homeCard1Title=g('hm-c1t').value; theme.homeCard1Sub=g('hm-c1s').value;
+  theme.homeCard2Title=g('hm-c2t').value; theme.homeCard2Sub=g('hm-c2s').value;
+  renderPreview();
+}
+function fillHomeControls(){
+  const g=id=>document.getElementById(id);
+  g('hm-greeting').value=theme.homeGreeting||'Hi'; g('hm-tier').value=theme.homeMemberTier||'Member'; g('hm-welsub').value=theme.homeWelcomeSub||'';
+  g('hm-showsub').checked=theme.homeShowSubscribe!==false; g('hm-subtext').value=theme.homeSubscribeText||''; g('hm-subsub').value=theme.homeSubscribeSub||'';
+  g('hm-svctitle').value=theme.homeServicesTitle||'Our Services';
+  g('hm-showwallet').checked=theme.homeShowWallet!==false; g('hm-walletlabel').value=theme.homeWalletLabel||''; g('hm-subbtn').value=theme.homeSubscribeBtn||'';
+  g('hm-showhl').checked=theme.homeShowHighlights!==false; g('hm-hltitle').value=theme.homeHighlightsTitle||'Highlights';
+  g('hm-showcards').checked=theme.homeShowCards!==false;
+  g('hm-c1t').value=theme.homeCard1Title||''; g('hm-c1s').value=theme.homeCard1Sub||'';
+  g('hm-c2t').value=theme.homeCard2Title||''; g('hm-c2s').value=theme.homeCard2Sub||'';
 }
 
 /* ---------- FILL-IN PAGE editing ---------- */

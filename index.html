@@ -248,6 +248,58 @@
     padding:14px;margin-top:16px;font-size:13px;color:var(--muted);}
   .guest-banner b{color:var(--yellow);cursor:pointer;}
 
+  /* ===== HOME PAGE rich sections ===== */
+  .member-card{background:linear-gradient(135deg,#1a1a1d,#0d0d0d);border:1px solid var(--line);
+    border-radius:18px;padding:16px;margin-top:16px;}
+  .member-top{display:flex;justify-content:space-between;align-items:flex-start;}
+  .member-tier{font-size:11px;color:var(--yellow);text-transform:uppercase;letter-spacing:.08em;font-weight:700;}
+  .member-name{font-size:17px;font-weight:700;margin-top:2px;}
+  .member-pts{font-size:14px;font-weight:700;color:var(--yellow);}
+  .veh-list{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px;}
+  .veh-chip{background:var(--surface2);border:1px solid var(--line);border-radius:10px;
+    padding:7px 10px;font-size:13px;display:flex;align-items:center;gap:8px;}
+  .veh-x{color:var(--muted);cursor:pointer;font-size:12px;}
+  .veh-empty{font-size:13px;color:var(--muted);padding:4px 0;}
+  .add-veh{margin-top:12px;color:var(--yellow);font-size:14px;font-weight:600;cursor:pointer;}
+  .subscribe-banner{background:linear-gradient(135deg,var(--yellow),var(--yellow-dim));color:#111;
+    border-radius:16px;padding:16px;margin-top:16px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;}
+  .sub-title{font-size:16px;font-weight:800;}
+  .sub-sub{font-size:12px;font-weight:600;opacity:.85;margin-top:2px;}
+  .sub-arrow{font-size:26px;font-weight:700;}
+  .svc-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:14px;}
+  .svc-tile{background:var(--surface);border:1px solid var(--line);border-radius:14px;
+    padding:12px 6px;display:flex;flex-direction:column;align-items:center;gap:7px;cursor:pointer;transition:.12s;}
+  .svc-tile:active{transform:scale(.95);}
+  .svc-tile-ic{font-size:26px;}
+  .svc-tile-nm{font-size:11px;text-align:center;font-weight:600;line-height:1.2;}
+  .wallet-bar{background:var(--surface);border:1px solid var(--line);border-radius:16px;
+    padding:14px 16px;margin-top:18px;display:flex;align-items:center;justify-content:space-between;}
+  .wb-label{font-size:12px;color:var(--muted);}
+  .wb-amt{font-size:20px;font-weight:800;margin-top:2px;}
+  .wb-actions{display:flex;gap:8px;align-items:center;}
+  .wb-qr{background:var(--surface2);border:1px solid var(--line);border-radius:10px;padding:8px 12px;
+    font-size:13px;font-weight:600;cursor:pointer;}
+  .wb-sub{background:var(--yellow);color:#111;border-radius:10px;padding:8px 14px;font-size:13px;font-weight:700;cursor:pointer;}
+  .highlights{display:flex;gap:12px;margin-top:12px;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:4px;}
+  .hl-card{min-width:220px;height:120px;border-radius:16px;display:flex;align-items:flex-end;padding:14px;
+    background-size:cover;background-position:center;}
+  .hl-1{background:linear-gradient(135deg,#3a0d0d,#7a1f1f);}
+  .hl-2{background:linear-gradient(135deg,#0d1a3a,#1f3a7a);}
+  .hl-tx{font-size:15px;font-weight:800;color:#fff;text-shadow:0 1px 4px rgba(0,0,0,.5);}
+  .home-cards{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:18px;}
+  .hc{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:16px;cursor:pointer;transition:.12s;}
+  .hc:active{transform:scale(.97);}
+  .hc-t{font-size:15px;font-weight:700;}
+  .hc-s{font-size:12px;color:var(--muted);margin-top:4px;line-height:1.4;}
+  /* QR overlay */
+  .qr-overlay{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:200;display:flex;
+    align-items:center;justify-content:center;padding:30px;}
+  .qr-box{background:#fff;border-radius:22px;padding:24px;text-align:center;max-width:300px;width:100%;}
+  .qr-title{color:#111;font-size:17px;font-weight:800;}
+  .qr-code{margin:16px auto;display:flex;justify-content:center;}
+  .qr-code-text{color:#111;font-size:20px;font-weight:800;letter-spacing:.1em;}
+  .qr-hint{color:#666;font-size:12px;margin-top:8px;line-height:1.4;}
+
   .toast{position:fixed;left:50%;bottom:calc(36px + env(safe-area-inset-bottom));
     transform:translateX(-50%) translateY(20px);background:var(--surface2);
     color:var(--text);border:1px solid var(--line);padding:13px 20px;border-radius:14px;
@@ -255,6 +307,7 @@
     box-shadow:0 20px 40px -20px #000;max-width:84%;text-align:center;}
   .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
 </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 </head>
 <body>
 <div class="app">
@@ -350,7 +403,17 @@ const STYLE_DEFAULTS = {
   pfTitleSize:26, pfTitleColor:"#FFFFFF", pfSubSize:14, pfSubColor:"#8A8A8A",
   pfTitleBold:true, pfTitleItalic:false, pfTitleAlign:"left",
   pfBgImage:null, pfBgVideo:null, pfBgDim:55,
-  pfBgFit:"cover", pfBgZoom:100, pfBgPosX:50, pfBgPosY:50
+  pfBgFit:"cover", pfBgZoom:100, pfBgPosX:50, pfBgPosY:50,
+  // Home page content
+  homeGreeting:"Hi", homeWelcomeSub:"Welcome back to Grandlab",
+  homeSubscribeText:"Subscribe for RM168", homeSubscribeSub:"Free car wash & amazing gifts",
+  homeServicesTitle:"Our Services",
+  homeWalletLabel:"Wallet Balance", homeSubscribeBtn:"Subscribe Now",
+  homeHighlightsTitle:"Highlights",
+  homeCard1Title:"Get rewarded", homeCard1Sub:"with every spending",
+  homeCard2Title:"Send gifts", homeCard2Sub:"to friends & loved ones",
+  homeShowSubscribe:true, homeShowWallet:true, homeShowHighlights:true, homeShowCards:true,
+  homeMemberTier:"Member"
 };
 let STYLE = Object.assign({}, STYLE_DEFAULTS);
 
@@ -498,6 +561,29 @@ async function fetchServices(){
   }catch(e){}
   return SERVICES;
 }
+let VEHICLES=[];
+async function fetchVehicles(){
+  if(!SESSION?.user?.id){VEHICLES=[];return VEHICLES;}
+  try{
+    const r=await fetch(`${SUPA_URL}/rest/v1/gl_vehicles?select=*&user_id=eq.${SESSION.user.id}&order=created_at.desc`,{headers:authHeaders()});
+    if(r.ok) VEHICLES=await r.json();
+  }catch(e){}
+  return VEHICLES;
+}
+async function addVehicle(v){
+  if(!SESSION?.user?.id) return false;
+  try{
+    const r=await fetch(`${SUPA_URL}/rest/v1/gl_vehicles`,{method:"POST",
+      headers:Object.assign(authHeaders(),{Prefer:"return=representation"}),
+      body:JSON.stringify(Object.assign({user_id:SESSION.user.id},v))});
+    if(r.ok){const rows=await r.json();if(rows[0])VEHICLES.unshift(rows[0]);return true;}
+  }catch(e){}
+  return false;
+}
+async function deleteVehicle(id){
+  try{ await fetch(`${SUPA_URL}/rest/v1/gl_vehicles?id=eq.${id}`,{method:"DELETE",headers:authHeaders()});
+    VEHICLES=VEHICLES.filter(v=>v.id!==id); return true; }catch(e){ return false; }
+}
 function logout(){
   localStorage.removeItem('gl_session'); SESSION=null; PROFILE=null; IS_GUEST=false;
   location.reload();
@@ -602,6 +688,8 @@ function welcomeScreen(){
 
 let authPhone="";
 let referralCode="";   // captured at signup, sent with profile
+// if arriving via a referral QR link (?ref=CODE), capture it
+try{ const _rp=new URLSearchParams(location.search).get('ref'); if(_rp) referralCode=_rp.toUpperCase(); }catch(e){}
 
 function referralScreen(){
   const el=document.createElement('div'); el.className="screen auth ref-"+(STYLE.refLayout||'top'); el.dataset.kind="referral";
@@ -808,34 +896,166 @@ function priceLabel(s){
 }
 
 async function renderHome(){
-  const name = PROFILE?.name ? PROFILE.name.split(' ')[0] : 'there';
+  const name = PROFILE?.name ? PROFILE.name.split(' ')[0] : (IS_GUEST?'Guest':'there');
   const initial = (PROFILE?.name||'G')[0].toUpperCase();
   if(!SERVICES.length) await fetchServices();
-  const featured = SERVICES.slice(0,3);
+  if(!IS_GUEST) await fetchVehicles();
+  const refCode = PROFILE?.referral_code || '';
+
+  // member card with vehicles inside
+  const vehiclesHtml = VEHICLES.length
+    ? VEHICLES.map(v=>`<div class="veh-chip"><span>🚗 ${esc(v.plate||v.model||'Vehicle')}</span><span class="veh-x" onclick="onDelVehicle('${v.id}')">✕</span></div>`).join('')
+    : `<div class="veh-empty">No vehicle added yet</div>`;
+
+  // services grid (icons) - use first 8 services
+  const grid = SERVICES.slice(0,8).map(s=>`
+    <div class="svc-tile" onclick="openService('${s.id}')">
+      <div class="svc-tile-ic">${s.icon||serviceEmoji(s.name)}</div>
+      <div class="svc-tile-nm">${esc(s.name||'')}</div>
+    </div>`).join('') || '<div class="guest-banner" style="grid-column:1/-1">No services yet. Add them in the admin.</div>';
+
   appRoot.innerHTML=`
     <div class="app-scroll">
+      <!-- greeting -->
       <div class="greet-row">
         <div>
-          <div class="app-h1">Hi, ${esc(name)} 👋</div>
-          <div class="app-sub">Welcome back to Grandlab</div>
+          <div class="app-h1">${esc(STYLE.homeGreeting||'Hi')}, ${esc(name)} 👋</div>
+          <div class="app-sub">${esc(STYLE.homeWelcomeSub||'')}</div>
         </div>
         <div class="avatar">${esc(initial)}</div>
       </div>
-      <div class="wallet-card">
-        <div class="lbl">Grandlab Wallet</div>
-        <div class="amt">RM 0.00</div>
-        <div class="pts">⭐ 0 points</div>
+
+      <!-- member card (always shows, vehicles inside) -->
+      <div class="member-card">
+        <div class="member-top">
+          <div>
+            <div class="member-tier">${esc(STYLE.homeMemberTier||'Member')}</div>
+            <div class="member-name">${esc(PROFILE?.name||(IS_GUEST?'Guest user':'Member'))}</div>
+          </div>
+          <div class="member-pts">⭐ ${PROFILE?.points||0}</div>
+        </div>
+        <div class="veh-list">${vehiclesHtml}</div>
+        <div class="add-veh" onclick="openAddVehicle()">+ Add Vehicle</div>
       </div>
-      <div class="quick-grid">
-        <div class="quick" onclick="routeTab('services')"><span class="ic">🧴</span><span class="t">Book a service</span></div>
-        <div class="quick" onclick="routeTab('bookings')"><span class="ic">📋</span><span class="t">My bookings</span></div>
-        <div class="quick" onclick="toast('Wallet coming soon')"><span class="ic">💳</span><span class="t">Top up wallet</span></div>
-        <div class="quick" onclick="routeTab('account')"><span class="ic">🎁</span><span class="t">Refer & earn</span></div>
-      </div>
-      <div class="sec-title">Popular services</div>
-      ${featured.length? featured.map(s=>svcCard(s)).join('') : '<div class="guest-banner">No services yet. Add them in the admin.</div>'}
+
+      <!-- subscribe banner -->
+      ${STYLE.homeShowSubscribe!==false?`
+      <div class="subscribe-banner" onclick="toast('Subscription coming soon')">
+        <div>
+          <div class="sub-title">${esc(STYLE.homeSubscribeText||'Subscribe')}</div>
+          <div class="sub-sub">${esc(STYLE.homeSubscribeSub||'')}</div>
+        </div>
+        <div class="sub-arrow">›</div>
+      </div>`:''}
+
+      <!-- services grid -->
+      <div class="sec-title">${esc(STYLE.homeServicesTitle||'Our Services')}</div>
+      <div class="svc-grid">${grid}</div>
+
+      <!-- wallet bar + QR -->
+      ${STYLE.homeShowWallet!==false?`
+      <div class="wallet-bar">
+        <div>
+          <div class="wb-label">${esc(STYLE.homeWalletLabel||'Wallet Balance')}</div>
+          <div class="wb-amt">RM ${(PROFILE?.wallet||0).toFixed ? (PROFILE.wallet||0).toFixed(2) : '0.00'}</div>
+        </div>
+        <div class="wb-actions">
+          ${refCode?`<div class="wb-qr" onclick="showReferralQR()" title="My referral QR">⊞ QR</div>`:''}
+          <div class="wb-sub" onclick="toast('Subscription coming soon')">${esc(STYLE.homeSubscribeBtn||'Subscribe')}</div>
+        </div>
+      </div>`:''}
+
+      <!-- highlights carousel -->
+      ${STYLE.homeShowHighlights!==false?`
+      <div class="sec-title">${esc(STYLE.homeHighlightsTitle||'Highlights')}</div>
+      <div class="highlights">
+        <div class="hl-card hl-1"><div class="hl-tx">Free Car Wash Guarantee</div></div>
+        <div class="hl-card hl-2"><div class="hl-tx">Holiday Hours</div></div>
+      </div>`:''}
+
+      <!-- quick action cards -->
+      ${STYLE.homeShowCards!==false?`
+      <div class="home-cards">
+        <div class="hc" onclick="routeTab('account')">
+          <div class="hc-t">${esc(STYLE.homeCard1Title||'Get rewarded')}</div>
+          <div class="hc-s">${esc(STYLE.homeCard1Sub||'')}</div>
+        </div>
+        <div class="hc" onclick="showReferralQR()">
+          <div class="hc-t">${esc(STYLE.homeCard2Title||'Send gifts')}</div>
+          <div class="hc-s">${esc(STYLE.homeCard2Sub||'')}</div>
+        </div>
+      </div>`:''}
     </div>
     ${botnav('home')}`;
+}
+
+function serviceEmoji(name){
+  const n=(name||'').toLowerCase();
+  if(n.includes('wash')||n.includes('clean'))return '🚿';
+  if(n.includes('coat'))return '🛡️';
+  if(n.includes('tint'))return '🪟';
+  if(n.includes('ppf')||n.includes('protect'))return '✨';
+  if(n.includes('polish'))return '💎';
+  if(n.includes('leather')||n.includes('seat'))return '🪑';
+  if(n.includes('motor')||n.includes('bike'))return '🏍️';
+  if(n.includes('wrap'))return '🎨';
+  return '🚗';
+}
+
+function onDelVehicle(id){
+  if(!confirm('Remove this vehicle?'))return;
+  deleteVehicle(id).then(()=>renderHome());
+}
+
+function openAddVehicle(){
+  if(IS_GUEST){ toast('Sign in to add a vehicle'); return; }
+  appRoot.innerHTML=`
+    <div class="topbar-app"><button class="back" onclick="routeTab('home')">‹</button><div class="ttl">Add Vehicle</div></div>
+    <div class="app-scroll" style="padding-top:18px">
+      <div class="field"><label>Car plate</label><input id="v-plate" placeholder="e.g. WXY 1234" style="text-transform:uppercase"></div>
+      <div class="field"><label>Make</label><input id="v-make" placeholder="e.g. Toyota"></div>
+      <div class="field"><label>Model</label><input id="v-model" placeholder="e.g. Vellfire"></div>
+      <div class="field"><label>Colour</label><input id="v-color" placeholder="e.g. Black"></div>
+      <div class="field"><label>Type</label>
+        <select id="v-type" style="width:100%;height:52px;background:var(--surface);border:1.5px solid var(--line);border-radius:14px;padding:0 16px;color:var(--text);font-size:16px">
+          <option value="Sedan">Sedan</option><option value="SUV">SUV</option><option value="MPV">MPV</option><option value="Supercar">Supercar</option>
+        </select>
+      </div>
+      <div class="helper err" id="v-err" style="margin-top:10px"></div>
+      <button class="btn btn-primary" style="margin-top:18px" id="v-save">Save Vehicle</button>
+    </div>`;
+  document.getElementById('v-save').onclick=async()=>{
+    const plate=document.getElementById('v-plate').value.trim().toUpperCase();
+    if(!plate){document.getElementById('v-err').textContent="Car plate is required.";return;}
+    const ok=await addVehicle({plate,make:document.getElementById('v-make').value.trim(),
+      model:document.getElementById('v-model').value.trim(),color:document.getElementById('v-color').value.trim(),
+      car_type:document.getElementById('v-type').value});
+    if(ok){toast('Vehicle added ✓');renderHome();}
+    else document.getElementById('v-err').textContent="Couldn't save — try again.";
+  };
+}
+
+function showReferralQR(){
+  const refCode = PROFILE?.referral_code || '';
+  if(!refCode){ toast(IS_GUEST?'Sign in to get your referral code':'No referral code yet — ask admin to set one'); return; }
+  const link = `${location.origin}${location.pathname}?ref=${encodeURIComponent(refCode)}`;
+  const overlay=document.createElement('div'); overlay.className='qr-overlay';
+  overlay.innerHTML=`
+    <div class="qr-box" onclick="event.stopPropagation()">
+      <div class="qr-title">Your Referral Code</div>
+      <div class="qr-code" id="qrCanvas"></div>
+      <div class="qr-code-text">${esc(refCode)}</div>
+      <div class="qr-hint">Friends scan this to sign up with your code — you both get rewarded.</div>
+      <button class="btn btn-primary" style="margin-top:16px" onclick="this.closest('.qr-overlay').remove()">Done</button>
+    </div>`;
+  overlay.onclick=()=>overlay.remove();
+  document.body.appendChild(overlay);
+  // generate QR
+  if(window.QRCode){
+    new QRCode(document.getElementById('qrCanvas'),{text:link,width:200,height:200,colorDark:"#111",colorLight:"#fff"});
+  } else {
+    document.getElementById('qrCanvas').innerHTML=`<img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(link)}" width="200" height="200">`;
+  }
 }
 
 function svcCard(s){
