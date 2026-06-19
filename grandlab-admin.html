@@ -160,6 +160,7 @@
         <button class="tab" data-tab="membership" onclick="switchTab('membership')">Membership</button>
         <button class="tab" data-tab="checkin" onclick="switchTab('checkin')">Check-in</button>
         <button class="tab" data-tab="rewards" onclick="switchTab('rewards')">Rewards</button>
+        <button class="tab" data-tab="wallet" onclick="switchTab('wallet')">Wallet</button>
         <button class="tab" data-tab="customers" onclick="switchTab('customers')">Customers</button>
         <button class="tab" data-tab="bookings" onclick="switchTab('bookings')">Bookings</button>
         <button class="tab" data-tab="referrals" onclick="switchTab('referrals')">Referrals</button>
@@ -431,6 +432,28 @@
           <div id="ci-days"></div>
         </div>
         <div class="hint">Type: <b>None</b> = nothing, <b>Point</b> = number of points, <b>Credit</b> = RM amount, <b>Hook</b> = choose a service/voucher. Day 7 is usually the big reward.</div>
+      </div>
+
+      <!-- WALLET -->
+      <div class="panel" id="panel-wallet">
+        <div class="section-h">Wallet page</div>
+        <div class="card">
+          <label>Wallet name</label><input id="wl-name" oninput="onWallet()">
+          <label>"Joined since" label</label><input id="wl-joined" oninput="onWallet()">
+          <label>Transactions section title</label><input id="wl-txntitle" oninput="onWallet()">
+        </div>
+        <div class="section-h">Quick action buttons</div>
+        <div class="card">
+          <div class="row">
+            <div><label>Action 1</label><input id="wl-a1" oninput="onWallet()"></div>
+            <div><label>Action 2</label><input id="wl-a2" oninput="onWallet()"></div>
+          </div>
+          <div class="row" style="margin-top:8px">
+            <div><label>Action 3</label><input id="wl-a3" oninput="onWallet()"></div>
+            <div><label>Action 4</label><input id="wl-a4" oninput="onWallet()"></div>
+          </div>
+          <div class="hint">Action 3 opens the Rewards page by default. Top Up / Gift Card / Vouchers show "coming soon" until those features are wired.</div>
+        </div>
       </div>
 
       <!-- REWARDS -->
@@ -747,6 +770,8 @@ let theme = { bg:"#0A0A0A", accent:"#F5C518", text:"#FFFFFF",
   memBenefits4:"15% off services\\n2 free washes monthly\\nWallet credit RM100",
   memBenefits5:"20% off all services\\nUnlimited washes\\nWallet credit RM200\\nVIP support",
   walletName:"G Wallet", coinName:"G Coin", walletJoinedLabel:"Joined since",
+  walletTxnTitle:"Recent Transactions",
+  walletAction1:"Top Up", walletAction2:"Gift Card", walletAction3:"Rewards", walletAction4:"Vouchers",
   rewardsTitle:"G Coin", rewardsMyBtn:"My Rewards", rewardsSubtitle:"More Rewards With G Coin" };
 let REWARDS_DATA=[]; let deletedRewardIds=[];
 let pvMode = "onb";
@@ -1064,7 +1089,7 @@ async function saveAll(){
     // rewards
     REWARDS_DATA.forEach((r,i)=>r.sort_order=i+1);
     for(const r of REWARDS_DATA){
-      const body={name:r.name,image_url:r.image_url||null,coin_cost:Number(r.coin_cost||0),active:r.active!==false,sort_order:r.sort_order,reward_type:r.reward_type||'custom',service_id:r.service_id||null};
+      const body={name:r.name,image_url:r.image_url||null,coin_cost:Number(r.coin_cost||0),active:r.active!==false,sort_order:r.sort_order,reward_type:r.reward_type||'custom',service_id:r.service_id||null,in_latest:r.in_latest!==false,in_popular:r.in_popular===true};
       if(r.id){await sb(`gl_rewards?id=eq.${r.id}`,{method:"PATCH",headers:H(),body:JSON.stringify(body)});}
       else{const rr=await sb("gl_rewards",{method:"POST",headers:H({Prefer:"return=representation"}),body:JSON.stringify(body)});if(rr.ok){const j=await rr.json();r.id=j[0].id;}}
     }
@@ -1280,9 +1305,30 @@ function switchTab(t){
   else if(t==='membership'){fillMemControls();}
   else if(t==='checkin'){fillCheckinControls();setPv('home');}
   else if(t==='rewards'){fillRewardsControls();}
+  else if(t==='wallet'){fillWalletControls();}
   else if(t==='customers')loadCustomers();
   else if(t==='bookings')loadBookings();
   else if(t==='referrals')loadReferrals();
+}
+
+/* ---------- WALLET editing ---------- */
+function onWallet(){
+  theme.walletName=document.getElementById('wl-name').value;
+  theme.walletJoinedLabel=document.getElementById('wl-joined').value;
+  theme.walletTxnTitle=document.getElementById('wl-txntitle').value;
+  theme.walletAction1=document.getElementById('wl-a1').value;
+  theme.walletAction2=document.getElementById('wl-a2').value;
+  theme.walletAction3=document.getElementById('wl-a3').value;
+  theme.walletAction4=document.getElementById('wl-a4').value;
+}
+function fillWalletControls(){
+  document.getElementById('wl-name').value=theme.walletName||'G Wallet';
+  document.getElementById('wl-joined').value=theme.walletJoinedLabel||'Joined since';
+  document.getElementById('wl-txntitle').value=theme.walletTxnTitle||'Recent Transactions';
+  document.getElementById('wl-a1').value=theme.walletAction1||'Top Up';
+  document.getElementById('wl-a2').value=theme.walletAction2||'Gift Card';
+  document.getElementById('wl-a3').value=theme.walletAction3||'Rewards';
+  document.getElementById('wl-a4').value=theme.walletAction4||'Vouchers';
 }
 
 /* ---------- REWARDS editing ---------- */
@@ -1330,12 +1376,16 @@ function renderRewardsList(){
       </div>
       <div style="margin-top:8px">${nameOrService}</div>
       <div style="margin-top:8px">${photoCtrl}</div>
+      <div style="margin-top:8px;display:flex;gap:16px">
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px"><input type="checkbox" style="width:auto" ${r.in_latest!==false?'checked':''} onchange="REWARDS_DATA[${i}].in_latest=this.checked">Show in Latest</label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px"><input type="checkbox" style="width:auto" ${r.in_popular===true?'checked':''} onchange="REWARDS_DATA[${i}].in_popular=this.checked">Show in Popular</label>
+      </div>
       <button class="btn btn-danger btn-sm" style="margin-top:8px" onclick="removeReward(${i})">Delete reward</button>
     </div>`;
   }).join('');
 }
 function addReward(){
-  REWARDS_DATA.push({name:"New reward",image_url:null,coin_cost:100,active:true,reward_type:'custom',service_id:null,sort_order:REWARDS_DATA.length+1});
+  REWARDS_DATA.push({name:"New reward",image_url:null,coin_cost:100,active:true,reward_type:'custom',service_id:null,in_latest:true,in_popular:false,sort_order:REWARDS_DATA.length+1});
   renderRewardsList();
 }
 function removeReward(i){

@@ -242,8 +242,8 @@
   .txn-amt{font-size:14px;font-weight:700;}
   .txn-amt.neg{color:#ff6b6b;} .txn-amt.pos{color:#51cf66;}
 
-  /* ===== REWARDS page (premium yellow/black) ===== */
-  .rewards-hero{margin:0 -22px 0;padding:0 22px 26px;
+  /* ===== REWARDS page (premium yellow/black, Latest+Popular) ===== */
+  .rewards-hero{margin:0 -22px 0;padding:0 22px 24px;
     background:
       radial-gradient(90% 70% at 50% -5%, rgba(245,197,24,.28) 0%, rgba(245,197,24,.06) 45%, transparent 70%),
       linear-gradient(180deg, #15130c 0%, #0c0b08 70%, #0a0a0a 100%);
@@ -252,29 +252,32 @@
     padding:calc(14px + env(safe-area-inset-top)) 0 8px;}
   .rewards-back{background:rgba(255,255,255,.06);border:1px solid var(--gold-line-soft);
     color:var(--yellow);width:34px;height:34px;border-radius:10px;font-size:22px;line-height:1;cursor:pointer;}
-  .rewards-htitle{font-size:17px;font-weight:800;color:var(--yellow);}
-  .rewards-coin{margin-top:10px;filter:drop-shadow(0 6px 18px rgba(245,197,24,.5));}
-  .rewards-balance{font-size:38px;font-weight:900;margin-top:8px;
+  .rewards-htitle{font-size:17px;font-weight:800;color:#fff;}
+  .rewards-history{font-size:13px;font-weight:600;color:var(--yellow);cursor:pointer;}
+  .rewards-coin{margin-top:6px;filter:drop-shadow(0 6px 18px rgba(245,197,24,.5));}
+  .rewards-balance{font-size:38px;font-weight:900;margin-top:6px;
     background:linear-gradient(180deg,#fff,#F5C518);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;}
-  .rewards-balance-label{font-size:12px;color:var(--muted);margin-top:2px;}
-  .rewards-my{margin:16px auto 0;background:linear-gradient(135deg,var(--yellow),var(--yellow-dim));
-    color:#111;border:none;border-radius:24px;padding:10px 28px;font-size:14px;font-weight:800;cursor:pointer;display:block;
-    box-shadow:0 6px 20px -6px rgba(245,197,24,.5);}
+  .rewards-balance-label{font-size:12px;color:var(--muted);margin-top:0;}
+  .rewards-my{margin:16px auto 0;background:#fff;color:#111;border:none;border-radius:24px;
+    padding:10px 24px;font-size:14px;font-weight:800;cursor:pointer;display:inline-flex;align-items:center;gap:8px;
+    box-shadow:0 6px 20px -8px rgba(0,0,0,.6);}
   .rewards-my:active{transform:scale(.96);}
-  .rewards-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px;}
-  .reward-card{background:var(--card-grad);border:1px solid var(--gold-line-soft);border-radius:16px;
-    padding:10px;display:flex;flex-direction:column;transition:.12s;}
-  .reward-card:active{transform:scale(.98);}
-  .reward-img{width:100%;aspect-ratio:1.3/1;border-radius:12px;background:#16140e;background-size:cover;
-    background-position:center;display:flex;align-items:flex-start;justify-content:flex-end;font-size:32px;position:relative;}
-  .reward-badge{font-size:9px;font-weight:800;color:#111;letter-spacing:.04em;background:var(--yellow);
-    border-radius:6px;padding:3px 7px;margin:7px;}
-  .reward-name{font-size:13px;font-weight:700;margin-top:10px;line-height:1.3;flex:1;}
-  .reward-foot{display:flex;align-items:center;justify-content:space-between;margin-top:10px;gap:8px;}
-  .reward-cost{font-size:14px;font-weight:800;display:flex;align-items:center;gap:5px;}
-  .reward-btn{background:var(--yellow);color:#111;border:none;border-radius:9px;
-    padding:7px 14px;font-size:12px;font-weight:800;cursor:pointer;}
-  .reward-btn:active{opacity:.85;}
+  .rwd-sec-head{display:flex;align-items:flex-end;justify-content:space-between;}
+  .rwd-viewmore{font-size:13px;color:var(--yellow);font-weight:600;cursor:pointer;margin-bottom:2px;}
+  .rwd-row{display:flex;gap:12px;overflow-x:auto;margin-top:12px;padding-bottom:4px;
+    scrollbar-width:none;}
+  .rwd-row::-webkit-scrollbar{display:none;}
+  .rwd-card{min-width:150px;max-width:150px;cursor:pointer;transition:.12s;}
+  .rwd-card.grid{min-width:0;max-width:none;}
+  .rwd-card:active{transform:scale(.97);}
+  .rwd-img{width:100%;aspect-ratio:1.4/1;border-radius:14px;background:#16140e;background-size:cover;
+    background-position:center;display:flex;align-items:flex-start;justify-content:flex-start;font-size:30px;
+    position:relative;border:1px solid var(--gold-line-soft);overflow:hidden;}
+  .rwd-tag{position:absolute;top:8px;left:8px;font-size:9px;font-weight:800;color:#111;
+    background:var(--yellow);border-radius:5px;padding:3px 7px;letter-spacing:.04em;}
+  .rwd-name{font-size:13px;font-weight:700;margin-top:9px;line-height:1.3;}
+  .rwd-cost{font-size:12px;font-weight:700;color:var(--yellow);margin-top:3px;}
+  .rewards-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
   .card-box{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:18px;margin-top:16px;}
   .wallet-card{background:linear-gradient(135deg,var(--yellow),var(--yellow-dim));color:#111;
     border:none;border-radius:20px;padding:20px;margin-top:18px;}
@@ -574,8 +577,13 @@ const STYLE_DEFAULTS = {
   // Wallet & Rewards naming
   walletName:"G Wallet", coinName:"G Coin",
   walletJoinedLabel:"Joined since",
-  rewardsTitle:"G Coin", rewardsMyBtn:"My Rewards",
-  rewardsSubtitle:"More Rewards With G Coin"
+  walletBalanceLabel:"Balance",
+  walletAction1:"Top Up", walletAction2:"Gift Card", walletAction3:"Rewards", walletAction4:"Vouchers",
+  walletTxnTitle:"Recent Transactions",
+  walletShowTopup:true, walletShowGift:true, walletShowVouchers:true,
+  rewardsTitle:"My Points", rewardsMyBtn:"My Rewards",
+  rewardsPointsLabel:"Points", rewardsHistoryLabel:"History", rewardsViewMore:"View more",
+  rewardsLatestTitle:"Latest Rewards", rewardsPopularTitle:"Popular Rewards"
 };
 let STYLE = Object.assign({}, STYLE_DEFAULTS);
 
@@ -1545,12 +1553,12 @@ async function renderWallet(){
       </div>
       <!-- quick actions -->
       <div class="wallet-actions">
-        <div class="wa" onclick="toast('Top up coming soon')"><div class="wa-ic">＋</div><div class="wa-t">Top Up</div></div>
-        <div class="wa" onclick="toast('Gift cards coming soon')"><div class="wa-ic">▢</div><div class="wa-t">Gift Card</div></div>
-        <div class="wa" onclick="routeTab('rewards')"><div class="wa-ic">◆</div><div class="wa-t">Rewards</div></div>
-        <div class="wa" onclick="toast('Vouchers coming soon')"><div class="wa-ic">▣</div><div class="wa-t">Vouchers</div></div>
+        <div class="wa" onclick="toast('Top up coming soon')"><div class="wa-ic">＋</div><div class="wa-t">${esc(STYLE.walletAction1||'Top Up')}</div></div>
+        <div class="wa" onclick="toast('Gift cards coming soon')"><div class="wa-ic">▢</div><div class="wa-t">${esc(STYLE.walletAction2||'Gift Card')}</div></div>
+        <div class="wa" onclick="routeTab('rewards')"><div class="wa-ic">◆</div><div class="wa-t">${esc(STYLE.walletAction3||'Rewards')}</div></div>
+        <div class="wa" onclick="toast('Vouchers coming soon')"><div class="wa-ic">▣</div><div class="wa-t">${esc(STYLE.walletAction4||'Vouchers')}</div></div>
       </div>
-      <div class="sec-title">Recent Transactions</div>
+      <div class="sec-title">${esc(STYLE.walletTxnTitle||'Recent Transactions')}</div>
       <div class="txn-list">${txnHtml}</div>
     </div>
     ${botnav('wallet')}`;
@@ -1562,50 +1570,101 @@ async function renderRewards(){
   if(!REWARDS.length) try{ await fetchRewards(); }catch(e){}
   if(!SERVICES.length) try{ await fetchServices(); }catch(e){}
   const svcById=(id)=>SERVICES.find(s=>String(s.id)===String(id));
-  const grid = REWARDS.length ? REWARDS.map(r=>{
-    // service rewards pull photo + name from the linked service
+  const cardHtml=(r)=>{
     let img=r.image_url, nm=r.name;
     if(r.reward_type==='service' && r.service_id){
-      const s=svcById(r.service_id);
-      if(s){ img=s.image_url||img; nm=nm||s.name; }
+      const s=svcById(r.service_id); if(s){ img=s.image_url||img; nm=nm||s.name; }
     }
-    return `<div class="reward-card">
-      <div class="reward-img" style="${img?`background-image:url('${img}')`:''}">${img?'':'🎁'}
-        <div class="reward-badge">REDEEM</div>
-      </div>
-      <div class="reward-name">${esc(nm||'')}</div>
-      <div class="reward-foot">
-        <div class="reward-cost">${gCoin(16)} ${r.coin_cost||0}</div>
-        <button class="reward-btn" onclick="redeemReward('${r.id}',${r.coin_cost||0},'${esc(nm||'')}')">Redeem</button>
-      </div>
+    const costLabel = (r.coin_cost||0)===0 ? 'Free' : `${r.coin_cost} ${esc(STYLE.coinName||'pts')}`;
+    return `<div class="rwd-card" onclick="redeemReward('${r.id}',${r.coin_cost||0},'${esc(nm||'')}')">
+      <div class="rwd-img" style="${img?`background-image:url('${img}')`:''}">${img?'':'🎁'}<div class="rwd-tag">REWARDS</div></div>
+      <div class="rwd-name">${esc(nm||'')}</div>
+      <div class="rwd-cost">${costLabel}</div>
     </div>`;
-  }).join('') : `<div class="guest-banner" style="grid-column:1/-1">No rewards yet. Add them in the admin.</div>`;
+  };
+  const latest = REWARDS.filter(r=>r.in_latest!==false);
+  const popular = REWARDS.filter(r=>r.in_popular===true);
+  const row=(items)=> items.length
+    ? `<div class="rwd-row">${items.map(cardHtml).join('')}</div>`
+    : `<div class="guest-banner" style="margin-top:10px">No rewards here yet. Add them in the admin.</div>`;
 
   appRoot.innerHTML=`
     <div class="app-scroll" style="padding-top:0">
       <div class="rewards-hero">
         <div class="rewards-topbar">
           <button class="rewards-back" onclick="routeTab('home')">‹</button>
-          <div class="rewards-htitle">${esc(STYLE.rewardsTitle||'G Coin')}</div>
-          <div style="width:34px"></div>
+          <div class="rewards-htitle">${esc(STYLE.rewardsTitle||'My Points')}</div>
+          <div class="rewards-history" onclick="openRedemptionHistory()">${esc(STYLE.rewardsHistoryLabel||'History')}</div>
         </div>
-        <div class="rewards-coin">${gCoin(64)}</div>
-        <div class="rewards-balance">${coins}</div>
-        <div class="rewards-balance-label">${esc(STYLE.coinName||'G Coin')} balance</div>
-        <button class="rewards-my" onclick="toast('My rewards coming soon')">${esc(STYLE.rewardsMyBtn||'My Rewards')}</button>
+        <div class="rewards-coin">${gCoin(56)}</div>
+        <div class="rewards-balance">${coins.toLocaleString()}</div>
+        <div class="rewards-balance-label">${esc(STYLE.rewardsPointsLabel||'Points')}</div>
+        <button class="rewards-my" onclick="toast('My rewards coming soon')">🎁 ${esc(STYLE.rewardsMyBtn||'My Rewards')} ›</button>
       </div>
-      <div class="sec-title">${esc(STYLE.rewardsSubtitle||'More Rewards With G Coin')}</div>
-      <div class="rewards-grid">${grid}</div>
+
+      <div class="rwd-sec-head">
+        <div class="sec-title" style="margin-top:20px">${esc(STYLE.rewardsLatestTitle||'Latest Rewards')}</div>
+        <div class="rwd-viewmore" onclick="openRewardsList('latest')">${esc(STYLE.rewardsViewMore||'View more')}</div>
+      </div>
+      ${row(latest)}
+
+      <div class="rwd-sec-head">
+        <div class="sec-title" style="margin-top:20px">${esc(STYLE.rewardsPopularTitle||'Popular Rewards')}</div>
+        <div class="rwd-viewmore" onclick="openRewardsList('popular')">${esc(STYLE.rewardsViewMore||'View more')}</div>
+      </div>
+      ${row(popular)}
     </div>
     ${botnav('rewards')}`;
 }
 
+function openRewardsList(which){
+  const title = which==='popular' ? (STYLE.rewardsPopularTitle||'Popular Rewards') : (STYLE.rewardsLatestTitle||'Latest Rewards');
+  const svcById=(id)=>SERVICES.find(s=>String(s.id)===String(id));
+  const items = which==='popular' ? REWARDS.filter(r=>r.in_popular===true) : REWARDS.filter(r=>r.in_latest!==false);
+  const cardHtml=(r)=>{
+    let img=r.image_url, nm=r.name;
+    if(r.reward_type==='service' && r.service_id){ const s=svcById(r.service_id); if(s){ img=s.image_url||img; nm=nm||s.name; } }
+    const costLabel=(r.coin_cost||0)===0?'Free':`${r.coin_cost} ${esc(STYLE.coinName||'pts')}`;
+    return `<div class="rwd-card grid" onclick="redeemReward('${r.id}',${r.coin_cost||0},'${esc(nm||'')}')">
+      <div class="rwd-img" style="${img?`background-image:url('${img}')`:''}">${img?'':'🎁'}<div class="rwd-tag">REWARDS</div></div>
+      <div class="rwd-name">${esc(nm||'')}</div><div class="rwd-cost">${costLabel}</div></div>`;
+  };
+  appRoot.innerHTML=`
+    <div class="topbar-app"><button class="back" onclick="routeTab('rewards')">‹</button><div class="ttl">${esc(title)}</div></div>
+    <div class="app-scroll" style="padding-top:14px">
+      <div class="rewards-grid">${items.length?items.map(cardHtml).join(''):'<div class="guest-banner" style="grid-column:1/-1">No rewards here yet.</div>'}</div>
+    </div>`;
+}
+
+async function openRedemptionHistory(){
+  let rows=[];
+  try{
+    if(SESSION?.user?.id){
+      const r=await fetch(`${SUPA_URL}/rest/v1/gl_redemptions?select=*&owner_id=eq.${SESSION.user.id}&order=created_at.desc`,{headers:authHeaders()});
+      if(r.ok) rows=await r.json();
+    }
+  }catch(e){}
+  const list = rows.length ? rows.map(h=>`
+    <div class="txn-row">
+      <div><div class="txn-note">${esc(h.reward_name||'Reward')}</div>
+      <div class="txn-date">${h.created_at?new Date(h.created_at).toLocaleDateString('en-GB'):''} · ${esc(h.status||'pending')}</div></div>
+      <div class="txn-amt neg">-${h.coin_cost||0} ${esc(STYLE.coinName||'pts')}</div>
+    </div>`).join('') : `<div class="guest-banner" style="margin-top:14px">No redemptions yet. Redeem a reward and it'll show here.</div>`;
+  appRoot.innerHTML=`
+    <div class="topbar-app"><button class="back" onclick="routeTab('rewards')">‹</button><div class="ttl">Redemption History</div></div>
+    <div class="app-scroll" style="padding-top:14px"><div class="txn-list">${list}</div></div>`;
+}
+
 function redeemReward(id, cost, name){
   const coins = PROFILE?.points||0;
-  if(coins < cost){ toast(`Not enough ${STYLE.coinName||'G Coin'} — you need ${cost}`); return; }
-  if(!confirm(`Redeem "${name}" for ${cost} ${STYLE.coinName||'G Coin'}?`)) return;
-  toast('Redemption coming soon — show this at the counter.');
-  // actual coin deduction + voucher issue wired with the loyalty system later
+  if(coins < cost){ toast(`Not enough ${STYLE.coinName||'points'} — you need ${cost}`); return; }
+  if(!confirm(`Redeem "${name}" for ${cost} ${STYLE.coinName||'points'}?`)) return;
+  // log redemption to history (coin deduction wired with loyalty system later)
+  if(SESSION?.user?.id){
+    fetch(`${SUPA_URL}/rest/v1/gl_redemptions`,{method:"POST",
+      headers:authHeaders(),body:JSON.stringify({owner_id:SESSION.user.id,reward_name:name,coin_cost:cost,status:'pending'})}).catch(()=>{});
+  }
+  toast('Redeemed ✓ Show this at the counter.');
 }
 
 async function renderAccount(){
