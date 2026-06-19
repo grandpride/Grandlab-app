@@ -278,6 +278,21 @@
   .rwd-name{font-size:13px;font-weight:700;margin-top:9px;line-height:1.3;}
   .rwd-cost{font-size:12px;font-weight:700;color:var(--yellow);margin-top:3px;}
   .rewards-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+
+  /* ===== ORDER page ===== */
+  .order-tabs{display:flex;gap:10px;margin-top:18px;}
+  .order-tab{flex:1;text-align:center;padding:11px;border-radius:12px;background:var(--surface);
+    border:1px solid var(--line);font-size:14px;font-weight:700;color:var(--muted);cursor:pointer;}
+  .order-tab.on{background:var(--yellow);color:#111;border-color:var(--yellow);}
+  .order-card{background:var(--card-grad);border:1px solid var(--gold-line-soft);border-radius:14px;
+    padding:16px;margin-top:12px;}
+  .order-top{display:flex;justify-content:space-between;align-items:center;}
+  .order-svc{font-size:16px;font-weight:700;}
+  .order-status{font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;text-transform:capitalize;}
+  .order-status.upcoming{background:rgba(245,197,24,.18);color:var(--yellow);}
+  .order-status.completed{background:rgba(81,207,102,.18);color:#51cf66;}
+  .order-status.cancelled{background:rgba(255,107,107,.18);color:#ff6b6b;}
+  .order-meta{font-size:13px;color:var(--muted);margin-top:8px;}
   .card-box{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:18px;margin-top:16px;}
   .wallet-card{background:linear-gradient(135deg,var(--yellow),var(--yellow-dim));color:#111;
     border:none;border-radius:20px;padding:20px;margin-top:18px;}
@@ -303,12 +318,14 @@
   .svc-card .ds{font-size:13px;color:var(--muted);margin-top:5px;line-height:1.4;}
   .svc-card .pr{font-size:15px;font-weight:800;margin-top:8px;color:var(--text);}
   /* bottom nav */
-  .botnav{display:flex;border-top:1px solid var(--line);background:var(--bg);
+  .botnav{display:flex;border-top:1px solid var(--line);
+    background:linear-gradient(180deg,#0e0e0c,#0a0a0a);
     padding-bottom:env(safe-area-inset-bottom);}
-  .botnav button{flex:1;background:none;border:none;color:var(--muted);padding:12px 0;
-    display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;font-size:11px;font-weight:600;}
+  .botnav button{flex:1;background:none;border:none;color:var(--muted);padding:10px 0;
+    display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;font-size:10px;font-weight:600;}
   .botnav button.on{color:var(--yellow);}
-  .botnav .ic{font-size:20px;}
+  .botnav .ic{display:flex;align-items:center;justify-content:center;height:22px;}
+  .botnav button.on .ic svg{filter:drop-shadow(0 0 6px rgba(245,197,24,.5));}
   .field{margin-top:16px;}
   .field label{font-size:13px;font-weight:600;color:var(--muted);display:block;margin-bottom:6px;}
   .field input{width:100%;height:52px;background:var(--surface);border:1.5px solid var(--line);
@@ -1140,13 +1157,21 @@ function enterGuest(){
   routeTab('home');
 }
 
+function navIcon(name){
+  const I={
+    home:'<path d="M3 11l9-8 9 8"/><path d="M5 10v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V10"/>',
+    services:'<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>',
+    order:'<path d="M9 2h6a2 2 0 0 1 2 2v0H7v0a2 2 0 0 1 2-2z"/><rect x="5" y="4" width="14" height="18" rx="2"/><line x1="9" y1="10" x2="15" y2="10"/><line x1="9" y1="14" x2="15" y2="14"/><line x1="9" y1="18" x2="13" y2="18"/>',
+    wallet:'<rect x="2" y="6" width="20" height="14" rx="2.5"/><path d="M2 10h20"/><circle cx="17" cy="14" r="1.4" fill="currentColor" stroke="none"/>',
+    rewards:'<polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/><line x1="12" y1="22" x2="12" y2="7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/>',
+    account:'<circle cx="12" cy="12" r="10"/><circle cx="12" cy="10" r="3.2"/><path d="M5.5 19a6.5 6.5 0 0 1 13 0"/>'
+  };
+  return `<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${I[name]||''}</svg>`;
+}
 function botnav(active){
+  const t=(id,label)=>`<button class="${active===id?'on':''}" onclick="routeTab('${id}')"><span class="ic">${navIcon(id)}</span>${label}</button>`;
   return `<div class="botnav">
-    <button class="${active==='home'?'on':''}" onclick="routeTab('home')"><span class="ic">⌂</span>Home</button>
-    <button class="${active==='services'?'on':''}" onclick="routeTab('services')"><span class="ic">▤</span>Services</button>
-    <button class="${active==='wallet'?'on':''}" onclick="routeTab('wallet')"><span class="ic">▢</span>Wallet</button>
-    <button class="${active==='rewards'?'on':''}" onclick="routeTab('rewards')"><span class="ic">◆</span>Rewards</button>
-    <button class="${active==='account'?'on':''}" onclick="routeTab('account')"><span class="ic">◍</span>Account</button>
+    ${t('home','Home')}${t('services','Services')}${t('order','Order')}${t('wallet','Wallet')}${t('rewards','Rewards')}${t('account','Account')}
   </div>`;
 }
 
@@ -1154,9 +1179,9 @@ async function routeTab(tab){
   currentTab=tab;
   if(tab==='home') return renderHome();
   if(tab==='services') return renderServicesScreen();
+  if(tab==='order') return renderOrders();
   if(tab==='wallet') return renderWallet();
   if(tab==='rewards') return renderRewards();
-  if(tab==='bookings') return renderBookings();
   if(tab==='account') return renderAccount();
 }
 
@@ -1508,14 +1533,96 @@ function openService(id){
     </div>`;
 }
 
-async function renderBookings(){
+async function fetchOrders(){
+  if(!SESSION?.user?.id) return [];
+  try{
+    const r=await fetch(`${SUPA_URL}/rest/v1/gl_orders?select=*&owner_id=eq.${SESSION.user.id}&order=appointment_date.desc`,{headers:authHeaders()});
+    if(r.ok) return await r.json();
+  }catch(e){}
+  return [];
+}
+
+let ORDERS=[];
+async function renderOrders(which){
+  which=which||'available';
+  try{ if(!IS_GUEST && SESSION?.user?.id) ORDERS=await fetchOrders(); }catch(e){}
+  const available=ORDERS.filter(o=>o.status==='upcoming');
+  const past=ORDERS.filter(o=>o.status==='completed'||o.status==='cancelled');
+  const items = which==='available' ? available : past;
+  const card=(o)=>`
+    <div class="order-card">
+      <div class="order-top">
+        <div class="order-svc">${esc(o.service_name||'Service')}</div>
+        <div class="order-status ${o.status}">${esc(o.status||'')}</div>
+      </div>
+      ${o.vehicle?`<div class="order-meta">🚗 ${esc(o.vehicle)}</div>`:''}
+      <div class="order-meta">📅 ${esc(o.appointment_date||'—')}${o.appointment_time?' · '+esc(o.appointment_time):''}</div>
+      ${o.note?`<div class="order-meta">📝 ${esc(o.note)}</div>`:''}
+    </div>`;
+  const list = items.length ? items.map(card).join('')
+    : `<div class="guest-banner" style="margin-top:16px">${which==='available'?'No upcoming jobs. Book an appointment below.':'No past jobs yet.'}</div>`;
+
   appRoot.innerHTML=`
     <div class="app-scroll">
-      <div class="app-h1">My Bookings</div>
-      <div class="app-sub">Your service history & upcoming visits</div>
-      <div class="guest-banner" style="margin-top:24px">No bookings yet. Book a service to see it here.</div>
+      <div class="app-h1">Order</div>
+      <div class="app-sub">Your jobs & appointments</div>
+      <div class="order-tabs">
+        <div class="order-tab ${which==='available'?'on':''}" onclick="renderOrders('available')">Available</div>
+        <div class="order-tab ${which==='past'?'on':''}" onclick="renderOrders('past')">Past</div>
+      </div>
+      ${list}
+      <button class="btn btn-primary" style="margin-top:20px" onclick="openBooking()">+ Book Appointment</button>
     </div>
-    ${botnav('bookings')}`;
+    ${botnav('order')}`;
+}
+
+async function openBooking(){
+  if(IS_GUEST){ toast('Sign in to book'); return; }
+  if(!SERVICES.length) try{ await fetchServices(); }catch(e){}
+  if(!VEHICLES.length) try{ await fetchVehicles(); }catch(e){}
+  const svcOpts=SERVICES.map(s=>`<option value="${esc(s.name)}" data-id="${s.id}">${esc(s.name)}</option>`).join('');
+  const vehOpts=VEHICLES.map(v=>{const bm=[v.make,v.model].filter(Boolean).join(' ');return `<option value="${esc(bm+(v.plate?' - '+v.plate:''))}">${esc(bm+(v.plate?' - '+v.plate:''))}</option>`;}).join('');
+  appRoot.innerHTML=`
+    <div class="topbar-app"><button class="back" onclick="routeTab('order')">‹</button><div class="ttl">Book Appointment</div></div>
+    <div class="app-scroll" style="padding-top:18px">
+      <div class="app-sub" style="margin-bottom:6px">Choose a service and time</div>
+      <div class="field"><label>Service</label>
+        <select id="bk-svc" style="width:100%;height:52px;background:var(--surface);border:1.5px solid var(--line);border-radius:14px;padding:0 16px;color:var(--text);font-size:16px">
+          ${svcOpts||'<option value="">No services available</option>'}
+        </select>
+      </div>
+      <div class="field"><label>Vehicle</label>
+        <select id="bk-veh" style="width:100%;height:52px;background:var(--surface);border:1.5px solid var(--line);border-radius:14px;padding:0 16px;color:var(--text);font-size:16px">
+          ${vehOpts||'<option value="">No vehicle added</option>'}
+        </select>
+      </div>
+      <div class="field"><label>Date</label><input id="bk-date" type="date"></div>
+      <div class="field"><label>Time</label>
+        <select id="bk-time" style="width:100%;height:52px;background:var(--surface);border:1.5px solid var(--line);border-radius:14px;padding:0 16px;color:var(--text);font-size:16px">
+          ${['9:00 AM','10:00 AM','11:00 AM','12:00 PM','2:00 PM','3:00 PM','4:00 PM','5:00 PM'].map(t=>`<option>${t}</option>`).join('')}
+        </select>
+      </div>
+      <div class="field"><label>Note (optional)</label><input id="bk-note" placeholder="Any special request"></div>
+      <div class="helper err" id="bk-err" style="margin-top:10px"></div>
+      <button class="btn btn-primary" style="margin-top:18px" id="bk-save">Confirm Booking</button>
+    </div>`;
+  document.getElementById('bk-save').onclick=async()=>{
+    const sel=document.getElementById('bk-svc');
+    const service_name=sel.value;
+    const service_id=sel.options[sel.selectedIndex]?.dataset.id||null;
+    const vehicle=document.getElementById('bk-veh').value;
+    const date=document.getElementById('bk-date').value;
+    const time=document.getElementById('bk-time').value;
+    const note=document.getElementById('bk-note').value.trim();
+    if(!service_name){document.getElementById('bk-err').textContent="Pick a service.";return;}
+    if(!date){document.getElementById('bk-err').textContent="Pick a date.";return;}
+    try{
+      const r=await fetch(`${SUPA_URL}/rest/v1/gl_orders`,{method:"POST",
+        headers:authHeaders(),body:JSON.stringify({owner_id:SESSION.user.id,service_name,service_id,vehicle,appointment_date:date,appointment_time:time,note,status:'upcoming'})});
+      if(r.ok){ toast('Appointment booked ✓'); renderOrders('available'); }
+      else document.getElementById('bk-err').textContent="Couldn't book — try again.";
+    }catch(e){ document.getElementById('bk-err').textContent="Error — try again."; }
+  };
 }
 
 async function fetchWalletTxns(){
