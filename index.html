@@ -1171,6 +1171,9 @@ function startCountdown(el){
    ============================================================ */
 const appRoot = document.getElementById('appRoot');
 let currentTab = 'home';
+// remembers which main tab a sub-page was opened from, so back returns there
+let backTarget = 'home';
+function goBack(){ routeTab(backTarget||'home'); }
 
 function enterApp(screen){
   // hide onboarding stack, show app
@@ -1208,6 +1211,7 @@ function botnav(active){
 
 async function routeTab(tab){
   currentTab=tab;
+  backTarget=tab;  // sub-pages opened from here will return here
   if(tab==='home') return renderHome();
   if(tab==='services') return renderServicesScreen();
   if(tab==='order') return renderOrders();
@@ -1396,7 +1400,7 @@ function onDelVehicle(id){
 function openAddVehicle(){
   if(IS_GUEST){ toast('Sign in to add a vehicle'); return; }
   appRoot.innerHTML=`
-    <div class="topbar-app"><button class="back" onclick="routeTab('home')">‹</button><div class="ttl">Add Vehicle</div></div>
+    <div class="topbar-app"><button class="back" onclick="openMyVehicles()">‹</button><div class="ttl">Add Vehicle</div></div>
     <div class="app-scroll" style="padding-top:18px">
       <div class="app-sub" style="margin-bottom:6px">Enter your vehicle details</div>
       <div class="field"><label>Vehicle type</label>
@@ -1449,7 +1453,7 @@ function openMyVehicles(){
       </div>
     </div>`).join('') : `<div class="guest-banner">No vehicles yet. Add your first car below.</div>`;
   appRoot.innerHTML=`
-    <div class="topbar-app"><button class="back" onclick="routeTab('home')">‹</button><div class="ttl">My Vehicles</div></div>
+    <div class="topbar-app"><button class="back" onclick="goBack()">‹</button><div class="ttl">My Vehicles</div></div>
     <div class="app-scroll" style="padding-top:18px">
       <div class="app-sub" style="margin-bottom:12px">Tap a vehicle to set it as active.</div>
       ${list}
@@ -1470,7 +1474,7 @@ function openMembership(){
     const t=tiers.find(x=>x.key===active)||tiers[0];
     const benList=(t.ben||'').split('\\n').filter(Boolean).map(b=>`<div class="mem-benefit"><span class="mem-tick">✓</span><span>${esc(b)}</span></div>`).join('');
     appRoot.innerHTML=`
-      <div class="topbar-app"><button class="back" onclick="routeTab('home')">‹</button><div class="ttl">${esc(STYLE.memTitle||'All Membership Plan')}</div></div>
+      <div class="topbar-app"><button class="back" onclick="goBack()">‹</button><div class="ttl">${esc(STYLE.memTitle||'All Membership Plan')}</div></div>
       <div class="app-scroll" style="padding-top:14px">
         <div class="mem-tabs">
           ${tiers.map(x=>`<div class="mem-tab ${x.key===active?'on':''}" data-tier="${x.key}">${esc(x.name||'')}</div>`).join('')}
@@ -1492,7 +1496,7 @@ function openMembership(){
 
 function openNotifications(){
   appRoot.innerHTML=`
-    <div class="topbar-app"><button class="back" onclick="routeTab('home')">‹</button><div class="ttl">Notifications</div></div>
+    <div class="topbar-app"><button class="back" onclick="goBack()">‹</button><div class="ttl">Notifications</div></div>
     <div class="app-scroll" style="padding-top:18px">
       <div class="guest-banner" style="margin-top:8px">No notifications yet. You'll see booking updates, rewards, and promos here.</div>
     </div>`;

@@ -518,6 +518,26 @@
 
       <!-- THEME / STYLE -->
       <div class="panel" id="panel-theme">
+        <div class="section-h">App Background Photo</div>
+        <div class="card">
+          <div class="hint" style="margin-bottom:8px">One photo shows behind every main page. Adjust size and darkness so text stays readable.</div>
+          <div class="upl">
+            <button class="btn btn-ghost btn-sm" onclick="document.getElementById('appBgFile').click()">Upload background</button>
+            <input id="appBgFile" type="file" accept="image/*" style="display:none" onchange="uploadAppBg(this)">
+            <button class="btn btn-danger btn-sm" onclick="theme.appBg=null;fillBgControls();renderPreview();toast('Removed')">Remove</button>
+            <span id="appBgThumb"></span>
+          </div>
+          <label style="margin-top:10px">Fit</label>
+          <select id="th-appBgFit" onchange="onBg()" style="width:100%;height:42px;background:var(--panel2);border:1px solid var(--line);border-radius:8px;color:var(--text);padding:0 10px">
+            <option value="cover">Cover (fill screen)</option>
+            <option value="contain">Contain (fit inside)</option>
+          </select>
+          <label style="margin-top:10px">Zoom — <b id="lbl-appbgzoom">100</b>%</label>
+          <input type="range" min="100" max="250" id="th-appBgZoom" oninput="onBg()">
+          <label style="margin-top:10px">Darkness — <b id="lbl-appbgdark">55</b>%</label>
+          <input type="range" min="0" max="95" id="th-appBgDark" oninput="onBg()">
+        </div>
+
         <div class="section-h">Colors</div>
         <div class="card">
           <div class="swatch-row">
@@ -772,7 +792,8 @@ let theme = { bg:"#0A0A0A", accent:"#F5C518", text:"#FFFFFF",
   walletName:"G Wallet", coinName:"G Coin", walletJoinedLabel:"Joined since",
   walletTxnTitle:"Recent Transactions",
   walletAction1:"Top Up", walletAction2:"Gift Card", walletAction3:"Rewards", walletAction4:"Vouchers",
-  rewardsTitle:"G Coin", rewardsMyBtn:"My Rewards", rewardsSubtitle:"More Rewards With G Coin" };
+  rewardsTitle:"G Coin", rewardsMyBtn:"My Rewards", rewardsSubtitle:"More Rewards With G Coin",
+  appBg:null, appBgFit:"cover", appBgZoom:100, appBgDark:55 };
 let REWARDS_DATA=[]; let deletedRewardIds=[];
 let pvMode = "onb";
 let pvSlide = 0;
@@ -939,6 +960,32 @@ function syncTextBtns(){
   set('tb-tL',theme.titleAlign==='left');set('tb-tC',theme.titleAlign==='center');set('tb-tR',theme.titleAlign==='right');
 }
 
+/* ---------- App background ---------- */
+function onBg(){
+  const g=id=>document.getElementById(id);
+  theme.appBgFit=g('th-appBgFit').value;
+  theme.appBgZoom=+g('th-appBgZoom').value; g('lbl-appbgzoom').textContent=theme.appBgZoom;
+  theme.appBgDark=+g('th-appBgDark').value; g('lbl-appbgdark').textContent=theme.appBgDark;
+  renderPreview();
+}
+function fillBgControls(){
+  const g=id=>document.getElementById(id);
+  g('th-appBgFit').value=theme.appBgFit||'cover';
+  g('th-appBgZoom').value=theme.appBgZoom||100; g('lbl-appbgzoom').textContent=theme.appBgZoom||100;
+  g('th-appBgDark').value=theme.appBgDark??55; g('lbl-appbgdark').textContent=theme.appBgDark??55;
+  const th=g('appBgThumb'); if(th) th.innerHTML=theme.appBg?`<img src="${theme.appBg}" style="height:40px;border-radius:6px;border:1px solid var(--line)">`:'';
+}
+async function uploadAppBg(input){
+  const f=input.files[0]; if(!f) return;
+  toast("Uploading background…");
+  const path=`appbg-${Date.now()}-${f.name.replace(/[^a-z0-9.]/gi,'_')}`;
+  const r=await fetch(`${SUPA_URL}/storage/v1/object/${BUCKET}/${path}`,{
+    method:"POST",headers:{apikey:SVC_KEY,Authorization:`Bearer ${SVC_KEY}`},body:f});
+  if(!r.ok){ toast("Upload failed — is gl-images bucket public?"); return; }
+  theme.appBg=`${SUPA_URL}/storage/v1/object/public/${BUCKET}/${path}`;
+  fillBgControls(); renderPreview(); toast("Background uploaded ✓");
+}
+
 function onTheme(){
   const g=id=>document.getElementById(id);
   theme.bg=g('th-bg').value; theme.accent=g('th-accent').value; theme.text=g('th-text').value;
@@ -966,6 +1013,7 @@ function onTheme(){
 }
 function fillThemeControls(){
   const g=id=>document.getElementById(id);
+  fillBgControls();
   g('th-bg').value=theme.bg; g('th-accent').value=theme.accent; g('th-text').value=theme.text;
   g('th-logoSize').value=theme.logoSize;
   g('th-eyebrowSize').value=theme.eyebrowSize; g('th-eyebrowColor').value=theme.eyebrowColor;
@@ -1120,6 +1168,17 @@ function renderPreview(){
   pv.style.setProperty('--pv-accent',theme.accent);
   pv.style.setProperty('--pv-text',theme.text);
   ph.style.setProperty('--pv-bg',theme.bg);
+  // app background photo preview (home/services/etc. modes)
+  if(theme.appBg && (pvMode==='home')){
+    const zoom=Number(theme.appBgZoom||100);
+    const size=(theme.appBgFit==='contain')?'contain':(zoom===100?'cover':zoom+'%');
+    const dark=(Math.min(95,Math.max(0,Number(theme.appBgDark??55)))/100);
+    pv.style.backgroundImage=`linear-gradient(rgba(0,0,0,${dark}),rgba(0,0,0,${dark})), url('${theme.appBg}')`;
+    pv.style.backgroundSize=`${size}`;
+    pv.style.backgroundPosition='center';
+  } else {
+    pv.style.backgroundImage='';
+  }
 
   if(pvMode==='wel'){
     const logo = theme.logoUrl
