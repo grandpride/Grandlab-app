@@ -201,10 +201,15 @@
   .ref-card-tx{font-size:14px;color:var(--text);font-weight:600;line-height:1.4;}
 
   /* ============ MAIN APP (post-login) ============ */
+  #appBgLayer{position:fixed;inset:0;max-width:440px;margin:0 auto;z-index:19;display:none;
+    background-size:cover;background-position:center;background-repeat:no-repeat;pointer-events:none;}
+  #appBgLayer.show{display:block;}
+  #appBgLayer::after{content:"";position:absolute;inset:0;background:rgba(0,0,0,var(--app-bg-dark,.55));}
   #appRoot{position:fixed;inset:0;max-width:440px;margin:0 auto;
     background:radial-gradient(120% 80% at 50% 0%, #161410 0%, #0d0d0c 40%, #080808 100%);
     display:none;flex-direction:column;z-index:20;}
   #appRoot.show{display:flex;}
+  #appRoot.has-bg{background:transparent;}
   .app-scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;
     padding:calc(20px + env(safe-area-inset-top)) 22px 100px;
     scrollbar-width:none;-ms-overflow-style:none;}
@@ -494,6 +499,7 @@
   <div class="rail" id="rail"></div>
   <div class="screens" id="screens"></div>
 </div>
+<div id="appBgLayer"></div>
 <div id="appRoot"></div>
 <div class="toast" id="toast"></div>
 
@@ -631,7 +637,9 @@ const STYLE_DEFAULTS = {
   walletShowTopup:true, walletShowGift:true, walletShowVouchers:true,
   rewardsTitle:"My Points", rewardsMyBtn:"My Rewards",
   rewardsPointsLabel:"Points", rewardsHistoryLabel:"History", rewardsViewMore:"View more",
-  rewardsLatestTitle:"Latest Rewards", rewardsPopularTitle:"Popular Rewards"
+  rewardsLatestTitle:"Latest Rewards", rewardsPopularTitle:"Popular Rewards",
+  // App-wide background photo
+  appBg:null, appBgFit:"cover", appBgZoom:100, appBgDark:55, appBgPosX:50, appBgPosY:50
 };
 let STYLE = Object.assign({}, STYLE_DEFAULTS);
 
@@ -1170,6 +1178,23 @@ function startCountdown(el){
    MAIN APP (post-login): home, services, profile, guest
    ============================================================ */
 const appRoot = document.getElementById('appRoot');
+function applyAppBg(){
+  const layer=document.getElementById('appBgLayer');
+  if(!layer) return;
+  if(STYLE && STYLE.appBg){
+    layer.classList.add('show');
+    layer.style.backgroundImage=`url('${STYLE.appBg}')`;
+    const zoom=Number(STYLE.appBgZoom||100);
+    layer.style.backgroundSize = (STYLE.appBgFit==='contain') ? 'contain' : zoom+'%';
+    layer.style.backgroundPosition=`${STYLE.appBgPosX??50}% ${STYLE.appBgPosY??50}%`;
+    const dark=Math.min(95,Math.max(0,Number(STYLE.appBgDark??55)))/100;
+    layer.style.setProperty('--app-bg-dark', dark);
+    appRoot.classList.add('has-bg');
+  } else {
+    layer.classList.remove('show');
+    appRoot.classList.remove('has-bg');
+  }
+}
 let currentTab = 'home';
 // remembers which main tab a sub-page was opened from, so back returns there
 let backTarget = 'home';
@@ -1179,6 +1204,7 @@ function enterApp(screen){
   // hide onboarding stack, show app
   document.querySelector('.app').style.display='none';
   appRoot.classList.add('show');
+  applyAppBg();
   if(screen==='profile') renderProfileSetup();
   else routeTab(screen||'home');
 }
@@ -1212,6 +1238,7 @@ function botnav(active){
 async function routeTab(tab){
   currentTab=tab;
   backTarget=tab;  // sub-pages opened from here will return here
+  applyAppBg();
   if(tab==='home') return renderHome();
   if(tab==='services') return renderServicesScreen();
   if(tab==='order') return renderOrders();

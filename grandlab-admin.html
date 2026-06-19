@@ -533,7 +533,11 @@
             <option value="contain">Contain (fit inside)</option>
           </select>
           <label style="margin-top:10px">Zoom — <b id="lbl-appbgzoom">100</b>%</label>
-          <input type="range" min="100" max="250" id="th-appBgZoom" oninput="onBg()">
+          <input type="range" min="50" max="250" id="th-appBgZoom" oninput="onBg()">
+          <label style="margin-top:10px">Move left ↔ right — <b id="lbl-appbgx">50</b>%</label>
+          <input type="range" min="0" max="100" id="th-appBgPosX" oninput="onBg()">
+          <label style="margin-top:10px">Move up ↕ down — <b id="lbl-appbgy">50</b>%</label>
+          <input type="range" min="0" max="100" id="th-appBgPosY" oninput="onBg()">
           <label style="margin-top:10px">Darkness — <b id="lbl-appbgdark">55</b>%</label>
           <input type="range" min="0" max="95" id="th-appBgDark" oninput="onBg()">
         </div>
@@ -793,7 +797,7 @@ let theme = { bg:"#0A0A0A", accent:"#F5C518", text:"#FFFFFF",
   walletTxnTitle:"Recent Transactions",
   walletAction1:"Top Up", walletAction2:"Gift Card", walletAction3:"Rewards", walletAction4:"Vouchers",
   rewardsTitle:"G Coin", rewardsMyBtn:"My Rewards", rewardsSubtitle:"More Rewards With G Coin",
-  appBg:null, appBgFit:"cover", appBgZoom:100, appBgDark:55 };
+  appBg:null, appBgFit:"cover", appBgZoom:100, appBgDark:55, appBgPosX:50, appBgPosY:50 };
 let REWARDS_DATA=[]; let deletedRewardIds=[];
 let pvMode = "onb";
 let pvSlide = 0;
@@ -965,6 +969,8 @@ function onBg(){
   const g=id=>document.getElementById(id);
   theme.appBgFit=g('th-appBgFit').value;
   theme.appBgZoom=+g('th-appBgZoom').value; g('lbl-appbgzoom').textContent=theme.appBgZoom;
+  theme.appBgPosX=+g('th-appBgPosX').value; g('lbl-appbgx').textContent=theme.appBgPosX;
+  theme.appBgPosY=+g('th-appBgPosY').value; g('lbl-appbgy').textContent=theme.appBgPosY;
   theme.appBgDark=+g('th-appBgDark').value; g('lbl-appbgdark').textContent=theme.appBgDark;
   renderPreview();
 }
@@ -972,6 +978,8 @@ function fillBgControls(){
   const g=id=>document.getElementById(id);
   g('th-appBgFit').value=theme.appBgFit||'cover';
   g('th-appBgZoom').value=theme.appBgZoom||100; g('lbl-appbgzoom').textContent=theme.appBgZoom||100;
+  g('th-appBgPosX').value=theme.appBgPosX??50; g('lbl-appbgx').textContent=theme.appBgPosX??50;
+  g('th-appBgPosY').value=theme.appBgPosY??50; g('lbl-appbgy').textContent=theme.appBgPosY??50;
   g('th-appBgDark').value=theme.appBgDark??55; g('lbl-appbgdark').textContent=theme.appBgDark??55;
   const th=g('appBgThumb'); if(th) th.innerHTML=theme.appBg?`<img src="${theme.appBg}" style="height:40px;border-radius:6px;border:1px solid var(--line)">`:'';
 }
@@ -1171,11 +1179,14 @@ function renderPreview(){
   // app background photo preview (home/services/etc. modes)
   if(theme.appBg && (pvMode==='home')){
     const zoom=Number(theme.appBgZoom||100);
-    const size=(theme.appBgFit==='contain')?'contain':(zoom===100?'cover':zoom+'%');
+    const size=(theme.appBgFit==='contain')?'contain':zoom+'%';
     const dark=(Math.min(95,Math.max(0,Number(theme.appBgDark??55)))/100);
+    const px=theme.appBgPosX??50, py=theme.appBgPosY??50;
     pv.style.backgroundImage=`linear-gradient(rgba(0,0,0,${dark}),rgba(0,0,0,${dark})), url('${theme.appBg}')`;
     pv.style.backgroundSize=`${size}`;
-    pv.style.backgroundPosition='center';
+    pv.style.backgroundPosition=`${px}% ${py}%`;
+    pv.style.backgroundRepeat='no-repeat';
+    pv.style.backgroundAttachment='local';
   } else {
     pv.style.backgroundImage='';
   }
