@@ -537,6 +537,26 @@ function loadSession(){
   try{ const s=localStorage.getItem('gl_session'); if(s) SESSION=JSON.parse(s); }catch(e){}
   return SESSION;
 }
+/* TEST LOGIN: email+password sign-in that bypasses OTP (for testing only).
+   Remove the hidden trigger before launch. */
+async function testLogin(email, password){
+  try{
+    const r=await fetch(`${SUPA_URL}/auth/v1/token?grant_type=password`,{
+      method:"POST", headers:{ "Content-Type":"application/json", apikey:SUPA_ANON },
+      body:JSON.stringify({ email, password })
+    });
+    if(!r.ok){ toast("Test login failed — check email/password"); return; }
+    const res=await r.json();
+    if(res && res.access_token){
+      localStorage.setItem('gl_session', JSON.stringify(res));
+      SESSION=res; IS_GUEST=false;
+      await fetchProfile();
+      toast("Test login ✓");
+      if(PROFILE && PROFILE.name){ enterApp('home'); }
+      else { enterApp('profile'); }
+    }
+  }catch(e){ toast("Test login error"); }
+}
 function authHeaders(){
   const tok = SESSION?.access_token || SUPA_ANON;
   return { apikey:SUPA_ANON, Authorization:`Bearer ${tok}`, "Content-Type":"application/json" };
@@ -685,9 +705,18 @@ function welcomeScreen(){
     <div class="wel-actions">
       ${OTP_READY?`<button class="btn btn-primary" data-act="login">${STYLE.welLogin||'Sign up / Sign in'}</button>`:''}
       <button class="btn ${OTP_READY?'btn-ghost':'btn-primary'}" data-act="guest">${STYLE.welGuest||'Welcome'}</button>
+      ${!OTP_READY?`<div data-act="testlogin" style="text-align:center;margin-top:14px;font-size:12px;color:var(--muted);cursor:pointer">🔧 Test login</div>`:''}
     </div>`;
   const lg=el.querySelector('[data-act="login"]'); if(lg) lg.onclick=()=>openAuth(false);
   el.querySelector('[data-act="guest"]').onclick=()=>enterGuest();
+  const tl=el.querySelector('[data-act="testlogin"]');
+  if(tl) tl.onclick=()=>{
+    const email=prompt("Test email:","jimmykuek94@gmail.com");
+    if(!email) return;
+    const pw=prompt("Test password:");
+    if(!pw) return;
+    testLogin(email, pw);
+  };
   return el;
 }
 
