@@ -293,6 +293,37 @@
   .order-status.completed{background:rgba(81,207,102,.18);color:#51cf66;}
   .order-status.cancelled{background:rgba(255,107,107,.18);color:#ff6b6b;}
   .order-meta{font-size:13px;color:var(--muted);margin-top:8px;}
+
+  /* ===== ACCOUNT page ===== */
+  .acc-head{display:flex;align-items:center;gap:14px;padding:calc(10px + env(safe-area-inset-top)) 0 4px;cursor:pointer;}
+  .acc-avatar{width:58px;height:58px;border-radius:50%;background:var(--card-grad-gold);
+    border:1px solid var(--gold-line);display:flex;align-items:center;justify-content:center;
+    font-size:24px;font-weight:800;color:var(--yellow);}
+  .acc-name{font-size:18px;font-weight:800;display:flex;align-items:center;gap:6px;}
+  .acc-phone{font-size:13px;color:var(--muted);margin-top:2px;}
+  .acc-upgrade{margin-top:16px;background:var(--card-grad-gold);border:1px solid var(--gold-line);
+    border-radius:14px;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;}
+  .acc-upg-text{font-size:13px;font-weight:600;max-width:65%;}
+  .acc-upg-btn{background:var(--yellow);color:#111;font-weight:800;font-size:13px;border-radius:20px;padding:7px 16px;}
+  .acc-list{margin-top:10px;}
+  .acc-row{display:flex;align-items:center;justify-content:space-between;padding:16px 2px;
+    border-bottom:1px solid var(--line);cursor:pointer;}
+  .acc-row:active{opacity:.6;}
+  .acc-row-label{font-size:15px;font-weight:600;}
+  .acc-row-right{display:flex;align-items:center;gap:8px;}
+  .acc-row-val{font-size:14px;color:var(--muted);}
+  .acc-chev{color:var(--muted);font-size:18px;}
+  /* gender toggle */
+  .gender-toggle{display:flex;gap:10px;}
+  .gender-opt{padding:11px 22px;border-radius:22px;background:var(--surface);border:1px solid var(--line);
+    font-size:14px;font-weight:600;color:var(--muted);cursor:pointer;}
+  .gender-opt.on{background:var(--yellow);color:#111;border-color:var(--yellow);font-weight:800;}
+  /* maintenance */
+  .maint-card{background:var(--card-grad);border:1px solid var(--gold-line-soft);border-radius:14px;padding:16px;margin-top:14px;}
+  .maint-car{font-size:16px;font-weight:700;}
+  .maint-row{display:flex;justify-content:space-between;font-size:13px;color:var(--muted);margin-top:10px;}
+  .maint-val{color:var(--text);font-weight:700;}
+  .btn-sm{height:auto;padding:9px 16px;font-size:13px;}
   .card-box{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:18px;margin-top:16px;}
   .wallet-card{background:linear-gradient(135deg,var(--yellow),var(--yellow-dim));color:#111;
     border:none;border-radius:20px;padding:20px;margin-top:18px;}
@@ -1776,24 +1807,118 @@ function redeemReward(id, cost, name){
 
 async function renderAccount(){
   const p=PROFILE||{};
+  const initial=(p.name||'G')[0].toUpperCase();
+  if(!VEHICLES.length) try{ if(!IS_GUEST&&SESSION?.user?.id) await fetchVehicles(); }catch(e){}
+  const carLabel = VEHICLES.length ? `${VEHICLES.length} car${VEHICLES.length>1?'s':''}` : 'No Car';
+  const tier = p.tier || STYLE.homeMemberTier || 'Non-Member';
+  const row=(label,value,onclick)=>`
+    <div class="acc-row" onclick="${onclick}">
+      <div class="acc-row-label">${esc(label)}</div>
+      <div class="acc-row-right"><span class="acc-row-val">${esc(value||'')}</span><span class="acc-chev">›</span></div>
+    </div>`;
   appRoot.innerHTML=`
     <div class="app-scroll">
-      <div class="app-h1">Account</div>
-      <div class="card-box">
-        <div class="field"><label>Name</label><input id="acc-name" value="${esc(p.name||'')}"></div>
-        <div class="field"><label>Email</label><input id="acc-email" type="email" value="${esc(p.email||'')}"></div>
-        <div class="field"><label>Mobile</label><input id="acc-phone" value="${esc(p.phone||'')}"></div>
-        <button class="btn btn-primary" style="margin-top:18px" onclick="saveAccount()">Save changes</button>
+      <!-- profile header -->
+      <div class="acc-head" onclick="openEditProfile()">
+        <div class="acc-avatar">${esc(initial)}</div>
+        <div class="acc-head-info">
+          <div class="acc-name">${esc(p.name||'Member')} <span class="acc-chev">›</span></div>
+          <div class="acc-phone">${esc(p.phone||'—')}</div>
+        </div>
       </div>
-      <div class="card-box">
-        <div style="font-size:13px;color:var(--muted)">Your referral code</div>
-        <div style="font-size:22px;font-weight:800;margin-top:4px;letter-spacing:.05em">${esc(p.referral_code||'— set in admin —')}</div>
-        <div class="app-sub" style="margin-top:6px">Share this code with friends. You both get rewarded.</div>
+
+      <!-- membership upgrade banner -->
+      <div class="acc-upgrade" onclick="openMembership()">
+        <div class="acc-upg-text">Join Grandlab membership for more rewards</div>
+        <div class="acc-upg-btn">Upgrade</div>
       </div>
+
+      <!-- quick actions -->
+      <div class="wallet-actions" style="margin-top:18px">
+        <div class="wa" onclick="toast('Top up coming soon')"><div class="wa-ic">＋</div><div class="wa-t">${esc(STYLE.walletAction1||'Top Up')}</div></div>
+        <div class="wa" onclick="toast('Gift cards coming soon')"><div class="wa-ic">▢</div><div class="wa-t">${esc(STYLE.walletAction2||'Gift Card')}</div></div>
+        <div class="wa" onclick="routeTab('rewards')"><div class="wa-ic">◆</div><div class="wa-t">${esc(STYLE.walletAction3||'Rewards')}</div></div>
+        <div class="wa" onclick="toast('Vouchers coming soon')"><div class="wa-ic">▣</div><div class="wa-t">${esc(STYLE.walletAction4||'Voucher')}</div></div>
+      </div>
+
+      <div class="sec-title">My Account</div>
+      <div class="acc-list">
+        ${row('Membership', tier, "openMembership()")}
+        ${row('Wallet', 'RM '+Number(p.wallet||0).toFixed(2), "routeTab('wallet')")}
+        ${row('Favourite Outlet', 'Grandlab HQ', "toast('Grandlab HQ — PJS 13, Petaling Jaya')")}
+        ${row('Referral', '', "showReferralQR()")}
+        ${row('My Cars', carLabel, "openMyVehicles()")}
+        ${row('Maintenance', '', "openMaintenance()")}
+      </div>
+
+      <div class="sec-title">General</div>
+      <div class="acc-list">
+        ${row('Settings', '', "toast('Settings coming soon')")}
+        ${row('Share Feedback', '', "toast('Thanks! Feedback coming soon')")}
+      </div>
+
       <button class="btn btn-ghost" style="margin-top:18px" onclick="logout()">Log out</button>
     </div>
     ${botnav('account')}`;
 }
+
+function openEditProfile(){
+  if(IS_GUEST){ toast('Sign in to edit profile'); return; }
+  const p=PROFILE||{};
+  const g=p.gender||'';
+  appRoot.innerHTML=`
+    <div class="topbar-app"><button class="back" onclick="routeTab('account')">‹</button><div class="ttl">Edit Profile</div></div>
+    <div class="app-scroll" style="padding-top:18px">
+      <div class="field"><label>Full Name *</label><input id="ep-name" value="${esc(p.name||'')}"></div>
+      <div class="field"><label>Phone No *</label><input id="ep-phone" value="${esc(p.phone||'')}"></div>
+      <div class="field"><label>Email Address *</label><input id="ep-email" type="email" value="${esc(p.email||'')}"></div>
+      <div class="field"><label>Birthday *</label><input id="ep-bday" type="date" value="${esc(p.birthday||'')}"></div>
+      <div class="field"><label>Gender *</label>
+        <div class="gender-toggle">
+          <div class="gender-opt ${g==='Male'?'on':''}" onclick="pickGender('Male')">Male</div>
+          <div class="gender-opt ${g==='Female'?'on':''}" onclick="pickGender('Female')">Female</div>
+        </div>
+      </div>
+      <div class="helper err" id="ep-err" style="margin-top:10px"></div>
+      <button class="btn btn-primary" style="margin-top:20px" id="ep-save">Save</button>
+    </div>`;
+  window._epGender=g;
+  document.getElementById('ep-save').onclick=async()=>{
+    const name=document.getElementById('ep-name').value.trim();
+    const email=document.getElementById('ep-email').value.trim();
+    if(!name){document.getElementById('ep-err').textContent="Name is required.";return;}
+    const fields={name,phone:document.getElementById('ep-phone').value.trim(),email,
+      birthday:document.getElementById('ep-bday').value||null, gender:window._epGender||null};
+    if(await saveProfile(fields)){ toast('Saved ✓'); renderAccount(); }
+    else document.getElementById('ep-err').textContent="Couldn't save — try again.";
+  };
+}
+function pickGender(g){
+  window._epGender=g;
+  document.querySelectorAll('.gender-opt').forEach(o=>o.classList.toggle('on', o.textContent.trim()===g));
+}
+
+async function openMaintenance(){
+  if(!VEHICLES.length) try{ if(!IS_GUEST&&SESSION?.user?.id) await fetchVehicles(); }catch(e){}
+  const cars = VEHICLES.length ? VEHICLES.map(v=>{
+    const bm=[v.make,v.model].filter(Boolean).join(' ');
+    // maintenance data will come from POS/coating records later; placeholder structure now
+    return `<div class="maint-card">
+      <div class="maint-car">${esc(bm||'Vehicle')}${v.plate?' - '+esc(v.plate):''}</div>
+      <div class="maint-row"><span>Coating maintenance left</span><span class="maint-val">—</span></div>
+      <div class="maint-row"><span>Next due</span><span class="maint-val">—</span></div>
+      <button class="btn btn-primary btn-sm" style="margin-top:12px" onclick="openBooking()">Book maintenance slot</button>
+    </div>`;
+  }).join('') : `<div class="guest-banner" style="margin-top:14px">No cars yet. Add a car to track its coating maintenance.</div>`;
+  appRoot.innerHTML=`
+    <div class="topbar-app"><button class="back" onclick="routeTab('account')">‹</button><div class="ttl">Maintenance</div></div>
+    <div class="app-scroll" style="padding-top:16px">
+      <div class="app-sub">Track each car's coating maintenance — visits left and when the next one is due.</div>
+      ${cars}
+      <div class="guest-banner" style="margin-top:16px">Maintenance schedules link to your service records — once a car has a coating job logged, its remaining visits and due date will show here, with reminders before it's due.</div>
+    </div>`;
+}
+
 async function saveAccount(){
   const fields={name:document.getElementById('acc-name').value.trim(),
     email:document.getElementById('acc-email').value.trim(),
