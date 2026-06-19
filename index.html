@@ -332,8 +332,11 @@ const OTP_READY = false;
 // TEMP preview mode: when true, app skips onboarding/welcome and opens
 // straight to the main Home page as a guest (for previewing the UI).
 // Set back to false to restore the normal onboarding → welcome flow.
-const PREVIEW_HOME = true;
+const PREVIEW_HOME = false;
 const SUPA_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV5Y2hsanB6b3J6bWF2ZWl4bG51Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2NDk2NjQsImV4cCI6MjA5NzIyNTY2NH0.6dA1zhz5ZIwf8byFB8vhfOzPI-uPPdPihEr1b8GG_oA";
+
+/* HTML-escape helper (used throughout for safe text rendering) */
+function esc(s){return (s==null?'':String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 
 /* Hardcoded fallback so the app works before admin sets any slides.
    Admin page will overwrite these by writing rows to gl_onboarding_slides. */
@@ -902,8 +905,8 @@ function priceLabel(s){
 async function renderHome(){
   const name = PROFILE?.name ? PROFILE.name.split(' ')[0] : (IS_GUEST?'Guest':'there');
   const initial = (PROFILE?.name||'G')[0].toUpperCase();
-  if(!SERVICES.length) await fetchServices();
-  if(!IS_GUEST) await fetchVehicles();
+  try{ if(!SERVICES.length) await fetchServices(); }catch(e){ console.error('services', e); }
+  try{ if(!IS_GUEST && SESSION?.user?.id) await fetchVehicles(); }catch(e){ console.error('vehicles', e); }
   const refCode = PROFILE?.referral_code || '';
 
   // member card with vehicles inside
@@ -961,7 +964,7 @@ async function renderHome(){
       <div class="wallet-bar">
         <div>
           <div class="wb-label">${esc(STYLE.homeWalletLabel||'Wallet Balance')}</div>
-          <div class="wb-amt">RM ${(PROFILE?.wallet||0).toFixed ? (PROFILE.wallet||0).toFixed(2) : '0.00'}</div>
+          <div class="wb-amt">RM ${Number(PROFILE?.wallet||0).toFixed(2)}</div>
         </div>
         <div class="wb-actions">
           ${refCode?`<div class="wb-qr" onclick="showReferralQR()" title="My referral QR">⊞ QR</div>`:''}
@@ -1224,13 +1227,12 @@ Object.defineProperty(window,'stepIndex',{get:()=>cur,set:v=>{cur=v;}});
 
 /* ---------- Init ---------- */
 (async function init(){
-  // TEMP: preview the main page directly as guest
+  // TEMP: preview the main page directly (no login)
   if(PREVIEW_HOME){
-    await fetchSlides();   // load STYLE
-    await fetchServices();
-    render(); indexScreens();
-    enterGuest();          // jumps straight into the app (guest) → Home
-    routeTab('home');
+    try{ await fetchSlides(); }catch(e){ console.error('fetchSlides failed', e); }
+    try{ await fetchServices(); }catch(e){ console.error('fetchServices failed', e); }
+    try{ render(); indexScreens(); }catch(e){ console.error('render failed', e); }
+    try{ enterGuest(); }catch(e){ console.error('enterGuest failed', e); }
     return;
   }
   // already logged in? go straight to the app
