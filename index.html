@@ -242,24 +242,38 @@
   .txn-amt{font-size:14px;font-weight:700;}
   .txn-amt.neg{color:#ff6b6b;} .txn-amt.pos{color:#51cf66;}
 
-  /* ===== REWARDS page ===== */
-  .rewards-hero{margin:0 -22px 0;padding:0 22px 24px;
-    background:radial-gradient(120% 90% at 50% 0%, #3a1010 0%, #1a0a0a 55%, #0a0808 100%);
-    text-align:center;border-bottom:1px solid var(--gold-line-soft);}
-  .rewards-coin{margin-top:8px;filter:drop-shadow(0 4px 12px rgba(245,197,24,.4));}
-  .rewards-balance{font-size:30px;font-weight:800;margin-top:6px;}
-  .rewards-my{margin:14px auto 0;background:#fff;color:#111;border:none;border-radius:24px;
-    padding:9px 24px;font-size:14px;font-weight:700;cursor:pointer;display:block;}
+  /* ===== REWARDS page (premium yellow/black) ===== */
+  .rewards-hero{margin:0 -22px 0;padding:0 22px 26px;
+    background:
+      radial-gradient(90% 70% at 50% -5%, rgba(245,197,24,.28) 0%, rgba(245,197,24,.06) 45%, transparent 70%),
+      linear-gradient(180deg, #15130c 0%, #0c0b08 70%, #0a0a0a 100%);
+    text-align:center;border-bottom:1px solid var(--gold-line);}
+  .rewards-topbar{display:flex;align-items:center;justify-content:space-between;
+    padding:calc(14px + env(safe-area-inset-top)) 0 8px;}
+  .rewards-back{background:rgba(255,255,255,.06);border:1px solid var(--gold-line-soft);
+    color:var(--yellow);width:34px;height:34px;border-radius:10px;font-size:22px;line-height:1;cursor:pointer;}
+  .rewards-htitle{font-size:17px;font-weight:800;color:var(--yellow);}
+  .rewards-coin{margin-top:10px;filter:drop-shadow(0 6px 18px rgba(245,197,24,.5));}
+  .rewards-balance{font-size:38px;font-weight:900;margin-top:8px;
+    background:linear-gradient(180deg,#fff,#F5C518);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;}
+  .rewards-balance-label{font-size:12px;color:var(--muted);margin-top:2px;}
+  .rewards-my{margin:16px auto 0;background:linear-gradient(135deg,var(--yellow),var(--yellow-dim));
+    color:#111;border:none;border-radius:24px;padding:10px 28px;font-size:14px;font-weight:800;cursor:pointer;display:block;
+    box-shadow:0 6px 20px -6px rgba(245,197,24,.5);}
+  .rewards-my:active{transform:scale(.96);}
   .rewards-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px;}
   .reward-card{background:var(--card-grad);border:1px solid var(--gold-line-soft);border-radius:16px;
-    padding:12px;display:flex;flex-direction:column;}
-  .reward-badge{font-size:10px;font-weight:800;color:var(--yellow);letter-spacing:.05em;margin-bottom:8px;}
-  .reward-img{width:100%;aspect-ratio:1.3/1;border-radius:12px;background:#1a1a1a;background-size:cover;
-    background-position:center;display:flex;align-items:center;justify-content:center;font-size:32px;}
-  .reward-name{font-size:13px;font-weight:700;margin-top:10px;line-height:1.3;}
-  .reward-cost{font-size:14px;font-weight:800;margin-top:6px;display:flex;align-items:center;gap:5px;}
-  .reward-btn{margin-top:10px;background:var(--yellow);color:#111;border:none;border-radius:10px;
-    padding:9px;font-size:13px;font-weight:800;cursor:pointer;}
+    padding:10px;display:flex;flex-direction:column;transition:.12s;}
+  .reward-card:active{transform:scale(.98);}
+  .reward-img{width:100%;aspect-ratio:1.3/1;border-radius:12px;background:#16140e;background-size:cover;
+    background-position:center;display:flex;align-items:flex-start;justify-content:flex-end;font-size:32px;position:relative;}
+  .reward-badge{font-size:9px;font-weight:800;color:#111;letter-spacing:.04em;background:var(--yellow);
+    border-radius:6px;padding:3px 7px;margin:7px;}
+  .reward-name{font-size:13px;font-weight:700;margin-top:10px;line-height:1.3;flex:1;}
+  .reward-foot{display:flex;align-items:center;justify-content:space-between;margin-top:10px;gap:8px;}
+  .reward-cost{font-size:14px;font-weight:800;display:flex;align-items:center;gap:5px;}
+  .reward-btn{background:var(--yellow);color:#111;border:none;border-radius:9px;
+    padding:7px 14px;font-size:12px;font-weight:800;cursor:pointer;}
   .reward-btn:active{opacity:.85;}
   .card-box{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:18px;margin-top:16px;}
   .wallet-card{background:linear-gradient(135deg,var(--yellow),var(--yellow-dim));color:#111;
@@ -1546,21 +1560,38 @@ async function renderRewards(){
   const p=PROFILE||{};
   const coins = p.points||0;
   if(!REWARDS.length) try{ await fetchRewards(); }catch(e){}
-  const grid = REWARDS.length ? REWARDS.map(r=>`
-    <div class="reward-card">
-      <div class="reward-badge">REDEEM NOW</div>
-      <div class="reward-img" style="${r.image_url?`background-image:url('${r.image_url}')`:''}">${r.image_url?'':'🎁'}</div>
-      <div class="reward-name">${esc(r.name||'')}</div>
-      <div class="reward-cost">${gCoin(16)} ${r.coin_cost||0}</div>
-      <button class="reward-btn" onclick="redeemReward('${r.id}',${r.coin_cost||0},'${esc(r.name||'')}')">Redeem</button>
-    </div>`).join('') : `<div class="guest-banner" style="grid-column:1/-1">No rewards yet. Add them in the admin.</div>`;
+  if(!SERVICES.length) try{ await fetchServices(); }catch(e){}
+  const svcById=(id)=>SERVICES.find(s=>String(s.id)===String(id));
+  const grid = REWARDS.length ? REWARDS.map(r=>{
+    // service rewards pull photo + name from the linked service
+    let img=r.image_url, nm=r.name;
+    if(r.reward_type==='service' && r.service_id){
+      const s=svcById(r.service_id);
+      if(s){ img=s.image_url||img; nm=nm||s.name; }
+    }
+    return `<div class="reward-card">
+      <div class="reward-img" style="${img?`background-image:url('${img}')`:''}">${img?'':'🎁'}
+        <div class="reward-badge">REDEEM</div>
+      </div>
+      <div class="reward-name">${esc(nm||'')}</div>
+      <div class="reward-foot">
+        <div class="reward-cost">${gCoin(16)} ${r.coin_cost||0}</div>
+        <button class="reward-btn" onclick="redeemReward('${r.id}',${r.coin_cost||0},'${esc(nm||'')}')">Redeem</button>
+      </div>
+    </div>`;
+  }).join('') : `<div class="guest-banner" style="grid-column:1/-1">No rewards yet. Add them in the admin.</div>`;
 
   appRoot.innerHTML=`
     <div class="app-scroll" style="padding-top:0">
       <div class="rewards-hero">
-        <div class="topbar-app" style="background:transparent;border:none"><div class="ttl" style="color:#fff">${esc(STYLE.rewardsTitle||'G Coin')}</div></div>
-        <div class="rewards-coin">${gCoin(56)}</div>
+        <div class="rewards-topbar">
+          <button class="rewards-back" onclick="routeTab('home')">‹</button>
+          <div class="rewards-htitle">${esc(STYLE.rewardsTitle||'G Coin')}</div>
+          <div style="width:34px"></div>
+        </div>
+        <div class="rewards-coin">${gCoin(64)}</div>
         <div class="rewards-balance">${coins}</div>
+        <div class="rewards-balance-label">${esc(STYLE.coinName||'G Coin')} balance</div>
         <button class="rewards-my" onclick="toast('My rewards coming soon')">${esc(STYLE.rewardsMyBtn||'My Rewards')}</button>
       </div>
       <div class="sec-title">${esc(STYLE.rewardsSubtitle||'More Rewards With G Coin')}</div>

@@ -1064,7 +1064,7 @@ async function saveAll(){
     // rewards
     REWARDS_DATA.forEach((r,i)=>r.sort_order=i+1);
     for(const r of REWARDS_DATA){
-      const body={name:r.name,image_url:r.image_url||null,coin_cost:Number(r.coin_cost||0),active:r.active!==false,sort_order:r.sort_order};
+      const body={name:r.name,image_url:r.image_url||null,coin_cost:Number(r.coin_cost||0),active:r.active!==false,sort_order:r.sort_order,reward_type:r.reward_type||'custom',service_id:r.service_id||null};
       if(r.id){await sb(`gl_rewards?id=eq.${r.id}`,{method:"PATCH",headers:H(),body:JSON.stringify(body)});}
       else{const rr=await sb("gl_rewards",{method:"POST",headers:H({Prefer:"return=representation"}),body:JSON.stringify(body)});if(rr.ok){const j=await rr.json();r.id=j[0].id;}}
     }
@@ -1300,23 +1300,42 @@ function fillRewardsControls(){
 function renderRewardsList(){
   const el=document.getElementById('rw-list');
   if(!REWARDS_DATA.length){ el.innerHTML='<div class="empty">No rewards yet. Add one below.</div>'; return; }
-  el.innerHTML=REWARDS_DATA.map((r,i)=>`
-    <div class="card">
+  const svcOpts=(services||[]);
+  el.innerHTML=REWARDS_DATA.map((r,i)=>{
+    const type=r.reward_type||'custom';
+    const photoCtrl = type==='service'
+      ? `<div class="hint" style="margin:4px 0">Photo comes from the chosen service automatically.</div>`
+      : `<label>Photo</label>
+         <div class="upl">
+           <button class="btn btn-ghost btn-sm" onclick="document.getElementById('rwimg${i}').click()">Upload photo</button>
+           <input id="rwimg${i}" type="file" accept="image/*" style="display:none" onchange="uploadRewardImg(this,${i})">
+           ${r.image_url?`<img src="${r.image_url}" style="height:40px;border-radius:6px;border:1px solid var(--line)">`:''}
+         </div>`;
+    const nameOrService = type==='service'
+      ? `<label>Service</label>
+         <select onchange="REWARDS_DATA[${i}].service_id=this.value;REWARDS_DATA[${i}].name=this.options[this.selectedIndex].text">
+           <option value="">— choose service —</option>
+           ${svcOpts.map(s=>`<option value="${s.id}" ${String(r.service_id)===String(s.id)?'selected':''}>${esc(s.name||'')}</option>`).join('')}
+         </select>`
+      : `<label>Name</label><input value="${esc(r.name||'')}" oninput="REWARDS_DATA[${i}].name=this.value">`;
+    return `<div class="card">
       <div class="row">
-        <div style="flex:2"><label>Name</label><input value="${esc(r.name||'')}" oninput="REWARDS_DATA[${i}].name=this.value"></div>
+        <div style="flex:1"><label>Type</label>
+          <select onchange="REWARDS_DATA[${i}].reward_type=this.value;renderRewardsList()">
+            <option value="custom" ${type==='custom'?'selected':''}>Custom item</option>
+            <option value="service" ${type==='service'?'selected':''}>Service</option>
+          </select>
+        </div>
         <div style="flex:1"><label>Coin cost</label><input type="number" min="0" value="${r.coin_cost||0}" oninput="REWARDS_DATA[${i}].coin_cost=Number(this.value)"></div>
       </div>
-      <label>Photo</label>
-      <div class="upl">
-        <button class="btn btn-ghost btn-sm" onclick="document.getElementById('rwimg${i}').click()">Upload photo</button>
-        <input id="rwimg${i}" type="file" accept="image/*" style="display:none" onchange="uploadRewardImg(this,${i})">
-        ${r.image_url?`<img src="${r.image_url}" style="height:40px;border-radius:6px;border:1px solid var(--line)">`:''}
-        <button class="btn btn-danger btn-sm" onclick="removeReward(${i})">Delete</button>
-      </div>
-    </div>`).join('');
+      <div style="margin-top:8px">${nameOrService}</div>
+      <div style="margin-top:8px">${photoCtrl}</div>
+      <button class="btn btn-danger btn-sm" style="margin-top:8px" onclick="removeReward(${i})">Delete reward</button>
+    </div>`;
+  }).join('');
 }
 function addReward(){
-  REWARDS_DATA.push({name:"New reward",image_url:null,coin_cost:100,active:true,sort_order:REWARDS_DATA.length+1});
+  REWARDS_DATA.push({name:"New reward",image_url:null,coin_cost:100,active:true,reward_type:'custom',service_id:null,sort_order:REWARDS_DATA.length+1});
   renderRewardsList();
 }
 function removeReward(i){
