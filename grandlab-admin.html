@@ -157,6 +157,8 @@
         <button class="tab" data-tab="refpage" onclick="switchTab('refpage')">Referral Page</button>
         <button class="tab" data-tab="fillpage" onclick="switchTab('fillpage')">Fill-in Page</button>
         <button class="tab" data-tab="homepage" onclick="switchTab('homepage')">Home Page</button>
+        <button class="tab" data-tab="membership" onclick="switchTab('membership')">Membership</button>
+        <button class="tab" data-tab="checkin" onclick="switchTab('checkin')">Check-in</button>
         <button class="tab" data-tab="customers" onclick="switchTab('customers')">Customers</button>
         <button class="tab" data-tab="bookings" onclick="switchTab('bookings')">Bookings</button>
         <button class="tab" data-tab="referrals" onclick="switchTab('referrals')">Referrals</button>
@@ -401,6 +403,28 @@
           </div>
         </div>
         <div class="hint">Switch the preview to Home using the button under the phone.</div>
+      </div>
+
+      <!-- MEMBERSHIP -->
+      <div class="panel" id="panel-membership">
+        <div class="section-h">Page</div>
+        <div class="card"><label>Page title</label><input id="mb-title" oninput="onMem()">
+          <label>Subscribe button</label><input id="mb-subbtn" oninput="onMem()"></div>
+        <div class="section-h">Tiers — name, card image, member-card background, benefits</div>
+        <div id="mb-tiers"></div>
+        <div class="hint">Card image = the virtual membership card shown on the membership page. Background = the photo behind the member card on the home page when a customer is on that tier. Benefits: one per line.</div>
+      </div>
+
+      <!-- CHECK-IN -->
+      <div class="panel" id="panel-checkin">
+        <div class="section-h">Daily Check-in</div>
+        <div class="card">
+          <label>Section title</label><input id="ci-title" oninput="onCheckin()">
+          <label>Button text</label><input id="ci-btn" oninput="onCheckin()">
+        </div>
+        <div class="section-h">Reward per day (Day 7 = mystery gift)</div>
+        <div class="card" id="ci-days"></div>
+        <div class="hint">Set what each day gives — e.g. "1 Point", "RM5 Credit", "Free Wash". Day 7 is the big mystery reward. The reward text is what shows under each day's car icon.</div>
       </div>
 
       <!-- CUSTOMERS -->
@@ -687,7 +711,19 @@ let theme = { bg:"#0A0A0A", accent:"#F5C518", text:"#FFFFFF",
   homeCard1Title:"Get rewarded", homeCard1Sub:"with every spending",
   homeCard2Title:"Send gifts", homeCard2Sub:"to friends & loved ones",
   homeShowSubscribe:true, homeShowWallet:true, homeShowHighlights:true, homeShowCards:true,
-  homeMemberTier:"Member" };
+  homeMemberTier:"Non-Member", homeJoinMemberBtn:"Join Member",
+  checkinTitle:"Daily Check-in", checkinBtn:"Check-in",
+  checkinDays:[{label:"1 Point"},{label:"1 Point"},{label:"1 Point"},{label:"1 Point"},{label:"1 Point"},{label:"1 Point"},{label:"Mystery Gift"}],
+  memTitle:"All Membership Plan",
+  memTier1:"Non-Member", memTier2:"Bronze", memTier3:"Silver", memTier4:"Gold", memTier5:"Platinum",
+  memSubscribeBtn:"Subscribe Now",
+  memCard1:null, memCard2:null, memCard3:null, memCard4:null, memCard5:null,
+  memBg1:null, memBg2:null, memBg3:null, memBg4:null, memBg5:null,
+  memBenefits1:"Standard pricing on all services",
+  memBenefits2:"5% off services\\nPriority booking",
+  memBenefits3:"10% off services\\nFree monthly wash\\nPriority booking",
+  memBenefits4:"15% off services\\n2 free washes monthly\\nWallet credit RM100",
+  memBenefits5:"20% off all services\\nUnlimited washes\\nWallet credit RM200\\nVIP support" };
 let pvMode = "onb";
 let pvSlide = 0;
 
@@ -1197,9 +1233,62 @@ function switchTab(t){
   else if(t==='refpage'){fillRefControls();setPv('ref');}
   else if(t==='fillpage'){fillFillControls();setPv('fill');}
   else if(t==='homepage'){fillHomeControls();setPv('home');}
+  else if(t==='membership'){fillMemControls();}
+  else if(t==='checkin'){fillCheckinControls();setPv('home');}
   else if(t==='customers')loadCustomers();
   else if(t==='bookings')loadBookings();
   else if(t==='referrals')loadReferrals();
+}
+
+/* ---------- MEMBERSHIP editing ---------- */
+function onMem(){
+  theme.memTitle=document.getElementById('mb-title').value;
+  theme.memSubscribeBtn=document.getElementById('mb-subbtn').value;
+  renderPreview();
+}
+function fillMemControls(){
+  document.getElementById('mb-title').value=theme.memTitle||'All Membership Plan';
+  document.getElementById('mb-subbtn').value=theme.memSubscribeBtn||'Subscribe Now';
+  const wrap=document.getElementById('mb-tiers');
+  const tiers=[1,2,3,4,5];
+  wrap.innerHTML=tiers.map(n=>`
+    <div class="card">
+      <label>Tier ${n} name</label><input id="mb-name${n}" value="${esc(theme['memTier'+n]||'')}" oninput="theme.memTier${n}=this.value;renderPreview()">
+      <label>Card image (membership card)</label>
+      <div class="upl">
+        <button class="btn btn-ghost btn-sm" onclick="document.getElementById('mbcard${n}').click()">Upload card</button>
+        <button class="btn btn-danger btn-sm" onclick="theme.memCard${n}=null;toast('Removed');fillMemControls()">Remove</button>
+        <input id="mbcard${n}" type="file" accept="image/*" style="display:none" onchange="uploadPageBg(this,'memCard${n}')">
+        ${theme['memCard'+n]?`<img src="${theme['memCard'+n]}" style="height:34px;border-radius:5px;border:1px solid var(--line)">`:''}
+      </div>
+      <label>Member-card background (home)</label>
+      <div class="upl">
+        <button class="btn btn-ghost btn-sm" onclick="document.getElementById('mbbg${n}').click()">Upload bg</button>
+        <button class="btn btn-danger btn-sm" onclick="theme.memBg${n}=null;toast('Removed');fillMemControls()">Remove</button>
+        <input id="mbbg${n}" type="file" accept="image/*" style="display:none" onchange="uploadPageBg(this,'memBg${n}')">
+        ${theme['memBg'+n]?`<img src="${theme['memBg'+n]}" style="height:34px;border-radius:5px;border:1px solid var(--line)">`:''}
+      </div>
+      <label>Benefits (one per line)</label>
+      <textarea id="mb-ben${n}" rows="4" oninput="theme.memBenefits${n}=this.value.split('\\n').join('\\\\n')" style="width:100%;background:var(--panel2);border:1px solid var(--line);border-radius:8px;color:var(--text);padding:8px;font-size:13px">${esc((theme['memBenefits'+n]||'').split('\\n').join('\n'))}</textarea>
+    </div>`).join('');
+}
+
+/* ---------- CHECK-IN editing ---------- */
+function onCheckin(){
+  theme.checkinTitle=document.getElementById('ci-title').value;
+  theme.checkinBtn=document.getElementById('ci-btn').value;
+  renderPreview();
+}
+function fillCheckinControls(){
+  document.getElementById('ci-title').value=theme.checkinTitle||'Daily Check-in';
+  document.getElementById('ci-btn').value=theme.checkinBtn||'Check-in';
+  if(!theme.checkinDays||theme.checkinDays.length!==7)
+    theme.checkinDays=[{label:"1 Point"},{label:"1 Point"},{label:"1 Point"},{label:"1 Point"},{label:"1 Point"},{label:"1 Point"},{label:"Mystery Gift"}];
+  document.getElementById('ci-days').innerHTML=theme.checkinDays.map((d,i)=>`
+    <div class="row" style="margin-bottom:6px;align-items:center">
+      <div style="flex:0 0 60px;font-size:12px;color:var(--muted)">Day ${i+1}${i===6?' 🎁':''}</div>
+      <div><input value="${esc(d.label||'')}" oninput="theme.checkinDays[${i}].label=this.value" placeholder="${i===6?'Mystery Gift':'e.g. 1 Point / RM5 Credit'}"></div>
+    </div>`).join('');
 }
 
 /* ---------- HOME PAGE editing ---------- */

@@ -13,6 +13,12 @@
     --yellow:#F5C518; --yellow-dim:#C9A20F;
     --text:#FFFFFF; --muted:#8A8A8A; --line:#2A2A2A;
     --ease:cubic-bezier(.22,.61,.36,1);
+    /* premium gradient + gold-line theme */
+    --card-grad:linear-gradient(150deg,#1b1a17 0%,#121110 55%,#0c0c0b 100%);
+    --card-grad-gold:linear-gradient(150deg,#211d12 0%,#141210 60%,#0d0c0a 100%);
+    --gold-line:rgba(245,197,24,.32);
+    --gold-line-soft:rgba(245,197,24,.16);
+    --gold-glow:0 0 0 1px rgba(245,197,24,.10), 0 8px 30px -12px rgba(0,0,0,.7);
   }
   *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
   html,body{height:100%;height:100dvh;}
@@ -195,7 +201,8 @@
   .ref-card-tx{font-size:14px;color:var(--text);font-weight:600;line-height:1.4;}
 
   /* ============ MAIN APP (post-login) ============ */
-  #appRoot{position:fixed;inset:0;max-width:440px;margin:0 auto;background:var(--bg);
+  #appRoot{position:fixed;inset:0;max-width:440px;margin:0 auto;
+    background:radial-gradient(120% 80% at 50% 0%, #161410 0%, #0d0d0c 40%, #080808 100%);
     display:none;flex-direction:column;z-index:20;}
   #appRoot.show{display:flex;}
   .app-scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;
@@ -217,7 +224,9 @@
   .quick:active{transform:scale(.97);}
   .quick .ic{font-size:26px;}
   .quick .t{font-size:14px;font-weight:700;}
-  .sec-title{font-size:17px;font-weight:800;margin-top:26px;}
+  .sec-title{font-size:17px;font-weight:800;margin-top:26px;padding-left:12px;position:relative;}
+  .sec-title::before{content:"";position:absolute;left:0;top:3px;bottom:3px;width:3px;
+    border-radius:3px;background:linear-gradient(var(--yellow),var(--yellow-dim));}
   .svc-card{background:var(--surface);border:1px solid var(--line);border-radius:16px;
     overflow:hidden;margin-top:12px;cursor:pointer;transition:.12s;}
   .svc-card:active{transform:scale(.99);}
@@ -249,9 +258,30 @@
   .guest-banner b{color:var(--yellow);cursor:pointer;}
 
   /* ===== HOME PAGE rich sections ===== */
-  .member-card{background:linear-gradient(135deg,#1a1a1d,#0d0d0d);border:1px solid var(--line);
-    border-radius:18px;padding:16px;margin-top:16px;}
+  .member-card{background:var(--card-grad-gold);border:1px solid var(--gold-line);
+    border-radius:18px;padding:16px;margin-top:16px;box-shadow:var(--gold-glow);}
   .member-top{display:flex;justify-content:space-between;align-items:flex-start;}
+  .member-stats{display:flex;flex-direction:column;gap:10px;margin-top:14px;}
+  .member-stat{}
+  .ms-label{font-size:12px;color:var(--muted);}
+  .ms-value{font-size:20px;font-weight:800;margin-top:2px;}
+  .checkin-box{background:var(--card-grad);border:1px solid var(--gold-line-soft);
+    border-radius:16px;padding:18px 14px;margin-top:12px;}
+  .ci-row{display:flex;justify-content:space-between;gap:4px;}
+  .ci-day{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;}
+  .ci-reward{font-size:9px;color:var(--muted);font-weight:600;text-align:center;min-height:11px;}
+  .ci-icon{font-size:22px;filter:grayscale(1) opacity(.35);transition:.2s;line-height:1;}
+  .ci-icon.on{filter:none;transform:scale(1.05);}
+  .ci-gift{font-size:24px;}
+  .ci-daylabel{font-size:9px;color:var(--muted);}
+  .ci-btn{margin-top:16px;}
+  .ci-btn.done{background:var(--surface2);color:var(--muted);}
+  .ci-qr{text-align:center;margin-top:12px;font-size:13px;color:var(--yellow);font-weight:600;cursor:pointer;}
+  /* member card with background photo: darken for text legibility */
+  .member-card.has-bg{position:relative;overflow:hidden;}
+  .member-card.has-bg::before{content:"";position:absolute;inset:0;
+    background:linear-gradient(135deg,rgba(0,0,0,.7),rgba(0,0,0,.45));z-index:0;}
+  .member-card.has-bg>*{position:relative;z-index:1;}
   .member-tier{font-size:11px;color:var(--yellow);text-transform:uppercase;letter-spacing:.08em;font-weight:700;}
   .member-name{font-size:17px;font-weight:700;margin-top:2px;}
   .member-pts{font-size:14px;font-weight:700;color:var(--yellow);}
@@ -267,12 +297,12 @@
   .sub-sub{font-size:12px;font-weight:600;opacity:.85;margin-top:2px;}
   .sub-arrow{font-size:26px;font-weight:700;}
   .svc-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:14px;}
-  .svc-tile{background:var(--surface);border:1px solid var(--line);border-radius:14px;
+  .svc-tile{background:var(--card-grad);border:1px solid var(--gold-line-soft);border-radius:14px;
     padding:12px 6px;display:flex;flex-direction:column;align-items:center;gap:7px;cursor:pointer;transition:.12s;}
   .svc-tile:active{transform:scale(.95);}
   .svc-tile-ic{font-size:26px;}
   .svc-tile-nm{font-size:11px;text-align:center;font-weight:600;line-height:1.2;}
-  .wallet-bar{background:var(--surface);border:1px solid var(--line);border-radius:16px;
+  .wallet-bar{background:var(--card-grad-gold);border:1px solid var(--gold-line);border-radius:16px;
     padding:14px 16px;margin-top:18px;display:flex;align-items:center;justify-content:space-between;}
   .wb-label{font-size:12px;color:var(--muted);}
   .wb-amt{font-size:20px;font-weight:800;margin-top:2px;}
@@ -287,7 +317,7 @@
   .hl-2{background:linear-gradient(135deg,#0d1a3a,#1f3a7a);}
   .hl-tx{font-size:15px;font-weight:800;color:#fff;text-shadow:0 1px 4px rgba(0,0,0,.5);}
   .home-cards{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:18px;}
-  .hc{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:16px;cursor:pointer;transition:.12s;}
+  .hc{background:var(--card-grad);border:1px solid var(--gold-line-soft);border-radius:16px;padding:16px;cursor:pointer;transition:.12s;}
   .hc:active{transform:scale(.97);}
   .hc-t{font-size:15px;font-weight:700;}
   .hc-s{font-size:12px;color:var(--muted);margin-top:4px;line-height:1.4;}
@@ -302,13 +332,18 @@
 
   /* vehicle section (below greeting) */
   .veh-section{margin-top:16px;}
-  .veh-row{background:var(--surface);border:1px solid var(--line);border-radius:14px;
+  .active-veh{background:var(--card-grad);border:1px solid var(--gold-line);border-radius:14px;
+    padding:14px 16px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;transition:.12s;}
+  .active-veh:active{transform:scale(.99);}
+  .veh-switch{color:var(--yellow);font-size:18px;font-weight:700;}
+  .myveh-row{background:var(--surface);border:1px solid var(--line);border-radius:14px;
     padding:14px 16px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;transition:.12s;}
-  .veh-row:active{transform:scale(.99);}
+  .myveh-row.active{border-color:var(--yellow);}
+  .myveh-row:active{transform:scale(.99);}
+  .myveh-active-tag{font-size:11px;font-weight:700;color:#111;background:var(--yellow);border-radius:20px;padding:3px 10px;}
   .veh-name{font-size:15px;font-weight:700;}
   .veh-meta{font-size:12px;color:var(--muted);margin-top:2px;}
   .veh-x{color:var(--muted);cursor:pointer;font-size:14px;padding:4px 8px;}
-  .veh-empty{font-size:13px;color:var(--muted);padding:10px 2px;}
   .add-veh-btn{background:var(--surface2);border:1px dashed var(--line);border-radius:12px;
     padding:13px;text-align:center;color:var(--yellow);font-size:14px;font-weight:700;cursor:pointer;}
   .add-veh-btn:active{opacity:.7;}
@@ -461,7 +496,18 @@ const STYLE_DEFAULTS = {
   memBenefits2:"5% off services\\nPriority booking",
   memBenefits3:"10% off services\\nFree monthly wash\\nPriority booking",
   memBenefits4:"15% off services\\n2 free washes monthly\\nWallet credit RM100",
-  memBenefits5:"20% off all services\\nUnlimited washes\\nWallet credit RM200\\nVIP support"
+  memBenefits5:"20% off all services\\nUnlimited washes\\nWallet credit RM200\\nVIP support",
+  // Daily check-in
+  checkinTitle:"Daily Check-in",
+  checkinDayReward:"1 Point", checkinDay7Reward:"Mystery Gift",
+  checkinBtn:"Check-in",
+  // per-day reward config: type (point/credit/service) + value, editable in admin
+  checkinDays:[
+    {label:"1 Point"},{label:"1 Point"},{label:"1 Point"},
+    {label:"1 Point"},{label:"1 Point"},{label:"1 Point"},{label:"Mystery Gift"}
+  ],
+  // Member card tier backgrounds (uploaded photos per tier)
+  memBg1:null, memBg2:null, memBg3:null, memBg4:null, memBg5:null
 };
 let STYLE = Object.assign({}, STYLE_DEFAULTS);
 
@@ -651,6 +697,48 @@ async function addVehicle(v){
 async function deleteVehicle(id){
   try{ await fetch(`${SUPA_URL}/rest/v1/gl_vehicles?id=eq.${id}`,{method:"DELETE",headers:authHeaders()});
     VEHICLES=VEHICLES.filter(v=>v.id!==id); return true; }catch(e){ return false; }
+}
+
+/* ---------- Daily check-in ---------- */
+let CHECKIN={streak:0,last_checkin:null};
+function todayStr(){ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function daysBetween(a,b){ return Math.round((new Date(b)-new Date(a))/86400000); }
+async function fetchCheckin(){
+  if(!SESSION?.user?.id){ CHECKIN={streak:0,last_checkin:null}; return CHECKIN; }
+  try{
+    const r=await fetch(`${SUPA_URL}/rest/v1/gl_checkins?select=*&owner_id=eq.${SESSION.user.id}`,{headers:authHeaders()});
+    if(r.ok){ const rows=await r.json(); if(rows[0]) CHECKIN={streak:rows[0].streak||0,last_checkin:rows[0].last_checkin}; }
+  }catch(e){}
+  // if they missed a day (gap > 1), streak is stale → will reset on next check-in
+  return CHECKIN;
+}
+// returns the effective current streak accounting for missed days
+function effectiveStreak(){
+  if(!CHECKIN.last_checkin) return 0;
+  const gap=daysBetween(CHECKIN.last_checkin, todayStr());
+  if(gap===0) return CHECKIN.streak;       // already counted today
+  if(gap===1) return CHECKIN.streak;       // consecutive, ready for next
+  return 0;                                 // missed a day → reset
+}
+function checkedInToday(){ return CHECKIN.last_checkin===todayStr(); }
+async function doCheckin(){
+  if(!SESSION?.user?.id){ toast('Sign in to check in'); return; }
+  if(checkedInToday()){ toast('Already checked in today ✓'); return; }
+  const gap = CHECKIN.last_checkin ? daysBetween(CHECKIN.last_checkin, todayStr()) : 999;
+  let newStreak = (gap===1 ? (CHECKIN.streak||0) : 0) + 1;  // consecutive +1, else reset to 1
+  if(newStreak>7) newStreak=1;  // after completing 7, loop back
+  const reached7 = newStreak===7;
+  try{
+    const r=await fetch(`${SUPA_URL}/rest/v1/gl_checkins`,{method:"POST",
+      headers:Object.assign(authHeaders(),{Prefer:"resolution=merge-duplicates,return=representation"}),
+      body:JSON.stringify({owner_id:SESSION.user.id,streak:newStreak,last_checkin:todayStr(),updated_at:new Date().toISOString()})});
+    if(r.ok){
+      CHECKIN={streak:newStreak,last_checkin:todayStr()};
+      if(reached7) toast('🎁 Day 7! Claim your mystery gift at the counter.');
+      else toast('Checked in ✓ +'+(STYLE.checkinDays?.[newStreak-1]?.label||'reward'));
+      renderHome();
+    } else toast('Check-in failed');
+  }catch(e){ toast('Check-in error'); }
 }
 function logout(){
   localStorage.removeItem('gl_session'); SESSION=null; PROFILE=null; IS_GUEST=false;
@@ -977,19 +1065,49 @@ async function renderHome(){
   const initial = (PROFILE?.name||'G')[0].toUpperCase();
   try{ if(!SERVICES.length) await fetchServices(); }catch(e){ console.error('services', e); }
   try{ if(!IS_GUEST && SESSION?.user?.id) await fetchVehicles(); }catch(e){ console.error('vehicles', e); }
+  try{ if(!IS_GUEST && SESSION?.user?.id) await fetchCheckin(); }catch(e){ console.error('checkin', e); }
   const refCode = PROFILE?.referral_code || '';
 
-  // vehicle display: "Brand Model - PLATE"
+  // member card tier background (per subscribed tier; default if non-member)
+  const tierNum = PROFILE?.tier_level || 0; // 0=non-member, 1-5 = tiers
+  const tierBg = [null, STYLE.memBg1, STYLE.memBg2, STYLE.memBg3, STYLE.memBg4, STYLE.memBg5][tierNum];
+  const memberCardStyle = tierBg
+    ? `background-image:url('${tierBg}');background-size:cover;background-position:center;`
+    : '';
+
+  // daily check-in: 7 days, car icon grey→colored
+  const curStreak = effectiveStreak();
+  const doneToday = checkedInToday();
+  const days = (STYLE.checkinDays && STYLE.checkinDays.length===7) ? STYLE.checkinDays
+    : [{label:'1 Point'},{label:'1 Point'},{label:'1 Point'},{label:'1 Point'},{label:'1 Point'},{label:'1 Point'},{label:'Mystery Gift'}];
+  const checkinHtml = days.map((d,i)=>{
+    const dayNum=i+1;
+    const filled = dayNum<=curStreak;
+    const isGift = dayNum===7;
+    const icon = isGift
+      ? `<div class="ci-icon ci-gift ${filled?'on':''}">🎁</div>`
+      : `<div class="ci-icon ${filled?'on':''}">🚗</div>`;
+    return `<div class="ci-day">
+      <div class="ci-reward">${esc(d.label||'')}</div>
+      ${icon}
+      <div class="ci-daylabel">Day ${dayNum}</div>
+    </div>`;
+  }).join('');
+
+  // vehicle display: show ONE active car (Jacar-style), tap to manage all
   const vehLabel=v=>{
     const bm=[v.make,v.model].filter(Boolean).join(' ');
     return (bm? bm : 'Vehicle') + (v.plate? ' - '+v.plate : '');
   };
-  const vehiclesHtml = VEHICLES.length
-    ? VEHICLES.map(v=>`<div class="veh-row" onclick="openVehicle('${v.id}')">
-        <div class="veh-info"><div class="veh-name">${esc(vehLabel(v))}</div>${v.color?`<div class="veh-meta">${esc(v.color)} · ${esc(v.car_type||'Car')}</div>`:''}</div>
-        <span class="veh-x" onclick="event.stopPropagation();onDelVehicle('${v.id}')">✕</span>
-      </div>`).join('')
-    : `<div class="veh-empty">No vehicle added yet</div>`;
+  let activeId=null;
+  try{ activeId=localStorage.getItem('gl_active_vehicle'); }catch(e){}
+  let activeVeh = VEHICLES.find(v=>v.id===activeId) || VEHICLES[0] || null;
+  const vehicleSection = activeVeh
+    ? `<div class="active-veh" onclick="openMyVehicles()">
+         <div class="veh-info"><div class="veh-name">${esc(vehLabel(activeVeh))}</div>${activeVeh.color?`<div class="veh-meta">${esc(activeVeh.color)} · ${esc(activeVeh.car_type||'Car')}</div>`:''}</div>
+         <span class="veh-switch">⌄</span>
+       </div>`
+    : `<div class="add-veh-btn" onclick="openAddVehicle()">+ Add Vehicle</div>`;
 
   // services grid (icons) - use first 8 services
   const grid = SERVICES.slice(0,8).map(s=>`
@@ -1009,20 +1127,28 @@ async function renderHome(){
         <div class="avatar">${esc(initial)}</div>
       </div>
 
-      <!-- vehicles section (below greeting) -->
+      <!-- vehicles section (single active car, below greeting) -->
       <div class="veh-section">
-        <div class="veh-list">${vehiclesHtml}</div>
-        <div class="add-veh-btn" onclick="openAddVehicle()">+ Add Vehicle</div>
+        ${vehicleSection}
       </div>
 
-      <!-- member card with Join Member -->
-      <div class="member-card">
+      <!-- member card with wallet, points, Join Member -->
+      <div class="member-card ${tierBg?'has-bg':''}" style="${memberCardStyle}">
         <div class="member-top">
           <div>
             <div class="member-tier">${esc(PROFILE?.tier||STYLE.homeMemberTier||'Non-Member')}</div>
             <div class="member-name">${esc(PROFILE?.name||(IS_GUEST?'Guest user':'Member'))}</div>
           </div>
-          <div class="member-pts">⭐ ${PROFILE?.points||0}</div>
+        </div>
+        <div class="member-stats">
+          <div class="member-stat">
+            <div class="ms-label">${esc(STYLE.homeWalletLabel||'Wallet Balance')}</div>
+            <div class="ms-value">RM ${Number(PROFILE?.wallet||0).toFixed(2)}</div>
+          </div>
+          <div class="member-stat">
+            <div class="ms-label">Points</div>
+            <div class="ms-value">⭐ ${PROFILE?.points||0}</div>
+          </div>
         </div>
         <div class="join-member-btn" onclick="openMembership()">${esc(STYLE.homeJoinMemberBtn||'Join Member')}</div>
       </div>
@@ -1031,17 +1157,13 @@ async function renderHome(){
       <div class="sec-title">${esc(STYLE.homeServicesTitle||'Our Services')}</div>
       <div class="svc-grid">${grid}</div>
 
-      <!-- wallet bar + QR -->
+      <!-- daily check-in (7-day streak → mystery gift) -->
       ${STYLE.homeShowWallet!==false?`
-      <div class="wallet-bar">
-        <div>
-          <div class="wb-label">${esc(STYLE.homeWalletLabel||'Wallet Balance')}</div>
-          <div class="wb-amt">RM ${Number(PROFILE?.wallet||0).toFixed(2)}</div>
-        </div>
-        <div class="wb-actions">
-          ${refCode?`<div class="wb-qr" onclick="showReferralQR()" title="My referral QR">⊞ QR</div>`:''}
-          <div class="wb-sub" onclick="openMembership()">${esc(STYLE.homeSubscribeBtn||'Subscribe')}</div>
-        </div>
+      <div class="sec-title">${esc(STYLE.checkinTitle||'Daily Check-in')}</div>
+      <div class="checkin-box">
+        <div class="ci-row">${checkinHtml}</div>
+        <button class="btn btn-primary ci-btn ${doneToday?'done':''}" onclick="${doneToday?'':'doCheckin()'}">${doneToday?'Checked in today ✓':(esc(STYLE.checkinBtn||'Check-in'))}</button>
+        ${refCode?`<div class="ci-qr" onclick="showReferralQR()">⊞ My Referral QR</div>`:''}
       </div>`:''}
 
       <!-- highlights carousel -->
@@ -1083,7 +1205,13 @@ function serviceEmoji(name){
 
 function onDelVehicle(id){
   if(!confirm('Remove this vehicle?'))return;
-  deleteVehicle(id).then(()=>renderHome());
+  deleteVehicle(id).then(()=>{
+    // if we deleted the active car, clear it
+    try{ if(localStorage.getItem('gl_active_vehicle')===id) localStorage.removeItem('gl_active_vehicle'); }catch(e){}
+    // refresh whichever page we're on
+    if(appRoot.querySelector('.myveh-row')||appRoot.innerHTML.includes('My Vehicles')) openMyVehicles();
+    else renderHome();
+  });
 }
 
 function openAddVehicle(){
@@ -1111,24 +1239,42 @@ function openAddVehicle(){
     if(!make||!model){document.getElementById('v-err').textContent="Brand and model are required.";return;}
     const ok=await addVehicle({plate,make,model,color:document.getElementById('v-color').value.trim(),
       car_type:document.getElementById('v-type').value});
-    if(ok){toast('Vehicle added ✓');renderHome();}
+    if(ok){
+      if(VEHICLES[0]) try{ localStorage.setItem('gl_active_vehicle', VEHICLES[0].id); }catch(e){}
+      toast('Vehicle added ✓');renderHome();
+    }
     else document.getElementById('v-err').textContent="Couldn't save — try again.";
   };
 }
 
-function openVehicle(id){
-  const v=VEHICLES.find(x=>x.id===id); if(!v) return;
-  const bm=[v.make,v.model].filter(Boolean).join(' ');
-  appRoot.innerHTML=`
-    <div class="topbar-app"><button class="back" onclick="routeTab('home')">‹</button><div class="ttl">${esc(bm||'Vehicle')}</div></div>
-    <div class="app-scroll" style="padding-top:18px">
-      <div class="card-box">
-        <div style="font-size:20px;font-weight:800">${esc(bm||'Vehicle')}</div>
-        <div class="app-sub" style="margin-top:4px">${esc(v.plate||'')} · ${esc(v.color||'')} · ${esc(v.car_type||'Car')}</div>
+function setActiveVehicle(id){
+  try{ localStorage.setItem('gl_active_vehicle', id); }catch(e){}
+  toast('Vehicle selected ✓');
+  routeTab('home');
+}
+
+function openMyVehicles(){
+  let activeId=null;
+  try{ activeId=localStorage.getItem('gl_active_vehicle'); }catch(e){}
+  if(!activeId && VEHICLES[0]) activeId=VEHICLES[0].id;
+  const vehLabel=v=>{ const bm=[v.make,v.model].filter(Boolean).join(' '); return (bm||'Vehicle')+(v.plate?' - '+v.plate:''); };
+  const list = VEHICLES.length ? VEHICLES.map(v=>`
+    <div class="myveh-row ${v.id===activeId?'active':''}" onclick="setActiveVehicle('${v.id}')">
+      <div class="veh-info">
+        <div class="veh-name">${esc(vehLabel(v))}</div>
+        ${v.color?`<div class="veh-meta">${esc(v.color)} · ${esc(v.car_type||'Car')}</div>`:''}
       </div>
-      <div class="sec-title">Maintenance & service history</div>
-      <div class="guest-banner" style="margin-top:12px">No service records yet. Once this car has services done, they'll show here — including how many maintenance visits are left.</div>
-      <button class="btn btn-ghost" style="margin-top:18px" onclick="onDelVehicle('${v.id}')">Remove this vehicle</button>
+      <div style="display:flex;align-items:center;gap:10px">
+        ${v.id===activeId?`<span class="myveh-active-tag">Active</span>`:''}
+        <span class="veh-x" onclick="event.stopPropagation();onDelVehicle('${v.id}')">✕</span>
+      </div>
+    </div>`).join('') : `<div class="guest-banner">No vehicles yet. Add your first car below.</div>`;
+  appRoot.innerHTML=`
+    <div class="topbar-app"><button class="back" onclick="routeTab('home')">‹</button><div class="ttl">My Vehicles</div></div>
+    <div class="app-scroll" style="padding-top:18px">
+      <div class="app-sub" style="margin-bottom:12px">Tap a vehicle to set it as active.</div>
+      ${list}
+      <div class="add-veh-btn" style="margin-top:14px" onclick="openAddVehicle()">+ Add Vehicle</div>
     </div>`;
 }
 
