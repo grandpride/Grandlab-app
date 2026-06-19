@@ -222,6 +222,45 @@
     border:1px solid var(--gold-line-soft);display:flex;align-items:center;justify-content:center;
     color:var(--yellow);cursor:pointer;transition:.12s;}
   .top-ic:active{transform:scale(.92);}
+
+  /* ===== WALLET page ===== */
+  .wallet-balance-card{background:var(--card-grad-gold);border:1px solid var(--gold-line);
+    border-radius:18px;padding:20px;margin-top:16px;box-shadow:var(--gold-glow);}
+  .wbc-label{font-size:12px;color:var(--muted);}
+  .wbc-amt{font-size:32px;font-weight:800;margin-top:4px;}
+  .wbc-foot{display:flex;justify-content:space-between;margin-top:20px;font-size:12px;color:var(--muted);}
+  .wallet-actions{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:18px;}
+  .wa{display:flex;flex-direction:column;align-items:center;gap:7px;cursor:pointer;}
+  .wa-ic{width:52px;height:52px;border-radius:14px;background:var(--card-grad);border:1px solid var(--gold-line-soft);
+    display:flex;align-items:center;justify-content:center;font-size:22px;color:var(--yellow);}
+  .wa:active .wa-ic{transform:scale(.92);}
+  .wa-t{font-size:11px;font-weight:600;}
+  .txn-list{margin-top:12px;}
+  .txn-row{display:flex;justify-content:space-between;align-items:center;padding:14px 0;border-bottom:1px solid var(--line);}
+  .txn-note{font-size:14px;font-weight:600;}
+  .txn-date{font-size:11px;color:var(--muted);margin-top:2px;}
+  .txn-amt{font-size:14px;font-weight:700;}
+  .txn-amt.neg{color:#ff6b6b;} .txn-amt.pos{color:#51cf66;}
+
+  /* ===== REWARDS page ===== */
+  .rewards-hero{margin:0 -22px 0;padding:0 22px 24px;
+    background:radial-gradient(120% 90% at 50% 0%, #3a1010 0%, #1a0a0a 55%, #0a0808 100%);
+    text-align:center;border-bottom:1px solid var(--gold-line-soft);}
+  .rewards-coin{margin-top:8px;filter:drop-shadow(0 4px 12px rgba(245,197,24,.4));}
+  .rewards-balance{font-size:30px;font-weight:800;margin-top:6px;}
+  .rewards-my{margin:14px auto 0;background:#fff;color:#111;border:none;border-radius:24px;
+    padding:9px 24px;font-size:14px;font-weight:700;cursor:pointer;display:block;}
+  .rewards-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px;}
+  .reward-card{background:var(--card-grad);border:1px solid var(--gold-line-soft);border-radius:16px;
+    padding:12px;display:flex;flex-direction:column;}
+  .reward-badge{font-size:10px;font-weight:800;color:var(--yellow);letter-spacing:.05em;margin-bottom:8px;}
+  .reward-img{width:100%;aspect-ratio:1.3/1;border-radius:12px;background:#1a1a1a;background-size:cover;
+    background-position:center;display:flex;align-items:center;justify-content:center;font-size:32px;}
+  .reward-name{font-size:13px;font-weight:700;margin-top:10px;line-height:1.3;}
+  .reward-cost{font-size:14px;font-weight:800;margin-top:6px;display:flex;align-items:center;gap:5px;}
+  .reward-btn{margin-top:10px;background:var(--yellow);color:#111;border:none;border-radius:10px;
+    padding:9px;font-size:13px;font-weight:800;cursor:pointer;}
+  .reward-btn:active{opacity:.85;}
   .card-box{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:18px;margin-top:16px;}
   .wallet-card{background:linear-gradient(135deg,var(--yellow),var(--yellow-dim));color:#111;
     border:none;border-radius:20px;padding:20px;margin-top:18px;}
@@ -517,7 +556,12 @@ const STYLE_DEFAULTS = {
     {type:'hook',value:'Mystery Gift',service:''}
   ],
   // Member card tier backgrounds (uploaded photos per tier)
-  memBg1:null, memBg2:null, memBg3:null, memBg4:null, memBg5:null
+  memBg1:null, memBg2:null, memBg3:null, memBg4:null, memBg5:null,
+  // Wallet & Rewards naming
+  walletName:"G Wallet", coinName:"G Coin",
+  walletJoinedLabel:"Joined since",
+  rewardsTitle:"G Coin", rewardsMyBtn:"My Rewards",
+  rewardsSubtitle:"More Rewards With G Coin"
 };
 let STYLE = Object.assign({}, STYLE_DEFAULTS);
 
@@ -712,6 +756,31 @@ async function addVehicle(v){
 async function deleteVehicle(id){
   try{ await fetch(`${SUPA_URL}/rest/v1/gl_vehicles?id=eq.${id}`,{method:"DELETE",headers:authHeaders()});
     VEHICLES=VEHICLES.filter(v=>v.id!==id); return true; }catch(e){ return false; }
+}
+
+/* G coin icon (gold with G + shine) */
+function gCoin(size){
+  size=size||24;
+  const id='gc'+Math.random().toString(36).slice(2,7);
+  return `<svg viewBox="0 0 48 48" width="${size}" height="${size}" style="vertical-align:middle">
+    <defs><radialGradient id="${id}" cx="35%" cy="30%" r="75%">
+      <stop offset="0%" stop-color="#FFE889"/><stop offset="45%" stop-color="#F5C518"/><stop offset="100%" stop-color="#B8860B"/>
+    </radialGradient></defs>
+    <circle cx="24" cy="24" r="22" fill="url(#${id})" stroke="#8a6d0a" stroke-width="1.5"/>
+    <circle cx="24" cy="24" r="17" fill="none" stroke="rgba(255,255,255,.35)" stroke-width="1.2"/>
+    <ellipse cx="17" cy="15" rx="7" ry="4" fill="rgba(255,255,255,.45)"/>
+    <text x="24" y="32" font-size="22" font-weight="900" text-anchor="middle" fill="#7a5c08" font-family="Arial,sans-serif">G</text>
+  </svg>`;
+}
+
+let REWARDS=[];
+async function fetchRewards(){
+  try{
+    const r=await fetch(`${SUPA_URL}/rest/v1/gl_rewards?select=*&active=eq.true&order=sort_order.asc`,
+      {headers:{apikey:SUPA_ANON,Authorization:`Bearer ${SUPA_ANON}`}});
+    if(r.ok) REWARDS=await r.json();
+  }catch(e){}
+  return REWARDS;
 }
 
 /* ---------- Daily check-in ---------- */
@@ -1053,7 +1122,8 @@ function botnav(active){
   return `<div class="botnav">
     <button class="${active==='home'?'on':''}" onclick="routeTab('home')"><span class="ic">⌂</span>Home</button>
     <button class="${active==='services'?'on':''}" onclick="routeTab('services')"><span class="ic">▤</span>Services</button>
-    <button class="${active==='bookings'?'on':''}" onclick="routeTab('bookings')"><span class="ic">▦</span>Bookings</button>
+    <button class="${active==='wallet'?'on':''}" onclick="routeTab('wallet')"><span class="ic">▢</span>Wallet</button>
+    <button class="${active==='rewards'?'on':''}" onclick="routeTab('rewards')"><span class="ic">◆</span>Rewards</button>
     <button class="${active==='account'?'on':''}" onclick="routeTab('account')"><span class="ic">◍</span>Account</button>
   </div>`;
 }
@@ -1062,6 +1132,8 @@ async function routeTab(tab){
   currentTab=tab;
   if(tab==='home') return renderHome();
   if(tab==='services') return renderServicesScreen();
+  if(tab==='wallet') return renderWallet();
+  if(tab==='rewards') return renderRewards();
   if(tab==='bookings') return renderBookings();
   if(tab==='account') return renderAccount();
 }
@@ -1174,9 +1246,9 @@ async function renderHome(){
             <div class="ms-label">${esc(STYLE.homeWalletLabel||'Wallet Balance')}</div>
             <div class="ms-value">RM ${Number(PROFILE?.wallet||0).toFixed(2)}</div>
           </div>
-          <div class="member-stat">
-            <div class="ms-label">Points</div>
-            <div class="ms-value">⭐ ${PROFILE?.points||0}</div>
+          <div class="member-stat" onclick="routeTab('rewards')" style="cursor:pointer">
+            <div class="ms-label">${esc(STYLE.coinName||'G Coin')}</div>
+            <div class="ms-value" style="display:flex;align-items:center;gap:6px">${gCoin(20)} ${PROFILE?.points||0}</div>
           </div>
         </div>
         <div class="join-member-btn" onclick="openMembership()">${esc(STYLE.homeJoinMemberBtn||'Join Member')}</div>
@@ -1422,6 +1494,87 @@ async function renderBookings(){
       <div class="guest-banner" style="margin-top:24px">No bookings yet. Book a service to see it here.</div>
     </div>
     ${botnav('bookings')}`;
+}
+
+async function fetchWalletTxns(){
+  if(!SESSION?.user?.id) return [];
+  try{
+    const r=await fetch(`${SUPA_URL}/rest/v1/gl_wallet_txns?select=*&owner_id=eq.${SESSION.user.id}&order=created_at.desc&limit=20`,{headers:authHeaders()});
+    if(r.ok) return await r.json();
+  }catch(e){}
+  return [];
+}
+
+async function renderWallet(){
+  const p=PROFILE||{};
+  const joined = p.created_at ? new Date(p.created_at).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}) : '—';
+  let txns=[];
+  try{ if(!IS_GUEST && SESSION?.user?.id) txns=await fetchWalletTxns(); }catch(e){}
+  const txnHtml = txns.length ? txns.map(t=>`
+    <div class="txn-row">
+      <div><div class="txn-note">${esc(t.note||t.kind||'Transaction')}</div>
+      <div class="txn-date">${t.created_at?new Date(t.created_at).toLocaleDateString('en-GB'):''}</div></div>
+      <div class="txn-amt ${Number(t.amount)<0?'neg':'pos'}">${Number(t.amount)<0?'-':'+'}RM ${Math.abs(Number(t.amount||0)).toFixed(2)}</div>
+    </div>`).join('') : `<div class="txn-row"><div><div class="txn-note">Opening balance</div><div class="txn-date">—</div></div><div class="txn-amt">RM 0.00</div></div>`;
+
+  appRoot.innerHTML=`
+    <div class="app-scroll">
+      <div class="app-h1">${esc(STYLE.walletName||'G Wallet')}</div>
+      <!-- balance card -->
+      <div class="wallet-balance-card">
+        <div class="wbc-label">${esc(STYLE.walletName||'G Wallet')} Balance</div>
+        <div class="wbc-amt">RM ${Number(p.wallet||0).toFixed(2)}</div>
+        <div class="wbc-foot">
+          <span>${esc(p.name||'Member')}</span>
+          <span>${esc(STYLE.walletJoinedLabel||'Joined since')} ${joined}</span>
+        </div>
+      </div>
+      <!-- quick actions -->
+      <div class="wallet-actions">
+        <div class="wa" onclick="toast('Top up coming soon')"><div class="wa-ic">＋</div><div class="wa-t">Top Up</div></div>
+        <div class="wa" onclick="toast('Gift cards coming soon')"><div class="wa-ic">▢</div><div class="wa-t">Gift Card</div></div>
+        <div class="wa" onclick="routeTab('rewards')"><div class="wa-ic">◆</div><div class="wa-t">Rewards</div></div>
+        <div class="wa" onclick="toast('Vouchers coming soon')"><div class="wa-ic">▣</div><div class="wa-t">Vouchers</div></div>
+      </div>
+      <div class="sec-title">Recent Transactions</div>
+      <div class="txn-list">${txnHtml}</div>
+    </div>
+    ${botnav('wallet')}`;
+}
+
+async function renderRewards(){
+  const p=PROFILE||{};
+  const coins = p.points||0;
+  if(!REWARDS.length) try{ await fetchRewards(); }catch(e){}
+  const grid = REWARDS.length ? REWARDS.map(r=>`
+    <div class="reward-card">
+      <div class="reward-badge">REDEEM NOW</div>
+      <div class="reward-img" style="${r.image_url?`background-image:url('${r.image_url}')`:''}">${r.image_url?'':'🎁'}</div>
+      <div class="reward-name">${esc(r.name||'')}</div>
+      <div class="reward-cost">${gCoin(16)} ${r.coin_cost||0}</div>
+      <button class="reward-btn" onclick="redeemReward('${r.id}',${r.coin_cost||0},'${esc(r.name||'')}')">Redeem</button>
+    </div>`).join('') : `<div class="guest-banner" style="grid-column:1/-1">No rewards yet. Add them in the admin.</div>`;
+
+  appRoot.innerHTML=`
+    <div class="app-scroll" style="padding-top:0">
+      <div class="rewards-hero">
+        <div class="topbar-app" style="background:transparent;border:none"><div class="ttl" style="color:#fff">${esc(STYLE.rewardsTitle||'G Coin')}</div></div>
+        <div class="rewards-coin">${gCoin(56)}</div>
+        <div class="rewards-balance">${coins}</div>
+        <button class="rewards-my" onclick="toast('My rewards coming soon')">${esc(STYLE.rewardsMyBtn||'My Rewards')}</button>
+      </div>
+      <div class="sec-title">${esc(STYLE.rewardsSubtitle||'More Rewards With G Coin')}</div>
+      <div class="rewards-grid">${grid}</div>
+    </div>
+    ${botnav('rewards')}`;
+}
+
+function redeemReward(id, cost, name){
+  const coins = PROFILE?.points||0;
+  if(coins < cost){ toast(`Not enough ${STYLE.coinName||'G Coin'} — you need ${cost}`); return; }
+  if(!confirm(`Redeem "${name}" for ${cost} ${STYLE.coinName||'G Coin'}?`)) return;
+  toast('Redemption coming soon — show this at the counter.');
+  // actual coin deduction + voucher issue wired with the loyalty system later
 }
 
 async function renderAccount(){

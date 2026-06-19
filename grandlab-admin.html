@@ -159,6 +159,7 @@
         <button class="tab" data-tab="homepage" onclick="switchTab('homepage')">Home Page</button>
         <button class="tab" data-tab="membership" onclick="switchTab('membership')">Membership</button>
         <button class="tab" data-tab="checkin" onclick="switchTab('checkin')">Check-in</button>
+        <button class="tab" data-tab="rewards" onclick="switchTab('rewards')">Rewards</button>
         <button class="tab" data-tab="customers" onclick="switchTab('customers')">Customers</button>
         <button class="tab" data-tab="bookings" onclick="switchTab('bookings')">Bookings</button>
         <button class="tab" data-tab="referrals" onclick="switchTab('referrals')">Referrals</button>
@@ -430,6 +431,22 @@
           <div id="ci-days"></div>
         </div>
         <div class="hint">Type: <b>None</b> = nothing, <b>Point</b> = number of points, <b>Credit</b> = RM amount, <b>Hook</b> = choose a service/voucher. Day 7 is usually the big reward.</div>
+      </div>
+
+      <!-- REWARDS -->
+      <div class="panel" id="panel-rewards">
+        <div class="section-h">Naming</div>
+        <div class="card">
+          <div class="row">
+            <div><label>Wallet name</label><input id="rw-walletname" oninput="onRewardsCfg()"></div>
+            <div><label>Coin name</label><input id="rw-coinname" oninput="onRewardsCfg()"></div>
+          </div>
+          <label>Rewards page subtitle</label><input id="rw-subtitle" oninput="onRewardsCfg()">
+        </div>
+        <div class="section-h">Redeemable rewards</div>
+        <div id="rw-list"></div>
+        <button class="btn btn-ghost btn-sm" style="margin-top:10px" onclick="addReward()">+ Add reward</button>
+        <div class="hint">Each reward: photo, name, and how many ${'${theme.coinName||"G Coin"}'} it costs to redeem. These show on the customer's Rewards page.</div>
       </div>
 
       <!-- CUSTOMERS -->
@@ -728,7 +745,10 @@ let theme = { bg:"#0A0A0A", accent:"#F5C518", text:"#FFFFFF",
   memBenefits2:"5% off services\\nPriority booking",
   memBenefits3:"10% off services\\nFree monthly wash\\nPriority booking",
   memBenefits4:"15% off services\\n2 free washes monthly\\nWallet credit RM100",
-  memBenefits5:"20% off all services\\nUnlimited washes\\nWallet credit RM200\\nVIP support" };
+  memBenefits5:"20% off all services\\nUnlimited washes\\nWallet credit RM200\\nVIP support",
+  walletName:"G Wallet", coinName:"G Coin", walletJoinedLabel:"Joined since",
+  rewardsTitle:"G Coin", rewardsMyBtn:"My Rewards", rewardsSubtitle:"More Rewards With G Coin" };
+let REWARDS_DATA=[]; let deletedRewardIds=[];
 let pvMode = "onb";
 let pvSlide = 0;
 
@@ -757,12 +777,14 @@ function setConn(on){
 }
 
 async function loadAll(){
-  deletedSlideIds=[]; deletedServiceIds=[];
+  deletedSlideIds=[]; deletedServiceIds=[]; deletedRewardIds=[];
   try{
     let r=await sb("gl_onboarding_slides?select=*&order=sort_order.asc",{headers:H()});
     slides=r.ok?await r.json():[];
     r=await sb("gl_services?select=*&order=sort_order.asc",{headers:H()});
     services=r.ok?await r.json():[];
+    r=await sb("gl_rewards?select=*&order=sort_order.asc",{headers:H()});
+    REWARDS_DATA=r.ok?await r.json():[];
     // style from gl_settings (id='style', data jsonb)
     r=await sb("gl_settings?select=*&id=eq.style",{headers:H()});
     if(r.ok){const rows=await r.json();if(rows[0]&&rows[0].data)theme=Object.assign(theme,rows[0].data);}
@@ -1039,6 +1061,15 @@ async function saveAll(){
     for(const id of deletedSlideIds){ await sb(`gl_onboarding_slides?id=eq.${id}`,{method:"DELETE",headers:H()}); }
     for(const id of deletedServiceIds){ await sb(`gl_services?id=eq.${id}`,{method:"DELETE",headers:H()}); }
     deletedSlideIds=[]; deletedServiceIds=[];
+    // rewards
+    REWARDS_DATA.forEach((r,i)=>r.sort_order=i+1);
+    for(const r of REWARDS_DATA){
+      const body={name:r.name,image_url:r.image_url||null,coin_cost:Number(r.coin_cost||0),active:r.active!==false,sort_order:r.sort_order};
+      if(r.id){await sb(`gl_rewards?id=eq.${r.id}`,{method:"PATCH",headers:H(),body:JSON.stringify(body)});}
+      else{const rr=await sb("gl_rewards",{method:"POST",headers:H({Prefer:"return=representation"}),body:JSON.stringify(body)});if(rr.ok){const j=await rr.json();r.id=j[0].id;}}
+    }
+    for(const id of deletedRewardIds){ await sb(`gl_rewards?id=eq.${id}`,{method:"DELETE",headers:H()}); }
+    deletedRewardIds=[];
     // style -> gl_settings (id='style', data jsonb). upsert.
     await sb("gl_settings",{method:"POST",headers:H({Prefer:"resolution=merge-duplicates"}),body:JSON.stringify({id:"style",data:theme})});
     // referral settings
@@ -1248,9 +1279,61 @@ function switchTab(t){
   else if(t==='homepage'){fillHomeControls();setPv('home');}
   else if(t==='membership'){fillMemControls();}
   else if(t==='checkin'){fillCheckinControls();setPv('home');}
+  else if(t==='rewards'){fillRewardsControls();}
   else if(t==='customers')loadCustomers();
   else if(t==='bookings')loadBookings();
   else if(t==='referrals')loadReferrals();
+}
+
+/* ---------- REWARDS editing ---------- */
+function onRewardsCfg(){
+  theme.walletName=document.getElementById('rw-walletname').value;
+  theme.coinName=document.getElementById('rw-coinname').value;
+  theme.rewardsSubtitle=document.getElementById('rw-subtitle').value;
+}
+function fillRewardsControls(){
+  document.getElementById('rw-walletname').value=theme.walletName||'G Wallet';
+  document.getElementById('rw-coinname').value=theme.coinName||'G Coin';
+  document.getElementById('rw-subtitle').value=theme.rewardsSubtitle||'More Rewards With G Coin';
+  renderRewardsList();
+}
+function renderRewardsList(){
+  const el=document.getElementById('rw-list');
+  if(!REWARDS_DATA.length){ el.innerHTML='<div class="empty">No rewards yet. Add one below.</div>'; return; }
+  el.innerHTML=REWARDS_DATA.map((r,i)=>`
+    <div class="card">
+      <div class="row">
+        <div style="flex:2"><label>Name</label><input value="${esc(r.name||'')}" oninput="REWARDS_DATA[${i}].name=this.value"></div>
+        <div style="flex:1"><label>Coin cost</label><input type="number" min="0" value="${r.coin_cost||0}" oninput="REWARDS_DATA[${i}].coin_cost=Number(this.value)"></div>
+      </div>
+      <label>Photo</label>
+      <div class="upl">
+        <button class="btn btn-ghost btn-sm" onclick="document.getElementById('rwimg${i}').click()">Upload photo</button>
+        <input id="rwimg${i}" type="file" accept="image/*" style="display:none" onchange="uploadRewardImg(this,${i})">
+        ${r.image_url?`<img src="${r.image_url}" style="height:40px;border-radius:6px;border:1px solid var(--line)">`:''}
+        <button class="btn btn-danger btn-sm" onclick="removeReward(${i})">Delete</button>
+      </div>
+    </div>`).join('');
+}
+function addReward(){
+  REWARDS_DATA.push({name:"New reward",image_url:null,coin_cost:100,active:true,sort_order:REWARDS_DATA.length+1});
+  renderRewardsList();
+}
+function removeReward(i){
+  const r=REWARDS_DATA[i];
+  if(r && r.id) deletedRewardIds.push(r.id);
+  REWARDS_DATA.splice(i,1);
+  renderRewardsList();
+}
+async function uploadRewardImg(input,i){
+  const f=input.files[0]; if(!f) return;
+  toast("Uploading…");
+  const path=`reward-${Date.now()}-${f.name.replace(/[^a-z0-9.]/gi,'_')}`;
+  const r=await fetch(`${SUPA_URL}/storage/v1/object/${BUCKET}/${path}`,{
+    method:"POST",headers:{apikey:SVC_KEY,Authorization:`Bearer ${SVC_KEY}`},body:f});
+  if(!r.ok){ toast("Upload failed — is gl-images bucket public?"); return; }
+  REWARDS_DATA[i].image_url=`${SUPA_URL}/storage/v1/object/public/${BUCKET}/${path}`;
+  renderRewardsList(); toast("Uploaded ✓");
 }
 
 /* ---------- MEMBERSHIP editing ---------- */
