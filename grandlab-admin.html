@@ -422,9 +422,14 @@
           <label>Section title</label><input id="ci-title" oninput="onCheckin()">
           <label>Button text</label><input id="ci-btn" oninput="onCheckin()">
         </div>
-        <div class="section-h">Reward per day (Day 7 = mystery gift)</div>
-        <div class="card" id="ci-days"></div>
-        <div class="hint">Set what each day gives — e.g. "1 Point", "RM5 Credit", "Free Wash". Day 7 is the big mystery reward. The reward text is what shows under each day's car icon.</div>
+        <div class="section-h">Reward per day</div>
+        <div class="card">
+          <div style="display:flex;gap:8px;font-size:11px;color:var(--muted);font-weight:700;padding:0 4px 6px">
+            <div style="flex:0 0 48px">Day</div><div style="flex:1">Type</div><div style="flex:1.4">Value</div>
+          </div>
+          <div id="ci-days"></div>
+        </div>
+        <div class="hint">Type: <b>None</b> = nothing, <b>Point</b> = number of points, <b>Credit</b> = RM amount, <b>Hook</b> = choose a service/voucher. Day 7 is usually the big reward.</div>
       </div>
 
       <!-- CUSTOMERS -->
@@ -713,7 +718,7 @@ let theme = { bg:"#0A0A0A", accent:"#F5C518", text:"#FFFFFF",
   homeShowSubscribe:true, homeShowWallet:true, homeShowHighlights:true, homeShowCards:true,
   homeMemberTier:"Non-Member", homeJoinMemberBtn:"Join Member",
   checkinTitle:"Daily Check-in", checkinBtn:"Check-in",
-  checkinDays:[{label:"1 Point"},{label:"1 Point"},{label:"1 Point"},{label:"1 Point"},{label:"1 Point"},{label:"1 Point"},{label:"Mystery Gift"}],
+  checkinDays:[{type:'point',value:'1'},{type:'point',value:'1'},{type:'point',value:'1'},{type:'point',value:'1'},{type:'point',value:'1'},{type:'point',value:'1'},{type:'hook',value:'Mystery Gift',service:''}],
   memTitle:"All Membership Plan",
   memTier1:"Non-Member", memTier2:"Bronze", memTier3:"Silver", memTier4:"Gold", memTier5:"Platinum",
   memSubscribeBtn:"Subscribe Now",
@@ -1094,8 +1099,9 @@ function renderPreview(){
     const svcNames=(services&&services.length?services.slice(0,8).map(s=>s.name):['Car Wash','Coating','Tinted','PPF']);
     const tiles=svcNames.map(n=>tile('🚗',n||'')).join('');
     // check-in days preview
-    const cdays=(theme.checkinDays&&theme.checkinDays.length===7?theme.checkinDays:[{label:'1 Point'},{label:'1 Point'},{label:'1 Point'},{label:'1 Point'},{label:'1 Point'},{label:'1 Point'},{label:'Mystery Gift'}]);
-    const ciHtml=cdays.map((d,i)=>`<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px"><div style="font-size:7px;color:#8A8A8A;min-height:9px;text-align:center">${esc(d.label||'')}</div><div style="font-size:16px;filter:grayscale(1) opacity(.4)">${i===6?'🎁':'🚗'}</div><div style="font-size:7px;color:#8A8A8A">D${i+1}</div></div>`).join('');
+    const cdays=(theme.checkinDays&&theme.checkinDays.length===7?theme.checkinDays:[{type:'point',value:'1'},{type:'point',value:'1'},{type:'point',value:'1'},{type:'point',value:'1'},{type:'point',value:'1'},{type:'point',value:'1'},{type:'hook',value:'Mystery Gift'}]);
+    const dLabel=(d)=>{if(!d||d.type==='none'||!d.type)return '';if(d.type==='point')return (d.value||'0')+' Pt';if(d.type==='credit')return 'RM'+(d.value||'0');if(d.type==='hook')return d.service||d.value||'Gift';return d.value||'';};
+    const ciHtml=cdays.map((d,i)=>`<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px"><div style="font-size:7px;color:#8A8A8A;min-height:9px;text-align:center">${esc(dLabel(d))}</div><div style="font-size:16px;filter:grayscale(1) opacity(.4)">${i===6?'🎁':'🚗'}</div><div style="font-size:7px;color:#8A8A8A">D${i+1}</div></div>`).join('');
     const secTitle=(t)=>`<div style="font-size:13px;font-weight:800;margin-top:16px;padding-left:9px;position:relative"><span style="position:absolute;left:0;top:2px;bottom:2px;width:2.5px;border-radius:3px;background:${theme.accent}"></span>${esc(t)}</div>`;
     pv.innerHTML=`
       <div style="flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:0">
@@ -1290,12 +1296,35 @@ function fillCheckinControls(){
   document.getElementById('ci-title').value=theme.checkinTitle||'Daily Check-in';
   document.getElementById('ci-btn').value=theme.checkinBtn||'Check-in';
   if(!theme.checkinDays||theme.checkinDays.length!==7)
-    theme.checkinDays=[{label:"1 Point"},{label:"1 Point"},{label:"1 Point"},{label:"1 Point"},{label:"1 Point"},{label:"1 Point"},{label:"Mystery Gift"}];
-  document.getElementById('ci-days').innerHTML=theme.checkinDays.map((d,i)=>`
-    <div class="row" style="margin-bottom:6px;align-items:center">
-      <div style="flex:0 0 60px;font-size:12px;color:var(--muted)">Day ${i+1}${i===6?' 🎁':''}</div>
-      <div><input value="${esc(d.label||'')}" oninput="theme.checkinDays[${i}].label=this.value" placeholder="${i===6?'Mystery Gift':'e.g. 1 Point / RM5 Credit'}"></div>
-    </div>`).join('');
+    theme.checkinDays=[{type:'point',value:'1'},{type:'point',value:'1'},{type:'point',value:'1'},{type:'point',value:'1'},{type:'point',value:'1'},{type:'point',value:'1'},{type:'hook',value:'Mystery Gift',service:''}];
+  renderCheckinDays();
+}
+function renderCheckinDays(){
+  const svcOpts=(services||[]).map(s=>s.name).filter(Boolean);
+  document.getElementById('ci-days').innerHTML=theme.checkinDays.map((d,i)=>{
+    const type=d.type||'none';
+    let valueCtrl='';
+    if(type==='point') valueCtrl=`<input type="number" min="0" value="${esc(d.value||'')}" oninput="theme.checkinDays[${i}].value=this.value;renderPreview()" placeholder="e.g. 1">`;
+    else if(type==='credit') valueCtrl=`<input type="number" min="0" value="${esc(d.value||'')}" oninput="theme.checkinDays[${i}].value=this.value;renderPreview()" placeholder="RM amount">`;
+    else if(type==='hook') valueCtrl=`<select onchange="theme.checkinDays[${i}].service=this.value;theme.checkinDays[${i}].value=this.value;renderPreview()">
+        <option value="">— choose service/voucher —</option>
+        ${svcOpts.map(n=>`<option value="${esc(n)}" ${d.service===n?'selected':''}>${esc(n)}</option>`).join('')}
+        <option value="Mystery Gift" ${d.service==='Mystery Gift'?'selected':''}>Mystery Gift</option>
+      </select>`;
+    else valueCtrl=`<input value="—" disabled style="opacity:.5">`;
+    return `<div style="display:flex;gap:8px;align-items:center;margin-bottom:7px">
+      <div style="flex:0 0 48px;font-size:12px;color:var(--muted)">Day ${i+1}${i===6?' 🎁':''}</div>
+      <div style="flex:1">
+        <select onchange="theme.checkinDays[${i}].type=this.value;renderCheckinDays();renderPreview()">
+          <option value="none" ${type==='none'?'selected':''}>None</option>
+          <option value="point" ${type==='point'?'selected':''}>Point</option>
+          <option value="credit" ${type==='credit'?'selected':''}>Credit</option>
+          <option value="hook" ${type==='hook'?'selected':''}>Hook (service)</option>
+        </select>
+      </div>
+      <div style="flex:1.4">${valueCtrl}</div>
+    </div>`;
+  }).join('');
 }
 
 /* ---------- HOME PAGE editing ---------- */

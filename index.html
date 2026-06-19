@@ -498,13 +498,13 @@ const STYLE_DEFAULTS = {
   memBenefits4:"15% off services\\n2 free washes monthly\\nWallet credit RM100",
   memBenefits5:"20% off all services\\nUnlimited washes\\nWallet credit RM200\\nVIP support",
   // Daily check-in
-  checkinTitle:"Daily Check-in",
-  checkinDayReward:"1 Point", checkinDay7Reward:"Mystery Gift",
-  checkinBtn:"Check-in",
-  // per-day reward config: type (point/credit/service) + value, editable in admin
+  checkinTitle:"Daily Check-in", checkinDay7Reward:"Mystery Gift",
+  checkinBtn:"Check-in", checkinShow:true,
+  // per-day: {type:'none'|'point'|'credit'|'hook', value:'...', service:'service name'}
   checkinDays:[
-    {label:"1 Point"},{label:"1 Point"},{label:"1 Point"},
-    {label:"1 Point"},{label:"1 Point"},{label:"1 Point"},{label:"Mystery Gift"}
+    {type:'point',value:'1'},{type:'point',value:'1'},{type:'point',value:'1'},
+    {type:'point',value:'1'},{type:'point',value:'1'},{type:'point',value:'1'},
+    {type:'hook',value:'Mystery Gift',service:''}
   ],
   // Member card tier backgrounds (uploaded photos per tier)
   memBg1:null, memBg2:null, memBg3:null, memBg4:null, memBg5:null
@@ -735,7 +735,7 @@ async function doCheckin(){
     if(r.ok){
       CHECKIN={streak:newStreak,last_checkin:todayStr()};
       if(reached7) toast('🎁 Day 7! Claim your mystery gift at the counter.');
-      else toast('Checked in ✓ +'+(STYLE.checkinDays?.[newStreak-1]?.label||'reward'));
+      else { const d=STYLE.checkinDays?.[newStreak-1]; const lbl=d?(d.type==='point'?d.value+' Point':d.type==='credit'?'RM'+d.value:d.type==='hook'?(d.service||d.value||'reward'):'reward'):'reward'; toast('Checked in ✓ +'+lbl); }
       renderHome();
     } else toast('Check-in failed');
   }catch(e){ toast('Check-in error'); }
@@ -1079,7 +1079,14 @@ async function renderHome(){
   const curStreak = effectiveStreak();
   const doneToday = checkedInToday();
   const days = (STYLE.checkinDays && STYLE.checkinDays.length===7) ? STYLE.checkinDays
-    : [{label:'1 Point'},{label:'1 Point'},{label:'1 Point'},{label:'1 Point'},{label:'1 Point'},{label:'1 Point'},{label:'Mystery Gift'}];
+    : [{type:'point',value:'1'},{type:'point',value:'1'},{type:'point',value:'1'},{type:'point',value:'1'},{type:'point',value:'1'},{type:'point',value:'1'},{type:'hook',value:'Mystery Gift'}];
+  const dayLabel=(d)=>{
+    if(!d||d.type==='none'||!d.type) return '';
+    if(d.type==='point') return (d.value||'0')+' Point';
+    if(d.type==='credit') return 'RM'+(d.value||'0');
+    if(d.type==='hook') return d.service||d.value||'Gift';
+    return d.value||'';
+  };
   const checkinHtml = days.map((d,i)=>{
     const dayNum=i+1;
     const filled = dayNum<=curStreak;
@@ -1088,7 +1095,7 @@ async function renderHome(){
       ? `<div class="ci-icon ci-gift ${filled?'on':''}">🎁</div>`
       : `<div class="ci-icon ${filled?'on':''}">🚗</div>`;
     return `<div class="ci-day">
-      <div class="ci-reward">${esc(d.label||'')}</div>
+      <div class="ci-reward">${esc(dayLabel(d))}</div>
       ${icon}
       <div class="ci-daylabel">Day ${dayNum}</div>
     </div>`;
