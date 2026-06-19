@@ -658,13 +658,18 @@ async function fetchProfile(){
 }
 async function saveProfile(fields){
   if(!SESSION?.user?.id) return false;
+  // upsert: insert the row (with id = auth user id) or update if it exists
   try{
-    const r=await fetch(`${SUPA_URL}/rest/v1/gl_profiles?id=eq.${SESSION.user.id}`,{
-      method:"PATCH", headers:Object.assign(authHeaders(),{Prefer:"return=representation"}),
-      body:JSON.stringify(fields)
+    const body=Object.assign({id:SESSION.user.id}, fields);
+    const r=await fetch(`${SUPA_URL}/rest/v1/gl_profiles`,{
+      method:"POST",
+      headers:Object.assign(authHeaders(),{Prefer:"resolution=merge-duplicates,return=representation"}),
+      body:JSON.stringify(body)
     });
-    if(r.ok){ const rows=await r.json(); PROFILE=rows[0]||PROFILE; return true; }
-  }catch(e){}
+    if(r.ok){ const rows=await r.json(); PROFILE=rows[0]||Object.assign(PROFILE||{},body); return true; }
+    // log the real reason for debugging
+    const txt=await r.text(); console.error('saveProfile failed', r.status, txt);
+  }catch(e){ console.error('saveProfile error', e); }
   return false;
 }
 async function fetchServices(){
@@ -1515,10 +1520,17 @@ Object.defineProperty(window,'stepIndex',{get:()=>cur,set:v=>{cur=v;}});
   loadSession();
   if(SESSION?.access_token){
     await fetchSlides();          // loads STYLE too
-    await fetchProfile();
+    const prof = await fetchProfile();
     await fetchServices();
     render();                     // build onboarding stack (hidden) for fallback
     indexScreens();
+    // if the session is dead/invalid (no profile came back at all), clear it and show normal flow
+    if(prof===null && !PROFILE){
+      console.warn('Session invalid or profile missing — clearing session');
+      localStorage.removeItem('gl_session'); SESSION=null;
+      showStep(0);
+      return;
+    }
     if(PROFILE && PROFILE.name){ enterApp('home'); }
     else { enterApp('profile'); }
     return;
