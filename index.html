@@ -300,6 +300,37 @@
   .qr-code-text{color:#111;font-size:20px;font-weight:800;letter-spacing:.1em;}
   .qr-hint{color:#666;font-size:12px;margin-top:8px;line-height:1.4;}
 
+  /* vehicle section (below greeting) */
+  .veh-section{margin-top:16px;}
+  .veh-row{background:var(--surface);border:1px solid var(--line);border-radius:14px;
+    padding:14px 16px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;transition:.12s;}
+  .veh-row:active{transform:scale(.99);}
+  .veh-name{font-size:15px;font-weight:700;}
+  .veh-meta{font-size:12px;color:var(--muted);margin-top:2px;}
+  .veh-x{color:var(--muted);cursor:pointer;font-size:14px;padding:4px 8px;}
+  .veh-empty{font-size:13px;color:var(--muted);padding:10px 2px;}
+  .add-veh-btn{background:var(--surface2);border:1px dashed var(--line);border-radius:12px;
+    padding:13px;text-align:center;color:var(--yellow);font-size:14px;font-weight:700;cursor:pointer;}
+  .add-veh-btn:active{opacity:.7;}
+  /* join member button in member card */
+  .join-member-btn{margin-top:14px;background:var(--yellow);color:#111;border-radius:12px;
+    padding:12px;text-align:center;font-weight:800;font-size:14px;cursor:pointer;}
+  .join-member-btn:active{opacity:.85;}
+  /* membership page */
+  .mem-tabs{display:flex;gap:8px;overflow-x:auto;padding-bottom:6px;-webkit-overflow-scrolling:touch;}
+  .mem-tab{white-space:nowrap;padding:8px 16px;border-radius:20px;background:var(--surface);
+    border:1px solid var(--line);font-size:13px;font-weight:600;color:var(--muted);cursor:pointer;}
+  .mem-tab.on{background:var(--yellow);color:#111;border-color:var(--yellow);font-weight:800;}
+  .mem-card{width:100%;aspect-ratio:1.6/1;border-radius:18px;margin-top:18px;overflow:hidden;
+    background:linear-gradient(135deg,#2a2a2e,#0d0d0d);border:1px solid var(--line);}
+  .mem-card-placeholder{width:100%;height:100%;display:flex;flex-direction:column;justify-content:space-between;padding:20px;}
+  .mem-card-tier{font-size:22px;font-weight:800;color:var(--yellow);}
+  .mem-card-brand{font-size:16px;font-weight:800;letter-spacing:.15em;color:rgba(255,255,255,.5);align-self:flex-end;}
+  .mem-tier-name{text-align:center;font-size:20px;font-weight:800;margin-top:16px;}
+  .mem-benefits{margin-top:12px;}
+  .mem-benefit{display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid var(--line);font-size:14px;}
+  .mem-tick{color:var(--yellow);font-weight:800;}
+
   .toast{position:fixed;left:50%;bottom:calc(36px + env(safe-area-inset-bottom));
     transform:translateX(-50%) translateY(20px);background:var(--surface2);
     color:var(--text);border:1px solid var(--line);padding:13px 20px;border-radius:14px;
@@ -420,7 +451,17 @@ const STYLE_DEFAULTS = {
   homeCard1Title:"Get rewarded", homeCard1Sub:"with every spending",
   homeCard2Title:"Send gifts", homeCard2Sub:"to friends & loved ones",
   homeShowSubscribe:true, homeShowWallet:true, homeShowHighlights:true, homeShowCards:true,
-  homeMemberTier:"Member"
+  homeMemberTier:"Non-Member", homeJoinMemberBtn:"Join Member",
+  // Membership page
+  memTitle:"All Membership Plan",
+  memTier1:"Non-Member", memTier2:"Bronze", memTier3:"Silver", memTier4:"Gold", memTier5:"Platinum",
+  memSubscribeBtn:"Subscribe Now",
+  memCard1:null, memCard2:null, memCard3:null, memCard4:null, memCard5:null,
+  memBenefits1:"Standard pricing on all services",
+  memBenefits2:"5% off services\\nPriority booking",
+  memBenefits3:"10% off services\\nFree monthly wash\\nPriority booking",
+  memBenefits4:"15% off services\\n2 free washes monthly\\nWallet credit RM100",
+  memBenefits5:"20% off all services\\nUnlimited washes\\nWallet credit RM200\\nVIP support"
 };
 let STYLE = Object.assign({}, STYLE_DEFAULTS);
 
@@ -938,9 +979,16 @@ async function renderHome(){
   try{ if(!IS_GUEST && SESSION?.user?.id) await fetchVehicles(); }catch(e){ console.error('vehicles', e); }
   const refCode = PROFILE?.referral_code || '';
 
-  // member card with vehicles inside
+  // vehicle display: "Brand Model - PLATE"
+  const vehLabel=v=>{
+    const bm=[v.make,v.model].filter(Boolean).join(' ');
+    return (bm? bm : 'Vehicle') + (v.plate? ' - '+v.plate : '');
+  };
   const vehiclesHtml = VEHICLES.length
-    ? VEHICLES.map(v=>`<div class="veh-chip"><span>🚗 ${esc(v.plate||v.model||'Vehicle')}</span><span class="veh-x" onclick="onDelVehicle('${v.id}')">✕</span></div>`).join('')
+    ? VEHICLES.map(v=>`<div class="veh-row" onclick="openVehicle('${v.id}')">
+        <div class="veh-info"><div class="veh-name">${esc(vehLabel(v))}</div>${v.color?`<div class="veh-meta">${esc(v.color)} · ${esc(v.car_type||'Car')}</div>`:''}</div>
+        <span class="veh-x" onclick="event.stopPropagation();onDelVehicle('${v.id}')">✕</span>
+      </div>`).join('')
     : `<div class="veh-empty">No vehicle added yet</div>`;
 
   // services grid (icons) - use first 8 services
@@ -961,28 +1009,23 @@ async function renderHome(){
         <div class="avatar">${esc(initial)}</div>
       </div>
 
-      <!-- member card (always shows, vehicles inside) -->
+      <!-- vehicles section (below greeting) -->
+      <div class="veh-section">
+        <div class="veh-list">${vehiclesHtml}</div>
+        <div class="add-veh-btn" onclick="openAddVehicle()">+ Add Vehicle</div>
+      </div>
+
+      <!-- member card with Join Member -->
       <div class="member-card">
         <div class="member-top">
           <div>
-            <div class="member-tier">${esc(STYLE.homeMemberTier||'Member')}</div>
+            <div class="member-tier">${esc(PROFILE?.tier||STYLE.homeMemberTier||'Non-Member')}</div>
             <div class="member-name">${esc(PROFILE?.name||(IS_GUEST?'Guest user':'Member'))}</div>
           </div>
           <div class="member-pts">⭐ ${PROFILE?.points||0}</div>
         </div>
-        <div class="veh-list">${vehiclesHtml}</div>
-        <div class="add-veh" onclick="openAddVehicle()">+ Add Vehicle</div>
+        <div class="join-member-btn" onclick="openMembership()">${esc(STYLE.homeJoinMemberBtn||'Join Member')}</div>
       </div>
-
-      <!-- subscribe banner -->
-      ${STYLE.homeShowSubscribe!==false?`
-      <div class="subscribe-banner" onclick="toast('Subscription coming soon')">
-        <div>
-          <div class="sub-title">${esc(STYLE.homeSubscribeText||'Subscribe')}</div>
-          <div class="sub-sub">${esc(STYLE.homeSubscribeSub||'')}</div>
-        </div>
-        <div class="sub-arrow">›</div>
-      </div>`:''}
 
       <!-- services grid -->
       <div class="sec-title">${esc(STYLE.homeServicesTitle||'Our Services')}</div>
@@ -997,7 +1040,7 @@ async function renderHome(){
         </div>
         <div class="wb-actions">
           ${refCode?`<div class="wb-qr" onclick="showReferralQR()" title="My referral QR">⊞ QR</div>`:''}
-          <div class="wb-sub" onclick="toast('Subscription coming soon')">${esc(STYLE.homeSubscribeBtn||'Subscribe')}</div>
+          <div class="wb-sub" onclick="openMembership()">${esc(STYLE.homeSubscribeBtn||'Subscribe')}</div>
         </div>
       </div>`:''}
 
@@ -1048,27 +1091,78 @@ function openAddVehicle(){
   appRoot.innerHTML=`
     <div class="topbar-app"><button class="back" onclick="routeTab('home')">‹</button><div class="ttl">Add Vehicle</div></div>
     <div class="app-scroll" style="padding-top:18px">
-      <div class="field"><label>Car plate</label><input id="v-plate" placeholder="e.g. WXY 1234" style="text-transform:uppercase"></div>
-      <div class="field"><label>Make</label><input id="v-make" placeholder="e.g. Toyota"></div>
-      <div class="field"><label>Model</label><input id="v-model" placeholder="e.g. Vellfire"></div>
-      <div class="field"><label>Colour</label><input id="v-color" placeholder="e.g. Black"></div>
-      <div class="field"><label>Type</label>
+      <div class="app-sub" style="margin-bottom:6px">Enter your vehicle details</div>
+      <div class="field"><label>Vehicle type</label>
         <select id="v-type" style="width:100%;height:52px;background:var(--surface);border:1.5px solid var(--line);border-radius:14px;padding:0 16px;color:var(--text);font-size:16px">
-          <option value="Sedan">Sedan</option><option value="SUV">SUV</option><option value="MPV">MPV</option><option value="Supercar">Supercar</option>
+          <option value="Car">Car</option><option value="Motorcycle">Motorcycle</option>
         </select>
       </div>
+      <div class="field"><label>Brand</label><input id="v-make" placeholder="e.g. Toyota"></div>
+      <div class="field"><label>Model</label><input id="v-model" placeholder="e.g. Harrier"></div>
+      <div class="field"><label>Colour</label><input id="v-color" placeholder="e.g. Black"></div>
+      <div class="field"><label>Plate number</label><input id="v-plate" placeholder="e.g. BQM 6833" style="text-transform:uppercase"></div>
       <div class="helper err" id="v-err" style="margin-top:10px"></div>
-      <button class="btn btn-primary" style="margin-top:18px" id="v-save">Save Vehicle</button>
+      <button class="btn btn-primary" style="margin-top:18px" id="v-save">Add Vehicle</button>
     </div>`;
   document.getElementById('v-save').onclick=async()=>{
     const plate=document.getElementById('v-plate').value.trim().toUpperCase();
-    if(!plate){document.getElementById('v-err').textContent="Car plate is required.";return;}
-    const ok=await addVehicle({plate,make:document.getElementById('v-make').value.trim(),
-      model:document.getElementById('v-model').value.trim(),color:document.getElementById('v-color').value.trim(),
+    const make=document.getElementById('v-make').value.trim();
+    const model=document.getElementById('v-model').value.trim();
+    if(!make||!model){document.getElementById('v-err').textContent="Brand and model are required.";return;}
+    const ok=await addVehicle({plate,make,model,color:document.getElementById('v-color').value.trim(),
       car_type:document.getElementById('v-type').value});
     if(ok){toast('Vehicle added ✓');renderHome();}
     else document.getElementById('v-err').textContent="Couldn't save — try again.";
   };
+}
+
+function openVehicle(id){
+  const v=VEHICLES.find(x=>x.id===id); if(!v) return;
+  const bm=[v.make,v.model].filter(Boolean).join(' ');
+  appRoot.innerHTML=`
+    <div class="topbar-app"><button class="back" onclick="routeTab('home')">‹</button><div class="ttl">${esc(bm||'Vehicle')}</div></div>
+    <div class="app-scroll" style="padding-top:18px">
+      <div class="card-box">
+        <div style="font-size:20px;font-weight:800">${esc(bm||'Vehicle')}</div>
+        <div class="app-sub" style="margin-top:4px">${esc(v.plate||'')} · ${esc(v.color||'')} · ${esc(v.car_type||'Car')}</div>
+      </div>
+      <div class="sec-title">Maintenance & service history</div>
+      <div class="guest-banner" style="margin-top:12px">No service records yet. Once this car has services done, they'll show here — including how many maintenance visits are left.</div>
+      <button class="btn btn-ghost" style="margin-top:18px" onclick="onDelVehicle('${v.id}')">Remove this vehicle</button>
+    </div>`;
+}
+
+function openMembership(){
+  const tiers=[
+    {key:1,name:STYLE.memTier1,card:STYLE.memCard1,ben:STYLE.memBenefits1},
+    {key:2,name:STYLE.memTier2,card:STYLE.memCard2,ben:STYLE.memBenefits2},
+    {key:3,name:STYLE.memTier3,card:STYLE.memCard3,ben:STYLE.memBenefits3},
+    {key:4,name:STYLE.memTier4,card:STYLE.memCard4,ben:STYLE.memBenefits4},
+    {key:5,name:STYLE.memTier5,card:STYLE.memCard5,ben:STYLE.memBenefits5}
+  ];
+  let active=1;
+  const render=()=>{
+    const t=tiers.find(x=>x.key===active)||tiers[0];
+    const benList=(t.ben||'').split('\\n').filter(Boolean).map(b=>`<div class="mem-benefit"><span class="mem-tick">✓</span><span>${esc(b)}</span></div>`).join('');
+    appRoot.innerHTML=`
+      <div class="topbar-app"><button class="back" onclick="routeTab('home')">‹</button><div class="ttl">${esc(STYLE.memTitle||'All Membership Plan')}</div></div>
+      <div class="app-scroll" style="padding-top:14px">
+        <div class="mem-tabs">
+          ${tiers.map(x=>`<div class="mem-tab ${x.key===active?'on':''}" data-tier="${x.key}">${esc(x.name||'')}</div>`).join('')}
+        </div>
+        <div class="mem-card">
+          ${t.card?`<img src="${t.card}" style="width:100%;height:100%;object-fit:cover;border-radius:18px">`:`<div class="mem-card-placeholder"><div class="mem-card-tier">${esc(t.name||'')}</div><div class="mem-card-brand">GRANDLAB</div></div>`}
+        </div>
+        <div class="mem-tier-name">${esc(t.name||'')}</div>
+        <button class="btn btn-primary" style="margin-top:16px" onclick="toast('Subscription coming soon')">${esc(STYLE.memSubscribeBtn||'Subscribe Now')}</button>
+        <div class="sec-title">Benefits</div>
+        <div class="mem-benefits">${benList||'<div class="app-sub">No benefits listed.</div>'}</div>
+      </div>`;
+    appRoot.querySelectorAll('.mem-tab').forEach(tab=>{
+      tab.onclick=()=>{ active=+tab.dataset.tier; render(); };
+    });
+  };
+  render();
 }
 
 function showReferralQR(){
