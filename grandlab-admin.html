@@ -69,6 +69,16 @@
   .add-row{margin:6px 0 26px;}
   .price-grid{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;}
   .price-grid .pc label{margin-top:0;}
+  .svc-sub{font-size:13px;font-weight:700;color:var(--accent);margin-top:18px;padding-top:14px;border-top:1px solid var(--line);}
+  .svc-hint{font-weight:400;color:var(--muted);font-size:11px;margin-left:6px;}
+  .mini-row{display:flex;align-items:center;gap:8px;margin-top:8px;}
+  .mini-row input{margin-top:0;}
+  .media-strip{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0;}
+  .media-thumb{position:relative;width:64px;height:64px;border-radius:8px;overflow:hidden;border:1px solid var(--line);}
+  .media-thumb img,.media-thumb video{width:100%;height:100%;object-fit:cover;}
+  .media-thumb button{position:absolute;top:2px;right:2px;background:rgba(0,0,0,.6);color:#fff;border:none;border-radius:50%;width:18px;height:18px;font-size:11px;cursor:pointer;line-height:1;}
+  .addon-thumb{width:40px;height:40px;border-radius:6px;background:var(--bg);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;overflow:hidden;flex:0 0 auto;color:var(--muted);}
+  .addon-thumb img{width:100%;height:100%;object-fit:cover;}
   .hint{font-size:12px;color:var(--muted);margin-top:6px;line-height:1.5;}
   .savebar{position:fixed;bottom:0;left:0;right:420px;background:var(--bg);
     border-top:1px solid var(--line);padding:14px 24px;display:flex;gap:12px;
@@ -153,6 +163,9 @@
         <button class="tab active" data-tab="onboarding" onclick="switchTab('onboarding')">Onboarding</button>
         <button class="tab" data-tab="services" onclick="switchTab('services')">Services</button>
         <button class="tab" data-tab="categories" onclick="switchTab('categories')">Categories</button>
+        <button class="tab" data-tab="stores" onclick="switchTab('stores')">Stores</button>
+        <button class="tab" data-tab="mysterybox" onclick="switchTab('mysterybox')">Mystery Box</button>
+        <button class="tab" data-tab="warranty" onclick="switchTab('warranty')">Warranty Link</button>
         <button class="tab" data-tab="theme" onclick="switchTab('theme')">Theme</button>
         <button class="tab" data-tab="otppage" onclick="switchTab('otppage')">OTP Page</button>
         <button class="tab" data-tab="refpage" onclick="switchTab('refpage')">Referral Page</button>
@@ -524,6 +537,33 @@
         <div class="add-row"><button class="btn btn-ghost" onclick="addCategory()">+ Add category</button></div>
       </div>
 
+      <!-- STORES -->
+      <div class="panel" id="panel-stores">
+        <div class="hint">Outlets shown as “Choose Store” on the service detail page. Add a name, address, and photo.</div>
+        <div id="storeList" style="margin-top:14px"></div>
+        <div class="add-row"><button class="btn btn-ghost" onclick="addStore()">+ Add store</button></div>
+      </div>
+
+      <!-- MYSTERY BOX -->
+      <div class="panel" id="panel-mysterybox">
+        <div class="hint">The Mystery Box draw shown on the Services tab. Edit the prize pool and draw rules. Customers earn draws when orders complete (you grant draws from the Customers tab or via your POS later).</div>
+        <label style="margin-top:14px"><input type="checkbox" id="mbEnabled" style="width:auto;margin-right:7px" onchange="mbToggle(this.checked)">Mystery Box enabled</label>
+        <label style="margin-top:10px">Title</label>
+        <input id="mbTitle" oninput="mb.title=this.value" placeholder="Mystery Box">
+        <div class="svc-sub">Prize Pool</div>
+        <div id="mbPrizes"></div>
+        <button class="btn btn-ghost btn-sm" onclick="addPrize()">+ Add prize</button>
+        <label style="margin-top:14px">Draw Rules (text)</label>
+        <textarea id="mbRules" rows="8" oninput="mb.rules=this.value"></textarea>
+      </div>
+
+      <!-- WARRANTY LINK -->
+      <div class="panel" id="panel-warranty">
+        <div class="hint">The “AX Film Warranty Check” tile on the Services tab opens this link in a new tab.</div>
+        <label style="margin-top:14px">Warranty URL</label>
+        <input id="warrantyUrl" oninput="warranty.url=this.value" placeholder="https://axfilm.com.my/warranty/">
+      </div>
+
       <!-- THEME / STYLE -->
       <div class="panel" id="panel-theme">
         <div class="section-h">App Background Photo</div>
@@ -748,6 +788,9 @@ const ICONS = ["🛡️","📋","✨","🚗","💧","🧴","🪄","⭐","🏁","
 let slides = [];     // {id?, eyebrow,title,glyph,image_url,sort_order,active}
 let services = [];   // {id?, name,category,base_price,price_by_type,active,sort_order}
 let categories = []; // {id?, name,icon,image_url,sort_order,active}
+let stores = [];     // {id?, name,address,image_url,sort_order,active}
+let mb = { enabled:true, title:'Mystery Box', prizes:[], rules:'' };
+let warranty = { url:'https://axfilm.com.my/warranty/' };
 let theme = { bg:"#0A0A0A", accent:"#F5C518", text:"#FFFFFF",
   logoSize:96, logoUrl:null, eyebrowSize:15, eyebrowColor:"#F5C518", titleSize:40, titleColor:"#FFFFFF",
   btnColor:"#F5C518", btnHeight:58, panelSize:78, btnNext:"Next", btnStart:"Get started", btnBack:"Back",
@@ -836,7 +879,7 @@ function setConn(on){
 }
 
 async function loadAll(){
-  deletedSlideIds=[]; deletedServiceIds=[]; deletedRewardIds=[]; deletedCategoryIds=[];
+  deletedSlideIds=[]; deletedServiceIds=[]; deletedRewardIds=[]; deletedCategoryIds=[]; deletedStoreIds=[];
   try{
     let r=await sb("gl_onboarding_slides?select=*&order=sort_order.asc",{headers:H()});
     slides=r.ok?await r.json():[];
@@ -844,14 +887,21 @@ async function loadAll(){
     services=r.ok?await r.json():[];
     r=await sb("gl_categories?select=*&order=sort_order.asc",{headers:H()});
     categories=r.ok?await r.json():[];
+    r=await sb("gl_stores?select=*&order=sort_order.asc",{headers:H()});
+    stores=r.ok?await r.json():[];
     r=await sb("gl_rewards?select=*&order=sort_order.asc",{headers:H()});
     REWARDS_DATA=r.ok?await r.json():[];
     // style from gl_settings (id='style', data jsonb)
     r=await sb("gl_settings?select=*&id=eq.style",{headers:H()});
     if(r.ok){const rows=await r.json();if(rows[0]&&rows[0].data)theme=Object.assign(theme,rows[0].data);}
+    // mystery box + warranty settings
+    r=await sb("gl_settings?select=*&id=eq.mysterybox",{headers:H()});
+    if(r.ok){const rows=await r.json();if(rows[0]&&rows[0].data)mb=Object.assign(mb,rows[0].data);}
+    r=await sb("gl_settings?select=*&id=eq.warranty",{headers:H()});
+    if(r.ok){const rows=await r.json();if(rows[0]&&rows[0].data)warranty=Object.assign(warranty,rows[0].data);}
   }catch(e){}
   fillThemeControls();
-  renderSlides();renderServices();renderCategories();renderPreview();
+  renderSlides();renderServices();renderCategories();renderStores();renderPreview();
 }
 
 /* ---------- ONBOARDING editor ---------- */
@@ -931,10 +981,11 @@ function renderServices(){
   services.forEach((s,i)=>{
     const sized=!!s.price_by_type;
     const pbt=s.price_by_type||{};
+    s.media=s.media||[]; s.variations=s.variations||[]; s.addons=s.addons||[];
     const c=document.createElement('div');c.className="card";
     c.innerHTML=`
       <div class="card-head">
-        <div class="card-title">${esc(s.name||'Service')}</div>
+        <div class="card-title">${esc(s.name||'Service')}${s.is_package?' <span style="color:var(--yellow);font-size:11px">📦 PACKAGE</span>':''}</div>
         <button class="btn btn-danger btn-sm" onclick="delService(${i})">Delete</button>
       </div>
       <div class="row">
@@ -947,22 +998,91 @@ function renderServices(){
           </select>
         </div>
       </div>
-      <label><input type="checkbox" style="width:auto;margin-right:7px" ${sized?'checked':''} onchange="toggleSized(${i},this.checked)">Size-based pricing</label>
+      <label><input type="checkbox" style="width:auto;margin-right:7px" ${s.is_package?'checked':''} onchange="upd('svc',${i},'is_package',this.checked)">This is a package (e.g. Car Wash 10× RM300)</label>
+      <label style="margin-top:8px">Subtitle / badge (optional)</label>
+      <input value="${esc(s.subtitle||'')}" oninput="upd('svc',${i},'subtitle',this.value)" placeholder="Japanese Certified Professional">
+
+      <div class="svc-sub">Pricing</div>
+      <label><input type="checkbox" style="width:auto;margin-right:7px" ${sized?'checked':''} onchange="toggleSized(${i},this.checked)">Size-based pricing (Sedan/SUV/MPV/Supercar)</label>
       ${sized?`
         <div class="price-grid" style="margin-top:8px">
           ${CAR_TYPES.map(t=>`<div class="pc"><label>${t}</label><input type="number" value="${pbt[t]??''}" oninput="updPrice(${i},'${t}',this.value)"></div>`).join('')}
         </div>`:`
-        <label>Price (RM)</label>
+        <label>Base price (RM) — used if no variations below</label>
         <input type="number" value="${s.base_price??''}" oninput="upd('svc',${i},'base_price',this.value)">
       `}
+
+      <div class="svc-sub">Variations <span class="svc-hint">customer picks one; its price overrides base price</span></div>
+      <div id="svcVari${i}">${s.variations.map((v,vi)=>`
+        <div class="mini-row">
+          <input value="${esc(v.label||'')}" oninput="updVari(${i},${vi},'label',this.value)" placeholder="e.g. Large">
+          <input type="number" value="${v.price??''}" oninput="updVari(${i},${vi},'price',this.value)" placeholder="RM" style="max-width:90px">
+          <button class="btn btn-danger btn-sm" onclick="delVari(${i},${vi})">✕</button>
+        </div>`).join('')}</div>
+      <button class="btn btn-ghost btn-sm" onclick="addVari(${i})">+ Add variation</button>
+
+      <div class="svc-sub">Photos / Videos <span class="svc-hint">shown as a slider on the detail page</span></div>
+      <div id="svcMedia${i}" class="media-strip">${s.media.map((m,mi)=>`
+        <div class="media-thumb">
+          ${m.type==='video'?`<video src="${m.url}" muted></video>`:`<img src="${m.url}">`}
+          <button onclick="delMedia(${i},${mi})">✕</button>
+        </div>`).join('')}</div>
+      <input type="file" accept="image/*,video/*" multiple onchange="uploadSvcMedia(${i},this)">
+
+      <div class="svc-sub">Recommended add-ons</div>
+      <div id="svcAddon${i}">${s.addons.map((a,ai)=>`
+        <div class="mini-row">
+          <div id="svcAddonThumb${i}_${ai}" class="addon-thumb">${a.image_url?`<img src="${a.image_url}">`:'<span>＋</span>'}</div>
+          <input value="${esc(a.label||'')}" oninput="updAddon(${i},${ai},'label',this.value)" placeholder="Add-on name">
+          <input type="number" value="${a.price??''}" oninput="updAddon(${i},${ai},'price',this.value)" placeholder="RM" style="max-width:80px">
+          <input type="file" accept="image/*" onchange="uploadAddonImg(${i},${ai},this)" style="max-width:74px;font-size:10px">
+          <button class="btn btn-danger btn-sm" onclick="delAddon(${i},${ai})">✕</button>
+        </div>`).join('')}</div>
+      <button class="btn btn-ghost btn-sm" onclick="addAddon(${i})">+ Add add-on</button>
+
+      <div class="svc-sub">Item Info</div>
+      <textarea rows="3" oninput="upd('svc',${i},'item_info',this.value)" placeholder="A premium hand car wash using...">${esc(s.item_info||'')}</textarea>
+      <label style="margin-top:8px">Estimated time</label>
+      <input value="${esc(s.est_time||'')}" oninput="upd('svc',${i},'est_time',this.value)" placeholder="30-55 minutes">
     `;
     el.appendChild(c);
   });
 }
-function addService(){services.push({name:"New service",category:"",base_price:0,price_by_type:null,active:true,sort_order:services.length+1});renderServices();renderPreview();}
+function addService(){services.push({name:"New service",category:"",base_price:0,price_by_type:null,media:[],variations:[],addons:[],is_package:false,active:true,sort_order:services.length+1});renderServices();renderPreview();}
 function delService(i){if(services[i].id)deletedServiceIds.push(services[i].id);services.splice(i,1);renderServices();renderPreview();}
 function toggleSized(i,on){services[i].price_by_type=on?{Sedan:0,SUV:0,MPV:0,Supercar:0}:null;renderServices();renderPreview();}
 function updPrice(i,t,v){if(!services[i].price_by_type)services[i].price_by_type={};services[i].price_by_type[t]=v===''?null:Number(v);renderPreview();}
+/* variations */
+function addVari(i){services[i].variations=services[i].variations||[];services[i].variations.push({label:'',price:0});renderServices();}
+function delVari(i,vi){services[i].variations.splice(vi,1);renderServices();}
+function updVari(i,vi,f,v){services[i].variations[vi][f]=(f==='price')?(v===''?null:Number(v)):v;}
+/* add-ons */
+function addAddon(i){services[i].addons=services[i].addons||[];services[i].addons.push({label:'',price:0,image_url:null});renderServices();}
+function delAddon(i,ai){services[i].addons.splice(ai,1);renderServices();}
+function updAddon(i,ai,f,v){services[i].addons[ai][f]=(f==='price')?(v===''?null:Number(v)):v;}
+async function uploadAddonImg(i,ai,input){
+  const f=input.files[0]; if(!f) return; toast("Uploading…");
+  const path=`addon-${Date.now()}-${f.name.replace(/[^a-z0-9.]/gi,'_')}`;
+  const r=await fetch(`${SUPA_URL}/storage/v1/object/${BUCKET}/${path}`,{method:"POST",headers:{apikey:SVC_KEY,Authorization:`Bearer ${SVC_KEY}`},body:f});
+  if(!r.ok){toast("Upload failed — is gl-images bucket public?");return;}
+  services[i].addons[ai].image_url=`${SUPA_URL}/storage/v1/object/public/${BUCKET}/${path}`;
+  renderServices();toast("Add-on image ✓");
+}
+/* media */
+async function uploadSvcMedia(i,input){
+  const files=[...input.files]; if(!files.length) return;
+  services[i].media=services[i].media||[];
+  for(const f of files){
+    toast("Uploading "+f.name+"…");
+    const isVid=f.type.startsWith('video');
+    const path=`svc-${Date.now()}-${f.name.replace(/[^a-z0-9.]/gi,'_')}`;
+    const r=await fetch(`${SUPA_URL}/storage/v1/object/${BUCKET}/${path}`,{method:"POST",headers:{apikey:SVC_KEY,Authorization:`Bearer ${SVC_KEY}`},body:f});
+    if(!r.ok){toast("Upload failed — is gl-images bucket public?");continue;}
+    services[i].media.push({type:isVid?'video':'image',url:`${SUPA_URL}/storage/v1/object/public/${BUCKET}/${path}`});
+  }
+  renderServices();toast("Media uploaded ✓");
+}
+function delMedia(i,mi){services[i].media.splice(mi,1);renderServices();}
 
 /* ---------- CATEGORIES editor ---------- */
 let deletedCategoryIds = [];
@@ -1022,11 +1142,74 @@ async function uploadCatPhoto(i,input){
 }
 function clearCatPhoto(i){categories[i].image_url=null;renderCategories();}
 
+/* ---------- STORES editor ---------- */
+let deletedStoreIds = [];
+function renderStores(){
+  const el=document.getElementById('storeList'); if(!el) return;
+  if(!stores.length){el.innerHTML='<div class="empty">No stores yet. Add your outlets.</div>';return;}
+  el.innerHTML="";
+  stores.forEach((st,i)=>{
+    const card=document.createElement('div');card.className="card";
+    card.innerHTML=`
+      <div class="card-head">
+        <div class="card-title">${esc(st.name||'Store')}</div>
+        <button class="btn btn-danger btn-sm" onclick="delStore(${i})">Delete</button>
+      </div>
+      <label>Name</label><input value="${esc(st.name||'')}" oninput="updStore(${i},'name',this.value)" placeholder="PJS 13 HQ">
+      <label style="margin-top:8px">Address</label><input value="${esc(st.address||'')}" oninput="updStore(${i},'address',this.value)" placeholder="99, Jalan PJS 13, Petaling Jaya">
+      <label style="margin-top:8px">Order</label><input type="number" value="${st.sort_order??(i+1)}" oninput="updStore(${i},'sort_order',this.value)">
+      <label style="margin-top:8px">Photo</label>
+      <div style="display:flex;align-items:center;gap:10px;margin-top:4px">
+        <div>${st.image_url?`<img src="${st.image_url}" style="height:48px;width:64px;object-fit:cover;border-radius:8px;border:1px solid var(--line)">`:'<span style="color:var(--muted);font-size:12px">No photo</span>'}</div>
+        <input type="file" accept="image/*" onchange="uploadStorePhoto(${i},this)">
+      </div>`;
+    el.appendChild(card);
+  });
+}
+function addStore(){stores.push({name:"New store",address:"",image_url:null,sort_order:stores.length+1,active:true});renderStores();}
+function delStore(i){if(stores[i].id)deletedStoreIds.push(stores[i].id);stores.splice(i,1);renderStores();}
+function updStore(i,f,v){stores[i][f]=(f==='sort_order')?(v===''?0:Number(v)):v;}
+async function uploadStorePhoto(i,input){
+  const f=input.files[0]; if(!f) return; toast("Uploading…");
+  const path=`store-${Date.now()}-${f.name.replace(/[^a-z0-9.]/gi,'_')}`;
+  const r=await fetch(`${SUPA_URL}/storage/v1/object/${BUCKET}/${path}`,{method:"POST",headers:{apikey:SVC_KEY,Authorization:`Bearer ${SVC_KEY}`},body:f});
+  if(!r.ok){toast("Upload failed — is gl-images bucket public?");return;}
+  stores[i].image_url=`${SUPA_URL}/storage/v1/object/public/${BUCKET}/${path}`;
+  renderStores();toast("Store photo ✓");
+}
+
+/* ---------- MYSTERY BOX editor ---------- */
+function fillMbControls(){
+  const g=id=>document.getElementById(id);
+  if(g('mbEnabled')) g('mbEnabled').checked=mb.enabled!==false;
+  if(g('mbTitle')) g('mbTitle').value=mb.title||'';
+  if(g('mbRules')) g('mbRules').value=mb.rules||'';
+  renderPrizes();
+}
+function renderPrizes(){
+  const el=document.getElementById('mbPrizes'); if(!el) return;
+  mb.prizes=mb.prizes||[];
+  el.innerHTML=mb.prizes.map((p,i)=>`
+    <div class="mini-row">
+      <input value="${esc(p.name||'')}" oninput="updPrize(${i},this.value)" placeholder="e.g. 7% Off">
+      <button class="btn btn-danger btn-sm" onclick="delPrize(${i})">✕</button>
+    </div>`).join('');
+}
+function mbToggle(on){mb.enabled=on;}
+function addPrize(){mb.prizes=mb.prizes||[];mb.prizes.push({name:''});renderPrizes();}
+function delPrize(i){mb.prizes.splice(i,1);renderPrizes();}
+function updPrize(i,v){mb.prizes[i].name=v;}
+
+/* ---------- WARRANTY editor ---------- */
+function fillWarrantyControls(){const g=document.getElementById('warrantyUrl'); if(g) g.value=warranty.url||'';}
+
+
 /* ---------- generic update ---------- */
 function upd(kind,i,field,val){
   const arr=kind==='slide'?slides:services;
   arr[i][field]=(val===''&&field==='base_price')?null:val;
   if(kind==='slide'&&field==='glyph')renderSlides();
+  if(kind==='svc'&&field==='is_package')renderServices();
   renderPreview();
 }
 function tStyle(key){theme[key]=!theme[key];syncTextBtns();renderPreview();}
@@ -1201,6 +1384,7 @@ async function saveAll(){
     slides.forEach((s,i)=>s.sort_order=i+1);
     services.forEach((s,i)=>s.sort_order=i+1);
     categories.forEach((c,i)=>{ if(c.sort_order==null) c.sort_order=i+1; });
+    stores.forEach((st,i)=>{ if(st.sort_order==null) st.sort_order=i+1; });
 
     // wipe + reinsert is simplest for a small admin set:
     // upsert slides
@@ -1210,7 +1394,11 @@ async function saveAll(){
       else{const r=await sb("gl_onboarding_slides",{method:"POST",headers:H({Prefer:"return=representation"}),body:JSON.stringify(body)});if(r.ok){const j=await r.json();s.id=j[0].id;}}
     }
     for(const s of services){
-      const body={name:s.name,category:s.category,base_price:s.price_by_type?null:Number(s.base_price||0),price_by_type:s.price_by_type,sort_order:s.sort_order,active:true};
+      const body={name:s.name,category:s.category,base_price:s.price_by_type?null:Number(s.base_price||0),price_by_type:s.price_by_type,sort_order:s.sort_order,active:true,
+        media:(s.media&&s.media.length)?s.media:null,
+        variations:(s.variations&&s.variations.length)?s.variations:null,
+        addons:(s.addons&&s.addons.length)?s.addons:null,
+        item_info:s.item_info||null,est_time:s.est_time||null,is_package:!!s.is_package,subtitle:s.subtitle||null};
       if(s.id){await sb(`gl_services?id=eq.${s.id}`,{method:"PATCH",headers:H(),body:JSON.stringify(body)});}
       else{const r=await sb("gl_services",{method:"POST",headers:H({Prefer:"return=representation"}),body:JSON.stringify(body)});if(r.ok){const j=await r.json();s.id=j[0].id;}}
     }
@@ -1220,11 +1408,18 @@ async function saveAll(){
       if(c.id){await sb(`gl_categories?id=eq.${c.id}`,{method:"PATCH",headers:H(),body:JSON.stringify(body)});}
       else{const r=await sb("gl_categories",{method:"POST",headers:H({Prefer:"return=representation"}),body:JSON.stringify(body)});if(r.ok){const j=await r.json();c.id=j[0].id;}}
     }
+    // stores
+    for(const st of stores){
+      const body={name:st.name,address:st.address||null,image_url:st.image_url||null,sort_order:Number(st.sort_order||0),active:st.active!==false};
+      if(st.id){await sb(`gl_stores?id=eq.${st.id}`,{method:"PATCH",headers:H(),body:JSON.stringify(body)});}
+      else{const r=await sb("gl_stores",{method:"POST",headers:H({Prefer:"return=representation"}),body:JSON.stringify(body)});if(r.ok){const j=await r.json();st.id=j[0].id;}}
+    }
     // delete removed rows from Supabase
     for(const id of deletedSlideIds){ await sb(`gl_onboarding_slides?id=eq.${id}`,{method:"DELETE",headers:H()}); }
     for(const id of deletedServiceIds){ await sb(`gl_services?id=eq.${id}`,{method:"DELETE",headers:H()}); }
     for(const id of deletedCategoryIds){ await sb(`gl_categories?id=eq.${id}`,{method:"DELETE",headers:H()}); }
-    deletedSlideIds=[]; deletedServiceIds=[]; deletedCategoryIds=[];
+    for(const id of deletedStoreIds){ await sb(`gl_stores?id=eq.${id}`,{method:"DELETE",headers:H()}); }
+    deletedSlideIds=[]; deletedServiceIds=[]; deletedCategoryIds=[]; deletedStoreIds=[];
     // rewards
     REWARDS_DATA.forEach((r,i)=>r.sort_order=i+1);
     for(const r of REWARDS_DATA){
@@ -1238,6 +1433,9 @@ async function saveAll(){
     await sb("gl_settings",{method:"POST",headers:H({Prefer:"resolution=merge-duplicates"}),body:JSON.stringify({id:"style",data:theme})});
     // referral settings
     await sb("gl_settings",{method:"POST",headers:H({Prefer:"resolution=merge-duplicates"}),body:JSON.stringify({id:"referral",data:refSettings})});
+    // mystery box + warranty settings
+    await sb("gl_settings",{method:"POST",headers:H({Prefer:"resolution=merge-duplicates"}),body:JSON.stringify({id:"mysterybox",data:mb})});
+    await sb("gl_settings",{method:"POST",headers:H({Prefer:"resolution=merge-duplicates"}),body:JSON.stringify({id:"warranty",data:warranty})});
     toast("Saved ✓  Customer app will reflect changes on reload");
   }catch(e){toast("Save error — check console");console.error(e);}
 }
@@ -1451,6 +1649,9 @@ function switchTab(t){
   document.querySelectorAll('.panel').forEach(p=>p.classList.toggle('active',p.id==='panel-'+t));
   if(t==='services')setPv('svc');
   else if(t==='categories')renderCategories();
+  else if(t==='stores')renderStores();
+  else if(t==='mysterybox')fillMbControls();
+  else if(t==='warranty')fillWarrantyControls();
   else if(t==='onboarding')setPv('onb');
   else if(t==='otppage'){fillOtpControls();setPv('otp');}
   else if(t==='refpage'){fillRefControls();setPv('ref');}

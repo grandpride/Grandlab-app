@@ -357,18 +357,83 @@
   .svc-card .nm{font-size:16px;font-weight:700;margin-top:3px;}
   .svc-card .ds{font-size:13px;color:var(--muted);margin-top:5px;line-height:1.4;}
   .svc-card .pr{font-size:15px;font-weight:800;margin-top:8px;color:var(--text);}
-  /* category cards */
-  .cat-grid{margin-top:14px;display:flex;flex-direction:column;gap:12px;}
-  .cat-card{display:flex;align-items:center;gap:14px;background:var(--surface);
-    border:1px solid var(--line);border-radius:16px;padding:14px;cursor:pointer;transition:.12s;}
-  .cat-card:active{transform:scale(.99);}
-  .cat-card .cat-img{width:64px;height:64px;border-radius:12px;object-fit:cover;background:var(--surface2);flex:0 0 auto;}
-  .cat-card .cat-ico{width:64px;height:64px;border-radius:12px;display:flex;align-items:center;justify-content:center;
-    font-size:30px;background:var(--card-grad);border:1px solid var(--gold-line-soft);flex:0 0 auto;}
-  .cat-card .cat-info{flex:1;min-width:0;}
-  .cat-card .cat-nm{font-size:17px;font-weight:700;}
-  .cat-card .cat-ct{font-size:13px;color:var(--muted);margin-top:3px;}
-  .cat-card .cat-arrow{font-size:24px;color:var(--muted);flex:0 0 auto;}
+  /* category grid — logo/icon only, no square box */
+  .cat-grid{margin-top:16px;display:grid;grid-template-columns:repeat(3,1fr);gap:14px 10px;}
+  .cat-card{display:flex;flex-direction:column;align-items:center;gap:8px;cursor:pointer;transition:.12s;}
+  .cat-card:active{transform:scale(.95);}
+  .cat-card .cat-img{width:62px;height:62px;border-radius:14px;object-fit:cover;}
+  .cat-card .cat-ico{width:62px;height:62px;display:flex;align-items:center;justify-content:center;font-size:38px;line-height:1;}
+  .cat-card .cat-nm{font-size:12.5px;font-weight:600;text-align:center;line-height:1.2;}
+  .cat-card .cat-ct{display:none;}
+  .cat-card .cat-arrow{display:none;}
+  /* special service tiles (Mystery Box, Warranty) */
+  .svc-special-grid{margin-top:8px;display:grid;grid-template-columns:repeat(2,1fr);gap:12px;}
+  .svc-special{display:flex;align-items:center;gap:10px;border-radius:16px;padding:14px;cursor:pointer;
+    background:var(--card-grad);border:1px solid var(--gold-line-soft);transition:.12s;}
+  .svc-special:active{transform:scale(.97);}
+  .svc-special .sp-ic{font-size:26px;flex:0 0 auto;}
+  .svc-special .sp-nm{font-size:13px;font-weight:700;line-height:1.2;}
+  /* service detail */
+  .sd-gallery{position:relative;width:100%;height:230px;background:var(--surface2);overflow-x:auto;
+    display:flex;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;}
+  .sd-gallery::-webkit-scrollbar{display:none;}
+  .sd-slide{flex:0 0 100%;width:100%;height:230px;object-fit:cover;scroll-snap-align:start;}
+  .sd-slide.sd-empty{display:flex;align-items:center;justify-content:center;font-size:64px;background:var(--card-grad);}
+  .sd-dots{position:absolute;bottom:10px;left:0;right:0;display:flex;justify-content:center;gap:6px;}
+  .sd-dot{width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,.4);}
+  .sd-dot.on{background:var(--yellow);}
+  .sd-title-row{display:flex;align-items:center;justify-content:space-between;gap:12px;}
+  .sd-price-tag{color:var(--yellow);font-size:20px;font-weight:800;white-space:nowrap;}
+  .sd-badge{display:inline-block;margin-top:8px;background:var(--surface2);border:1px solid var(--line);
+    border-radius:20px;padding:5px 12px;font-size:12px;color:var(--text);}
+  .sd-sec-t{font-size:15px;font-weight:700;color:var(--yellow);margin:22px 0 10px;}
+  .sd-sub{font-size:12px;color:var(--muted);margin:-6px 0 10px;}
+  .sd-vari{display:flex;flex-wrap:wrap;gap:8px;}
+  .sd-chip{background:var(--surface);border:1px solid var(--line);color:var(--text);
+    border-radius:20px;padding:8px 16px;font-size:13px;cursor:pointer;transition:.12s;}
+  .sd-chip.on{background:var(--yellow);color:#080808;border-color:var(--yellow);font-weight:700;}
+  .sd-row{display:flex;align-items:center;justify-content:space-between;margin-top:22px;}
+  .sd-qty{display:flex;align-items:center;gap:14px;background:var(--surface);border:1px solid var(--line);border-radius:24px;padding:6px 12px;}
+  .sd-qty button{background:none;border:none;color:var(--text);font-size:20px;width:26px;cursor:pointer;}
+  .sd-qty span{min-width:18px;text-align:center;font-weight:700;}
+  .sd-addon{display:flex;align-items:center;gap:12px;background:var(--surface);border:1px solid var(--line);
+    border-radius:14px;padding:10px 12px;margin-bottom:10px;cursor:pointer;}
+  .sd-addon img{width:42px;height:42px;border-radius:8px;object-fit:cover;flex:0 0 auto;}
+  .sd-addon-ic{width:42px;height:42px;border-radius:8px;display:flex;align-items:center;justify-content:center;
+    background:var(--surface2);font-size:20px;color:var(--muted);flex:0 0 auto;}
+  .sd-addon-nm{flex:1;font-size:13px;font-weight:600;line-height:1.3;}
+  .sd-addon-pr{color:var(--yellow);font-weight:700;font-size:14px;white-space:nowrap;}
+  .sd-addon input{width:20px;height:20px;accent-color:var(--yellow);flex:0 0 auto;}
+  .sd-stores{display:flex;gap:12px;overflow-x:auto;padding-bottom:4px;}
+  .sd-stores::-webkit-scrollbar{display:none;}
+  .sd-store{flex:0 0 110px;cursor:pointer;}
+  .sd-store img,.sd-store-ph{width:110px;height:80px;border-radius:12px;object-fit:cover;background:var(--surface2);
+    display:flex;align-items:center;justify-content:center;font-size:30px;border:2px solid transparent;}
+  .sd-store.on img,.sd-store.on .sd-store-ph{border-color:var(--yellow);}
+  .sd-store-nm{font-size:12px;font-weight:600;margin-top:6px;text-align:center;line-height:1.2;}
+  .sd-info{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px;
+    font-size:13px;line-height:1.55;color:var(--text);white-space:pre-wrap;}
+  .sd-checkout-bar{position:absolute;bottom:0;left:0;right:0;padding:14px 18px calc(14px + env(safe-area-inset-bottom));
+    background:linear-gradient(to top,var(--bg) 60%,transparent);}
+  /* mystery box */
+  .mb-top{background:linear-gradient(135deg,#1f7a6e,#2e9e8c);border-bottom:none;color:#fff;}
+  .mb-top .back,.mb-top .ttl,.mb-top .home-btn{color:#fff;}
+  .mb-scroll{background:linear-gradient(180deg,#2e9e8c 0%,#3fb89f 30%,#eafaf4 60%);}
+  .mb-hero{text-align:center;padding:24px 0 18px;}
+  .mb-box{font-size:96px;line-height:1;cursor:pointer;transition:.15s;filter:drop-shadow(0 8px 20px rgba(0,0,0,.25));}
+  .mb-box:active{transform:scale(.92) rotate(-3deg);}
+  .mb-open{margin-top:8px;background:#0d4d44;color:#fff;border:none;border-radius:20px;padding:8px 20px;font-size:13px;font-weight:700;cursor:pointer;}
+  .mb-remain{margin-top:14px;display:inline-block;background:#fff;color:#0d4d44;border-radius:20px;padding:8px 22px;font-weight:700;font-size:14px;}
+  .mb-card{background:#fff;border-radius:16px;padding:16px;margin-top:14px;box-shadow:0 4px 14px rgba(0,0,0,.06);}
+  .mb-card-t{font-size:15px;font-weight:800;color:#0d4d44;margin-bottom:12px;}
+  .mb-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
+  .mb-prize{background:#f4faf8;border:1px solid #d9efe9;border-radius:12px;padding:12px 6px;text-align:center;}
+  .mb-prize-ic{font-size:26px;}
+  .mb-prize-nm{font-size:11px;color:#23534b;margin-top:6px;line-height:1.2;font-weight:600;}
+  .mb-rules{font-size:13px;color:#2c5d54;line-height:1.55;white-space:pre-wrap;}
+  .mb-won{display:flex;justify-content:space-between;font-size:13px;color:#0d4d44;padding:8px 0;border-bottom:1px solid #eef5f3;}
+  .mb-won span{color:#7aa49b;font-size:12px;}
+  .mb-empty{background:#f4faf8;border-radius:10px;padding:14px;text-align:center;color:#7aa49b;font-size:13px;}
   /* bottom nav */
   .botnav{display:flex;border-top:1px solid var(--line);
     background:linear-gradient(180deg,#0e0e0c,#0a0a0a);
@@ -388,6 +453,7 @@
     border-bottom:1px solid var(--line);}
   .topbar-app .back{background:none;border:none;color:var(--text);font-size:22px;cursor:pointer;}
   .topbar-app .ttl{font-size:18px;font-weight:700;}
+  .topbar-app .home-btn{margin-left:auto;background:none;border:none;color:var(--text);font-size:20px;cursor:pointer;}
   .guest-banner{background:var(--surface2);border:1px solid var(--line);border-radius:14px;
     padding:14px;margin-top:16px;font-size:13px;color:var(--muted);}
   .guest-banner b{color:var(--yellow);cursor:pointer;}
@@ -737,6 +803,17 @@ async function fetchSlides(){
     );
     if(r2.ok){ const rows=await r2.json(); if(rows[0]&&rows[0].data) STYLE=Object.assign({},STYLE_DEFAULTS,rows[0].data); }
   }catch(e){}
+  // mystery box + warranty settings
+  try{
+    const r3=await fetch(`${SUPA_URL}/rest/v1/gl_settings?select=id,data&id=in.(mysterybox,warranty)`,
+      { headers:{ apikey:SUPA_ANON, Authorization:`Bearer ${SUPA_ANON}` } });
+    if(r3.ok){ const rows=await r3.json();
+      rows.forEach(row=>{
+        if(row.id==='mysterybox') MYSTERY=Object.assign({},MYSTERY,row.data||{});
+        if(row.id==='warranty' && row.data?.url) STYLE.warrantyUrl=row.data.url;
+      });
+    }
+  }catch(e){}
   applyStyle();
 }
 
@@ -767,6 +844,13 @@ let SESSION = null;     // { access_token, user, ... }
 let PROFILE = null;     // gl_profiles row
 let SERVICES = [];      // gl_services rows
 let CATEGORIES = [];    // gl_categories rows
+let STORES = [];        // gl_stores rows
+let MYSTERY = {
+  enabled:true, title:'Mystery Box',
+  prizes:[{name:'Interior Sterilization'},{name:'Mineral Off'},{name:'Box Free Sig. Wash'},
+          {name:'7% Off'},{name:'5% Off'},{name:'3% Off'}],
+  rules:'Eligibility\nUsers earn a Lucky Box entry when a service is successfully completed.\n\nHow It Works\nEntries are awarded based on total spend per completed order:\n\nRM1 – RM199: 1 entry\nRM200 – RM699: 2 entries\nRM700 & above: 3 entries'
+};
 let IS_GUEST = false;
 
 function loadSession(){
@@ -836,6 +920,14 @@ async function fetchCategories(){
     if(r.ok) CATEGORIES=await r.json();
   }catch(e){}
   return CATEGORIES;
+}
+async function fetchStores(){
+  try{
+    const r=await fetch(`${SUPA_URL}/rest/v1/gl_stores?select=*&active=eq.true&order=sort_order.asc`,
+      {headers:{apikey:SUPA_ANON,Authorization:`Bearer ${SUPA_ANON}`}});
+    if(r.ok) STORES=await r.json();
+  }catch(e){}
+  return STORES;
 }
 let VEHICLES=[];
 async function fetchVehicles(){
@@ -1273,6 +1365,11 @@ async function routeTab(tab){
 }
 
 function priceLabel(s){
+  // variations take priority — show "from RM<lowest>"
+  if(s.variations && Array.isArray(s.variations) && s.variations.length){
+    const vals=s.variations.map(v=>Number(v.price)).filter(v=>!isNaN(v)&&v>0);
+    if(vals.length) return (s.variations.length>1?'from RM':'RM')+Math.min(...vals);
+  }
   if(s.price_by_type){
     const vals=Object.values(s.price_by_type).filter(v=>v!=null&&v!=='');
     if(vals.length) return 'from RM'+Math.min(...vals.map(Number));
@@ -1617,19 +1714,89 @@ async function renderServicesScreen(){
       ${IS_GUEST?`<div class="guest-banner">You're browsing as a guest. <b onclick="logout()">Sign in</b> to book.</div>`:''}
       ${cards.length? `<div class="cat-grid">${cards.join('')}</div>`
         : '<div class="guest-banner">No services yet. Add them in the admin.</div>'}
+      <div class="sec-title" style="margin-top:26px">More</div>
+      <div class="svc-special-grid">
+        <div class="svc-special" onclick="openMysteryBox()">
+          <div class="sp-ic">🎁</div><div class="sp-nm">Mystery Box</div>
+        </div>
+        <div class="svc-special" onclick="openWarranty()">
+          <div class="sp-ic">🛡️</div><div class="sp-nm">AX Film<br>Warranty Check</div>
+        </div>
+      </div>
     </div>
     ${botnav('services')}`;
+}
+
+function openWarranty(){
+  const url=(STYLE.warrantyUrl||'https://axfilm.com.my/warranty/');
+  window.open(url,'_blank');
+}
+
+/* ---------- Mystery Box ---------- */
+let MY_DRAWS = [];
+async function fetchDraws(){
+  if(!SESSION?.user?.id) return [];
+  try{
+    const r=await fetch(`${SUPA_URL}/rest/v1/gl_mystery_draws?select=*&owner_id=eq.${SESSION.user.id}&order=created_at.desc`,{headers:authHeaders()});
+    if(r.ok) MY_DRAWS=await r.json();
+  }catch(e){}
+  return MY_DRAWS;
+}
+async function openMysteryBox(){
+  if(IS_GUEST){ toast("Sign in to play"); return; }
+  await fetchDraws();
+  renderMysteryBox();
+}
+function renderMysteryBox(){
+  const remaining=MY_DRAWS.filter(d=>d.status==='available').length;
+  const won=MY_DRAWS.filter(d=>d.status==='opened'&&d.prize);
+  const prizeGrid=(MYSTERY.prizes||[]).map(p=>`
+    <div class="mb-prize"><div class="mb-prize-ic">🎟️</div><div class="mb-prize-nm">${esc(p.name||'')}</div></div>`).join('');
+  appRoot.innerHTML=`
+    <div class="topbar-app mb-top"><button class="back" onclick="routeTab('services')">‹</button><div class="ttl">${esc(MYSTERY.title||'Mystery Box')}</div><button class="home-btn" onclick="routeTab('home')">⌂</button></div>
+    <div class="app-scroll mb-scroll" style="padding:0 18px 40px">
+      <div class="mb-hero">
+        <div class="mb-box" onclick="drawMystery()">🎁</div>
+        <button class="mb-open" onclick="drawMystery()">Tap to Open</button>
+        <div class="mb-remain">Remaining Draws: ${remaining}</div>
+      </div>
+      <div class="mb-card">
+        <div class="mb-card-t">💎 Prize Pool Overview</div>
+        <div class="mb-grid">${prizeGrid}</div>
+      </div>
+      <div class="mb-card">
+        <div class="mb-card-t">📋 Draw Rules</div>
+        <div class="mb-rules">${esc(MYSTERY.rules||'')}</div>
+      </div>
+      <div class="mb-card">
+        <div class="mb-card-t">🏆 My Prizes</div>
+        ${won.length? won.map(d=>`<div class="mb-won">🎉 ${esc(d.prize)} <span>${new Date(d.opened_at||d.created_at).toLocaleDateString()}</span></div>`).join('')
+          : '<div class="mb-empty">✨ No record found</div>'}
+      </div>
+    </div>`;
+}
+async function drawMystery(){
+  const avail=MY_DRAWS.find(d=>d.status==='available');
+  if(!avail){ toast("No draws left — complete a service to earn one"); return; }
+  const prizes=MYSTERY.prizes||[];
+  const prize=prizes[Math.floor(Math.random()*prizes.length)]?.name||'Prize';
+  try{
+    const r=await fetch(`${SUPA_URL}/rest/v1/gl_mystery_draws?id=eq.${avail.id}`,{
+      method:"PATCH",headers:Object.assign(authHeaders(),{Prefer:"return=representation"}),
+      body:JSON.stringify({status:'opened',prize:prize,opened_at:new Date().toISOString()})});
+    if(r.ok){
+      avail.status='opened'; avail.prize=prize; avail.opened_at=new Date().toISOString();
+      toast("🎉 You won: "+prize);
+      renderMysteryBox();
+    } else { toast("Could not open box"); }
+  }catch(e){ toast("Draw error"); }
 }
 
 function catCard(name, icon, img, count, isOther){
   const safe = (name||'').replace(/'/g,"\\'");
   return `<div class="cat-card" onclick="openCategory('${safe}')">
     ${img?`<img class="cat-img" src="${img}">`:`<div class="cat-ico">${icon||serviceEmoji(name)}</div>`}
-    <div class="cat-info">
-      <div class="cat-nm">${esc(name||'')}</div>
-      <div class="cat-ct">${count} ${count===1?'service':'services'}</div>
-    </div>
-    <div class="cat-arrow">›</div>
+    <div class="cat-nm">${esc(name||'')}</div>
   </div>`;
 }
 
@@ -1644,31 +1811,145 @@ async function openCategory(name){
     list = SERVICES.filter(s=>norm(s.category)===norm(name));
   }
   appRoot.innerHTML=`
-    <div class="topbar-app"><button class="back" onclick="routeTab('services')">‹</button><div class="ttl">${esc(name)}</div></div>
+    <div class="topbar-app"><button class="back" onclick="routeTab('services')">‹</button><div class="ttl">${esc(name)}</div><button class="home-btn" onclick="routeTab('home')">⌂</button></div>
     <div class="app-scroll" style="padding-top:14px">
       <div class="app-sub" style="margin-bottom:10px">Choose a service to book</div>
       ${list.length? list.map(s=>svcCard(s)).join('') : '<div class="guest-banner">No services in this category yet.</div>'}
     </div>`;
 }
 
-function openService(id){
-  const s=SERVICES.find(x=>x.id===id); if(!s) return;
+/* ---------- Service detail page (full) ---------- */
+let SVC_SEL = { service:null, variIdx:0, qty:1, addons:{}, storeIdx:0 };
+
+async function openService(id){
+  const s=SERVICES.find(x=>String(x.id)===String(id)); if(!s) return;
   if(IS_GUEST){ toast("Sign in to book this service"); return; }
+  if(!STORES.length){ try{ await fetchStores(); }catch(e){} }
+  // reset selection
+  SVC_SEL = { service:s, variIdx:0, qty:1, addons:{}, storeIdx:0 };
+  renderServiceDetail();
+}
+
+function svcDetailPrice(){
+  const s=SVC_SEL.service; if(!s) return 0;
+  let base=0;
+  if(s.variations && s.variations.length){ base=Number(s.variations[SVC_SEL.variIdx]?.price||0); }
+  else { base=Number(s.base_price||0); }
+  let total=base*SVC_SEL.qty;
+  (s.addons||[]).forEach((a,i)=>{ if(SVC_SEL.addons[i]) total+=Number(a.price||0); });
+  return total;
+}
+
+function renderServiceDetail(){
+  const s=SVC_SEL.service; if(!s) return;
   const backCat = s.category ? `onclick="openCategory('${(s.category||'').replace(/'/g,"\\'")}')"` : `onclick="routeTab('services')"`;
-  // booking detail — placeholder for next build step
+  const media = Array.isArray(s.media)&&s.media.length ? s.media
+                : (s.image_url?[{type:'image',url:s.image_url}]:[]);
+  const slides = media.map(m=>m.type==='video'
+      ? `<video class="sd-slide" src="${m.url}" muted playsinline controls></video>`
+      : `<img class="sd-slide" src="${m.url}">`).join('') || `<div class="sd-slide sd-empty">${serviceEmoji(s.name)}</div>`;
+  const dots = media.length>1 ? `<div class="sd-dots">${media.map((_,i)=>`<span class="sd-dot ${i===0?'on':''}"></span>`).join('')}</div>` : '';
+
+  // variations
+  let variBlock='';
+  if(s.variations && s.variations.length){
+    variBlock=`<div class="sd-sec-t">Select variation</div>
+      <div class="sd-vari">${s.variations.map((v,i)=>`
+        <button class="sd-chip ${i===SVC_SEL.variIdx?'on':''}" onclick="selVari(${i})">${esc(v.label||('Option '+(i+1)))}</button>`).join('')}</div>`;
+  }
+
+  // quantity (hide for packages — usually qty 1)
+  const qtyBlock = `<div class="sd-row"><div class="sd-sec-t" style="margin:0">Quantity</div>
+      <div class="sd-qty">
+        <button onclick="setQty(-1)">−</button><span>${SVC_SEL.qty}</span><button onclick="setQty(1)">+</button>
+      </div></div>`;
+
+  // add-ons
+  let addonBlock='';
+  if(s.addons && s.addons.length){
+    addonBlock=`<div class="sd-sec-t">Recommended add-ons</div>
+      ${s.addons.map((a,i)=>`
+        <label class="sd-addon">
+          ${a.image_url?`<img src="${a.image_url}">`:`<div class="sd-addon-ic">＋</div>`}
+          <div class="sd-addon-nm">${esc(a.label||'')}</div>
+          <div class="sd-addon-pr">RM${esc(String(a.price||0))}</div>
+          <input type="checkbox" ${SVC_SEL.addons[i]?'checked':''} onchange="toggleAddon(${i},this.checked)">
+        </label>`).join('')}`;
+  }
+
+  // stores
+  let storeBlock='';
+  if(STORES.length){
+    storeBlock=`<div class="sd-sec-t">Choose Store</div>
+      <div class="sd-sub">Select an outlet</div>
+      <div class="sd-stores">${STORES.map((st,i)=>`
+        <div class="sd-store ${i===SVC_SEL.storeIdx?'on':''}" onclick="selStore(${i})">
+          ${st.image_url?`<img src="${st.image_url}">`:`<div class="sd-store-ph">🏬</div>`}
+          <div class="sd-store-nm">${esc(st.name||'')}</div>
+        </div>`).join('')}</div>`;
+  }
+
+  // item info
+  let infoBlock='';
+  if(s.item_info || s.est_time){
+    infoBlock=`<div class="sd-sec-t">Item Info</div>
+      <div class="sd-info">
+        ${s.item_info?`<div>${esc(s.item_info)}</div>`:''}
+        ${s.est_time?`<div style="margin-top:10px;color:var(--muted)">Estimated Time: ${esc(s.est_time)}</div>`:''}
+      </div>`;
+  }
+
   appRoot.innerHTML=`
-    <div class="topbar-app"><button class="back" ${backCat}>‹</button><div class="ttl">${esc(s.name||'Service')}</div></div>
-    <div class="app-scroll" style="padding-top:18px">
-      ${s.image_url?`<img class="img" src="${s.image_url}" style="width:100%;height:200px;object-fit:cover;border-radius:16px">`:''}
-      ${s.category?`<div class="cat" style="margin-top:14px;color:var(--yellow);font-size:12px;text-transform:uppercase;font-weight:700;letter-spacing:.06em">${esc(s.category)}</div>`:''}
-      <div class="app-h1" style="margin-top:4px">${esc(s.name||'')}</div>
-      ${s.description?`<div class="app-sub" style="margin-top:8px;line-height:1.5">${esc(s.description)}</div>`:''}
-      <div class="card-box">
-        <div style="font-size:13px;color:var(--muted)">Price</div>
-        <div style="font-size:24px;font-weight:800;margin-top:4px">${priceLabel(s)}</div>
+    <div class="topbar-app"><button class="back" ${backCat}>‹</button><div class="ttl">Service Details</div><button class="home-btn" onclick="routeTab('home')">⌂</button></div>
+    <div class="app-scroll" style="padding:0 0 120px">
+      <div class="sd-gallery">${slides}${dots}</div>
+      <div style="padding:16px 18px 0">
+        <div class="sd-title-row">
+          <div class="app-h1" style="margin:0">${esc(s.name||'')}</div>
+          <div class="sd-price-tag">${priceLabel(s)}</div>
+        </div>
+        ${s.subtitle?`<div class="sd-badge">⭐ ${esc(s.subtitle)}</div>`:''}
+        ${variBlock}
+        ${qtyBlock}
+        ${addonBlock}
+        ${storeBlock}
+        ${infoBlock}
       </div>
-      <button class="btn btn-primary" style="margin-top:20px" onclick="toast('Booking flow — next build step')">Book this service</button>
+    </div>
+    <div class="sd-checkout-bar">
+      <button class="btn btn-primary" onclick="checkoutService()">Checkout · RM${svcDetailPrice()}</button>
     </div>`;
+}
+
+function selVari(i){ SVC_SEL.variIdx=i; renderServiceDetail(); }
+function setQty(d){ SVC_SEL.qty=Math.max(1,SVC_SEL.qty+d); renderServiceDetail(); }
+function toggleAddon(i,on){ SVC_SEL.addons[i]=on; refreshCheckoutBar(); }
+function selStore(i){ SVC_SEL.storeIdx=i; renderServiceDetail(); }
+function refreshCheckoutBar(){
+  const b=document.querySelector('.sd-checkout-bar .btn'); if(b) b.textContent='Checkout · RM'+svcDetailPrice();
+}
+
+async function checkoutService(){
+  const s=SVC_SEL.service; if(!s) return;
+  if(IS_GUEST){ toast("Sign in to book"); return; }
+  const vari = s.variations?.[SVC_SEL.variIdx]?.label || '';
+  const store = STORES[SVC_SEL.storeIdx]?.name || '';
+  const addonNames = (s.addons||[]).filter((a,i)=>SVC_SEL.addons[i]).map(a=>a.label);
+  const total = svcDetailPrice();
+  const noteBits=[];
+  if(vari) noteBits.push('Variation: '+vari);
+  if(SVC_SEL.qty>1) noteBits.push('Qty: '+SVC_SEL.qty);
+  if(addonNames.length) noteBits.push('Add-ons: '+addonNames.join(', '));
+  if(store) noteBits.push('Store: '+store);
+  const note=noteBits.join(' · ');
+  try{
+    const r=await fetch(`${SUPA_URL}/rest/v1/gl_orders`,{
+      method:"POST",headers:authHeaders(),
+      body:JSON.stringify({owner_id:SESSION.user.id,service_name:s.name,service_id:s.id,
+        vehicle:'',appointment_date:null,appointment_time:null,note:note,status:'upcoming'})});
+    if(r.ok){ toast("Order placed ✓"); routeTab('order'); }
+    else { toast("Could not place order"); }
+  }catch(e){ toast("Order error"); }
 }
 
 async function fetchOrders(){
@@ -2120,6 +2401,7 @@ Object.defineProperty(window,'stepIndex',{get:()=>cur,set:v=>{cur=v;}});
     try{ await fetchSlides(); }catch(e){ console.error('fetchSlides failed', e); }
     try{ await fetchServices(); }catch(e){ console.error('fetchServices failed', e); }
     try{ await fetchCategories(); }catch(e){ console.error('fetchCategories failed', e); }
+    try{ await fetchStores(); }catch(e){ console.error('fetchStores failed', e); }
     try{ render(); indexScreens(); }catch(e){ console.error('render failed', e); }
     try{ enterGuest(); }catch(e){ console.error('enterGuest failed', e); }
     return;
@@ -2131,6 +2413,7 @@ Object.defineProperty(window,'stepIndex',{get:()=>cur,set:v=>{cur=v;}});
     const prof = await fetchProfile();
     await fetchServices();
     await fetchCategories();
+    await fetchStores();
     render();                     // build onboarding stack (hidden) for fallback
     indexScreens();
     // if the session is dead/invalid (no profile came back at all), clear it and show normal flow
