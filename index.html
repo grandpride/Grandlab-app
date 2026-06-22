@@ -1450,11 +1450,14 @@ async function renderHome(){
 
   // member card photo — syncs with the membership card photos uploaded in admin (memCard1..5),
   // falls back to the separate memBg fields if those are set instead.
-  const tierNum = PROFILE?.tier_level || 0; // 0=non-member, 1-5 = tiers
+  // member card photo — slot 1 = Non-Member, slots 2-5 = Bronze..Platinum (matches membership screen).
+  // Default tier_level = 1 (Non-Member). Each slot's photo syncs with the membership card uploaded in admin.
+  const tierNum = PROFILE?.tier_level || 1;
   const memCards = [null, STYLE.memCard1, STYLE.memCard2, STYLE.memCard3, STYLE.memCard4, STYLE.memCard5];
   const memBgs   = [null, STYLE.memBg1,   STYLE.memBg2,   STYLE.memBg3,   STYLE.memBg4,   STYLE.memBg5];
-  // non-members (tier 0) stay plain; subscribed tiers show their uploaded card photo
-  const tierBg = tierNum>0 ? (memBgs[tierNum] || memCards[tierNum] || null) : null;
+  const tierBg = memBgs[tierNum] || memCards[tierNum] || null;
+  const tierNames = [null, STYLE.memTier1, STYLE.memTier2, STYLE.memTier3, STYLE.memTier4, STYLE.memTier5];
+  const currentTierName = PROFILE?.tier || tierNames[tierNum] || STYLE.homeMemberTier || 'Non-Member';
   const memberCardStyle = tierBg
     ? `background-image:url('${tierBg}');background-size:cover;background-position:center;`
     : '';
@@ -1548,7 +1551,7 @@ async function renderHome(){
       <div class="member-card ${tierBg?'has-bg':''}" style="${memberCardStyle}">
         <div class="member-top">
           <div>
-            <div class="member-tier">${esc(PROFILE?.tier||STYLE.homeMemberTier||'Non-Member')}</div>
+            <div class="member-tier">${esc(currentTierName)}</div>
             <div class="member-name">${esc(PROFILE?.name||(IS_GUEST?'Guest user':'Member'))}</div>
           </div>
         </div>
