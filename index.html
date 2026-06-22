@@ -7,6 +7,9 @@
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 <title>Grandlab Detailing</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <style>
   :root{
     --bg:#0A0A0A; --surface:#141414; --surface2:#1C1C1C;
@@ -24,9 +27,10 @@
   html,body{height:100%;height:100dvh;}
   body{
     background:#0a0a0a; color:var(--text);
-    font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Helvetica Neue",sans-serif;
+    font-family:"Inter",-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",sans-serif;
+    font-size:14.5px; line-height:1.45; letter-spacing:-0.01em;
     overflow:hidden; position:fixed; top:0; left:0; right:0; height:100dvh;
-    -webkit-font-smoothing:antialiased;
+    -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;
     display:flex; justify-content:center;
   }
   /* phone-shaped on desktop, full-bleed on real phones */
@@ -217,7 +221,7 @@
   /* hide scrollbars on any scroll container in the app */
   #appRoot *::-webkit-scrollbar{display:none;width:0;height:0;}
   #appRoot *{scrollbar-width:none;-ms-overflow-style:none;}
-  .app-h1{font-size:26px;font-weight:800;letter-spacing:-.02em;}
+  .app-h1{font-size:22px;font-weight:800;letter-spacing:-.02em;}
   .app-sub{color:var(--muted);font-size:14px;margin-top:4px;}
   .greet-row{display:flex;align-items:center;justify-content:space-between;gap:12px;}
   .avatar{width:44px;height:44px;border-radius:50%;background:var(--surface2);
@@ -345,7 +349,7 @@
   .quick:active{transform:scale(.97);}
   .quick .ic{font-size:26px;}
   .quick .t{font-size:14px;font-weight:700;}
-  .sec-title{font-size:17px;font-weight:800;margin-top:26px;padding-left:12px;position:relative;}
+  .sec-title{font-size:15px;font-weight:800;margin-top:26px;padding-left:12px;position:relative;}
   .sec-title::before{content:"";position:absolute;left:0;top:3px;bottom:3px;width:3px;
     border-radius:3px;background:linear-gradient(var(--yellow),var(--yellow-dim));}
   .sec-title-row{display:flex;align-items:flex-end;justify-content:space-between;}
@@ -616,7 +620,7 @@
   .outlet-arrow{font-size:22px;color:var(--muted);flex:0 0 auto;}
   /* outlet detail */
   .outlet-hero{width:100%;height:210px;object-fit:cover;background:var(--surface2);}
-  .od-sec{font-size:14px;font-weight:700;color:var(--yellow);margin-top:20px;}
+  .od-sec{font-size:12.5px;font-weight:700;color:var(--yellow);margin-top:20px;}
   .od-text{font-size:13.5px;line-height:1.5;margin-top:6px;color:var(--text);}
   .od-hours{margin-top:8px;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:8px 14px;}
   .od-addr-row{display:flex;align-items:flex-start;gap:10px;}
@@ -646,7 +650,7 @@
   .oh-row{display:flex;justify-content:space-between;font-size:13px;padding:6px 0;border-bottom:1px solid var(--line);}
   .oh-row:last-child{border-bottom:none;}
   .oh-row span:first-child{color:var(--muted);font-weight:600;}
-  .wa-btn{display:flex;align-items:center;justify-content:center;gap:8px;background:#25D366 !important;color:#fff !important;}
+  .wa-btn{display:flex;align-items:center;justify-content:center;gap:8px;background:var(--yellow) !important;color:#080808 !important;font-weight:800;}
   .home-cards{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:18px;}
   .hc{background:var(--card-grad);border:1px solid var(--gold-line-soft);border-radius:16px;padding:16px;cursor:pointer;transition:.12s;}
   .hc:active{transform:scale(.97);}
@@ -823,6 +827,7 @@ const STYLE_DEFAULTS = {
   homeWalletLabel:"Wallet Balance", homeSubscribeBtn:"Subscribe Now",
   homeHighlightsTitle:"Highlights",
   homeBrandsTitle:"Our Brands", homeStoresTitle:"Our Stores",
+  waLabel:"WhatsApp {name}",
   homeCard1Title:"Get rewarded", homeCard1Sub:"with every spending",
   homeCard2Title:"Send gifts", homeCard2Sub:"to friends & loved ones",
   homeShowSubscribe:true, homeShowWallet:true, homeShowHighlights:true, homeShowCards:true,
@@ -1909,7 +1914,10 @@ async function openOutletDetail(id){
         </div>`:''}
       </div>
     </div>
-    ${wa?`<div class="sd-checkout-bar"><button class="btn btn-primary wa-btn" onclick="window.open('https://wa.me/${wa}','_blank')"><span style="font-size:18px">🟢</span> WhatsApp ${esc(st.name||'')}</button></div>`:''}`;
+    ${wa?`<div class="sd-checkout-bar"><button class="btn wa-btn" onclick="window.open('https://wa.me/${wa}','_blank')">${waLogoSvg()} ${esc((STYLE.waLabel||'WhatsApp {name}').replace('{name}', st.name||''))}</button></div>`:''}`;
+}
+function waLogoSvg(){
+  return `<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style="flex:0 0 auto"><path d="M17.5 14.4c-.3-.15-1.77-.87-2.04-.97-.27-.1-.47-.15-.67.15-.2.3-.77.97-.95 1.17-.17.2-.35.22-.65.07-.3-.15-1.26-.46-2.4-1.48-.89-.79-1.49-1.77-1.66-2.07-.17-.3-.02-.46.13-.61.13-.13.3-.35.45-.52.15-.17.2-.3.3-.5.1-.2.05-.37-.02-.52-.07-.15-.67-1.62-.92-2.22-.24-.58-.49-.5-.67-.51l-.57-.01c-.2 0-.52.07-.8.37-.27.3-1.05 1.02-1.05 2.5 0 1.47 1.08 2.9 1.23 3.1.15.2 2.12 3.24 5.14 4.54.72.31 1.28.5 1.71.63.72.23 1.38.2 1.9.12.58-.09 1.77-.72 2.02-1.42.25-.7.25-1.3.17-1.42-.07-.13-.27-.2-.57-.35M12.05 21.5h-.01a9.42 9.42 0 0 1-4.8-1.32l-.34-.2-3.57.94.95-3.48-.22-.36a9.4 9.4 0 0 1-1.44-5.01c0-5.2 4.23-9.42 9.43-9.42 2.52 0 4.88.98 6.66 2.76a9.36 9.36 0 0 1 2.76 6.67c0 5.2-4.23 9.42-9.43 9.42m8.02-17.44A11.32 11.32 0 0 0 12.05.71C5.8.71.71 5.8.71 12.05c0 2 .52 3.95 1.51 5.67L.62 23.5l5.92-1.55a11.3 11.3 0 0 0 5.5 1.4h.01c6.25 0 11.34-5.09 11.34-11.34 0-3.03-1.18-5.88-3.32-8.02"/></svg>`;
 }
 
 // navigation helpers
@@ -1920,11 +1928,13 @@ function _navTarget(st){
 }
 function openMaps(id){
   const st=STORES.find(x=>String(x.id)===String(id)); if(!st) return;
+  if(st.maps_url){ window.open(st.maps_url,'_blank'); return; }
   const t=_navTarget(st);
   window.open(`https://www.google.com/maps/search/?api=1&query=${t.q}`,'_blank');
 }
 function openWaze(id){
   const st=STORES.find(x=>String(x.id)===String(id)); if(!st) return;
+  if(st.waze_url){ window.open(st.waze_url,'_blank'); return; }
   if(st.lat!=null && st.lng!=null){ window.open(`https://waze.com/ul?ll=${st.lat},${st.lng}&navigate=yes`,'_blank'); }
   else { window.open(`https://waze.com/ul?q=${encodeURIComponent(st.address||st.name||'')}&navigate=yes`,'_blank'); }
 }

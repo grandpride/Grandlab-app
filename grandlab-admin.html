@@ -564,6 +564,8 @@
       <!-- STORES -->
       <div class="panel" id="panel-stores">
         <div class="hint">Outlets shown as “Choose Store” on the service detail page and in the “Our Stores” section on home. Add name, address, contact, WhatsApp, operating hours, map coordinates, and a photo.</div>
+        <label style="margin-top:14px">WhatsApp button label <span class="svc-hint">use {name} for the outlet name</span></label>
+        <input id="waLabel" value="${''}" oninput="theme.waLabel=this.value" placeholder="WhatsApp {name}">
         <div id="storeList" style="margin-top:14px"></div>
         <div class="add-row"><button class="btn btn-ghost" onclick="addStore()">+ Add store</button></div>
       </div>
@@ -1340,6 +1342,7 @@ function clearCatPhoto(i){categories[i].image_url=null;renderCategories();}
 /* ---------- STORES editor ---------- */
 let deletedStoreIds = [];
 function renderStores(){
+  const wl=document.getElementById('waLabel'); if(wl) wl.value=theme.waLabel||'';
   const el=document.getElementById('storeList'); if(!el) return;
   if(!stores.length){el.innerHTML='<div class="empty">No stores yet. Add your outlets.</div>';return;}
   el.innerHTML="";
@@ -1363,6 +1366,11 @@ function renderStores(){
         <div><label>Longitude</label><input type="number" step="any" value="${st.lng??''}" oninput="updStore(${i},'lng',this.value)" placeholder="101.6869"></div>
       </div>
       <div class="svc-hint" style="margin-top:4px">Tip: get lat/lng from Google Maps — right-click the spot → click the coordinates to copy.</div>
+      <label style="margin-top:8px">Google Maps link (optional — overrides auto)</label>
+      <input value="${esc(st.maps_url||'')}" oninput="updStore(${i},'maps_url',this.value)" placeholder="https://maps.app.goo.gl/…">
+      <label style="margin-top:8px">Waze link (optional — overrides auto)</label>
+      <input value="${esc(st.waze_url||'')}" oninput="updStore(${i},'waze_url',this.value)" placeholder="https://waze.com/ul/…">
+      <div class="svc-hint" style="margin-top:4px">Paste your exact outlet links here if you want a specific pin. Leave blank to auto-generate from the address/coordinates.</div>
       <div class="svc-sub">Operating hours</div>
       ${DAYS.map(d=>`<div class="mini-row"><span style="width:42px;font-size:12px;color:var(--muted)">${d}</span>
         <input value="${esc(st.hours[d]||'')}" oninput="updStoreHour(${i},'${d}',this.value)" placeholder="08:00am - 08:00pm"></div>`).join('')}
@@ -1947,7 +1955,8 @@ async function saveAll(){
       const body={name:st.name,address:st.address||null,image_url:st.image_url||null,sort_order:Number(st.sort_order||0),active:st.active!==false,
         contact_number:st.contact_number||null,whatsapp:(st.whatsapp||'').replace(/[^0-9]/g,'')||null,
         hours:(st.hours&&Object.keys(st.hours).length)?st.hours:null,
-        lat:st.lat??null,lng:st.lng??null};
+        lat:st.lat??null,lng:st.lng??null,
+        maps_url:st.maps_url||null,waze_url:st.waze_url||null};
       if(st.id){await sb(`gl_stores?id=eq.${st.id}`,{method:"PATCH",headers:H(),body:JSON.stringify(body)});}
       else{const r=await sb("gl_stores",{method:"POST",headers:H({Prefer:"return=representation"}),body:JSON.stringify(body)});if(r.ok){const j=await r.json();st.id=j[0].id;}}
     }
