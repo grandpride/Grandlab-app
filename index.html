@@ -475,6 +475,37 @@
   .field{margin-top:16px;}
   .veh-type-tag{margin-top:12px;display:inline-block;background:var(--surface2);border:1px solid var(--gold-line-soft);
     border-radius:20px;padding:6px 14px;font-size:13px;font-weight:600;color:var(--yellow);}
+  /* login popup carousel */
+  .popup-ov{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;display:flex;align-items:center;justify-content:center;padding:24px;}
+  .popup-box{position:relative;width:100%;max-width:360px;background:var(--surface);border-radius:18px;overflow:hidden;}
+  .popup-x{position:absolute;top:8px;right:8px;z-index:5;width:32px;height:32px;border-radius:50%;border:none;
+    background:rgba(0,0,0,.55);color:#fff;font-size:15px;cursor:pointer;}
+  .popup-track{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;}
+  .popup-track::-webkit-scrollbar{display:none;}
+  .popup-slide{flex:0 0 100%;scroll-snap-align:start;cursor:pointer;}
+  .popup-slide img{width:100%;display:block;}
+  .popup-dots{display:flex;justify-content:center;gap:6px;padding:10px 0 2px;}
+  .popup-dot{width:7px;height:7px;border-radius:50%;background:var(--line);}
+  .popup-dot.on{background:var(--yellow);}
+  .popup-dismiss{display:flex;align-items:center;gap:8px;justify-content:center;padding:12px;font-size:13px;color:var(--muted);cursor:pointer;}
+  .popup-dismiss input{width:16px;height:16px;accent-color:var(--yellow);}
+  /* flash deals */
+  .flash-strip{display:flex;gap:12px;overflow-x:auto;margin-top:12px;padding-bottom:4px;}
+  .flash-strip::-webkit-scrollbar{display:none;}
+  .flash-card{flex:0 0 168px;background:var(--surface);border:1px solid var(--gold-line-soft);border-radius:14px;overflow:hidden;cursor:pointer;transition:.12s;}
+  .flash-card:active{transform:scale(.97);}
+  .flash-img{position:relative;width:100%;height:110px;background:var(--surface2);}
+  .flash-img img{width:100%;height:100%;object-fit:cover;}
+  .flash-img-ph{width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:34px;}
+  .flash-disc{position:absolute;top:8px;left:8px;background:#ff2e63;color:#fff;font-size:12px;font-weight:800;padding:3px 8px;border-radius:6px;}
+  .flash-body{padding:10px 12px 12px;}
+  .flash-nm{font-size:13.5px;font-weight:700;line-height:1.3;min-height:35px;}
+  .flash-price{margin-top:4px;display:flex;align-items:baseline;gap:6px;}
+  .flash-now{color:var(--yellow);font-weight:800;font-size:15px;}
+  .flash-orig{color:var(--muted);font-size:12px;text-decoration:line-through;}
+  .flash-meta{margin-top:8px;display:flex;align-items:center;justify-content:space-between;gap:6px;}
+  .flash-timer{background:#2a0d0d;color:#ff6b6b;font-size:11px;font-weight:700;padding:3px 8px;border-radius:6px;font-variant-numeric:tabular-nums;}
+  .flash-left{font-size:11px;color:var(--muted);font-weight:600;}
   .field label{font-size:13px;font-weight:600;color:var(--muted);display:block;margin-bottom:6px;}
   .field input{width:100%;height:52px;background:var(--surface);border:1.5px solid var(--line);
     border-radius:14px;padding:0 16px;color:var(--text);font-size:16px;outline:none;}
@@ -886,7 +917,7 @@ async function fetchSlides(){
   }catch(e){}
   // mystery box + warranty settings
   try{
-    const r3=await fetch(`${SUPA_URL}/rest/v1/gl_settings?select=id,data&id=in.(mysterybox,warranty,highlights,actionbtn)`,
+    const r3=await fetch(`${SUPA_URL}/rest/v1/gl_settings?select=id,data&id=in.(mysterybox,warranty,highlights,actionbtn,popup)`,
       { headers:{ apikey:SUPA_ANON, Authorization:`Bearer ${SUPA_ANON}` } });
     if(r3.ok){ const rows=await r3.json();
       rows.forEach(row=>{
@@ -894,6 +925,7 @@ async function fetchSlides(){
         if(row.id==='warranty'){ if(row.data?.url) STYLE.warrantyUrl=row.data.url; if(row.data?.img) STYLE.warrantyImg=row.data.img; }
         if(row.id==='highlights') HIGHLIGHTS=Object.assign({},HIGHLIGHTS,row.data||{});
         if(row.id==='actionbtn') ACTIONBTN=Object.assign({},ACTIONBTN,row.data||{});
+        if(row.id==='popup') POPUP=Object.assign({},POPUP,row.data||{});
       });
     }
   }catch(e){}
@@ -933,6 +965,8 @@ let CAR_BRANDS = [];    // gl_car_brands rows
 let CAR_MODELS = [];    // gl_car_models rows
 let HIGHLIGHTS = { items:[], autoslide:true, interval:4000 };
 let ACTIONBTN = { enabled:false, label:'Free Car Wash', service_id:null };
+let POPUP = { enabled:false, posters:[] };
+let FLASH = [];   // gl_flash_deals rows
 let MYSTERY = {
   enabled:true, title:'Mystery Box',
   prizes:[{name:'Interior Sterilization'},{name:'Mineral Off'},{name:'Box Free Sig. Wash'},
@@ -1024,6 +1058,14 @@ async function fetchBrands(){
     if(r.ok) BRANDS=await r.json();
   }catch(e){}
   return BRANDS;
+}
+async function fetchFlash(){
+  try{
+    const r=await fetch(`${SUPA_URL}/rest/v1/gl_flash_deals?select=*&active=eq.true&order=sort_order.asc`,
+      {headers:{apikey:SUPA_ANON,Authorization:`Bearer ${SUPA_ANON}`}});
+    if(r.ok) FLASH=await r.json();
+  }catch(e){}
+  return FLASH;
 }
 async function fetchCarBrands(){
   try{
@@ -1435,6 +1477,7 @@ function enterApp(screen){
   applyAppBg();
   if(screen==='profile') renderProfileSetup();
   else routeTab(screen||'home');
+  if((screen||'home')==='home') setTimeout(maybeShowPopup, 500);
 }
 function enterGuest(){
   // PREVIEW MODE: no login required for now. Enter the full app at Home.
@@ -1497,6 +1540,7 @@ async function renderHome(){
     (!SERVICES.length)   ? fetchServices()   : Promise.resolve(),
     (!CATEGORIES.length) ? fetchCategories() : Promise.resolve(),
     (!BRANDS.length)     ? fetchBrands()     : Promise.resolve(),
+    (!FLASH.length)      ? fetchFlash()      : Promise.resolve(),
     (!STORES.length)     ? fetchStores()     : Promise.resolve(),
     (!IS_GUEST && SESSION?.user?.id) ? fetchVehicles() : Promise.resolve(),
     (!IS_GUEST && SESSION?.user?.id) ? fetchCheckin()  : Promise.resolve()
@@ -1623,6 +1667,9 @@ async function renderHome(){
         <div class="join-member-btn" onclick="openMembership()">${esc(STYLE.homeJoinMemberBtn||'Join Member')}</div>
       </div>
 
+      <!-- FLASH DEALS -->
+      ${flashHtml()}
+
       <!-- services grid (categories) -->
       <div class="sec-title">${esc(STYLE.homeServicesTitle||'Our Services')}</div>
       <div class="svc-grid">${grid}</div>
@@ -1685,6 +1732,7 @@ async function renderHome(){
   // start auto-sliders
   // brands use a pure-CSS marquee (no JS needed)
   if(HIGHLIGHTS.autoslide!==false) startSlider('hlTrack', HIGHLIGHTS.interval||4000);
+  startFlashTimers();
 }
 
 /* ---------- service helpers (category match + visibility) ---------- */
@@ -2096,6 +2144,51 @@ function openWarranty(){
   window.open(url,'_blank');
 }
 
+/* ---------- Login popup carousel ---------- */
+function maybeShowPopup(){
+  if(!POPUP || POPUP.enabled===false) return;
+  const posters=(POPUP.posters||[]).filter(p=>p.image_url);
+  if(!posters.length) return;
+  // "don't show today" check
+  try{
+    const today=new Date().toISOString().slice(0,10);
+    if(localStorage.getItem('gl_popup_dismiss')===today) return;
+  }catch(e){}
+  showPopup(posters);
+}
+function showPopup(posters){
+  const ov=document.createElement('div'); ov.className='popup-ov';
+  ov.innerHTML=`
+    <div class="popup-box">
+      <button class="popup-x" onclick="this.closest('.popup-ov').remove()">✕</button>
+      <div class="popup-track" id="popupTrack">
+        ${posters.map(p=>`<div class="popup-slide" onclick="popupTap(${JSON.stringify(p).replace(/"/g,'&quot;')})"><img src="${p.image_url}"></div>`).join('')}
+      </div>
+      ${posters.length>1?`<div class="popup-dots">${posters.map((_,i)=>`<span class="popup-dot ${i===0?'on':''}"></span>`).join('')}</div>`:''}
+      <label class="popup-dismiss"><input type="checkbox" onchange="popupDismissToday(this.checked)"> Don't show again today</label>
+    </div>`;
+  document.body.appendChild(ov);
+  // dot tracking on scroll
+  const track=document.getElementById('popupTrack');
+  if(track && posters.length>1){
+    track.addEventListener('scroll',()=>{
+      const idx=Math.round(track.scrollLeft/track.clientWidth);
+      ov.querySelectorAll('.popup-dot').forEach((d,i)=>d.classList.toggle('on',i===idx));
+    },{passive:true});
+  }
+}
+function popupDismissToday(on){
+  try{
+    if(on){ localStorage.setItem('gl_popup_dismiss', new Date().toISOString().slice(0,10)); }
+    else { localStorage.removeItem('gl_popup_dismiss'); }
+  }catch(e){}
+}
+function popupTap(p){
+  document.querySelector('.popup-ov')?.remove();
+  if(p && p.service_id){ openService(p.service_id); }
+  else if(p && p.link){ window.open(p.link,'_blank'); }
+}
+
 /* ---------- Mystery Box ---------- */
 let MY_DRAWS = [];
 async function fetchDraws(){
@@ -2213,6 +2306,102 @@ function barePrice(s){
     if(vals.length) return 'RM'+Math.min(...vals).toLocaleString('en-MY',{minimumFractionDigits:2,maximumFractionDigits:2});
   }
   return s.base_price?('RM'+Number(s.base_price).toLocaleString('en-MY',{minimumFractionDigits:2,maximumFractionDigits:2})):'—';
+}
+
+/* ---------- Flash Deals ---------- */
+function flashHtml(){
+  const now=Date.now();
+  const live=FLASH.filter(d=>{
+    const ended = d.ends_at && new Date(d.ends_at).getTime()<now;
+    const soldout = d.total_qty>0 && d.grabbed>=d.total_qty;
+    return !ended && !soldout;
+  });
+  if(!live.length) return '';
+  return `
+    <div class="sec-title" style="margin-top:24px">⚡ ${esc(STYLE.flashTitle||'Flash Deals')}</div>
+    <div class="flash-strip">
+      ${live.map(d=>{
+        const left = d.total_qty>0 ? (d.total_qty-d.grabbed) : null;
+        const disc = (d.orig_price&&d.deal_price) ? Math.round((1-d.deal_price/d.orig_price)*100) : null;
+        return `<div class="flash-card" onclick="openFlash(${d.id})">
+          <div class="flash-img">${d.image_url?`<img src="${d.image_url}">`:`<div class="flash-img-ph">⚡</div>`}
+            ${disc?`<div class="flash-disc">-${disc}%</div>`:''}</div>
+          <div class="flash-body">
+            <div class="flash-nm">${esc(d.title||'Flash Deal')}</div>
+            <div class="flash-price">
+              ${d.deal_price!=null?`<span class="flash-now">RM${money(d.deal_price)}</span>`:''}
+              ${d.orig_price!=null?`<span class="flash-orig">RM${money(d.orig_price)}</span>`:''}
+            </div>
+            <div class="flash-meta">
+              <span class="flash-timer" data-ends="${d.ends_at||''}">—</span>
+              ${left!=null?`<span class="flash-left">${left} left</span>`:''}
+            </div>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>`;
+}
+let _flashTimer=null;
+function startFlashTimers(){
+  if(_flashTimer) clearInterval(_flashTimer);
+  const tick=()=>{
+    const els=document.querySelectorAll('.flash-timer'); if(!els.length){ if(_flashTimer){clearInterval(_flashTimer);_flashTimer=null;} return; }
+    const now=Date.now();
+    els.forEach(el=>{
+      const ends=el.getAttribute('data-ends'); if(!ends){ el.textContent='Limited'; return; }
+      let diff=new Date(ends).getTime()-now;
+      if(diff<=0){ el.textContent='Ended'; return; }
+      const h=Math.floor(diff/3600000); diff-=h*3600000;
+      const m=Math.floor(diff/60000); diff-=m*60000;
+      const s=Math.floor(diff/1000);
+      const dd=Math.floor(h/24);
+      el.textContent = dd>0 ? `${dd}d ${h%24}h ${m}m` : `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+    });
+  };
+  tick();
+  _flashTimer=setInterval(tick,1000);
+}
+function openFlash(id){
+  const d=FLASH.find(x=>String(x.id)===String(id)); if(!d) return;
+  if(d.service_id){ openService(d.service_id); return; }
+  // no linked service — show a simple grab sheet
+  showFlashGrab(d);
+}
+function showFlashGrab(d){
+  const left = d.total_qty>0 ? (d.total_qty-d.grabbed) : null;
+  const ov=document.createElement('div'); ov.className='popup-ov';
+  ov.innerHTML=`
+    <div class="popup-box" style="max-width:340px">
+      <button class="popup-x" onclick="this.closest('.popup-ov').remove()">✕</button>
+      ${d.image_url?`<img src="${d.image_url}" style="width:100%;border-radius:14px">`:''}
+      <div style="padding:14px">
+        <div style="font-size:18px;font-weight:800">${esc(d.title||'Flash Deal')}</div>
+        <div style="margin-top:8px;font-size:14px;color:var(--muted)">
+          ${d.deal_price!=null?`Now RM${money(d.deal_price)} `:''}${left!=null?`· ${left} left`:''}
+        </div>
+        <button class="btn btn-primary" style="margin-top:14px" onclick="grabFlash(${d.id}, this)">Grab this deal</button>
+      </div>
+    </div>`;
+  document.body.appendChild(ov);
+}
+async function grabFlash(id, btn){
+  if(IS_GUEST){ toast('Sign in to grab'); return; }
+  if(btn){ btn.disabled=true; btn.textContent='Grabbing…'; }
+  try{
+    const r=await fetch(`${SUPA_URL}/rest/v1/rpc/gl_grab_flash`,{
+      method:'POST', headers:authHeaders(), body:JSON.stringify({deal:id})});
+    if(r.ok){
+      const remaining=await r.json();
+      if(remaining<0){ toast('Sorry, this deal is sold out'); }
+      else {
+        // record the grab (ignore duplicate error)
+        try{ await fetch(`${SUPA_URL}/rest/v1/gl_flash_grabs`,{method:'POST',headers:authHeaders(),body:JSON.stringify({owner_id:SESSION.user.id,deal_id:id})}); }catch(e){}
+        toast('🎉 Deal grabbed! Show this at the outlet.');
+        const d=FLASH.find(x=>String(x.id)===String(id)); if(d) d.grabbed=(d.grabbed||0)+1;
+      }
+    } else { toast('Could not grab — try again'); }
+  }catch(e){ toast('Error grabbing deal'); }
+  document.querySelector('.popup-ov')?.remove();
 }
 
 /* ---------- Service detail page (full) ---------- */
@@ -2878,7 +3067,7 @@ Object.defineProperty(window,'stepIndex',{get:()=>cur,set:v=>{cur=v;}});
   // TEMP: preview the main page directly (no login)
   if(PREVIEW_HOME){
     await Promise.allSettled([
-      fetchSlides(), fetchServices(), fetchCategories(), fetchStores(), fetchBrands(), fetchCarBrands()
+      fetchSlides(), fetchServices(), fetchCategories(), fetchStores(), fetchBrands(), fetchCarBrands(), fetchFlash()
     ]);
     try{ render(); indexScreens(); }catch(e){ console.error('render failed', e); }
     try{ enterGuest(); }catch(e){ console.error('enterGuest failed', e); }
@@ -2894,7 +3083,7 @@ Object.defineProperty(window,'stepIndex',{get:()=>cur,set:v=>{cur=v;}});
       fetchServices(),
       fetchCategories(),
       fetchStores(),
-      fetchBrands(), fetchCarBrands()
+      fetchBrands(), fetchCarBrands(), fetchFlash()
     ]);
     const prof = results[1].status==='fulfilled' ? results[1].value : null;
     render();                     // build onboarding stack (hidden) for fallback

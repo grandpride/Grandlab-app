@@ -26,10 +26,18 @@
   .dot{width:8px;height:8px;border-radius:50%;background:var(--danger);}
   .dot.on{background:var(--ok);}
 
-  .tabs{display:flex;gap:4px;padding:14px 24px 0;}
-  .tab{padding:9px 16px;border-radius:9px 9px 0 0;background:transparent;border:none;
+  .tabs{display:flex;gap:4px;padding:14px 24px 0;overflow-x:auto;scrollbar-width:thin;}
+  .tabs::-webkit-scrollbar{height:5px;}
+  .tabs::-webkit-scrollbar-thumb{background:var(--line);border-radius:3px;}
+  .tab{padding:9px 16px;border-radius:9px 9px 0 0;background:transparent;border:none;white-space:nowrap;
     color:var(--muted);font-size:14px;font-weight:600;cursor:pointer;}
   .tab.active{background:var(--panel);color:var(--text);}
+  /* tab jump dropdown */
+  .tab-jump{position:relative;padding:14px 24px 0;max-width:360px;}
+  .tab-jump input{width:100%;height:40px;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:0 14px;color:var(--text);font-size:14px;}
+  .tab-jump-list{position:absolute;left:24px;right:24px;top:56px;background:var(--panel);border:1px solid var(--line);border-radius:10px;max-height:300px;overflow-y:auto;z-index:50;box-shadow:0 8px 24px rgba(0,0,0,.4);}
+  .tab-jump-item{padding:10px 14px;font-size:14px;cursor:pointer;color:var(--text);}
+  .tab-jump-item:hover{background:var(--bg);color:var(--accent);}
   .panel{display:none;padding:20px 24px 80px;}
   .panel.active{display:block;}
 
@@ -161,6 +169,10 @@
     </div>
 
     <div id="main" style="display:none">
+      <div class="tab-jump">
+        <input id="tabSearch" placeholder="🔍 Jump to a tab…" oninput="filterTabJump(this.value)" onfocus="document.getElementById('tabJumpList').style.display='block'" autocomplete="off">
+        <div id="tabJumpList" class="tab-jump-list" style="display:none"></div>
+      </div>
       <div class="tabs">
         <button class="tab active" data-tab="onboarding" onclick="switchTab('onboarding')">Onboarding</button>
         <button class="tab" data-tab="services" onclick="switchTab('services')">Services</button>
@@ -172,6 +184,8 @@
         <button class="tab" data-tab="warranty" onclick="switchTab('warranty')">Warranty Link</button>
         <button class="tab" data-tab="actionbtn" onclick="switchTab('actionbtn')">Action Button</button>
         <button class="tab" data-tab="vehicles" onclick="switchTab('vehicles')">Vehicles</button>
+        <button class="tab" data-tab="flash" onclick="switchTab('flash')">Flash Deals</button>
+        <button class="tab" data-tab="popup" onclick="switchTab('popup')">Login Popup</button>
         <button class="tab" data-tab="theme" onclick="switchTab('theme')">Theme</button>
         <button class="tab" data-tab="otppage" onclick="switchTab('otppage')">OTP Page</button>
         <button class="tab" data-tab="refpage" onclick="switchTab('refpage')">Referral Page</button>
@@ -624,6 +638,22 @@
         <div class="add-row"><button class="btn btn-ghost" onclick="addCarBrand()">+ Add brand</button></div>
       </div>
 
+      <!-- FLASH DEALS -->
+      <div class="panel" id="panel-flash">
+        <div class="hint">Time-limited deals shown on the home page below the member card. Each has a countdown and a quantity. When grabbed quantity reaches the total, it disappears.</div>
+        <div id="flashList" style="margin-top:14px"></div>
+        <div class="add-row"><button class="btn btn-ghost" onclick="addFlash()">+ Add flash deal</button></div>
+      </div>
+
+      <!-- LOGIN POPUP -->
+      <div class="panel" id="panel-popup">
+        <div class="hint">Posters shown as a popup when a customer opens the app. They can swipe between posters, tap one to open a service/link, and dismiss for the day.</div>
+        <label style="margin-top:14px"><input type="checkbox" id="popEnabled" style="width:auto;margin-right:7px" onchange="popup.enabled=this.checked">Show login popup</label>
+        <div class="svc-sub">Posters (3–5 recommended)</div>
+        <div id="popList"></div>
+        <button class="btn btn-ghost btn-sm" onclick="addPoster()">+ Add poster</button>
+      </div>
+
       <!-- THEME / STYLE -->
       <div class="panel" id="panel-theme">
         <div class="section-h">App Background Photo</div>
@@ -857,6 +887,9 @@ let actionbtn = { enabled:false, label:'Free Car Wash', service_id:'' };
 let carBrands = [];   // {id?, name, vehicle_kind, image_url, sort_order, _models:[{id?,name,type,sort_order}]}
 let deletedBrandIds2 = [];
 let deletedModelIds = [];
+let flashDeals = [];  // gl_flash_deals
+let deletedFlashIds = [];
+let popup = { enabled:false, posters:[] };
 let theme = { bg:"#0A0A0A", accent:"#F5C518", text:"#FFFFFF",
   logoSize:96, logoUrl:null, eyebrowSize:15, eyebrowColor:"#F5C518", titleSize:40, titleColor:"#FFFFFF",
   btnColor:"#F5C518", btnHeight:58, panelSize:78, btnNext:"Next", btnStart:"Get started", btnBack:"Back",
@@ -978,9 +1011,15 @@ async function loadAll(){
     r=await sb("gl_car_models?select=*&order=sort_order.asc",{headers:H()});
     const allModels=r.ok?await r.json():[];
     carBrands.forEach(b=>{ b._models=allModels.filter(m=>m.brand_id===b.id); });
+    // flash deals + popup
+    deletedFlashIds=[];
+    r=await sb("gl_flash_deals?select=*&order=sort_order.asc",{headers:H()});
+    flashDeals=r.ok?await r.json():[];
+    r=await sb("gl_settings?select=*&id=eq.popup",{headers:H()});
+    if(r.ok){const rows=await r.json();if(rows[0]&&rows[0].data)popup=Object.assign(popup,rows[0].data);}
   }catch(e){}
   fillThemeControls();
-  renderSlides();renderServices();renderCategories();renderStores();renderBrands();renderBrandModels();renderPreview();
+  renderSlides();renderServices();renderCategories();renderStores();renderBrands();renderBrandModels();renderFlash();renderPreview();
 }
 
 /* ---------- ONBOARDING editor ---------- */
@@ -1458,6 +1497,104 @@ function importVehiclesExcel(input){
   reader.readAsArrayBuffer(f);
 }
 
+/* ---------- FLASH DEALS editor ---------- */
+function renderFlash(){
+  const el=document.getElementById('flashList'); if(!el) return;
+  if(!flashDeals.length){el.innerHTML='<div class="empty">No flash deals yet.</div>';return;}
+  el.innerHTML="";
+  flashDeals.forEach((d,i)=>{
+    const card=document.createElement('div');card.className="card";
+    card.innerHTML=`
+      <div class="card-head">
+        <div class="card-title">${esc(d.title||'Flash Deal')}</div>
+        <button class="btn btn-danger btn-sm" onclick="delFlash(${i})">Delete</button>
+      </div>
+      <label>Title</label><input value="${esc(d.title||'')}" oninput="updFlash(${i},'title',this.value)" placeholder="Ceramic Combo Promo">
+      <div class="row">
+        <div><label>Deal price (RM)</label><input type="number" value="${d.deal_price??''}" oninput="updFlash(${i},'deal_price',this.value)"></div>
+        <div><label>Original price (RM)</label><input type="number" value="${d.orig_price??''}" oninput="updFlash(${i},'orig_price',this.value)"></div>
+      </div>
+      <div class="row">
+        <div><label>Total quantity</label><input type="number" value="${d.total_qty??''}" oninput="updFlash(${i},'total_qty',this.value)" placeholder="50"></div>
+        <div><label>Grabbed (auto)</label><input type="number" value="${d.grabbed??0}" disabled style="opacity:.6"></div>
+      </div>
+      <label>Ends at</label><input type="datetime-local" value="${toLocalInput(d.ends_at)}" oninput="updFlash(${i},'ends_at',this.value)">
+      <label style="margin-top:8px">Links to service (optional — tapping opens it)</label>
+      <select onchange="updFlash(${i},'service_id',this.value)">
+        <option value="">— None (just show grab popup) —</option>
+        ${services.map(x=>`<option value="${esc(String(x.id||''))}" ${String(d.service_id||'')===String(x.id||'')?'selected':''}>${esc(x.name||'')}</option>`).join('')}
+      </select>
+      <label style="margin-top:8px">Photo <span class="svc-hint">~6×5 cm (720×600 px)</span></label>
+      <div style="display:flex;align-items:center;gap:10px;margin-top:4px">
+        <div>${d.image_url?`<img src="${d.image_url}" style="height:48px;width:60px;object-fit:cover;border-radius:8px;border:1px solid var(--line)">`:'<span style="color:var(--muted);font-size:12px">No photo</span>'}</div>
+        <input type="file" accept="image/*" onchange="uploadFlashPhoto(${i},this)">
+      </div>`;
+    el.appendChild(card);
+  });
+}
+function toLocalInput(iso){ if(!iso) return ''; try{ const d=new Date(iso); const off=d.getTimezoneOffset(); const l=new Date(d.getTime()-off*60000); return l.toISOString().slice(0,16); }catch(e){ return ''; } }
+function addFlash(){flashDeals.push({title:"New Deal",deal_price:null,orig_price:null,total_qty:50,grabbed:0,ends_at:null,service_id:'',image_url:null,sort_order:flashDeals.length+1,active:true});renderFlash();}
+function delFlash(i){if(flashDeals[i].id)deletedFlashIds.push(flashDeals[i].id);flashDeals.splice(i,1);renderFlash();}
+function updFlash(i,f,v){
+  if(['deal_price','orig_price','total_qty'].includes(f)) v=(v===''?null:Number(v));
+  if(f==='ends_at') v=(v?new Date(v).toISOString():null);
+  flashDeals[i][f]=v;
+}
+async function uploadFlashPhoto(i,input){
+  const f=input.files[0]; if(!f) return; toast("Uploading…");
+  const path=`flash-${Date.now()}-${f.name.replace(/[^a-z0-9.]/gi,'_')}`;
+  const r=await fetch(`${SUPA_URL}/storage/v1/object/${BUCKET}/${path}`,{method:"POST",headers:{apikey:SVC_KEY,Authorization:`Bearer ${SVC_KEY}`},body:f});
+  if(!r.ok){toast("Upload failed — is gl-images bucket public?");return;}
+  flashDeals[i].image_url=`${SUPA_URL}/storage/v1/object/public/${BUCKET}/${path}`;
+  renderFlash();toast("Flash photo ✓");
+}
+
+/* ---------- LOGIN POPUP editor ---------- */
+function fillPopup(){
+  const g=document.getElementById('popEnabled'); if(g) g.checked=popup.enabled===true;
+  renderPosters();
+}
+function renderPosters(){
+  const el=document.getElementById('popList'); if(!el) return;
+  popup.posters=popup.posters||[];
+  el.innerHTML="";
+  popup.posters.forEach((p,i)=>{
+    const card=document.createElement('div');card.className="card";
+    card.innerHTML=`
+      <div class="card-head"><div class="card-title">Poster ${i+1}</div>
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-ghost btn-sm" onclick="movePoster(${i},-1)">↑</button>
+          <button class="btn btn-ghost btn-sm" onclick="movePoster(${i},1)">↓</button>
+          <button class="btn btn-danger btn-sm" onclick="delPoster(${i})">Delete</button>
+        </div></div>
+      <label>Poster image <span class="svc-hint">portrait ~9×12 cm (1080×1440 px)</span></label>
+      <div style="display:flex;align-items:center;gap:10px;margin-top:4px">
+        <div>${p.image_url?`<img src="${p.image_url}" style="height:60px;width:45px;object-fit:cover;border-radius:6px;border:1px solid var(--line)">`:'<span style="color:var(--muted);font-size:12px">No image</span>'}</div>
+        <input type="file" accept="image/*" onchange="uploadPoster(${i},this)">
+      </div>
+      <label style="margin-top:8px">Tap opens service (optional)</label>
+      <select onchange="updPoster(${i},'service_id',this.value)">
+        <option value="">— None —</option>
+        ${services.map(x=>`<option value="${esc(String(x.id||''))}" ${String(p.service_id||'')===String(x.id||'')?'selected':''}>${esc(x.name||'')}</option>`).join('')}
+      </select>
+      <label style="margin-top:8px">…or open link (optional)</label>
+      <input value="${esc(p.link||'')}" oninput="updPoster(${i},'link',this.value)" placeholder="https://…">`;
+    el.appendChild(card);
+  });
+}
+function addPoster(){popup.posters=popup.posters||[];popup.posters.push({image_url:null,service_id:'',link:''});renderPosters();}
+function delPoster(i){popup.posters.splice(i,1);renderPosters();}
+function movePoster(i,d){const j=i+d;if(j<0||j>=popup.posters.length)return;[popup.posters[i],popup.posters[j]]=[popup.posters[j],popup.posters[i]];renderPosters();}
+function updPoster(i,f,v){popup.posters[i][f]=v;}
+async function uploadPoster(i,input){
+  const f=input.files[0]; if(!f) return; toast("Uploading…");
+  const path=`poster-${Date.now()}-${f.name.replace(/[^a-z0-9.]/gi,'_')}`;
+  const r=await fetch(`${SUPA_URL}/storage/v1/object/${BUCKET}/${path}`,{method:"POST",headers:{apikey:SVC_KEY,Authorization:`Bearer ${SVC_KEY}`},body:f});
+  if(!r.ok){toast("Upload failed — is gl-images bucket public?");return;}
+  popup.posters[i].image_url=`${SUPA_URL}/storage/v1/object/public/${BUCKET}/${path}`;
+  renderPosters();toast("Poster ✓");
+}
+
 /* ---------- MYSTERY BOX logo ---------- */
 async function uploadMbLogo(input){
   const f=input.files[0]; if(!f) return; toast("Uploading…");
@@ -1796,6 +1933,19 @@ async function saveAll(){
     for(const id of deletedModelIds){ await sb(`gl_car_models?id=eq.${id}`,{method:"DELETE",headers:H()}); }
     for(const id of deletedBrandIds2){ await sb(`gl_car_brands?id=eq.${id}`,{method:"DELETE",headers:H()}); }
     deletedModelIds=[]; deletedBrandIds2=[];
+    // flash deals (do NOT send grabbed — the app owns that counter)
+    flashDeals.forEach((d,i)=>{ if(d.sort_order==null) d.sort_order=i+1; });
+    for(const d of flashDeals){
+      const body={title:d.title||null,image_url:d.image_url||null,service_id:d.service_id||null,
+        deal_price:d.deal_price??null,orig_price:d.orig_price??null,ends_at:d.ends_at||null,
+        total_qty:Number(d.total_qty||0),active:d.active!==false,sort_order:Number(d.sort_order||0)};
+      if(d.id){await sb(`gl_flash_deals?id=eq.${d.id}`,{method:"PATCH",headers:H(),body:JSON.stringify(body)});}
+      else{ body.grabbed=0; const rr=await sb("gl_flash_deals",{method:"POST",headers:H({Prefer:"return=representation"}),body:JSON.stringify(body)});if(rr.ok){const j=await rr.json();d.id=j[0].id;}}
+    }
+    for(const id of deletedFlashIds){ await sb(`gl_flash_deals?id=eq.${id}`,{method:"DELETE",headers:H()}); }
+    deletedFlashIds=[];
+    // popup setting
+    await sb("gl_settings",{method:"POST",headers:H({Prefer:"resolution=merge-duplicates"}),body:JSON.stringify({id:"popup",data:popup})});
     // rewards
     REWARDS_DATA.forEach((r,i)=>r.sort_order=i+1);
     for(const r of REWARDS_DATA){
@@ -2022,9 +2172,26 @@ function renderPreview(){
 function pvNext(){pvSlide=(pvSlide+1)%slides.length;renderPreview();}
 
 /* ---------- tabs ---------- */
+function filterTabJump(q){
+  const list=document.getElementById('tabJumpList'); if(!list) return;
+  q=(q||'').trim().toLowerCase();
+  const tabs=[...document.querySelectorAll('.tabs .tab')];
+  const matches=tabs.filter(t=>t.textContent.trim().toLowerCase().includes(q));
+  list.innerHTML=matches.map(t=>`<div class="tab-jump-item" onclick="switchTab('${t.dataset.tab}')">${t.textContent.trim()}</div>`).join('') || '<div class="tab-jump-item" style="color:var(--muted)">No match</div>';
+  list.style.display='block';
+}
+document.addEventListener('click',e=>{
+  const jump=document.querySelector('.tab-jump');
+  if(jump && !jump.contains(e.target)){ const l=document.getElementById('tabJumpList'); if(l) l.style.display='none'; }
+});
+
 function switchTab(t){
   document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active',x.dataset.tab===t));
   document.querySelectorAll('.panel').forEach(p=>p.classList.toggle('active',p.id==='panel-'+t));
+  // close the jump dropdown + scroll the active tab into view
+  const jl=document.getElementById('tabJumpList'); if(jl) jl.style.display='none';
+  const ts=document.getElementById('tabSearch'); if(ts) ts.value='';
+  const at=document.querySelector('.tab.active'); if(at&&at.scrollIntoView) at.scrollIntoView({inline:'center',block:'nearest',behavior:'smooth'});
   if(t==='services')setPv('svc');
   else if(t==='categories')renderCategories();
   else if(t==='stores')renderStores();
@@ -2034,6 +2201,8 @@ function switchTab(t){
   else if(t==='warranty')fillWarrantyControls();
   else if(t==='actionbtn')fillActionBtn();
   else if(t==='vehicles')renderBrandModels();
+  else if(t==='flash')renderFlash();
+  else if(t==='popup')fillPopup();
   else if(t==='onboarding')setPv('onb');
   else if(t==='otppage'){fillOtpControls();setPv('otp');}
   else if(t==='refpage'){fillRefControls();setPv('ref');}
