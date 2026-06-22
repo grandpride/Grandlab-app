@@ -527,10 +527,15 @@
   .slider-track{display:flex;gap:12px;padding-bottom:4px;}
   .slider-track>*{scroll-snap-align:start;flex:0 0 auto;}
   .brand-card{width:90px;height:90px;background:none;border:none;border-radius:0;
-    display:flex;align-items:center;justify-content:center;overflow:visible;padding:0;}
+    display:flex;align-items:center;justify-content:center;overflow:visible;padding:0;flex:0 0 auto;}
   .brand-card img{max-width:90px;max-height:90px;object-fit:contain;}
   .brand-nm{font-size:13px;font-weight:700;text-align:center;}
   .slider .hl-card{flex:0 0 86%;}
+  /* brand marquee — continuous slow loop scrolling right→left */
+  .brand-marquee{margin-top:12px;overflow:hidden;width:100%;-webkit-mask-image:linear-gradient(90deg,transparent,#000 8%,#000 92%,transparent);mask-image:linear-gradient(90deg,transparent,#000 8%,#000 92%,transparent);}
+  .brand-marquee-track{display:flex;gap:28px;width:max-content;animation:brandScroll 24s linear infinite;}
+  .brand-marquee:active .brand-marquee-track,.brand-marquee:hover .brand-marquee-track{animation-play-state:paused;}
+  @keyframes brandScroll{from{transform:translateX(0);}to{transform:translateX(-50%);}}
   /* our stores strip */
   .store-strip{display:flex;gap:12px;overflow-x:auto;margin-top:12px;padding-bottom:4px;}
   .store-strip::-webkit-scrollbar{display:none;}
@@ -1591,9 +1596,10 @@ async function renderHome(){
       <!-- OUR BRANDS (auto-slide carousel) -->
       ${BRANDS.length?`
       <div class="sec-title">${esc(STYLE.homeBrandsTitle||'Our Brands')}</div>
-      <div class="slider" id="brandSlider">
-        <div class="slider-track" id="brandTrack">
+      <div class="brand-marquee" id="brandSlider">
+        <div class="brand-marquee-track">
           ${BRANDS.map(b=>`<div class="brand-card">${b.image_url?`<img src="${b.image_url}" alt="${esc(b.name||'')}">`:`<div class="brand-nm">${esc(b.name||'')}</div>`}</div>`).join('')}
+          ${BRANDS.map(b=>`<div class="brand-card" aria-hidden="true">${b.image_url?`<img src="${b.image_url}" alt="">`:`<div class="brand-nm">${esc(b.name||'')}</div>`}</div>`).join('')}
         </div>
       </div>`:''}
 
@@ -1634,7 +1640,7 @@ async function renderHome(){
     </div>
     ${botnav('home')}`;
   // start auto-sliders
-  startSlider('brandTrack', HIGHLIGHTS.interval||4000);
+  // brands use a pure-CSS marquee (no JS needed)
   if(HIGHLIGHTS.autoslide!==false) startSlider('hlTrack', HIGHLIGHTS.interval||4000);
 }
 
