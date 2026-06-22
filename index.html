@@ -47,7 +47,7 @@
   .rail .seg.active i{width:100%;}
 
   /* ---------- Screens ---------- */
-  .screens{flex:1;position:relative;overflow:hidden;}
+  .screens{flex:1;position:relative;overflow:visible;}
   .screen{position:absolute;inset:0;display:flex;flex-direction:column;
     padding:0 26px;opacity:0;transform:translateX(28px);
     transition:opacity .4s var(--ease),transform .4s var(--ease);
@@ -67,11 +67,11 @@
   .screen.ob-text-center .ob-foot{order:4}
   .screen[class*="ob-"]{display:flex;flex-direction:column}
 
-  /* full-screen slide background (photo/video) — bleeds past safe areas */
+  /* full-screen slide background (photo/video) — fills the whole phone, edge to edge */
   .ob-bg{position:absolute;
-    top:calc(-1 * env(safe-area-inset-top));
-    bottom:calc(-1 * env(safe-area-inset-bottom) - 60px);
-    left:0;right:0;
+    top:calc(-1 * (env(safe-area-inset-top) + 60px));
+    bottom:calc(-1 * (env(safe-area-inset-bottom) + 80px));
+    left:-26px;right:-26px;
     z-index:0;overflow:hidden;}
   .ob-bg img,.ob-bg video{width:100%;height:100%;object-fit:cover;}
   .ob-bg-dim{position:absolute;inset:0;}
@@ -96,8 +96,8 @@
   }
   /* specular streak — light moving over fresh coating */
   /* when panel holds a photo/video, drop the card frame — show media clean */
-  .ob-panel.has-media{background:transparent;border:none;box-shadow:none;aspect-ratio:auto;overflow:visible;}
-  .ob-panel.has-media img{width:100%;height:auto !important;max-height:46vh;object-fit:contain !important;}
+  .ob-panel.has-media{background:transparent;border:none;box-shadow:none;aspect-ratio:auto;overflow:visible;width:92%;max-width:440px;}
+  .ob-panel.has-media img{width:100%;height:auto !important;max-height:58vh;object-fit:contain !important;}
   .ob-panel.has-media.ob-video video{width:100%;height:auto;max-height:46vh;object-fit:contain;border-radius:18px;}
   .ob-panel.ob-video{padding:0;}
   .ob-panel.ob-video video{width:100%;height:100%;object-fit:cover;}
