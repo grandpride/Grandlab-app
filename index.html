@@ -621,7 +621,7 @@
     box-shadow:0 20px 40px -20px #000;max-width:84%;text-align:center;}
   .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
 </style>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" defer></script>
 </head>
 <body>
 <div class="app">
@@ -1354,9 +1354,13 @@ function startCountdown(el){
    MAIN APP (post-login): home, services, profile, guest
    ============================================================ */
 const appRoot = document.getElementById('appRoot');
+let _appBgApplied = null;
 function applyAppBg(){
   const layer=document.getElementById('appBgLayer');
   if(!layer) return;
+  const sig = STYLE && STYLE.appBg ? `${STYLE.appBg}|${STYLE.appBgZoom}|${STYLE.appBgFit}|${STYLE.appBgPosX}|${STYLE.appBgPosY}|${STYLE.appBgDark}` : '';
+  if(sig===_appBgApplied) return; // already applied — avoid repaint on every tab switch
+  _appBgApplied = sig;
   if(STYLE && STYLE.appBg){
     layer.classList.add('show');
     layer.style.backgroundImage=`url('${STYLE.appBg}')`;
@@ -1440,12 +1444,15 @@ function priceLabel(s){
 async function renderHome(){
   const name = PROFILE?.name ? PROFILE.name.split(' ')[0] : (IS_GUEST?'Guest':'there');
   const initial = (PROFILE?.name||'G')[0].toUpperCase();
-  try{ if(!SERVICES.length) await fetchServices(); }catch(e){ console.error('services', e); }
-  try{ if(!CATEGORIES.length) await fetchCategories(); }catch(e){ console.error('categories', e); }
-  try{ if(!BRANDS.length) await fetchBrands(); }catch(e){ console.error('brands', e); }
-  try{ if(!STORES.length) await fetchStores(); }catch(e){ console.error('stores', e); }
-  try{ if(!IS_GUEST && SESSION?.user?.id) await fetchVehicles(); }catch(e){ console.error('vehicles', e); }
-  try{ if(!IS_GUEST && SESSION?.user?.id) await fetchCheckin(); }catch(e){ console.error('checkin', e); }
+  // load anything not already cached — in parallel
+  await Promise.allSettled([
+    (!SERVICES.length)   ? fetchServices()   : Promise.resolve(),
+    (!CATEGORIES.length) ? fetchCategories() : Promise.resolve(),
+    (!BRANDS.length)     ? fetchBrands()     : Promise.resolve(),
+    (!STORES.length)     ? fetchStores()     : Promise.resolve(),
+    (!IS_GUEST && SESSION?.user?.id) ? fetchVehicles() : Promise.resolve(),
+    (!IS_GUEST && SESSION?.user?.id) ? fetchCheckin()  : Promise.resolve()
+  ]);
   const refCode = PROFILE?.referral_code || '';
 
   // member card photo — syncs with the membership card photos uploaded in admin (memCard1..5),
@@ -2633,11 +2640,9 @@ Object.defineProperty(window,'stepIndex',{get:()=>cur,set:v=>{cur=v;}});
 (async function init(){
   // TEMP: preview the main page directly (no login)
   if(PREVIEW_HOME){
-    try{ await fetchSlides(); }catch(e){ console.error('fetchSlides failed', e); }
-    try{ await fetchServices(); }catch(e){ console.error('fetchServices failed', e); }
-    try{ await fetchCategories(); }catch(e){ console.error('fetchCategories failed', e); }
-    try{ await fetchStores(); }catch(e){ console.error('fetchStores failed', e); }
-    try{ await fetchBrands(); }catch(e){ console.error('fetchBrands failed', e); }
+    await Promise.allSettled([
+      fetchSlides(), fetchServices(), fetchCategories(), fetchStores(), fetchBrands()
+    ]);
     try{ render(); indexScreens(); }catch(e){ console.error('render failed', e); }
     try{ enterGuest(); }catch(e){ console.error('enterGuest failed', e); }
     return;
@@ -2645,12 +2650,16 @@ Object.defineProperty(window,'stepIndex',{get:()=>cur,set:v=>{cur=v;}});
   // already logged in? go straight to the app
   loadSession();
   if(SESSION?.access_token){
-    await fetchSlides();          // loads STYLE too
-    const prof = await fetchProfile();
-    await fetchServices();
-    await fetchCategories();
-    await fetchStores();
-    await fetchBrands();
+    // run all loads in parallel instead of one-by-one (much faster startup)
+    const results = await Promise.allSettled([
+      fetchSlides(),      // loads STYLE too
+      fetchProfile(),
+      fetchServices(),
+      fetchCategories(),
+      fetchStores(),
+      fetchBrands()
+    ]);
+    const prof = results[1].status==='fulfilled' ? results[1].value : null;
     render();                     // build onboarding stack (hidden) for fallback
     indexScreens();
     // if the session is dead/invalid (no profile came back at all), clear it and show normal flow
