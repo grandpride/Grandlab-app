@@ -168,6 +168,7 @@
         <button class="tab" data-tab="highlights" onclick="switchTab('highlights')">Highlights</button>
         <button class="tab" data-tab="mysterybox" onclick="switchTab('mysterybox')">Mystery Box</button>
         <button class="tab" data-tab="warranty" onclick="switchTab('warranty')">Warranty Link</button>
+        <button class="tab" data-tab="actionbtn" onclick="switchTab('actionbtn')">Action Button</button>
         <button class="tab" data-tab="theme" onclick="switchTab('theme')">Theme</button>
         <button class="tab" data-tab="otppage" onclick="switchTab('otppage')">OTP Page</button>
         <button class="tab" data-tab="refpage" onclick="switchTab('refpage')">Referral Page</button>
@@ -596,6 +597,17 @@
         </div>
       </div>
 
+      <!-- ACTION BUTTON -->
+      <div class="panel" id="panel-actionbtn">
+        <div class="hint">A secondary button shown next to “Buy Now” on every service detail page. Point it at any service (e.g. a hidden “Free Car Wash” service). Tapping it opens that service.</div>
+        <label style="margin-top:14px"><input type="checkbox" id="abEnabled" style="width:auto;margin-right:7px" onchange="actionbtn.enabled=this.checked">Show action button</label>
+        <label style="margin-top:10px">Button label</label>
+        <input id="abLabel" oninput="actionbtn.label=this.value" placeholder="Free Car Wash">
+        <label style="margin-top:10px">Opens this service</label>
+        <select id="abService" onchange="actionbtn.service_id=this.value"></select>
+        <div class="svc-hint" style="margin-top:6px">Tip: create the service first (e.g. “Free Car Wash”), tick “Hidden in app”, Save, then select it here.</div>
+      </div>
+
       <!-- THEME / STYLE -->
       <div class="panel" id="panel-theme">
         <div class="section-h">App Background Photo</div>
@@ -825,6 +837,7 @@ let brands = [];     // {id?, name,image_url,sort_order,active}
 let hl = { items:[], autoslide:true, interval:4000 };
 let mb = { enabled:true, title:'Mystery Box', prizes:[], rules:'' };
 let warranty = { url:'https://axfilm.com.my/warranty/' };
+let actionbtn = { enabled:false, label:'Free Car Wash', service_id:'' };
 let theme = { bg:"#0A0A0A", accent:"#F5C518", text:"#FFFFFF",
   logoSize:96, logoUrl:null, eyebrowSize:15, eyebrowColor:"#F5C518", titleSize:40, titleColor:"#FFFFFF",
   btnColor:"#F5C518", btnHeight:58, panelSize:78, btnNext:"Next", btnStart:"Get started", btnBack:"Back",
@@ -937,6 +950,8 @@ async function loadAll(){
     if(r.ok){const rows=await r.json();if(rows[0]&&rows[0].data)warranty=Object.assign(warranty,rows[0].data);}
     r=await sb("gl_settings?select=*&id=eq.highlights",{headers:H()});
     if(r.ok){const rows=await r.json();if(rows[0]&&rows[0].data)hl=Object.assign(hl,rows[0].data);}
+    r=await sb("gl_settings?select=*&id=eq.actionbtn",{headers:H()});
+    if(r.ok){const rows=await r.json();if(rows[0]&&rows[0].data)actionbtn=Object.assign(actionbtn,rows[0].data);}
   }catch(e){}
   fillThemeControls();
   renderSlides();renderServices();renderCategories();renderStores();renderBrands();renderPreview();
@@ -1036,7 +1051,16 @@ function renderServices(){
           </select>
         </div>
       </div>
-      <label><input type="checkbox" style="width:auto;margin-right:7px" ${s.is_package?'checked':''} onchange="upd('svc',${i},'is_package',this.checked)">This is a package (e.g. Car Wash 10× RM300)</label>
+      <label>2nd Category (optional — show this service in two categories)</label>
+      <select onchange="upd('svc',${i},'category2',this.value)">
+        <option value="">— None —</option>
+        ${categories.map(c=>`<option value="${esc(c.name)}" ${(s.category2||'')===c.name?'selected':''}>${esc(c.name)}</option>`).join('')}
+        ${(s.category2 && !categories.some(c=>c.name===s.category2))?`<option value="${esc(s.category2)}" selected>${esc(s.category2)} (unlisted)</option>`:''}
+      </select>
+      <div class="row" style="margin-top:10px">
+        <label style="display:flex;align-items:center"><input type="checkbox" style="width:auto;margin-right:7px" ${s.is_package?'checked':''} onchange="upd('svc',${i},'is_package',this.checked)">This is a package</label>
+        <label style="display:flex;align-items:center"><input type="checkbox" style="width:auto;margin-right:7px" ${s.hidden?'checked':''} onchange="upd('svc',${i},'hidden',this.checked)">Hidden in app (don't list)</label>
+      </div>
       <label style="margin-top:8px">Subtitle / badge (optional)</label>
       <input value="${esc(s.subtitle||'')}" oninput="upd('svc',${i},'subtitle',this.value)" placeholder="Japanese Certified Professional">
 
@@ -1067,16 +1091,18 @@ function renderServices(){
         </div>`).join('')}</div>
       <input type="file" accept="image/*,video/*" multiple onchange="uploadSvcMedia(${i},this)">
 
-      <div class="svc-sub">Recommended add-ons</div>
+      <div class="svc-sub">Recommended add-ons <span class="svc-hint">pick a service + set bundle price (cheaper)</span></div>
       <div id="svcAddon${i}">${s.addons.map((a,ai)=>`
         <div class="mini-row">
-          <div id="svcAddonThumb${i}_${ai}" class="addon-thumb">${a.image_url?`<img src="${a.image_url}">`:'<span>＋</span>'}</div>
-          <input value="${esc(a.label||'')}" oninput="updAddon(${i},${ai},'label',this.value)" placeholder="Add-on name">
+          <select onchange="updAddon(${i},${ai},'service_id',this.value)" style="flex:1">
+            <option value="">— Pick a service —</option>
+            ${services.filter(x=>x!==s).map(x=>`<option value="${esc(String(x.id||x._tmpid||''))}" ${String(a.service_id||'')===String(x.id||x._tmpid||'')?'selected':''}>${esc(x.name||'')}</option>`).join('')}
+          </select>
           <input type="number" value="${a.price??''}" oninput="updAddon(${i},${ai},'price',this.value)" placeholder="RM" style="max-width:80px">
-          <input type="file" accept="image/*" onchange="uploadAddonImg(${i},${ai},this)" style="max-width:74px;font-size:10px">
           <button class="btn btn-danger btn-sm" onclick="delAddon(${i},${ai})">✕</button>
         </div>`).join('')}</div>
       <button class="btn btn-ghost btn-sm" onclick="addAddon(${i})">+ Add add-on</button>
+      ${services.some(x=>!x.id)?'<div class="svc-hint" style="color:#e0a030">⚠ Save once so new services get an ID before linking them as add-ons.</div>':''}
 
       <div class="svc-sub">Item Info</div>
       <textarea rows="3" oninput="upd('svc',${i},'item_info',this.value)" placeholder="A premium hand car wash using...">${esc(s.item_info||'')}</textarea>
@@ -1086,7 +1112,7 @@ function renderServices(){
     el.appendChild(c);
   });
 }
-function addService(){services.push({name:"New service",category:"",base_price:0,price_by_type:null,media:[],variations:[],addons:[],is_package:false,active:true,sort_order:services.length+1});renderServices();renderPreview();}
+function addService(){services.push({name:"New service",category:"",category2:"",base_price:0,price_by_type:null,media:[],variations:[],addons:[],is_package:false,hidden:false,active:true,sort_order:services.length+1});renderServices();renderPreview();}
 function delService(i){if(services[i].id)deletedServiceIds.push(services[i].id);services.splice(i,1);renderServices();renderPreview();}
 function toggleSized(i,on){services[i].price_by_type=on?{Sedan:0,SUV:0,MPV:0,Supercar:0}:null;renderServices();renderPreview();}
 function updPrice(i,t,v){if(!services[i].price_by_type)services[i].price_by_type={};services[i].price_by_type[t]=v===''?null:Number(v);renderPreview();}
@@ -1095,7 +1121,7 @@ function addVari(i){services[i].variations=services[i].variations||[];services[i
 function delVari(i,vi){services[i].variations.splice(vi,1);renderServices();}
 function updVari(i,vi,f,v){services[i].variations[vi][f]=(f==='price')?(v===''?null:Number(v)):v;}
 /* add-ons */
-function addAddon(i){services[i].addons=services[i].addons||[];services[i].addons.push({label:'',price:0,image_url:null});renderServices();}
+function addAddon(i){services[i].addons=services[i].addons||[];services[i].addons.push({service_id:'',price:0});renderServices();}
 function delAddon(i,ai){services[i].addons.splice(ai,1);renderServices();}
 function updAddon(i,ai,f,v){services[i].addons[ai][f]=(f==='price')?(v===''?null:Number(v)):v;}
 async function uploadAddonImg(i,ai,input){
@@ -1276,6 +1302,18 @@ async function uploadWarrantyLogo(input){
 }
 function clearWarrantyLogo(){warranty.img=null;fillWarrantyControls();}
 
+/* ---------- ACTION BUTTON editor ---------- */
+function fillActionBtn(){
+  const g=id=>document.getElementById(id);
+  if(g('abEnabled')) g('abEnabled').checked=actionbtn.enabled===true;
+  if(g('abLabel')) g('abLabel').value=actionbtn.label||'';
+  const sel=g('abService');
+  if(sel){
+    sel.innerHTML=`<option value="">— Pick a service —</option>`+
+      services.map(x=>`<option value="${esc(String(x.id||''))}" ${String(actionbtn.service_id||'')===String(x.id||'')?'selected':''}>${esc(x.name||'')}${x.hidden?' (hidden)':''}</option>`).join('');
+  }
+}
+
 /* ---------- MYSTERY BOX logo ---------- */
 async function uploadMbLogo(input){
   const f=input.files[0]; if(!f) return; toast("Uploading…");
@@ -1374,7 +1412,7 @@ function upd(kind,i,field,val){
   const arr=kind==='slide'?slides:services;
   arr[i][field]=(val===''&&field==='base_price')?null:val;
   if(kind==='slide'&&field==='glyph')renderSlides();
-  if(kind==='svc'&&field==='is_package')renderServices();
+  if(kind==='svc'&&(field==='is_package'||field==='hidden'))renderServices();
   renderPreview();
 }
 function tStyle(key){theme[key]=!theme[key];syncTextBtns();renderPreview();}
@@ -1564,7 +1602,8 @@ async function saveAll(){
         media:(s.media&&s.media.length)?s.media:null,
         variations:(s.variations&&s.variations.length)?s.variations:null,
         addons:(s.addons&&s.addons.length)?s.addons:null,
-        item_info:s.item_info||null,est_time:s.est_time||null,is_package:!!s.is_package,subtitle:s.subtitle||null};
+        item_info:s.item_info||null,est_time:s.est_time||null,is_package:!!s.is_package,subtitle:s.subtitle||null,
+        category2:s.category2||null,hidden:!!s.hidden};
       if(s.id){await sb(`gl_services?id=eq.${s.id}`,{method:"PATCH",headers:H(),body:JSON.stringify(body)});}
       else{const r=await sb("gl_services",{method:"POST",headers:H({Prefer:"return=representation"}),body:JSON.stringify(body)});if(r.ok){const j=await r.json();s.id=j[0].id;}}
     }
@@ -1613,6 +1652,7 @@ async function saveAll(){
     await sb("gl_settings",{method:"POST",headers:H({Prefer:"resolution=merge-duplicates"}),body:JSON.stringify({id:"mysterybox",data:mb})});
     await sb("gl_settings",{method:"POST",headers:H({Prefer:"resolution=merge-duplicates"}),body:JSON.stringify({id:"warranty",data:warranty})});
     await sb("gl_settings",{method:"POST",headers:H({Prefer:"resolution=merge-duplicates"}),body:JSON.stringify({id:"highlights",data:hl})});
+    await sb("gl_settings",{method:"POST",headers:H({Prefer:"resolution=merge-duplicates"}),body:JSON.stringify({id:"actionbtn",data:actionbtn})});
     toast("Saved ✓  Customer app will reflect changes on reload");
   }catch(e){toast("Save error — check console");console.error(e);}
 }
@@ -1831,6 +1871,7 @@ function switchTab(t){
   else if(t==='highlights')fillHlControls();
   else if(t==='mysterybox')fillMbControls();
   else if(t==='warranty')fillWarrantyControls();
+  else if(t==='actionbtn')fillActionBtn();
   else if(t==='onboarding')setPv('onb');
   else if(t==='otppage'){fillOtpControls();setPv('otp');}
   else if(t==='refpage'){fillRefControls();setPv('ref');}

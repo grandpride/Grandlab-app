@@ -360,6 +360,18 @@
   .svc-card .nm{font-size:16px;font-weight:700;margin-top:3px;}
   .svc-card .ds{font-size:13px;color:var(--muted);margin-top:5px;line-height:1.4;}
   .svc-card .pr{font-size:15px;font-weight:800;margin-top:8px;color:var(--text);}
+  /* package cards (category list, 2-col like reference) */
+  .pkg-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px 12px;margin-top:8px;}
+  .pkg-card{cursor:pointer;transition:.12s;}
+  .pkg-card:active{transform:scale(.97);}
+  .pkg-img{position:relative;width:100%;aspect-ratio:1.3/1;border-radius:12px;overflow:hidden;background:var(--surface2);}
+  .pkg-img img{width:100%;height:100%;object-fit:cover;}
+  .pkg-img-ph{width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:40px;background:var(--card-grad);}
+  .pkg-badge{position:absolute;top:8px;left:8px;background:var(--yellow);color:#080808;font-size:10px;font-weight:800;
+    padding:3px 8px;border-radius:6px;text-transform:uppercase;letter-spacing:.04em;}
+  .pkg-nm{font-size:13.5px;font-weight:700;margin-top:8px;line-height:1.3;}
+  .pkg-from{font-size:11px;color:var(--muted);margin-top:6px;}
+  .pkg-price{font-size:15px;font-weight:800;color:var(--text);}
   /* category grid — logo/icon only, no square box */
   .cat-grid{margin-top:16px;display:grid;grid-template-columns:repeat(3,1fr);gap:14px 10px;}
   .cat-card{display:flex;flex-direction:column;align-items:center;gap:8px;cursor:pointer;transition:.12s;}
@@ -418,6 +430,20 @@
     font-size:13px;line-height:1.55;color:var(--text);white-space:pre-wrap;}
   .sd-checkout-bar{position:absolute;bottom:0;left:0;right:0;padding:14px 18px calc(14px + env(safe-area-inset-bottom));
     background:linear-gradient(to top,var(--bg) 60%,transparent);}
+  .sd-bar-row{display:flex;gap:10px;}
+  .sd-buy{flex:1;}
+  .sd-action{flex:0 0 auto;background:#ff4d2e !important;color:#fff !important;border:none;white-space:nowrap;padding-left:16px;padding-right:16px;}
+  /* select a car */
+  .sd-cars{display:flex;gap:10px;overflow-x:auto;padding-bottom:4px;}
+  .sd-cars::-webkit-scrollbar{display:none;}
+  .sd-car{flex:0 0 auto;display:flex;align-items:center;gap:10px;background:var(--surface);border:1.5px solid var(--line);
+    border-radius:14px;padding:10px 14px;cursor:pointer;color:var(--text);min-width:150px;}
+  .sd-car.on{border-color:var(--yellow);background:var(--surface2);}
+  .sd-car-ic{font-size:22px;}
+  .sd-car-nm{font-size:14px;font-weight:700;text-align:left;}
+  .sd-car-sub{font-size:11px;color:var(--muted);text-align:left;}
+  .sd-car-empty{background:var(--surface);border:1.5px dashed var(--gold-line-soft);border-radius:14px;
+    padding:16px;text-align:center;color:var(--yellow);font-weight:600;cursor:pointer;}
   /* mystery box */
   .mb-top{background:linear-gradient(135deg,#1f7a6e,#2e9e8c);border-bottom:none;color:#fff;}
   .mb-top .back,.mb-top .ttl,.mb-top .home-btn{color:#fff;}
@@ -858,13 +884,14 @@ async function fetchSlides(){
   }catch(e){}
   // mystery box + warranty settings
   try{
-    const r3=await fetch(`${SUPA_URL}/rest/v1/gl_settings?select=id,data&id=in.(mysterybox,warranty,highlights)`,
+    const r3=await fetch(`${SUPA_URL}/rest/v1/gl_settings?select=id,data&id=in.(mysterybox,warranty,highlights,actionbtn)`,
       { headers:{ apikey:SUPA_ANON, Authorization:`Bearer ${SUPA_ANON}` } });
     if(r3.ok){ const rows=await r3.json();
       rows.forEach(row=>{
         if(row.id==='mysterybox') MYSTERY=Object.assign({},MYSTERY,row.data||{});
         if(row.id==='warranty'){ if(row.data?.url) STYLE.warrantyUrl=row.data.url; if(row.data?.img) STYLE.warrantyImg=row.data.img; }
         if(row.id==='highlights') HIGHLIGHTS=Object.assign({},HIGHLIGHTS,row.data||{});
+        if(row.id==='actionbtn') ACTIONBTN=Object.assign({},ACTIONBTN,row.data||{});
       });
     }
   }catch(e){}
@@ -901,6 +928,7 @@ let CATEGORIES = [];    // gl_categories rows
 let STORES = [];        // gl_stores rows
 let BRANDS = [];        // gl_brands rows
 let HIGHLIGHTS = { items:[], autoslide:true, interval:4000 };
+let ACTIONBTN = { enabled:false, label:'Free Car Wash', service_id:null };
 let MYSTERY = {
   enabled:true, title:'Mystery Box',
   prizes:[{name:'Interior Sterilization'},{name:'Mineral Off'},{name:'Box Free Sig. Wash'},
@@ -1525,7 +1553,7 @@ async function renderHome(){
     </div>`);
   // uncategorized services -> "Other" tile
   const managed = new Set(CATEGORIES.map(c=>norm(c.name)));
-  const hasOrphans = SERVICES.some(s=>!managed.has(norm(s.category)));
+  const hasOrphans = visibleServices().some(s=>!svcCategories(s).some(c=>managed.has(norm(c))));
   if(hasOrphans){
     catTiles.push(`<div class="svc-tile" onclick="openCategory('Other')">${tileInner(null,'🧽','Other')}</div>`);
   }
@@ -1643,6 +1671,18 @@ async function renderHome(){
   // brands use a pure-CSS marquee (no JS needed)
   if(HIGHLIGHTS.autoslide!==false) startSlider('hlTrack', HIGHLIGHTS.interval||4000);
 }
+
+/* ---------- service helpers (category match + visibility) ---------- */
+function _norm(v){ return (v||'').trim().toLowerCase(); }
+function svcVisible(s){ return !s.hidden; }
+function svcInCategory(s, catName){
+  const n=_norm(catName);
+  return _norm(s.category)===n || _norm(s.category2)===n;
+}
+function svcCategories(s){
+  return [s.category, s.category2].filter(c=>c&&c.trim());
+}
+function visibleServices(){ return SERVICES.filter(svcVisible); }
 
 function serviceEmoji(name){
   const n=(name||'').toLowerCase();
@@ -1938,9 +1978,9 @@ async function renderServicesScreen(){
   if(!SERVICES.length) await fetchServices();
   if(!CATEGORIES.length) await fetchCategories();
 
-  // bucket services by category name (case-insensitive); uncategorized -> "Other"
-  const norm = v => (v||'').trim().toLowerCase();
-  const countFor = catName => SERVICES.filter(s=>norm(s.category)===norm(catName)).length;
+  // bucket services by category (checks both categories); hidden services excluded; uncategorized -> "Other"
+  const visible = visibleServices();
+  const countFor = catName => visible.filter(s=>svcInCategory(s,catName)).length;
 
   // build the card list from admin-managed categories, in their sort order
   let cards = CATEGORIES.map(c=>{
@@ -1948,9 +1988,9 @@ async function renderServicesScreen(){
     return catCard(c.name, c.icon, c.image_url, n);
   });
 
-  // any services whose category doesn't match a managed category -> "Other"
-  const managed = new Set(CATEGORIES.map(c=>norm(c.name)));
-  const orphans = SERVICES.filter(s=>!managed.has(norm(s.category)));
+  // any services whose categories don't match a managed category -> "Other"
+  const managed = new Set(CATEGORIES.map(c=>_norm(c.name)));
+  const orphans = visible.filter(s=>!svcCategories(s).some(c=>managed.has(_norm(c))));
   if(orphans.length){
     cards.push(catCard('Other','🧽',null,orphans.length,true));
   }
@@ -2050,32 +2090,72 @@ function catCard(name, icon, img, count, isOther){
 
 async function openCategory(name){
   if(!SERVICES.length) await fetchServices();
-  const norm = v => (v||'').trim().toLowerCase();
-  const managed = new Set(CATEGORIES.map(c=>norm(c.name)));
+  const managed = new Set(CATEGORIES.map(c=>_norm(c.name)));
+  const visible = visibleServices();
   let list;
   if(name==='Other'){
-    list = SERVICES.filter(s=>!managed.has(norm(s.category)));
+    list = visible.filter(s=>!svcCategories(s).some(c=>managed.has(_norm(c))));
   } else {
-    list = SERVICES.filter(s=>norm(s.category)===norm(name));
+    list = visible.filter(s=>svcInCategory(s,name));
   }
   appRoot.innerHTML=`
     <div class="topbar-app"><button class="back" onclick="routeTab('home')">‹</button><div class="ttl">${esc(name)}</div><button class="home-btn" onclick="routeTab('home')">⌂</button></div>
     <div class="app-scroll" style="padding-top:14px">
-      <div class="app-sub" style="margin-bottom:10px">Choose a service to book</div>
-      ${list.length? list.map(s=>svcCard(s)).join('') : '<div class="guest-banner">No services in this category yet.</div>'}
+      ${list.length? `<div class="pkg-grid">${list.map(s=>pkgCard(s)).join('')}</div>` : '<div class="guest-banner">No services in this category yet.</div>'}
     </div>`;
 }
 
+function pkgCard(s){
+  const badge = s.subtitle ? `<div class="pkg-badge">${esc(s.subtitle)}</div>` : '';
+  const media = (Array.isArray(s.media)&&s.media.length) ? s.media[0].url : s.image_url;
+  return `<div class="pkg-card" onclick="openService('${s.id}')">
+    <div class="pkg-img">${media?`<img src="${media}">`:`<div class="pkg-img-ph">${serviceEmoji(s.name)}</div>`}${badge}</div>
+    <div class="pkg-nm">${esc(s.name||'')}</div>
+    <div class="pkg-from">From</div>
+    <div class="pkg-price">${barePrice(s)}</div>
+  </div>`;
+}
+function barePrice(s){
+  if(s.variations && Array.isArray(s.variations) && s.variations.length){
+    const vals=s.variations.map(v=>Number(v.price)).filter(v=>!isNaN(v)&&v>0);
+    if(vals.length) return 'RM'+Math.min(...vals).toLocaleString('en-MY',{minimumFractionDigits:2,maximumFractionDigits:2});
+  }
+  if(s.price_by_type){
+    const vals=Object.values(s.price_by_type).filter(v=>v!=null&&v!=='').map(Number);
+    if(vals.length) return 'RM'+Math.min(...vals).toLocaleString('en-MY',{minimumFractionDigits:2,maximumFractionDigits:2});
+  }
+  return s.base_price?('RM'+Number(s.base_price).toLocaleString('en-MY',{minimumFractionDigits:2,maximumFractionDigits:2})):'—';
+}
+
 /* ---------- Service detail page (full) ---------- */
-let SVC_SEL = { service:null, variIdx:0, qty:1, addons:{}, storeIdx:0 };
+let SVC_SEL = { service:null, variIdx:0, qty:1, addons:{}, storeIdx:0, carId:null };
 
 async function openService(id){
   const s=SERVICES.find(x=>String(x.id)===String(id)); if(!s) return;
   if(IS_GUEST){ toast("Sign in to book this service"); return; }
-  if(!STORES.length){ try{ await fetchStores(); }catch(e){} }
-  // reset selection
-  SVC_SEL = { service:s, variIdx:0, qty:1, addons:{}, storeIdx:0 };
+  await Promise.allSettled([
+    (!STORES.length)?fetchStores():Promise.resolve(),
+    (SESSION?.user?.id && !VEHICLES.length)?fetchVehicles():Promise.resolve()
+  ]);
+  // reset selection — preselect the active vehicle if there's one saved
+  let preCar=null;
+  try{ const av=localStorage.getItem('gl_active_vehicle'); if(av && VEHICLES.some(v=>String(v.id)===String(av))) preCar=av; }catch(e){}
+  if(!preCar && VEHICLES.length===1) preCar=VEHICLES[0].id;
+  SVC_SEL = { service:s, variIdx:0, qty:1, addons:{}, storeIdx:0, carId:preCar };
   renderServiceDetail();
+}
+
+// resolve an addon entry {service_id, price} to a display object
+function resolveAddon(a){
+  // new format: linked service
+  if(a && a.service_id!=null){
+    const svc=SERVICES.find(x=>String(x.id)===String(a.service_id));
+    return { label: svc?.name || a.label || 'Add-on',
+             image_url: (svc && Array.isArray(svc.media)&&svc.media.length?svc.media[0].url:(svc?.image_url||a.image_url||null)),
+             price: Number(a.price||0) };
+  }
+  // old format: manual
+  return { label:a.label||'', image_url:a.image_url||null, price:Number(a.price||0) };
 }
 
 function svcDetailPrice(){
@@ -2084,9 +2164,10 @@ function svcDetailPrice(){
   if(s.variations && s.variations.length){ base=Number(s.variations[SVC_SEL.variIdx]?.price||0); }
   else { base=Number(s.base_price||0); }
   let total=base*SVC_SEL.qty;
-  (s.addons||[]).forEach((a,i)=>{ if(SVC_SEL.addons[i]) total+=Number(a.price||0); });
+  (s.addons||[]).forEach((a,i)=>{ if(SVC_SEL.addons[i]) total+=resolveAddon(a).price; });
   return total;
 }
+function money(n){ return Number(n||0).toLocaleString('en-MY',{minimumFractionDigits:2,maximumFractionDigits:2}); }
 
 function renderServiceDetail(){
   const s=SVC_SEL.service; if(!s) return;
@@ -2112,17 +2193,28 @@ function renderServiceDetail(){
         <button onclick="setQty(-1)">−</button><span>${SVC_SEL.qty}</span><button onclick="setQty(1)">+</button>
       </div></div>`;
 
-  // add-ons
+  // select a car (required) — like reference
+  const cars = VEHICLES||[];
+  const carBlock = `<div class="sd-sec-t">Select a car <span style="color:#ff6b6b">*</span></div>
+    ${cars.length? `<div class="sd-cars">${cars.map(v=>`
+        <button class="sd-car ${String(SVC_SEL.carId)===String(v.id)?'on':''}" onclick="selCar('${v.id}')">
+          <div class="sd-car-ic">🚗</div>
+          <div class="sd-car-info"><div class="sd-car-nm">${esc([v.make,v.model].filter(Boolean).join(' ')||'Vehicle')}</div>
+          <div class="sd-car-sub">${esc(v.plate||'')}</div></div>
+        </button>`).join('')}</div>`
+      : `<div class="sd-car-empty" onclick="openAddVehicle()">+ Add your car to continue</div>`}`;
+
+  // add-ons (linked services + manual bundle price)
   let addonBlock='';
   if(s.addons && s.addons.length){
     addonBlock=`<div class="sd-sec-t">Recommended add-ons</div>
-      ${s.addons.map((a,i)=>`
+      ${s.addons.map((raw,i)=>{ const a=resolveAddon(raw); return `
         <label class="sd-addon">
           ${a.image_url?`<img src="${a.image_url}">`:`<div class="sd-addon-ic">＋</div>`}
           <div class="sd-addon-nm">${esc(a.label||'')}</div>
-          <div class="sd-addon-pr">RM${esc(String(a.price||0))}</div>
+          <div class="sd-addon-pr">RM${money(a.price)}</div>
           <input type="checkbox" ${SVC_SEL.addons[i]?'checked':''} onchange="toggleAddon(${i},this.checked)">
-        </label>`).join('')}`;
+        </label>`; }).join('')}`;
   }
 
   // stores
@@ -2157,6 +2249,7 @@ function renderServiceDetail(){
           <div class="sd-price-tag">${priceLabel(s)}</div>
         </div>
         ${s.subtitle?`<div class="sd-badge">⭐ ${esc(s.subtitle)}</div>`:''}
+        ${carBlock}
         ${variBlock}
         ${qtyBlock}
         ${addonBlock}
@@ -2165,36 +2258,53 @@ function renderServiceDetail(){
       </div>
     </div>
     <div class="sd-checkout-bar">
-      <button class="btn btn-primary" onclick="checkoutService()">Checkout · RM${svcDetailPrice()}</button>
+      <div class="sd-bar-row">
+        ${actionBtnHtml(s)}
+        <button class="btn btn-primary sd-buy" onclick="checkoutService()">Buy Now · RM${money(svcDetailPrice())}</button>
+      </div>
     </div>`;
 }
+
+function actionBtnHtml(currentSvc){
+  // optional secondary button (e.g. "Free Car Wash") configured in admin → ACTIONBTN
+  if(!ACTIONBTN || ACTIONBTN.enabled===false || !ACTIONBTN.service_id) return '';
+  // don't show the button on its own target service page
+  if(String(ACTIONBTN.service_id)===String(currentSvc.id)) return '';
+  return `<button class="btn sd-action" onclick="openService('${ACTIONBTN.service_id}')">⭐ ${esc(ACTIONBTN.label||'Free')}</button>`;
+}
+function selCar(id){ SVC_SEL.carId=id; try{localStorage.setItem('gl_active_vehicle',id);}catch(e){} renderServiceDetail(); }
 
 function selVari(i){ SVC_SEL.variIdx=i; renderServiceDetail(); }
 function setQty(d){ SVC_SEL.qty=Math.max(1,SVC_SEL.qty+d); renderServiceDetail(); }
 function toggleAddon(i,on){ SVC_SEL.addons[i]=on; refreshCheckoutBar(); }
 function selStore(i){ SVC_SEL.storeIdx=i; renderServiceDetail(); }
 function refreshCheckoutBar(){
-  const b=document.querySelector('.sd-checkout-bar .btn'); if(b) b.textContent='Checkout · RM'+svcDetailPrice();
+  const b=document.querySelector('.sd-checkout-bar .sd-buy'); if(b) b.textContent='Buy Now · RM'+money(svcDetailPrice());
 }
 
 async function checkoutService(){
   const s=SVC_SEL.service; if(!s) return;
   if(IS_GUEST){ toast("Sign in to book"); return; }
+  // car is required
+  if(!SVC_SEL.carId){ toast("Please select a car first"); return; }
+  const car = (VEHICLES||[]).find(v=>String(v.id)===String(SVC_SEL.carId));
+  const carLabel = car ? ([car.make,car.model].filter(Boolean).join(' ') + (car.plate?' - '+car.plate:'') || 'Vehicle') : '';
   const vari = s.variations?.[SVC_SEL.variIdx]?.label || '';
   const store = STORES[SVC_SEL.storeIdx]?.name || '';
-  const addonNames = (s.addons||[]).filter((a,i)=>SVC_SEL.addons[i]).map(a=>a.label);
-  const total = svcDetailPrice();
+  const addonNames = (s.addons||[]).filter((a,i)=>SVC_SEL.addons[i]).map(a=>resolveAddon(a).label);
   const noteBits=[];
   if(vari) noteBits.push('Variation: '+vari);
   if(SVC_SEL.qty>1) noteBits.push('Qty: '+SVC_SEL.qty);
   if(addonNames.length) noteBits.push('Add-ons: '+addonNames.join(', '));
   if(store) noteBits.push('Store: '+store);
+  noteBits.push('Total: RM'+money(svcDetailPrice()));
   const note=noteBits.join(' · ');
   try{
     const r=await fetch(`${SUPA_URL}/rest/v1/gl_orders`,{
       method:"POST",headers:authHeaders(),
       body:JSON.stringify({owner_id:SESSION.user.id,service_name:s.name,service_id:s.id,
-        vehicle:'',appointment_date:null,appointment_time:null,note:note,status:'upcoming'})});
+        vehicle:carLabel, vehicle_id:car?.id||null, vehicle_label:carLabel,
+        appointment_date:null,appointment_time:null,note:note,status:'upcoming'})});
     if(r.ok){ toast("Order placed ✓"); routeTab('order'); }
     else { toast("Could not place order"); }
   }catch(e){ toast("Order error"); }
