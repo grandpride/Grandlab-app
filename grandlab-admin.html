@@ -70,6 +70,7 @@
   .price-grid{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;}
   .price-grid .pc label{margin-top:0;}
   .svc-sub{font-size:13px;font-weight:700;color:var(--accent);margin-top:18px;padding-top:14px;border-top:1px solid var(--line);}
+  .svc-body{margin-top:14px;padding-top:4px;}
   .svc-hint{font-weight:400;color:var(--muted);font-size:11px;margin-left:6px;}
   .mini-row{display:flex;align-items:center;gap:8px;margin-top:8px;}
   .mini-row input{margin-top:0;}
@@ -571,7 +572,7 @@
         <label style="margin-top:14px"><input type="checkbox" id="mbEnabled" style="width:auto;margin-right:7px" onchange="mbToggle(this.checked)">Mystery Box enabled</label>
         <label style="margin-top:10px">Title</label>
         <input id="mbTitle" oninput="mb.title=this.value" placeholder="Mystery Box">
-        <label style="margin-top:10px">Tile logo (shown on home grid)</label>
+        <label style="margin-top:10px">Tile logo (shown on home grid) <span class="svc-hint">square ~4×4 cm (480×480 px)</span></label>
         <div style="display:flex;align-items:center;gap:10px;margin-top:4px">
           <div id="mbLogoThumb">${''}</div>
           <input type="file" accept="image/*" onchange="uploadMbLogo(this)">
@@ -589,7 +590,7 @@
         <div class="hint">The “AX Film Warranty Check” tile on the Services tab opens this link in a new tab.</div>
         <label style="margin-top:14px">Warranty URL</label>
         <input id="warrantyUrl" oninput="warranty.url=this.value" placeholder="https://axfilm.com.my/warranty/">
-        <label style="margin-top:14px">Tile logo (shown on home grid)</label>
+        <label style="margin-top:14px">Tile logo (shown on home grid) <span class="svc-hint">square ~4×4 cm (480×480 px)</span></label>
         <div style="display:flex;align-items:center;gap:10px;margin-top:4px">
           <div id="warrantyLogoThumb">${''}</div>
           <input type="file" accept="image/*" onchange="uploadWarrantyLogo(this)">
@@ -1027,20 +1028,32 @@ function delSlide(i){if(slides[i].id)deletedSlideIds.push(slides[i].id);slides.s
 function moveSlide(i,d){const j=i+d;if(j<0||j>=slides.length)return;[slides[i],slides[j]]=[slides[j],slides[i]];renderSlides();renderPreview();}
 
 /* ---------- SERVICES editor ---------- */
+let svcSearch = '';
 function renderServices(){
   const el=document.getElementById('svcList');
   if(!services.length){el.innerHTML='<div class="empty">No services yet. Add your first one.</div>';return;}
   el.innerHTML="";
+  // optional search box at top
+  const searchBox=document.createElement('div');
+  searchBox.innerHTML=`<input id="svcSearchBox" value="${esc(svcSearch)}" oninput="svcSearch=this.value;renderServices();setTimeout(()=>{const b=document.getElementById('svcSearchBox');if(b){b.focus();b.setSelectionRange(b.value.length,b.value.length);}},0)" placeholder="🔍 Search services…" style="margin-bottom:12px">`;
+  el.appendChild(searchBox);
+  const q=svcSearch.trim().toLowerCase();
   services.forEach((s,i)=>{
+    if(q && !((s.name||'').toLowerCase().includes(q) || (s.category||'').toLowerCase().includes(q) || (s.section||'').toLowerCase().includes(q))) return;
     const sized=!!s.price_by_type;
     const pbt=s.price_by_type||{};
     s.media=s.media||[]; s.variations=s.variations||[]; s.addons=s.addons||[];
+    const open=!!s._open;
     const c=document.createElement('div');c.className="card";
     c.innerHTML=`
-      <div class="card-head">
-        <div class="card-title">${esc(s.name||'Service')}${s.is_package?' <span style="color:var(--yellow);font-size:11px">📦 PACKAGE</span>':''}</div>
-        <button class="btn btn-danger btn-sm" onclick="delService(${i})">Delete</button>
+      <div class="card-head" style="cursor:pointer" onclick="toggleSvc(${i})">
+        <div class="card-title">
+          <span style="color:var(--muted);margin-right:8px">${open?'▾':'▸'}</span>${esc(s.name||'Service')}${s.is_package?' <span style="color:var(--yellow);font-size:11px">📦</span>':''}${s.hidden?' <span style="color:var(--muted);font-size:11px">🙈 hidden</span>':''}
+          <span style="color:var(--muted);font-weight:400;font-size:11px;margin-left:6px">${esc(s.category||'')}${s.section?' · '+esc(s.section):''}</span>
+        </div>
+        <button class="btn btn-danger btn-sm" onclick="event.stopPropagation();delService(${i})">Delete</button>
       </div>
+      ${open?`<div class="svc-body" onclick="event.stopPropagation()">
       <div class="row">
         <div><label>Name</label><input value="${esc(s.name||'')}" oninput="upd('svc',${i},'name',this.value)"></div>
         <div><label>Category</label>
@@ -1057,6 +1070,10 @@ function renderServices(){
         ${categories.map(c=>`<option value="${esc(c.name)}" ${(s.category2||'')===c.name?'selected':''}>${esc(c.name)}</option>`).join('')}
         ${(s.category2 && !categories.some(c=>c.name===s.category2))?`<option value="${esc(s.category2)}" selected>${esc(s.category2)} (unlisted)</option>`:''}
       </select>
+      <label style="margin-top:8px">Section / sub-category heading (optional)</label>
+      <input value="${esc(s.section||'')}" oninput="upd('svc',${i},'section',this.value)" placeholder="e.g. Packages, Ala-Carte" list="sectionList${i}">
+      <datalist id="sectionList${i}">${[...new Set(services.map(x=>x.section).filter(Boolean))].map(sec=>`<option value="${esc(sec)}">`).join('')}</datalist>
+      <div class="svc-hint">Services with the same section name group together under that heading inside the category.</div>
       <div class="row" style="margin-top:10px">
         <label style="display:flex;align-items:center"><input type="checkbox" style="width:auto;margin-right:7px" ${s.is_package?'checked':''} onchange="upd('svc',${i},'is_package',this.checked)">This is a package</label>
         <label style="display:flex;align-items:center"><input type="checkbox" style="width:auto;margin-right:7px" ${s.hidden?'checked':''} onchange="upd('svc',${i},'hidden',this.checked)">Hidden in app (don't list)</label>
@@ -1083,7 +1100,7 @@ function renderServices(){
         </div>`).join('')}</div>
       <button class="btn btn-ghost btn-sm" onclick="addVari(${i})">+ Add variation</button>
 
-      <div class="svc-sub">Photos / Videos <span class="svc-hint">shown as a slider on the detail page</span></div>
+      <div class="svc-sub">Photos / Videos <span class="svc-hint">slider on the detail page · upload square ~5×5 cm (600×600 px) or larger; landscape ~10×7 cm (1080×720 px) also fine · keep under 800 KB</span></div>
       <div id="svcMedia${i}" class="media-strip">${s.media.map((m,mi)=>`
         <div class="media-thumb">
           ${m.type==='video'?`<video src="${m.url}" muted></video>`:`<img src="${m.url}">`}
@@ -1108,11 +1125,13 @@ function renderServices(){
       <textarea rows="3" oninput="upd('svc',${i},'item_info',this.value)" placeholder="A premium hand car wash using...">${esc(s.item_info||'')}</textarea>
       <label style="margin-top:8px">Estimated time</label>
       <input value="${esc(s.est_time||'')}" oninput="upd('svc',${i},'est_time',this.value)" placeholder="30-55 minutes">
+      </div>`:''}
     `;
     el.appendChild(c);
   });
 }
-function addService(){services.push({name:"New service",category:"",category2:"",base_price:0,price_by_type:null,media:[],variations:[],addons:[],is_package:false,hidden:false,active:true,sort_order:services.length+1});renderServices();renderPreview();}
+function toggleSvc(i){ services[i]._open=!services[i]._open; renderServices(); }
+function addService(){services.push({name:"New service",category:"",category2:"",section:"",base_price:0,price_by_type:null,media:[],variations:[],addons:[],is_package:false,hidden:false,active:true,sort_order:services.length+1,_open:true});renderServices();renderPreview();}
 function delService(i){if(services[i].id)deletedServiceIds.push(services[i].id);services.splice(i,1);renderServices();renderPreview();}
 function toggleSized(i,on){services[i].price_by_type=on?{Sedan:0,SUV:0,MPV:0,Supercar:0}:null;renderServices();renderPreview();}
 function updPrice(i,t,v){if(!services[i].price_by_type)services[i].price_by_type={};services[i].price_by_type[t]=v===''?null:Number(v);renderPreview();}
@@ -1173,7 +1192,7 @@ function renderCategories(){
       </div>
       <label>Order</label>
       <input type="number" value="${c.sort_order??(i+1)}" oninput="updCat(${i},'sort_order',this.value)">
-      <label style="margin-top:8px">Photo (optional — overrides the icon)</label>
+      <label style="margin-top:8px">Photo (optional — overrides the icon) <span class="svc-hint">square ~4×4 cm (480×480 px)</span></label>
       <div style="display:flex;align-items:center;gap:10px;margin-top:4px">
         <div id="catThumb${i}">${c.image_url?`<img src="${c.image_url}" style="height:48px;width:48px;object-fit:cover;border-radius:8px;border:1px solid var(--line)">`:'<span style="color:var(--muted);font-size:12px">No photo</span>'}</div>
         <input type="file" accept="image/*" onchange="uploadCatPhoto(${i},this)">
@@ -1237,7 +1256,7 @@ function renderStores(){
         <input value="${esc(st.hours[d]||'')}" oninput="updStoreHour(${i},'${d}',this.value)" placeholder="08:00am - 08:00pm"></div>`).join('')}
       <button class="btn btn-ghost btn-sm" onclick="copyHoursDown(${i})" style="margin-top:6px">↧ Copy Mon to all days</button>
       <label style="margin-top:12px">Order</label><input type="number" value="${st.sort_order??(i+1)}" oninput="updStore(${i},'sort_order',this.value)">
-      <label style="margin-top:8px">Photo</label>
+      <label style="margin-top:8px">Photo <span class="svc-hint">landscape ~8×6 cm (960×720 px)</span></label>
       <div style="display:flex;align-items:center;gap:10px;margin-top:4px">
         <div>${st.image_url?`<img src="${st.image_url}" style="height:48px;width:64px;object-fit:cover;border-radius:8px;border:1px solid var(--line)">`:'<span style="color:var(--muted);font-size:12px">No photo</span>'}</div>
         <input type="file" accept="image/*" onchange="uploadStorePhoto(${i},this)">
@@ -1343,7 +1362,7 @@ function renderBrands(){
         </div>
       </div>
       <label>Name</label><input value="${esc(b.name||'')}" oninput="updBrand(${i},'name',this.value)" placeholder="LLumar">
-      <label style="margin-top:8px">Logo</label>
+      <label style="margin-top:8px">Logo <span class="svc-hint">square ~3×3 cm (360×360 px), transparent PNG</span></label>
       <div style="display:flex;align-items:center;gap:10px;margin-top:4px">
         <div>${b.image_url?`<img src="${b.image_url}" style="height:48px;width:48px;object-fit:contain;border-radius:8px;border:1px solid var(--line);background:#fff">`:'<span style="color:var(--muted);font-size:12px">No logo</span>'}</div>
         <input type="file" accept="image/*" onchange="uploadBrandLogo(${i},this)">
@@ -1603,7 +1622,7 @@ async function saveAll(){
         variations:(s.variations&&s.variations.length)?s.variations:null,
         addons:(s.addons&&s.addons.length)?s.addons:null,
         item_info:s.item_info||null,est_time:s.est_time||null,is_package:!!s.is_package,subtitle:s.subtitle||null,
-        category2:s.category2||null,hidden:!!s.hidden};
+        category2:s.category2||null,hidden:!!s.hidden,section:s.section||null};
       if(s.id){await sb(`gl_services?id=eq.${s.id}`,{method:"PATCH",headers:H(),body:JSON.stringify(body)});}
       else{const r=await sb("gl_services",{method:"POST",headers:H({Prefer:"return=representation"}),body:JSON.stringify(body)});if(r.ok){const j=await r.json();s.id=j[0].id;}}
     }
