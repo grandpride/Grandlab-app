@@ -545,7 +545,11 @@
 
       <!-- SERVICES -->
       <div class="panel" id="panel-services">
-        <div class="hint">Set one flat price, or tick “Size-based pricing” to charge per car type (Sedan / SUV / MPV / Supercar).</div>
+        <div class="hint">Set one flat price, or tick “Size-based pricing” to charge per car type (Sedan / SUV / MPV / Supercar / Motorcycle).</div>
+        <div class="section-h" style="margin-top:12px">Import from Excel</div>
+        <div class="svc-hint">Upload the filled Grandlab Services template. Merges by name (existing services with the same name are updated). Photos/variations/add-ons are added here after import.</div>
+        <input type="file" accept=".xlsx,.xls" onchange="importServicesExcel(this)" style="margin-top:8px">
+        <div id="svcImportMsg" class="svc-hint" style="margin-top:6px"></div>
         <div id="svcList" style="margin-top:14px"></div>
         <div class="add-row"><button class="btn btn-ghost" onclick="addService()">+ Add service</button></div>
       </div>
@@ -1195,6 +1199,50 @@ function renderServices(){
   });
 }
 function toggleSvc(i){ services[i]._open=!services[i]._open; renderServices(); }
+function importServicesExcel(input){
+  const f=input.files[0]; if(!f) return;
+  const msg=document.getElementById('svcImportMsg');
+  if(typeof XLSX==='undefined'){ if(msg)msg.textContent='Excel library not loaded — reload and try again.'; return; }
+  const reader=new FileReader();
+  reader.onload=e=>{
+    try{
+      const wb=XLSX.read(e.target.result,{type:'array'});
+      const sheet=wb.Sheets['Services']||wb.Sheets[wb.SheetNames.find(n=>/service/i.test(n))]||wb.Sheets[wb.SheetNames[0]];
+      const rows=XLSX.utils.sheet_to_json(sheet);
+      const byName={}; services.forEach(s=>byName[(s.name||'').trim().toLowerCase()]=s);
+      const yes=v=>String(v||'').trim().toLowerCase()==='yes';
+      const num=v=>(v===''||v==null||isNaN(Number(v)))?null:Number(v);
+      let added=0, updated=0;
+      rows.forEach(r=>{
+        const name=String(r.name||'').trim(); if(!name) return;
+        // build size pricing if any size_ column has a value
+        const sizes={Sedan:num(r.size_sedan),SUV:num(r.size_suv),MPV:num(r.size_mpv),Supercar:num(r.size_supercar),Motorcycle:num(r.size_motorcycle)};
+        const hasSizes=Object.values(sizes).some(v=>v!=null);
+        const price_by_type = hasSizes ? sizes : null;
+        const base_price = hasSizes ? null : num(r.base_price);
+        const key=name.toLowerCase();
+        let s=byName[key];
+        if(!s){ s={name,media:[],variations:[],addons:[],active:true,sort_order:num(r.sort_order)||services.length+1}; services.push(s); byName[key]=s; added++; }
+        else updated++;
+        s.category=String(r.category||'').trim()||null;
+        s.category2=String(r.category2||'').trim()||null;
+        s.section=String(r.section||'').trim()||null;
+        s.price_by_type=price_by_type;
+        s.base_price=base_price;
+        s.subtitle=String(r.subtitle||'').trim()||null;
+        s.item_info=String(r.item_info||'').trim()||null;
+        s.est_time=String(r.est_time||'').trim()||null;
+        s.is_package=yes(r.is_package);
+        s.hidden=yes(r.hidden);
+        if(r.sort_order!=null&&r.sort_order!=='') s.sort_order=num(r.sort_order);
+        s.media=s.media||[]; s.variations=s.variations||[]; s.addons=s.addons||[];
+      });
+      if(msg)msg.textContent=`Imported: ${added} new, ${updated} updated. Add photos below, then Save all changes.`;
+      renderServices(); renderPreview();
+    }catch(err){ if(msg)msg.textContent='Import failed: '+err.message; }
+  };
+  reader.readAsArrayBuffer(f);
+}
 function addService(){services.push({name:"New service",category:"",category2:"",section:"",base_price:0,price_by_type:null,media:[],variations:[],addons:[],is_package:false,hidden:false,active:true,sort_order:services.length+1,_open:true});renderServices();renderPreview();}
 function delService(i){if(services[i].id)deletedServiceIds.push(services[i].id);services.splice(i,1);renderServices();renderPreview();}
 function toggleSized(i,on){services[i].price_by_type=on?{Sedan:0,SUV:0,MPV:0,Supercar:0,Motorcycle:0}:null;renderServices();renderPreview();}
