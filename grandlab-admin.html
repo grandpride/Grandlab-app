@@ -550,6 +550,12 @@
         <label style="margin-top:14px"><input type="checkbox" id="mbEnabled" style="width:auto;margin-right:7px" onchange="mbToggle(this.checked)">Mystery Box enabled</label>
         <label style="margin-top:10px">Title</label>
         <input id="mbTitle" oninput="mb.title=this.value" placeholder="Mystery Box">
+        <label style="margin-top:10px">Tile logo (shown on home grid)</label>
+        <div style="display:flex;align-items:center;gap:10px;margin-top:4px">
+          <div id="mbLogoThumb">${''}</div>
+          <input type="file" accept="image/*" onchange="uploadMbLogo(this)">
+          <button class="btn btn-ghost btn-sm" onclick="clearMbLogo()">Remove</button>
+        </div>
         <div class="svc-sub">Prize Pool</div>
         <div id="mbPrizes"></div>
         <button class="btn btn-ghost btn-sm" onclick="addPrize()">+ Add prize</button>
@@ -562,6 +568,12 @@
         <div class="hint">The “AX Film Warranty Check” tile on the Services tab opens this link in a new tab.</div>
         <label style="margin-top:14px">Warranty URL</label>
         <input id="warrantyUrl" oninput="warranty.url=this.value" placeholder="https://axfilm.com.my/warranty/">
+        <label style="margin-top:14px">Tile logo (shown on home grid)</label>
+        <div style="display:flex;align-items:center;gap:10px;margin-top:4px">
+          <div id="warrantyLogoThumb">${''}</div>
+          <input type="file" accept="image/*" onchange="uploadWarrantyLogo(this)">
+          <button class="btn btn-ghost btn-sm" onclick="clearWarrantyLogo()">Remove</button>
+        </div>
       </div>
 
       <!-- THEME / STYLE -->
@@ -1184,6 +1196,7 @@ function fillMbControls(){
   if(g('mbEnabled')) g('mbEnabled').checked=mb.enabled!==false;
   if(g('mbTitle')) g('mbTitle').value=mb.title||'';
   if(g('mbRules')) g('mbRules').value=mb.rules||'';
+  if(g('mbLogoThumb')) g('mbLogoThumb').innerHTML=mb.image_url?`<img src="${mb.image_url}" style="height:48px;width:48px;object-fit:cover;border-radius:8px;border:1px solid var(--line)">`:'<span style="color:var(--muted);font-size:12px">No logo</span>';
   renderPrizes();
 }
 function renderPrizes(){
@@ -1201,7 +1214,31 @@ function delPrize(i){mb.prizes.splice(i,1);renderPrizes();}
 function updPrize(i,v){mb.prizes[i].name=v;}
 
 /* ---------- WARRANTY editor ---------- */
-function fillWarrantyControls(){const g=document.getElementById('warrantyUrl'); if(g) g.value=warranty.url||'';}
+function fillWarrantyControls(){
+  const g=document.getElementById('warrantyUrl'); if(g) g.value=warranty.url||'';
+  const t=document.getElementById('warrantyLogoThumb');
+  if(t) t.innerHTML=warranty.img?`<img src="${warranty.img}" style="height:48px;width:48px;object-fit:cover;border-radius:8px;border:1px solid var(--line)">`:'<span style="color:var(--muted);font-size:12px">No logo</span>';
+}
+async function uploadWarrantyLogo(input){
+  const f=input.files[0]; if(!f) return; toast("Uploading…");
+  const path=`warranty-${Date.now()}-${f.name.replace(/[^a-z0-9.]/gi,'_')}`;
+  const r=await fetch(`${SUPA_URL}/storage/v1/object/${BUCKET}/${path}`,{method:"POST",headers:{apikey:SVC_KEY,Authorization:`Bearer ${SVC_KEY}`},body:f});
+  if(!r.ok){toast("Upload failed — is gl-images bucket public?");return;}
+  warranty.img=`${SUPA_URL}/storage/v1/object/public/${BUCKET}/${path}`;
+  fillWarrantyControls();toast("Warranty logo ✓");
+}
+function clearWarrantyLogo(){warranty.img=null;fillWarrantyControls();}
+
+/* ---------- MYSTERY BOX logo ---------- */
+async function uploadMbLogo(input){
+  const f=input.files[0]; if(!f) return; toast("Uploading…");
+  const path=`mb-${Date.now()}-${f.name.replace(/[^a-z0-9.]/gi,'_')}`;
+  const r=await fetch(`${SUPA_URL}/storage/v1/object/${BUCKET}/${path}`,{method:"POST",headers:{apikey:SVC_KEY,Authorization:`Bearer ${SVC_KEY}`},body:f});
+  if(!r.ok){toast("Upload failed — is gl-images bucket public?");return;}
+  mb.image_url=`${SUPA_URL}/storage/v1/object/public/${BUCKET}/${path}`;
+  fillMbControls();toast("Mystery Box logo ✓");
+}
+function clearMbLogo(){mb.image_url=null;fillMbControls();}
 
 
 /* ---------- generic update ---------- */
