@@ -521,6 +521,42 @@
   .hl-1{background:linear-gradient(135deg,#3a0d0d,#7a1f1f);}
   .hl-2{background:linear-gradient(135deg,#0d1a3a,#1f3a7a);}
   .hl-tx{font-size:15px;font-weight:800;color:#fff;text-shadow:0 1px 4px rgba(0,0,0,.5);}
+  /* generic auto-slide carousel */
+  .slider{margin-top:12px;overflow-x:auto;-webkit-overflow-scrolling:touch;scroll-snap-type:x mandatory;}
+  .slider::-webkit-scrollbar{display:none;}
+  .slider-track{display:flex;gap:12px;padding-bottom:4px;}
+  .slider-track>*{scroll-snap-align:start;flex:0 0 auto;}
+  .brand-card{width:104px;height:104px;border-radius:16px;background:var(--surface);border:1px solid var(--line);
+    display:flex;align-items:center;justify-content:center;overflow:hidden;padding:12px;}
+  .brand-card img{max-width:100%;max-height:100%;object-fit:contain;}
+  .brand-nm{font-size:13px;font-weight:700;text-align:center;}
+  .slider .hl-card{flex:0 0 86%;}
+  /* our stores strip */
+  .store-strip{display:flex;gap:12px;overflow-x:auto;margin-top:12px;padding-bottom:4px;}
+  .store-strip::-webkit-scrollbar{display:none;}
+  .store-chip{flex:0 0 130px;cursor:pointer;}
+  .store-chip img,.store-chip-ph{width:130px;height:90px;border-radius:12px;object-fit:cover;background:var(--surface2);
+    display:flex;align-items:center;justify-content:center;font-size:32px;}
+  .store-chip-nm{font-size:12.5px;font-weight:600;margin-top:6px;}
+  /* outlet list */
+  .outlet-row{display:flex;align-items:center;gap:12px;padding:12px 4px;border-bottom:1px solid var(--line);cursor:pointer;}
+  .outlet-thumb{width:54px;height:54px;border-radius:10px;object-fit:cover;background:var(--surface2);flex:0 0 auto;
+    display:flex;align-items:center;justify-content:center;font-size:24px;}
+  .outlet-info{flex:1;min-width:0;}
+  .outlet-nm{font-size:14.5px;font-weight:700;display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+  .outlet-d{font-size:11px;font-weight:600;color:var(--muted);background:var(--surface2);padding:2px 8px;border-radius:10px;}
+  .outlet-near{font-size:11px;font-weight:700;color:#0d4d44;background:#bff0e4;padding:2px 8px;border-radius:10px;}
+  .outlet-addr{font-size:12px;color:var(--muted);margin-top:3px;line-height:1.4;}
+  .outlet-arrow{font-size:22px;color:var(--muted);flex:0 0 auto;}
+  /* outlet detail */
+  .outlet-hero{width:100%;height:210px;object-fit:cover;background:var(--surface2);}
+  .od-sec{font-size:14px;font-weight:700;color:var(--yellow);margin-top:20px;}
+  .od-text{font-size:13.5px;line-height:1.5;margin-top:6px;color:var(--text);}
+  .od-hours{margin-top:8px;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:8px 14px;}
+  .oh-row{display:flex;justify-content:space-between;font-size:13px;padding:6px 0;border-bottom:1px solid var(--line);}
+  .oh-row:last-child{border-bottom:none;}
+  .oh-row span:first-child{color:var(--muted);font-weight:600;}
+  .wa-btn{display:flex;align-items:center;justify-content:center;gap:8px;background:#25D366 !important;color:#fff !important;}
   .home-cards{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:18px;}
   .hc{background:var(--card-grad);border:1px solid var(--gold-line-soft);border-radius:16px;padding:16px;cursor:pointer;transition:.12s;}
   .hc:active{transform:scale(.97);}
@@ -693,6 +729,7 @@ const STYLE_DEFAULTS = {
   homeServicesTitle:"Our Services",
   homeWalletLabel:"Wallet Balance", homeSubscribeBtn:"Subscribe Now",
   homeHighlightsTitle:"Highlights",
+  homeBrandsTitle:"Our Brands", homeStoresTitle:"Our Stores",
   homeCard1Title:"Get rewarded", homeCard1Sub:"with every spending",
   homeCard2Title:"Send gifts", homeCard2Sub:"to friends & loved ones",
   homeShowSubscribe:true, homeShowWallet:true, homeShowHighlights:true, homeShowCards:true,
@@ -813,12 +850,13 @@ async function fetchSlides(){
   }catch(e){}
   // mystery box + warranty settings
   try{
-    const r3=await fetch(`${SUPA_URL}/rest/v1/gl_settings?select=id,data&id=in.(mysterybox,warranty)`,
+    const r3=await fetch(`${SUPA_URL}/rest/v1/gl_settings?select=id,data&id=in.(mysterybox,warranty,highlights)`,
       { headers:{ apikey:SUPA_ANON, Authorization:`Bearer ${SUPA_ANON}` } });
     if(r3.ok){ const rows=await r3.json();
       rows.forEach(row=>{
         if(row.id==='mysterybox') MYSTERY=Object.assign({},MYSTERY,row.data||{});
         if(row.id==='warranty'){ if(row.data?.url) STYLE.warrantyUrl=row.data.url; if(row.data?.img) STYLE.warrantyImg=row.data.img; }
+        if(row.id==='highlights') HIGHLIGHTS=Object.assign({},HIGHLIGHTS,row.data||{});
       });
     }
   }catch(e){}
@@ -853,6 +891,8 @@ let PROFILE = null;     // gl_profiles row
 let SERVICES = [];      // gl_services rows
 let CATEGORIES = [];    // gl_categories rows
 let STORES = [];        // gl_stores rows
+let BRANDS = [];        // gl_brands rows
+let HIGHLIGHTS = { items:[], autoslide:true, interval:4000 };
 let MYSTERY = {
   enabled:true, title:'Mystery Box',
   prizes:[{name:'Interior Sterilization'},{name:'Mineral Off'},{name:'Box Free Sig. Wash'},
@@ -936,6 +976,14 @@ async function fetchStores(){
     if(r.ok) STORES=await r.json();
   }catch(e){}
   return STORES;
+}
+async function fetchBrands(){
+  try{
+    const r=await fetch(`${SUPA_URL}/rest/v1/gl_brands?select=*&active=eq.true&order=sort_order.asc`,
+      {headers:{apikey:SUPA_ANON,Authorization:`Bearer ${SUPA_ANON}`}});
+    if(r.ok) BRANDS=await r.json();
+  }catch(e){}
+  return BRANDS;
 }
 let VEHICLES=[];
 async function fetchVehicles(){
@@ -1391,6 +1439,8 @@ async function renderHome(){
   const initial = (PROFILE?.name||'G')[0].toUpperCase();
   try{ if(!SERVICES.length) await fetchServices(); }catch(e){ console.error('services', e); }
   try{ if(!CATEGORIES.length) await fetchCategories(); }catch(e){ console.error('categories', e); }
+  try{ if(!BRANDS.length) await fetchBrands(); }catch(e){ console.error('brands', e); }
+  try{ if(!STORES.length) await fetchStores(); }catch(e){ console.error('stores', e); }
   try{ if(!IS_GUEST && SESSION?.user?.id) await fetchVehicles(); }catch(e){ console.error('vehicles', e); }
   try{ if(!IS_GUEST && SESSION?.user?.id) await fetchCheckin(); }catch(e){ console.error('checkin', e); }
   const refCode = PROFILE?.referral_code || '';
@@ -1525,12 +1575,35 @@ async function renderHome(){
         ${refCode?`<div class="ci-qr" onclick="showReferralQR()">⊞ My Referral QR</div>`:''}
       </div>`:''}
 
-      <!-- highlights carousel -->
-      ${STYLE.homeShowHighlights!==false?`
+      <!-- OUR BRANDS (auto-slide carousel) -->
+      ${BRANDS.length?`
+      <div class="sec-title">${esc(STYLE.homeBrandsTitle||'Our Brands')}</div>
+      <div class="slider" id="brandSlider">
+        <div class="slider-track" id="brandTrack">
+          ${BRANDS.map(b=>`<div class="brand-card">${b.image_url?`<img src="${b.image_url}" alt="${esc(b.name||'')}">`:`<div class="brand-nm">${esc(b.name||'')}</div>`}</div>`).join('')}
+        </div>
+      </div>`:''}
+
+      <!-- highlights carousel (auto-slide) -->
+      ${(STYLE.homeShowHighlights!==false && (HIGHLIGHTS.items||[]).length)?`
       <div class="sec-title">${esc(STYLE.homeHighlightsTitle||'Highlights')}</div>
-      <div class="highlights">
-        <div class="hl-card hl-1"><div class="hl-tx">Free Car Wash Guarantee</div></div>
-        <div class="hl-card hl-2"><div class="hl-tx">Holiday Hours</div></div>
+      <div class="slider" id="hlSlider">
+        <div class="slider-track" id="hlTrack">
+          ${HIGHLIGHTS.items.map((h,i)=>`<div class="hl-card" style="${h.image_url?`background-image:url('${h.image_url}');background-size:cover;background-position:center;`:`background:linear-gradient(135deg,${h.color||'#3a0d0d'},${shade(h.color||'#7a1f1f')});`}"><div class="hl-tx">${esc(h.text||'')}</div></div>`).join('')}
+        </div>
+      </div>`:''}
+
+      <!-- OUR STORES -->
+      ${STORES.length?`
+      <div class="sec-title-row">
+        <div class="sec-title">${esc(STYLE.homeStoresTitle||'Our Stores')}</div>
+        <button class="see-all" onclick="openOutletList()">View all ›</button>
+      </div>
+      <div class="store-strip">
+        ${STORES.slice(0,5).map(st=>`<div class="store-chip" onclick="openOutletDetail(${st.id})">
+          ${st.image_url?`<img src="${st.image_url}">`:`<div class="store-chip-ph">🏬</div>`}
+          <div class="store-chip-nm">${esc(st.name||'')}</div>
+        </div>`).join('')}
       </div>`:''}
 
       <!-- quick action cards -->
@@ -1547,6 +1620,9 @@ async function renderHome(){
       </div>`:''}
     </div>
     ${botnav('home')}`;
+  // start auto-sliders
+  startSlider('brandTrack', HIGHLIGHTS.interval||4000);
+  if(HIGHLIGHTS.autoslide!==false) startSlider('hlTrack', HIGHLIGHTS.interval||4000);
 }
 
 function serviceEmoji(name){
@@ -1560,6 +1636,103 @@ function serviceEmoji(name){
   if(n.includes('motor')||n.includes('bike'))return '🏍️';
   if(n.includes('wrap'))return '🎨';
   return '🚗';
+}
+
+/* ---------- Auto-slide carousel ---------- */
+let _sliderTimers={};
+function startSlider(trackId, interval){
+  if(_sliderTimers[trackId]){ clearInterval(_sliderTimers[trackId]); delete _sliderTimers[trackId]; }
+  const track=document.getElementById(trackId);
+  if(!track) return;
+  const cards=track.children;
+  if(cards.length<2) return;
+  let idx=0;
+  const go=()=>{
+    idx=(idx+1)%cards.length;
+    const card=cards[idx];
+    if(card) track.scrollTo({left:card.offsetLeft - track.offsetLeft, behavior:'smooth'});
+  };
+  _sliderTimers[trackId]=setInterval(go, interval||4000);
+  // pause auto-slide briefly while the user is swiping
+  track.addEventListener('touchstart',()=>{ if(_sliderTimers[trackId]){clearInterval(_sliderTimers[trackId]);delete _sliderTimers[trackId];} },{passive:true});
+}
+function shade(hex){
+  // darken a hex color ~25% for gradient end
+  try{ const c=hex.replace('#',''); const n=parseInt(c,16);
+    let r=(n>>16)&255,g=(n>>8)&255,b=n&255;
+    r=Math.round(r*0.6);g=Math.round(g*0.6);b=Math.round(b*0.6);
+    return '#'+((1<<24)+(r<<16)+(g<<8)+b).toString(16).slice(1);
+  }catch(e){ return hex; }
+}
+
+/* ---------- Our Stores / Outlets ---------- */
+let _userPos=null;
+function haversine(lat1,lng1,lat2,lng2){
+  const R=6371, toR=d=>d*Math.PI/180;
+  const dLat=toR(lat2-lat1), dLng=toR(lng2-lng1);
+  const a=Math.sin(dLat/2)**2 + Math.cos(toR(lat1))*Math.cos(toR(lat2))*Math.sin(dLng/2)**2;
+  return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+}
+function getUserPos(){
+  return new Promise(res=>{
+    if(_userPos) return res(_userPos);
+    if(!navigator.geolocation) return res(null);
+    navigator.geolocation.getCurrentPosition(
+      p=>{ _userPos={lat:p.coords.latitude,lng:p.coords.longitude}; res(_userPos); },
+      ()=>res(null), {timeout:6000, maximumAge:300000});
+  });
+}
+function distLabel(st){
+  if(_userPos && st.lat!=null && st.lng!=null){
+    const km=haversine(_userPos.lat,_userPos.lng,st.lat,st.lng);
+    return km<1?`${Math.round(km*1000)} m away`:`${km.toFixed(2)} km away`;
+  }
+  return '';
+}
+async function openOutletList(){
+  if(!STORES.length) await fetchStores();
+  await getUserPos();
+  // sort by distance if we have position
+  let list=[...STORES];
+  if(_userPos){
+    list.forEach(s=>{ s._d=(s.lat!=null&&s.lng!=null)?haversine(_userPos.lat,_userPos.lng,s.lat,s.lng):Infinity; });
+    list.sort((a,b)=>a._d-b._d);
+  }
+  appRoot.innerHTML=`
+    <div class="topbar-app"><button class="back" onclick="routeTab('home')">‹</button><div class="ttl">${list.length} Outlet${list.length===1?'':'s'}</div><button class="home-btn" onclick="routeTab('home')">⌂</button></div>
+    <div class="app-scroll" style="padding-top:10px">
+      ${list.map((st,i)=>`
+        <div class="outlet-row" onclick="openOutletDetail(${st.id})">
+          ${st.image_url?`<img class="outlet-thumb" src="${st.image_url}">`:`<div class="outlet-thumb outlet-ph">🏬</div>`}
+          <div class="outlet-info">
+            <div class="outlet-nm">${esc(st.name||'')} ${distLabel(st)?`<span class="outlet-d">${distLabel(st)}</span>`:(i===0&&_userPos?'<span class="outlet-near">Nearest</span>':'')}</div>
+            <div class="outlet-addr">${esc(st.address||'')}</div>
+          </div>
+          <div class="outlet-arrow">›</div>
+        </div>`).join('')}
+    </div>`;
+}
+async function openOutletDetail(id){
+  if(!STORES.length) await fetchStores();
+  const st=STORES.find(x=>String(x.id)===String(id)); if(!st) return;
+  const days=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  const hours=st.hours||{};
+  const hoursHtml=days.map(d=>`<div class="oh-row"><span>${d}</span><span>${esc(hours[d]||'—')}</span></div>`).join('');
+  const wa=(st.whatsapp||'').replace(/[^0-9]/g,'');
+  appRoot.innerHTML=`
+    <div class="topbar-app"><button class="back" onclick="openOutletList()">‹</button><div class="ttl">Outlet</div><button class="home-btn" onclick="routeTab('home')">⌂</button></div>
+    <div class="app-scroll" style="padding:0 0 110px">
+      ${st.image_url?`<img class="outlet-hero" src="${st.image_url}">`:`<div class="outlet-hero outlet-ph" style="font-size:60px">🏬</div>`}
+      <div style="padding:16px 18px 0">
+        <div class="app-h1">${esc(st.name||'')}</div>
+        <div class="od-sec">Address</div>
+        <div class="od-text">${esc(st.address||'—')}</div>
+        ${st.contact_number?`<div class="od-sec">Contact number</div><div class="od-text">${esc(st.contact_number)}</div>`:''}
+        <div class="od-sec">Operating hours</div>
+        <div class="od-hours">${hoursHtml}</div>
+      </div>
+    </div>
+    ${wa?`<div class="sd-checkout-bar"><button class="btn btn-primary wa-btn" onclick="window.open('https://wa.me/${wa}','_blank')"><span style="font-size:18px">🟢</span> WhatsApp ${esc(st.name||'')}</button></div>`:''}`;
 }
 
 function onDelVehicle(id){
@@ -2431,6 +2604,7 @@ Object.defineProperty(window,'stepIndex',{get:()=>cur,set:v=>{cur=v;}});
     try{ await fetchServices(); }catch(e){ console.error('fetchServices failed', e); }
     try{ await fetchCategories(); }catch(e){ console.error('fetchCategories failed', e); }
     try{ await fetchStores(); }catch(e){ console.error('fetchStores failed', e); }
+    try{ await fetchBrands(); }catch(e){ console.error('fetchBrands failed', e); }
     try{ render(); indexScreens(); }catch(e){ console.error('render failed', e); }
     try{ enterGuest(); }catch(e){ console.error('enterGuest failed', e); }
     return;
@@ -2443,6 +2617,7 @@ Object.defineProperty(window,'stepIndex',{get:()=>cur,set:v=>{cur=v;}});
     await fetchServices();
     await fetchCategories();
     await fetchStores();
+    await fetchBrands();
     render();                     // build onboarding stack (hidden) for fallback
     indexScreens();
     // if the session is dead/invalid (no profile came back at all), clear it and show normal flow

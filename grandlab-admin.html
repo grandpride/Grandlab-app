@@ -164,6 +164,8 @@
         <button class="tab" data-tab="services" onclick="switchTab('services')">Services</button>
         <button class="tab" data-tab="categories" onclick="switchTab('categories')">Categories</button>
         <button class="tab" data-tab="stores" onclick="switchTab('stores')">Stores</button>
+        <button class="tab" data-tab="brands" onclick="switchTab('brands')">Brands</button>
+        <button class="tab" data-tab="highlights" onclick="switchTab('highlights')">Highlights</button>
         <button class="tab" data-tab="mysterybox" onclick="switchTab('mysterybox')">Mystery Box</button>
         <button class="tab" data-tab="warranty" onclick="switchTab('warranty')">Warranty Link</button>
         <button class="tab" data-tab="theme" onclick="switchTab('theme')">Theme</button>
@@ -539,9 +541,27 @@
 
       <!-- STORES -->
       <div class="panel" id="panel-stores">
-        <div class="hint">Outlets shown as “Choose Store” on the service detail page. Add a name, address, and photo.</div>
+        <div class="hint">Outlets shown as “Choose Store” on the service detail page and in the “Our Stores” section on home. Add name, address, contact, WhatsApp, operating hours, map coordinates, and a photo.</div>
         <div id="storeList" style="margin-top:14px"></div>
         <div class="add-row"><button class="btn btn-ghost" onclick="addStore()">+ Add store</button></div>
+      </div>
+
+      <!-- BRANDS -->
+      <div class="panel" id="panel-brands">
+        <div class="hint">Brand logos shown in the auto-sliding “Our Brands” carousel on home. Upload a logo (transparent PNG works best).</div>
+        <div id="brandList" style="margin-top:14px"></div>
+        <div class="add-row"><button class="btn btn-ghost" onclick="addBrand()">+ Add brand</button></div>
+      </div>
+
+      <!-- HIGHLIGHTS -->
+      <div class="panel" id="panel-highlights">
+        <div class="hint">Promo cards in the auto-sliding “Highlights” carousel on home. Each card has text + either a photo or a colour.</div>
+        <label style="margin-top:14px"><input type="checkbox" id="hlAuto" style="width:auto;margin-right:7px" onchange="hl.autoslide=this.checked">Auto-slide</label>
+        <label style="margin-top:10px">Slide interval (seconds)</label>
+        <input type="number" id="hlInterval" oninput="hl.interval=Number(this.value)*1000" placeholder="4">
+        <div class="svc-sub">Highlight cards</div>
+        <div id="hlList"></div>
+        <button class="btn btn-ghost btn-sm" onclick="addHl()">+ Add highlight</button>
       </div>
 
       <!-- MYSTERY BOX -->
@@ -801,6 +821,8 @@ let slides = [];     // {id?, eyebrow,title,glyph,image_url,sort_order,active}
 let services = [];   // {id?, name,category,base_price,price_by_type,active,sort_order}
 let categories = []; // {id?, name,icon,image_url,sort_order,active}
 let stores = [];     // {id?, name,address,image_url,sort_order,active}
+let brands = [];     // {id?, name,image_url,sort_order,active}
+let hl = { items:[], autoslide:true, interval:4000 };
 let mb = { enabled:true, title:'Mystery Box', prizes:[], rules:'' };
 let warranty = { url:'https://axfilm.com.my/warranty/' };
 let theme = { bg:"#0A0A0A", accent:"#F5C518", text:"#FFFFFF",
@@ -891,7 +913,7 @@ function setConn(on){
 }
 
 async function loadAll(){
-  deletedSlideIds=[]; deletedServiceIds=[]; deletedRewardIds=[]; deletedCategoryIds=[]; deletedStoreIds=[];
+  deletedSlideIds=[]; deletedServiceIds=[]; deletedRewardIds=[]; deletedCategoryIds=[]; deletedStoreIds=[]; deletedBrandIds=[];
   try{
     let r=await sb("gl_onboarding_slides?select=*&order=sort_order.asc",{headers:H()});
     slides=r.ok?await r.json():[];
@@ -901,19 +923,23 @@ async function loadAll(){
     categories=r.ok?await r.json():[];
     r=await sb("gl_stores?select=*&order=sort_order.asc",{headers:H()});
     stores=r.ok?await r.json():[];
+    r=await sb("gl_brands?select=*&order=sort_order.asc",{headers:H()});
+    brands=r.ok?await r.json():[];
     r=await sb("gl_rewards?select=*&order=sort_order.asc",{headers:H()});
     REWARDS_DATA=r.ok?await r.json():[];
     // style from gl_settings (id='style', data jsonb)
     r=await sb("gl_settings?select=*&id=eq.style",{headers:H()});
     if(r.ok){const rows=await r.json();if(rows[0]&&rows[0].data)theme=Object.assign(theme,rows[0].data);}
-    // mystery box + warranty settings
+    // mystery box + warranty + highlights settings
     r=await sb("gl_settings?select=*&id=eq.mysterybox",{headers:H()});
     if(r.ok){const rows=await r.json();if(rows[0]&&rows[0].data)mb=Object.assign(mb,rows[0].data);}
     r=await sb("gl_settings?select=*&id=eq.warranty",{headers:H()});
     if(r.ok){const rows=await r.json();if(rows[0]&&rows[0].data)warranty=Object.assign(warranty,rows[0].data);}
+    r=await sb("gl_settings?select=*&id=eq.highlights",{headers:H()});
+    if(r.ok){const rows=await r.json();if(rows[0]&&rows[0].data)hl=Object.assign(hl,rows[0].data);}
   }catch(e){}
   fillThemeControls();
-  renderSlides();renderServices();renderCategories();renderStores();renderPreview();
+  renderSlides();renderServices();renderCategories();renderStores();renderBrands();renderPreview();
 }
 
 /* ---------- ONBOARDING editor ---------- */
@@ -1160,16 +1186,31 @@ function renderStores(){
   const el=document.getElementById('storeList'); if(!el) return;
   if(!stores.length){el.innerHTML='<div class="empty">No stores yet. Add your outlets.</div>';return;}
   el.innerHTML="";
+  const DAYS=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
   stores.forEach((st,i)=>{
+    st.hours=st.hours||{};
     const card=document.createElement('div');card.className="card";
     card.innerHTML=`
       <div class="card-head">
         <div class="card-title">${esc(st.name||'Store')}</div>
         <button class="btn btn-danger btn-sm" onclick="delStore(${i})">Delete</button>
       </div>
-      <label>Name</label><input value="${esc(st.name||'')}" oninput="updStore(${i},'name',this.value)" placeholder="PJS 13 HQ">
-      <label style="margin-top:8px">Address</label><input value="${esc(st.address||'')}" oninput="updStore(${i},'address',this.value)" placeholder="99, Jalan PJS 13, Petaling Jaya">
-      <label style="margin-top:8px">Order</label><input type="number" value="${st.sort_order??(i+1)}" oninput="updStore(${i},'sort_order',this.value)">
+      <label>Name</label><input value="${esc(st.name||'')}" oninput="updStore(${i},'name',this.value)" placeholder="Bangsar">
+      <label style="margin-top:8px">Address</label><input value="${esc(st.address||'')}" oninput="updStore(${i},'address',this.value)" placeholder="99, Jalan Maarof, Bangsar, KL">
+      <div class="row">
+        <div><label>Contact number</label><input value="${esc(st.contact_number||'')}" oninput="updStore(${i},'contact_number',this.value)" placeholder="+60125673853"></div>
+        <div><label>WhatsApp (digits only)</label><input value="${esc(st.whatsapp||'')}" oninput="updStore(${i},'whatsapp',this.value)" placeholder="60125673853"></div>
+      </div>
+      <div class="row">
+        <div><label>Latitude</label><input type="number" step="any" value="${st.lat??''}" oninput="updStore(${i},'lat',this.value)" placeholder="3.1390"></div>
+        <div><label>Longitude</label><input type="number" step="any" value="${st.lng??''}" oninput="updStore(${i},'lng',this.value)" placeholder="101.6869"></div>
+      </div>
+      <div class="svc-hint" style="margin-top:4px">Tip: get lat/lng from Google Maps — right-click the spot → click the coordinates to copy.</div>
+      <div class="svc-sub">Operating hours</div>
+      ${DAYS.map(d=>`<div class="mini-row"><span style="width:42px;font-size:12px;color:var(--muted)">${d}</span>
+        <input value="${esc(st.hours[d]||'')}" oninput="updStoreHour(${i},'${d}',this.value)" placeholder="08:00am - 08:00pm"></div>`).join('')}
+      <button class="btn btn-ghost btn-sm" onclick="copyHoursDown(${i})" style="margin-top:6px">↧ Copy Mon to all days</button>
+      <label style="margin-top:12px">Order</label><input type="number" value="${st.sort_order??(i+1)}" oninput="updStore(${i},'sort_order',this.value)">
       <label style="margin-top:8px">Photo</label>
       <div style="display:flex;align-items:center;gap:10px;margin-top:4px">
         <div>${st.image_url?`<img src="${st.image_url}" style="height:48px;width:64px;object-fit:cover;border-radius:8px;border:1px solid var(--line)">`:'<span style="color:var(--muted);font-size:12px">No photo</span>'}</div>
@@ -1178,9 +1219,15 @@ function renderStores(){
     el.appendChild(card);
   });
 }
-function addStore(){stores.push({name:"New store",address:"",image_url:null,sort_order:stores.length+1,active:true});renderStores();}
+function addStore(){stores.push({name:"New store",address:"",contact_number:"",whatsapp:"",hours:{},lat:null,lng:null,image_url:null,sort_order:stores.length+1,active:true});renderStores();}
 function delStore(i){if(stores[i].id)deletedStoreIds.push(stores[i].id);stores.splice(i,1);renderStores();}
-function updStore(i,f,v){stores[i][f]=(f==='sort_order')?(v===''?0:Number(v)):v;}
+function updStore(i,f,v){
+  if(f==='sort_order')v=(v===''?0:Number(v));
+  else if(f==='lat'||f==='lng')v=(v===''?null:Number(v));
+  stores[i][f]=v;
+}
+function updStoreHour(i,d,v){stores[i].hours=stores[i].hours||{};stores[i].hours[d]=v;}
+function copyHoursDown(i){const m=stores[i].hours?.Mon||'';['Tue','Wed','Thu','Fri','Sat','Sun'].forEach(d=>stores[i].hours[d]=m);renderStores();toast("Copied Mon to all days");}
 async function uploadStorePhoto(i,input){
   const f=input.files[0]; if(!f) return; toast("Uploading…");
   const path=`store-${Date.now()}-${f.name.replace(/[^a-z0-9.]/gi,'_')}`;
@@ -1239,6 +1286,87 @@ async function uploadMbLogo(input){
   fillMbControls();toast("Mystery Box logo ✓");
 }
 function clearMbLogo(){mb.image_url=null;fillMbControls();}
+
+/* ---------- BRANDS editor ---------- */
+let deletedBrandIds = [];
+function renderBrands(){
+  const el=document.getElementById('brandList'); if(!el) return;
+  if(!brands.length){el.innerHTML='<div class="empty">No brands yet. Add your brand logos.</div>';return;}
+  el.innerHTML="";
+  brands.forEach((b,i)=>{
+    const card=document.createElement('div');card.className="card";
+    card.innerHTML=`
+      <div class="card-head">
+        <div class="card-title">${esc(b.name||'Brand')}</div>
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-ghost btn-sm" onclick="moveBrand(${i},-1)">↑</button>
+          <button class="btn btn-ghost btn-sm" onclick="moveBrand(${i},1)">↓</button>
+          <button class="btn btn-danger btn-sm" onclick="delBrand(${i})">Delete</button>
+        </div>
+      </div>
+      <label>Name</label><input value="${esc(b.name||'')}" oninput="updBrand(${i},'name',this.value)" placeholder="LLumar">
+      <label style="margin-top:8px">Logo</label>
+      <div style="display:flex;align-items:center;gap:10px;margin-top:4px">
+        <div>${b.image_url?`<img src="${b.image_url}" style="height:48px;width:48px;object-fit:contain;border-radius:8px;border:1px solid var(--line);background:#fff">`:'<span style="color:var(--muted);font-size:12px">No logo</span>'}</div>
+        <input type="file" accept="image/*" onchange="uploadBrandLogo(${i},this)">
+      </div>`;
+    el.appendChild(card);
+  });
+}
+function addBrand(){brands.push({name:"New brand",image_url:null,sort_order:brands.length+1,active:true});renderBrands();}
+function delBrand(i){if(brands[i].id)deletedBrandIds.push(brands[i].id);brands.splice(i,1);renderBrands();}
+function moveBrand(i,d){const j=i+d;if(j<0||j>=brands.length)return;[brands[i],brands[j]]=[brands[j],brands[i]];brands.forEach((b,k)=>b.sort_order=k+1);renderBrands();}
+function updBrand(i,f,v){brands[i][f]=v;}
+async function uploadBrandLogo(i,input){
+  const f=input.files[0]; if(!f) return; toast("Uploading…");
+  const path=`brand-${Date.now()}-${f.name.replace(/[^a-z0-9.]/gi,'_')}`;
+  const r=await fetch(`${SUPA_URL}/storage/v1/object/${BUCKET}/${path}`,{method:"POST",headers:{apikey:SVC_KEY,Authorization:`Bearer ${SVC_KEY}`},body:f});
+  if(!r.ok){toast("Upload failed — is gl-images bucket public?");return;}
+  brands[i].image_url=`${SUPA_URL}/storage/v1/object/public/${BUCKET}/${path}`;
+  renderBrands();toast("Brand logo ✓");
+}
+
+/* ---------- HIGHLIGHTS editor ---------- */
+function fillHlControls(){
+  const g=id=>document.getElementById(id);
+  if(g('hlAuto')) g('hlAuto').checked=hl.autoslide!==false;
+  if(g('hlInterval')) g('hlInterval').value=(hl.interval||4000)/1000;
+  renderHl();
+}
+function renderHl(){
+  const el=document.getElementById('hlList'); if(!el) return;
+  hl.items=hl.items||[];
+  el.innerHTML="";
+  hl.items.forEach((h,i)=>{
+    const card=document.createElement('div');card.className="card";
+    card.innerHTML=`
+      <div class="card-head">
+        <div class="card-title">${esc(h.text||'Highlight')}</div>
+        <button class="btn btn-danger btn-sm" onclick="delHl(${i})">Delete</button>
+      </div>
+      <label>Text</label><input value="${esc(h.text||'')}" oninput="updHl(${i},'text',this.value)" placeholder="Free Car Wash Guarantee">
+      <label style="margin-top:8px">Background colour (used if no photo)</label>
+      <input value="${esc(h.color||'#7a1f1f')}" oninput="updHl(${i},'color',this.value)" placeholder="#7a1f1f">
+      <label style="margin-top:8px">Photo (optional)</label>
+      <div style="display:flex;align-items:center;gap:10px;margin-top:4px">
+        <div>${h.image_url?`<img src="${h.image_url}" style="height:40px;width:64px;object-fit:cover;border-radius:6px;border:1px solid var(--line)">`:'<span style="color:var(--muted);font-size:12px">No photo</span>'}</div>
+        <input type="file" accept="image/*" onchange="uploadHlPhoto(${i},this)">
+        ${h.image_url?`<button class="btn btn-ghost btn-sm" onclick="hl.items[${i}].image_url=null;renderHl()">Remove</button>`:''}
+      </div>`;
+    el.appendChild(card);
+  });
+}
+function addHl(){hl.items=hl.items||[];hl.items.push({text:'New highlight',color:'#7a1f1f',image_url:null});renderHl();}
+function delHl(i){hl.items.splice(i,1);renderHl();}
+function updHl(i,f,v){hl.items[i][f]=v;}
+async function uploadHlPhoto(i,input){
+  const f=input.files[0]; if(!f) return; toast("Uploading…");
+  const path=`hl-${Date.now()}-${f.name.replace(/[^a-z0-9.]/gi,'_')}`;
+  const r=await fetch(`${SUPA_URL}/storage/v1/object/${BUCKET}/${path}`,{method:"POST",headers:{apikey:SVC_KEY,Authorization:`Bearer ${SVC_KEY}`},body:f});
+  if(!r.ok){toast("Upload failed — is gl-images bucket public?");return;}
+  hl.items[i].image_url=`${SUPA_URL}/storage/v1/object/public/${BUCKET}/${path}`;
+  renderHl();toast("Highlight photo ✓");
+}
 
 
 /* ---------- generic update ---------- */
@@ -1422,6 +1550,7 @@ async function saveAll(){
     services.forEach((s,i)=>s.sort_order=i+1);
     categories.forEach((c,i)=>{ if(c.sort_order==null) c.sort_order=i+1; });
     stores.forEach((st,i)=>{ if(st.sort_order==null) st.sort_order=i+1; });
+    brands.forEach((b,i)=>{ if(b.sort_order==null) b.sort_order=i+1; });
 
     // wipe + reinsert is simplest for a small admin set:
     // upsert slides
@@ -1447,16 +1576,26 @@ async function saveAll(){
     }
     // stores
     for(const st of stores){
-      const body={name:st.name,address:st.address||null,image_url:st.image_url||null,sort_order:Number(st.sort_order||0),active:st.active!==false};
+      const body={name:st.name,address:st.address||null,image_url:st.image_url||null,sort_order:Number(st.sort_order||0),active:st.active!==false,
+        contact_number:st.contact_number||null,whatsapp:(st.whatsapp||'').replace(/[^0-9]/g,'')||null,
+        hours:(st.hours&&Object.keys(st.hours).length)?st.hours:null,
+        lat:st.lat??null,lng:st.lng??null};
       if(st.id){await sb(`gl_stores?id=eq.${st.id}`,{method:"PATCH",headers:H(),body:JSON.stringify(body)});}
       else{const r=await sb("gl_stores",{method:"POST",headers:H({Prefer:"return=representation"}),body:JSON.stringify(body)});if(r.ok){const j=await r.json();st.id=j[0].id;}}
+    }
+    // brands
+    for(const b of brands){
+      const body={name:b.name,image_url:b.image_url||null,sort_order:Number(b.sort_order||0),active:b.active!==false};
+      if(b.id){await sb(`gl_brands?id=eq.${b.id}`,{method:"PATCH",headers:H(),body:JSON.stringify(body)});}
+      else{const r=await sb("gl_brands",{method:"POST",headers:H({Prefer:"return=representation"}),body:JSON.stringify(body)});if(r.ok){const j=await r.json();b.id=j[0].id;}}
     }
     // delete removed rows from Supabase
     for(const id of deletedSlideIds){ await sb(`gl_onboarding_slides?id=eq.${id}`,{method:"DELETE",headers:H()}); }
     for(const id of deletedServiceIds){ await sb(`gl_services?id=eq.${id}`,{method:"DELETE",headers:H()}); }
     for(const id of deletedCategoryIds){ await sb(`gl_categories?id=eq.${id}`,{method:"DELETE",headers:H()}); }
     for(const id of deletedStoreIds){ await sb(`gl_stores?id=eq.${id}`,{method:"DELETE",headers:H()}); }
-    deletedSlideIds=[]; deletedServiceIds=[]; deletedCategoryIds=[]; deletedStoreIds=[];
+    for(const id of deletedBrandIds){ await sb(`gl_brands?id=eq.${id}`,{method:"DELETE",headers:H()}); }
+    deletedSlideIds=[]; deletedServiceIds=[]; deletedCategoryIds=[]; deletedStoreIds=[]; deletedBrandIds=[];
     // rewards
     REWARDS_DATA.forEach((r,i)=>r.sort_order=i+1);
     for(const r of REWARDS_DATA){
@@ -1473,6 +1612,7 @@ async function saveAll(){
     // mystery box + warranty settings
     await sb("gl_settings",{method:"POST",headers:H({Prefer:"resolution=merge-duplicates"}),body:JSON.stringify({id:"mysterybox",data:mb})});
     await sb("gl_settings",{method:"POST",headers:H({Prefer:"resolution=merge-duplicates"}),body:JSON.stringify({id:"warranty",data:warranty})});
+    await sb("gl_settings",{method:"POST",headers:H({Prefer:"resolution=merge-duplicates"}),body:JSON.stringify({id:"highlights",data:hl})});
     toast("Saved ✓  Customer app will reflect changes on reload");
   }catch(e){toast("Save error — check console");console.error(e);}
 }
@@ -1687,6 +1827,8 @@ function switchTab(t){
   if(t==='services')setPv('svc');
   else if(t==='categories')renderCategories();
   else if(t==='stores')renderStores();
+  else if(t==='brands')renderBrands();
+  else if(t==='highlights')fillHlControls();
   else if(t==='mysterybox')fillMbControls();
   else if(t==='warranty')fillWarrantyControls();
   else if(t==='onboarding')setPv('onb');
