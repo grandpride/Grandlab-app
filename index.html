@@ -431,8 +431,10 @@
   .sd-checkout-bar{position:absolute;bottom:0;left:0;right:0;padding:14px 18px calc(14px + env(safe-area-inset-bottom));
     background:linear-gradient(to top,var(--bg) 60%,transparent);}
   .sd-bar-row{display:flex;gap:10px;}
-  .sd-buy{flex:1;}
-  .sd-action{flex:0 0 auto;background:#ff4d2e !important;color:#fff !important;border:none;white-space:nowrap;padding-left:16px;padding-right:16px;}
+  .sd-buy{flex:1;min-width:0;}
+  .sd-action{flex:1;min-width:0;background:#ff4d2e !important;color:#fff !important;border:none;white-space:nowrap;
+    overflow:hidden;text-overflow:ellipsis;font-size:14px;}
+  .sd-action.claimed{background:var(--surface2) !important;color:var(--muted) !important;cursor:not-allowed;}
   /* select a car */
   .sd-cars{display:flex;gap:10px;overflow-x:auto;padding-bottom:4px;}
   .sd-cars::-webkit-scrollbar{display:none;}
@@ -967,6 +969,7 @@ let HIGHLIGHTS = { items:[], autoslide:true, interval:4000 };
 let ACTIONBTN = { enabled:false, label:'Free Car Wash', service_id:null };
 let POPUP = { enabled:false, posters:[] };
 let FLASH = [];   // gl_flash_deals rows
+let CLAIMS = [];  // gl_claims rows (free services already claimed by this user)
 let MYSTERY = {
   enabled:true, title:'Mystery Box',
   prizes:[{name:'Interior Sterilization'},{name:'Mineral Off'},{name:'Box Free Sig. Wash'},
@@ -1067,6 +1070,15 @@ async function fetchFlash(){
   }catch(e){}
   return FLASH;
 }
+async function fetchClaims(){
+  if(!SESSION?.user?.id){ CLAIMS=[]; return CLAIMS; }
+  try{
+    const r=await fetch(`${SUPA_URL}/rest/v1/gl_claims?select=*&owner_id=eq.${SESSION.user.id}`,{headers:authHeaders()});
+    if(r.ok) CLAIMS=await r.json();
+  }catch(e){}
+  return CLAIMS;
+}
+function hasClaimed(serviceId){ return CLAIMS.some(c=>String(c.service_id)===String(serviceId)); }
 async function fetchCarBrands(){
   try{
     const [rb,rm]=await Promise.all([
@@ -2363,7 +2375,7 @@ function startFlashTimers(){
 }
 function openFlash(id){
   const d=FLASH.find(x=>String(x.id)===String(id)); if(!d) return;
-  if(d.service_id){ openService(d.service_id); return; }
+  if(d.service_id){ openService(d.service_id, 'flash'); return; }
   // no linked service — show a simple grab sheet
   showFlashGrab(d);
 }
@@ -2407,18 +2419,19 @@ async function grabFlash(id, btn){
 /* ---------- Service detail page (full) ---------- */
 let SVC_SEL = { service:null, variIdx:0, qty:1, addons:{}, storeIdx:0, carId:null };
 
-async function openService(id){
+async function openService(id, from){
   const s=SERVICES.find(x=>String(x.id)===String(id)); if(!s) return;
   if(IS_GUEST){ toast("Sign in to book this service"); return; }
   await Promise.allSettled([
     (!STORES.length)?fetchStores():Promise.resolve(),
-    (SESSION?.user?.id && !VEHICLES.length)?fetchVehicles():Promise.resolve()
+    (SESSION?.user?.id && !VEHICLES.length)?fetchVehicles():Promise.resolve(),
+    (SESSION?.user?.id && ACTIONBTN.enabled && !CLAIMS.length)?fetchClaims():Promise.resolve()
   ]);
   // reset selection — preselect the active vehicle if there's one saved
   let preCar=null;
   try{ const av=localStorage.getItem('gl_active_vehicle'); if(av && VEHICLES.some(v=>String(v.id)===String(av))) preCar=av; }catch(e){}
   if(!preCar && VEHICLES.length===1) preCar=VEHICLES[0].id;
-  SVC_SEL = { service:s, variIdx:0, qty:1, addons:{}, storeIdx:0, carId:preCar };
+  SVC_SEL = { service:s, variIdx:0, qty:1, addons:{}, storeIdx:0, carId:preCar, from:from||'category' };
   renderServiceDetail();
 }
 
@@ -2463,7 +2476,9 @@ function money(n){ return Number(n||0).toLocaleString('en-MY',{minimumFractionDi
 
 function renderServiceDetail(){
   const s=SVC_SEL.service; if(!s) return;
-  const backCat = s.category ? `onclick="openCategory('${(s.category||'').replace(/'/g,"\\'")}')"` : `onclick="routeTab('home')"`;
+  const backCat = (SVC_SEL.from==='flash'||SVC_SEL.from==='home'||!s.category)
+    ? `onclick="routeTab('home')"`
+    : `onclick="openCategory('${(s.category||'').replace(/'/g,"\\'")}')"`;
   const media = Array.isArray(s.media)&&s.media.length ? s.media
                 : (s.image_url?[{type:'image',url:s.image_url}]:[]);
   const slides = media.map(m=>m.type==='video'
@@ -2558,8 +2573,8 @@ function renderServiceDetail(){
     </div>
     <div class="sd-checkout-bar">
       <div class="sd-bar-row">
-        ${actionBtnHtml(s)}
         <button class="btn btn-primary sd-buy" onclick="checkoutService()">Buy Now · RM${money(svcDetailPrice())}</button>
+        ${actionBtnHtml(s)}
       </div>
     </div>`;
 }
@@ -2569,7 +2584,32 @@ function actionBtnHtml(currentSvc){
   if(!ACTIONBTN || ACTIONBTN.enabled===false || !ACTIONBTN.service_id) return '';
   // don't show the button on its own target service page
   if(String(ACTIONBTN.service_id)===String(currentSvc.id)) return '';
-  return `<button class="btn sd-action" onclick="openService('${ACTIONBTN.service_id}')">⭐ ${esc(ACTIONBTN.label||'Free')}</button>`;
+  const claimed = hasClaimed(ACTIONBTN.service_id);
+  if(claimed){
+    return `<button class="btn sd-action claimed" disabled>✓ Claimed</button>`;
+  }
+  return `<button class="btn sd-action" onclick="claimAction()">⭐ ${esc(ACTIONBTN.label||'Free')}</button>`;
+}
+async function claimAction(){
+  if(IS_GUEST){ toast('Sign in to claim'); return; }
+  if(!ACTIONBTN.service_id) return;
+  if(hasClaimed(ACTIONBTN.service_id)){ toast('Already claimed'); return; }
+  const btn=document.querySelector('.sd-action');
+  if(btn){ btn.disabled=true; btn.textContent='Claiming…'; }
+  try{
+    const r=await fetch(`${SUPA_URL}/rest/v1/gl_claims`,{method:'POST',headers:authHeaders(),
+      body:JSON.stringify({owner_id:SESSION.user.id, service_id:ACTIONBTN.service_id, label:ACTIONBTN.label||'Free', status:'claimed'})});
+    if(r.ok){
+      CLAIMS.push({service_id:ACTIONBTN.service_id, label:ACTIONBTN.label});
+      toast('🎉 '+(ACTIONBTN.label||'Free')+' claimed! Show this at the outlet.');
+      renderServiceDetail();
+    } else if(r.status===409){
+      // unique violation → already claimed
+      CLAIMS.push({service_id:ACTIONBTN.service_id});
+      toast('You already claimed this');
+      renderServiceDetail();
+    } else { toast('Could not claim — try again'); if(btn){btn.disabled=false;btn.textContent='⭐ '+(ACTIONBTN.label||'Free');} }
+  }catch(e){ toast('Error claiming'); if(btn){btn.disabled=false;} }
 }
 function selCar(id){
   SVC_SEL.carId=id;
