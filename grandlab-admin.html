@@ -152,6 +152,7 @@
       <div class="tabs">
         <button class="tab active" data-tab="onboarding" onclick="switchTab('onboarding')">Onboarding</button>
         <button class="tab" data-tab="services" onclick="switchTab('services')">Services</button>
+        <button class="tab" data-tab="categories" onclick="switchTab('categories')">Categories</button>
         <button class="tab" data-tab="theme" onclick="switchTab('theme')">Theme</button>
         <button class="tab" data-tab="otppage" onclick="switchTab('otppage')">OTP Page</button>
         <button class="tab" data-tab="refpage" onclick="switchTab('refpage')">Referral Page</button>
@@ -516,6 +517,13 @@
         <div class="add-row"><button class="btn btn-ghost" onclick="addService()">+ Add service</button></div>
       </div>
 
+      <!-- CATEGORIES -->
+      <div class="panel" id="panel-categories">
+        <div class="hint">Categories group your services on the Services tab. Each service picks its category by name. Drag order is set by the “Order” number (lower = first).</div>
+        <div id="catList" style="margin-top:14px"></div>
+        <div class="add-row"><button class="btn btn-ghost" onclick="addCategory()">+ Add category</button></div>
+      </div>
+
       <!-- THEME / STYLE -->
       <div class="panel" id="panel-theme">
         <div class="section-h">App Background Photo</div>
@@ -739,6 +747,7 @@ const ICONS = ["🛡️","📋","✨","🚗","💧","🧴","🪄","⭐","🏁","
 
 let slides = [];     // {id?, eyebrow,title,glyph,image_url,sort_order,active}
 let services = [];   // {id?, name,category,base_price,price_by_type,active,sort_order}
+let categories = []; // {id?, name,icon,image_url,sort_order,active}
 let theme = { bg:"#0A0A0A", accent:"#F5C518", text:"#FFFFFF",
   logoSize:96, logoUrl:null, eyebrowSize:15, eyebrowColor:"#F5C518", titleSize:40, titleColor:"#FFFFFF",
   btnColor:"#F5C518", btnHeight:58, panelSize:78, btnNext:"Next", btnStart:"Get started", btnBack:"Back",
@@ -827,12 +836,14 @@ function setConn(on){
 }
 
 async function loadAll(){
-  deletedSlideIds=[]; deletedServiceIds=[]; deletedRewardIds=[];
+  deletedSlideIds=[]; deletedServiceIds=[]; deletedRewardIds=[]; deletedCategoryIds=[];
   try{
     let r=await sb("gl_onboarding_slides?select=*&order=sort_order.asc",{headers:H()});
     slides=r.ok?await r.json():[];
     r=await sb("gl_services?select=*&order=sort_order.asc",{headers:H()});
     services=r.ok?await r.json():[];
+    r=await sb("gl_categories?select=*&order=sort_order.asc",{headers:H()});
+    categories=r.ok?await r.json():[];
     r=await sb("gl_rewards?select=*&order=sort_order.asc",{headers:H()});
     REWARDS_DATA=r.ok?await r.json():[];
     // style from gl_settings (id='style', data jsonb)
@@ -840,7 +851,7 @@ async function loadAll(){
     if(r.ok){const rows=await r.json();if(rows[0]&&rows[0].data)theme=Object.assign(theme,rows[0].data);}
   }catch(e){}
   fillThemeControls();
-  renderSlides();renderServices();renderPreview();
+  renderSlides();renderServices();renderCategories();renderPreview();
 }
 
 /* ---------- ONBOARDING editor ---------- */
@@ -928,7 +939,13 @@ function renderServices(){
       </div>
       <div class="row">
         <div><label>Name</label><input value="${esc(s.name||'')}" oninput="upd('svc',${i},'name',this.value)"></div>
-        <div><label>Category</label><input value="${esc(s.category||'')}" oninput="upd('svc',${i},'category',this.value)" placeholder="Wash / Coating / PPF"></div>
+        <div><label>Category</label>
+          <select onchange="upd('svc',${i},'category',this.value)">
+            <option value="">— None —</option>
+            ${categories.map(c=>`<option value="${esc(c.name)}" ${(s.category||'')===c.name?'selected':''}>${esc(c.name)}</option>`).join('')}
+            ${(s.category && !categories.some(c=>c.name===s.category))?`<option value="${esc(s.category)}" selected>${esc(s.category)} (unlisted)</option>`:''}
+          </select>
+        </div>
       </div>
       <label><input type="checkbox" style="width:auto;margin-right:7px" ${sized?'checked':''} onchange="toggleSized(${i},this.checked)">Size-based pricing</label>
       ${sized?`
@@ -946,6 +963,64 @@ function addService(){services.push({name:"New service",category:"",base_price:0
 function delService(i){if(services[i].id)deletedServiceIds.push(services[i].id);services.splice(i,1);renderServices();renderPreview();}
 function toggleSized(i,on){services[i].price_by_type=on?{Sedan:0,SUV:0,MPV:0,Supercar:0}:null;renderServices();renderPreview();}
 function updPrice(i,t,v){if(!services[i].price_by_type)services[i].price_by_type={};services[i].price_by_type[t]=v===''?null:Number(v);renderPreview();}
+
+/* ---------- CATEGORIES editor ---------- */
+let deletedCategoryIds = [];
+function renderCategories(){
+  const el=document.getElementById('catList');
+  if(!el) return;
+  if(!categories.length){el.innerHTML='<div class="empty">No categories yet. Add your first one (e.g. Wash, Coating, PPF, Tint).</div>';return;}
+  el.innerHTML="";
+  categories.forEach((c,i)=>{
+    const svcCount=services.filter(s=>(s.category||'')===c.name).length;
+    const card=document.createElement('div');card.className="card";
+    card.innerHTML=`
+      <div class="card-head">
+        <div class="card-title">${esc(c.name||'Category')} <span style="color:var(--muted);font-weight:400;font-size:12px">· ${svcCount} ${svcCount===1?'service':'services'}</span></div>
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-ghost btn-sm" onclick="moveCategory(${i},-1)">↑</button>
+          <button class="btn btn-ghost btn-sm" onclick="moveCategory(${i},1)">↓</button>
+          <button class="btn btn-danger btn-sm" onclick="delCategory(${i})">Delete</button>
+        </div>
+      </div>
+      <div class="row">
+        <div><label>Name</label><input value="${esc(c.name||'')}" oninput="updCat(${i},'name',this.value)" placeholder="Coating"></div>
+        <div><label>Icon (emoji)</label><input value="${esc(c.icon||'')}" oninput="updCat(${i},'icon',this.value)" placeholder="✨" maxlength="4"></div>
+      </div>
+      <label>Order</label>
+      <input type="number" value="${c.sort_order??(i+1)}" oninput="updCat(${i},'sort_order',this.value)">
+      <label style="margin-top:8px">Photo (optional — overrides the icon)</label>
+      <div style="display:flex;align-items:center;gap:10px;margin-top:4px">
+        <div id="catThumb${i}">${c.image_url?`<img src="${c.image_url}" style="height:48px;width:48px;object-fit:cover;border-radius:8px;border:1px solid var(--line)">`:'<span style="color:var(--muted);font-size:12px">No photo</span>'}</div>
+        <input type="file" accept="image/*" onchange="uploadCatPhoto(${i},this)">
+        ${c.image_url?`<button class="btn btn-ghost btn-sm" onclick="clearCatPhoto(${i})">Remove</button>`:''}
+      </div>
+    `;
+    el.appendChild(card);
+  });
+}
+function addCategory(){categories.push({name:"New category",icon:"✨",image_url:null,sort_order:categories.length+1,active:true});renderCategories();renderServices();}
+function delCategory(i){if(categories[i].id)deletedCategoryIds.push(categories[i].id);categories.splice(i,1);renderCategories();renderServices();}
+function moveCategory(i,d){const j=i+d;if(j<0||j>=categories.length)return;[categories[i],categories[j]]=[categories[j],categories[i]];categories.forEach((c,k)=>c.sort_order=k+1);renderCategories();}
+function updCat(i,field,val){
+  if(field==='sort_order'){categories[i].sort_order=val===''?0:Number(val);return;}
+  const old=categories[i].name;
+  categories[i][field]=val;
+  // keep services in sync if a category is renamed
+  if(field==='name' && old && old!==val){ services.forEach(s=>{ if((s.category||'')===old) s.category=val; }); renderServices(); }
+  if(field==='name') renderServices();
+}
+async function uploadCatPhoto(i,input){
+  const f=input.files[0]; if(!f) return;
+  toast("Uploading…");
+  const path=`cat-${Date.now()}-${f.name.replace(/[^a-z0-9.]/gi,'_')}`;
+  const r=await fetch(`${SUPA_URL}/storage/v1/object/${BUCKET}/${path}`,{
+    method:"POST",headers:{apikey:SVC_KEY,Authorization:`Bearer ${SVC_KEY}`},body:f});
+  if(!r.ok){ toast("Upload failed — is gl-images bucket public?"); return; }
+  categories[i].image_url=`${SUPA_URL}/storage/v1/object/public/${BUCKET}/${path}`;
+  renderCategories(); toast("Photo uploaded ✓");
+}
+function clearCatPhoto(i){categories[i].image_url=null;renderCategories();}
 
 /* ---------- generic update ---------- */
 function upd(kind,i,field,val){
@@ -1125,6 +1200,7 @@ async function saveAll(){
     // re-sort
     slides.forEach((s,i)=>s.sort_order=i+1);
     services.forEach((s,i)=>s.sort_order=i+1);
+    categories.forEach((c,i)=>{ if(c.sort_order==null) c.sort_order=i+1; });
 
     // wipe + reinsert is simplest for a small admin set:
     // upsert slides
@@ -1138,10 +1214,17 @@ async function saveAll(){
       if(s.id){await sb(`gl_services?id=eq.${s.id}`,{method:"PATCH",headers:H(),body:JSON.stringify(body)});}
       else{const r=await sb("gl_services",{method:"POST",headers:H({Prefer:"return=representation"}),body:JSON.stringify(body)});if(r.ok){const j=await r.json();s.id=j[0].id;}}
     }
+    // categories (saved alongside services; matched to services by name)
+    for(const c of categories){
+      const body={name:c.name,icon:c.icon||null,image_url:c.image_url||null,sort_order:Number(c.sort_order||0),active:c.active!==false};
+      if(c.id){await sb(`gl_categories?id=eq.${c.id}`,{method:"PATCH",headers:H(),body:JSON.stringify(body)});}
+      else{const r=await sb("gl_categories",{method:"POST",headers:H({Prefer:"return=representation"}),body:JSON.stringify(body)});if(r.ok){const j=await r.json();c.id=j[0].id;}}
+    }
     // delete removed rows from Supabase
     for(const id of deletedSlideIds){ await sb(`gl_onboarding_slides?id=eq.${id}`,{method:"DELETE",headers:H()}); }
     for(const id of deletedServiceIds){ await sb(`gl_services?id=eq.${id}`,{method:"DELETE",headers:H()}); }
-    deletedSlideIds=[]; deletedServiceIds=[];
+    for(const id of deletedCategoryIds){ await sb(`gl_categories?id=eq.${id}`,{method:"DELETE",headers:H()}); }
+    deletedSlideIds=[]; deletedServiceIds=[]; deletedCategoryIds=[];
     // rewards
     REWARDS_DATA.forEach((r,i)=>r.sort_order=i+1);
     for(const r of REWARDS_DATA){
@@ -1367,6 +1450,7 @@ function switchTab(t){
   document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active',x.dataset.tab===t));
   document.querySelectorAll('.panel').forEach(p=>p.classList.toggle('active',p.id==='panel-'+t));
   if(t==='services')setPv('svc');
+  else if(t==='categories')renderCategories();
   else if(t==='onboarding')setPv('onb');
   else if(t==='otppage'){fillOtpControls();setPv('otp');}
   else if(t==='refpage'){fillRefControls();setPv('ref');}

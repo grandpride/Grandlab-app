@@ -357,6 +357,18 @@
   .svc-card .nm{font-size:16px;font-weight:700;margin-top:3px;}
   .svc-card .ds{font-size:13px;color:var(--muted);margin-top:5px;line-height:1.4;}
   .svc-card .pr{font-size:15px;font-weight:800;margin-top:8px;color:var(--text);}
+  /* category cards */
+  .cat-grid{margin-top:14px;display:flex;flex-direction:column;gap:12px;}
+  .cat-card{display:flex;align-items:center;gap:14px;background:var(--surface);
+    border:1px solid var(--line);border-radius:16px;padding:14px;cursor:pointer;transition:.12s;}
+  .cat-card:active{transform:scale(.99);}
+  .cat-card .cat-img{width:64px;height:64px;border-radius:12px;object-fit:cover;background:var(--surface2);flex:0 0 auto;}
+  .cat-card .cat-ico{width:64px;height:64px;border-radius:12px;display:flex;align-items:center;justify-content:center;
+    font-size:30px;background:var(--card-grad);border:1px solid var(--gold-line-soft);flex:0 0 auto;}
+  .cat-card .cat-info{flex:1;min-width:0;}
+  .cat-card .cat-nm{font-size:17px;font-weight:700;}
+  .cat-card .cat-ct{font-size:13px;color:var(--muted);margin-top:3px;}
+  .cat-card .cat-arrow{font-size:24px;color:var(--muted);flex:0 0 auto;}
   /* bottom nav */
   .botnav{display:flex;border-top:1px solid var(--line);
     background:linear-gradient(180deg,#0e0e0c,#0a0a0a);
@@ -754,6 +766,7 @@ async function verifyOtp(phone, token){
 let SESSION = null;     // { access_token, user, ... }
 let PROFILE = null;     // gl_profiles row
 let SERVICES = [];      // gl_services rows
+let CATEGORIES = [];    // gl_categories rows
 let IS_GUEST = false;
 
 function loadSession(){
@@ -815,6 +828,14 @@ async function fetchServices(){
     if(r.ok) SERVICES=await r.json();
   }catch(e){}
   return SERVICES;
+}
+async function fetchCategories(){
+  try{
+    const r=await fetch(`${SUPA_URL}/rest/v1/gl_categories?select=*&active=eq.true&order=sort_order.asc`,
+      {headers:{apikey:SUPA_ANON,Authorization:`Bearer ${SUPA_ANON}`}});
+    if(r.ok) CATEGORIES=await r.json();
+  }catch(e){}
+  return CATEGORIES;
 }
 let VEHICLES=[];
 async function fetchVehicles(){
@@ -1570,22 +1591,73 @@ function svcCard(s){
 
 async function renderServicesScreen(){
   if(!SERVICES.length) await fetchServices();
+  if(!CATEGORIES.length) await fetchCategories();
+
+  // bucket services by category name (case-insensitive); uncategorized -> "Other"
+  const norm = v => (v||'').trim().toLowerCase();
+  const countFor = catName => SERVICES.filter(s=>norm(s.category)===norm(catName)).length;
+
+  // build the card list from admin-managed categories, in their sort order
+  let cards = CATEGORIES.map(c=>{
+    const n = countFor(c.name);
+    return catCard(c.name, c.icon, c.image_url, n);
+  });
+
+  // any services whose category doesn't match a managed category -> "Other"
+  const managed = new Set(CATEGORIES.map(c=>norm(c.name)));
+  const orphans = SERVICES.filter(s=>!managed.has(norm(s.category)));
+  if(orphans.length){
+    cards.push(catCard('Other','🧽',null,orphans.length,true));
+  }
+
   appRoot.innerHTML=`
     <div class="app-scroll">
       <div class="app-h1">Our Services</div>
-      <div class="app-sub">Choose a service to book</div>
+      <div class="app-sub">Pick a category to explore</div>
       ${IS_GUEST?`<div class="guest-banner">You're browsing as a guest. <b onclick="logout()">Sign in</b> to book.</div>`:''}
-      ${SERVICES.length? SERVICES.map(s=>svcCard(s)).join('') : '<div class="guest-banner">No services yet. Add them in the admin.</div>'}
+      ${cards.length? `<div class="cat-grid">${cards.join('')}</div>`
+        : '<div class="guest-banner">No services yet. Add them in the admin.</div>'}
     </div>
     ${botnav('services')}`;
+}
+
+function catCard(name, icon, img, count, isOther){
+  const safe = (name||'').replace(/'/g,"\\'");
+  return `<div class="cat-card" onclick="openCategory('${safe}')">
+    ${img?`<img class="cat-img" src="${img}">`:`<div class="cat-ico">${icon||serviceEmoji(name)}</div>`}
+    <div class="cat-info">
+      <div class="cat-nm">${esc(name||'')}</div>
+      <div class="cat-ct">${count} ${count===1?'service':'services'}</div>
+    </div>
+    <div class="cat-arrow">›</div>
+  </div>`;
+}
+
+async function openCategory(name){
+  if(!SERVICES.length) await fetchServices();
+  const norm = v => (v||'').trim().toLowerCase();
+  const managed = new Set(CATEGORIES.map(c=>norm(c.name)));
+  let list;
+  if(name==='Other'){
+    list = SERVICES.filter(s=>!managed.has(norm(s.category)));
+  } else {
+    list = SERVICES.filter(s=>norm(s.category)===norm(name));
+  }
+  appRoot.innerHTML=`
+    <div class="topbar-app"><button class="back" onclick="routeTab('services')">‹</button><div class="ttl">${esc(name)}</div></div>
+    <div class="app-scroll" style="padding-top:14px">
+      <div class="app-sub" style="margin-bottom:10px">Choose a service to book</div>
+      ${list.length? list.map(s=>svcCard(s)).join('') : '<div class="guest-banner">No services in this category yet.</div>'}
+    </div>`;
 }
 
 function openService(id){
   const s=SERVICES.find(x=>x.id===id); if(!s) return;
   if(IS_GUEST){ toast("Sign in to book this service"); return; }
+  const backCat = s.category ? `onclick="openCategory('${(s.category||'').replace(/'/g,"\\'")}')"` : `onclick="routeTab('services')"`;
   // booking detail — placeholder for next build step
   appRoot.innerHTML=`
-    <div class="topbar-app"><button class="back" onclick="routeTab('services')">‹</button><div class="ttl">${esc(s.name||'Service')}</div></div>
+    <div class="topbar-app"><button class="back" ${backCat}>‹</button><div class="ttl">${esc(s.name||'Service')}</div></div>
     <div class="app-scroll" style="padding-top:18px">
       ${s.image_url?`<img class="img" src="${s.image_url}" style="width:100%;height:200px;object-fit:cover;border-radius:16px">`:''}
       ${s.category?`<div class="cat" style="margin-top:14px;color:var(--yellow);font-size:12px;text-transform:uppercase;font-weight:700;letter-spacing:.06em">${esc(s.category)}</div>`:''}
@@ -2047,6 +2119,7 @@ Object.defineProperty(window,'stepIndex',{get:()=>cur,set:v=>{cur=v;}});
   if(PREVIEW_HOME){
     try{ await fetchSlides(); }catch(e){ console.error('fetchSlides failed', e); }
     try{ await fetchServices(); }catch(e){ console.error('fetchServices failed', e); }
+    try{ await fetchCategories(); }catch(e){ console.error('fetchCategories failed', e); }
     try{ render(); indexScreens(); }catch(e){ console.error('render failed', e); }
     try{ enterGuest(); }catch(e){ console.error('enterGuest failed', e); }
     return;
@@ -2057,6 +2130,7 @@ Object.defineProperty(window,'stepIndex',{get:()=>cur,set:v=>{cur=v;}});
     await fetchSlides();          // loads STYLE too
     const prof = await fetchProfile();
     await fetchServices();
+    await fetchCategories();
     render();                     // build onboarding stack (hidden) for fallback
     indexScreens();
     // if the session is dead/invalid (no profile came back at all), clear it and show normal flow
