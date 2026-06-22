@@ -473,6 +473,8 @@
   .botnav .ic{display:flex;align-items:center;justify-content:center;height:22px;}
   .botnav button.on .ic svg{filter:drop-shadow(0 0 6px rgba(245,197,24,.5));}
   .field{margin-top:16px;}
+  .veh-type-tag{margin-top:12px;display:inline-block;background:var(--surface2);border:1px solid var(--gold-line-soft);
+    border-radius:20px;padding:6px 14px;font-size:13px;font-weight:600;color:var(--yellow);}
   .field label{font-size:13px;font-weight:600;color:var(--muted);display:block;margin-bottom:6px;}
   .field input{width:100%;height:52px;background:var(--surface);border:1.5px solid var(--line);
     border-radius:14px;padding:0 16px;color:var(--text);font-size:16px;outline:none;}
@@ -927,6 +929,8 @@ let SERVICES = [];      // gl_services rows
 let CATEGORIES = [];    // gl_categories rows
 let STORES = [];        // gl_stores rows
 let BRANDS = [];        // gl_brands rows
+let CAR_BRANDS = [];    // gl_car_brands rows
+let CAR_MODELS = [];    // gl_car_models rows
 let HIGHLIGHTS = { items:[], autoslide:true, interval:4000 };
 let ACTIONBTN = { enabled:false, label:'Free Car Wash', service_id:null };
 let MYSTERY = {
@@ -1020,6 +1024,17 @@ async function fetchBrands(){
     if(r.ok) BRANDS=await r.json();
   }catch(e){}
   return BRANDS;
+}
+async function fetchCarBrands(){
+  try{
+    const [rb,rm]=await Promise.all([
+      fetch(`${SUPA_URL}/rest/v1/gl_car_brands?select=*&active=eq.true&order=sort_order.asc`,{headers:{apikey:SUPA_ANON,Authorization:`Bearer ${SUPA_ANON}`}}),
+      fetch(`${SUPA_URL}/rest/v1/gl_car_models?select=*&active=eq.true&order=sort_order.asc`,{headers:{apikey:SUPA_ANON,Authorization:`Bearer ${SUPA_ANON}`}})
+    ]);
+    if(rb.ok) CAR_BRANDS=await rb.json();
+    if(rm.ok) CAR_MODELS=await rm.json();
+  }catch(e){}
+  return CAR_BRANDS;
 }
 let VEHICLES=[];
 async function fetchVehicles(){
@@ -1814,37 +1829,98 @@ function onDelVehicle(id){
   });
 }
 
-function openAddVehicle(){
+async function openAddVehicle(){
   if(IS_GUEST){ toast('Sign in to add a vehicle'); return; }
+  if(!CAR_BRANDS.length) await fetchCarBrands();
+  const hasList = CAR_BRANDS.length>0;
   appRoot.innerHTML=`
     <div class="topbar-app"><button class="back" onclick="openMyVehicles()">‹</button><div class="ttl">Add Vehicle</div></div>
     <div class="app-scroll" style="padding-top:18px">
-      <div class="app-sub" style="margin-bottom:6px">Enter your vehicle details</div>
-      <div class="field"><label>Vehicle type</label>
-        <select id="v-type" style="width:100%;height:52px;background:var(--surface);border:1.5px solid var(--line);border-radius:14px;padding:0 16px;color:var(--text);font-size:16px">
-          <option value="Car">Car</option><option value="Motorcycle">Motorcycle</option>
+      <div class="app-sub" style="margin-bottom:6px">Select your vehicle</div>
+      ${hasList?`
+      <div class="field"><label>Brand</label>
+        <select id="v-brand" onchange="onBrandPick()" style="width:100%;height:52px;background:var(--surface);border:1.5px solid var(--line);border-radius:14px;padding:0 16px;color:var(--text);font-size:16px">
+          <option value="">— Select brand —</option>
+          ${CAR_BRANDS.map(b=>`<option value="${b.id}">${esc(b.name)}</option>`).join('')}
+          <option value="__other">Other (not listed)</option>
         </select>
       </div>
-      <div class="field"><label>Brand</label><input id="v-make" placeholder="e.g. Toyota"></div>
-      <div class="field"><label>Model</label><input id="v-model" placeholder="e.g. Harrier"></div>
+      <div class="field" id="v-model-wrap" style="display:none"><label>Model</label>
+        <select id="v-model-sel" onchange="onModelPick()" style="width:100%;height:52px;background:var(--surface);border:1.5px solid var(--line);border-radius:14px;padding:0 16px;color:var(--text);font-size:16px"></select>
+      </div>
+      <div id="v-type-tag" class="veh-type-tag" style="display:none"></div>
+      `:''}
+      <div id="v-manual" style="display:${hasList?'none':'block'}">
+        <div class="field"><label>Vehicle type</label>
+          <select id="v-type" style="width:100%;height:52px;background:var(--surface);border:1.5px solid var(--line);border-radius:14px;padding:0 16px;color:var(--text);font-size:16px">
+            <option value="Sedan">Sedan</option><option value="SUV">SUV</option><option value="MPV">MPV</option><option value="Supercar">Supercar</option><option value="Motorcycle">Motorcycle</option>
+          </select>
+        </div>
+        <div class="field"><label>Brand</label><input id="v-make" placeholder="e.g. Toyota"></div>
+        <div class="field"><label>Model</label><input id="v-model" placeholder="e.g. Harrier"></div>
+      </div>
       <div class="field"><label>Colour</label><input id="v-color" placeholder="e.g. Black"></div>
       <div class="field"><label>Plate number</label><input id="v-plate" placeholder="e.g. BQM 6833" style="text-transform:uppercase"></div>
       <div class="helper err" id="v-err" style="margin-top:10px"></div>
       <button class="btn btn-primary" style="margin-top:18px" id="v-save">Add Vehicle</button>
     </div>`;
   document.getElementById('v-save').onclick=async()=>{
+    let make, model, car_type, brand_id=null, model_id=null;
+    const manualVisible = document.getElementById('v-manual').style.display!=='none';
+    if(hasList && !manualVisible){
+      const bId=document.getElementById('v-brand').value;
+      const mId=document.getElementById('v-model-sel').value;
+      const b=CAR_BRANDS.find(x=>String(x.id)===String(bId));
+      const m=CAR_MODELS.find(x=>String(x.id)===String(mId));
+      if(!b||!m){document.getElementById('v-err').textContent="Please select a brand and model.";return;}
+      make=b.name; model=m.name; car_type=m.type; brand_id=b.id; model_id=m.id;
+    } else {
+      make=document.getElementById('v-make').value.trim();
+      model=document.getElementById('v-model').value.trim();
+      car_type=document.getElementById('v-type').value;
+      if(!make||!model){document.getElementById('v-err').textContent="Brand and model are required.";return;}
+    }
     const plate=document.getElementById('v-plate').value.trim().toUpperCase();
-    const make=document.getElementById('v-make').value.trim();
-    const model=document.getElementById('v-model').value.trim();
-    if(!make||!model){document.getElementById('v-err').textContent="Brand and model are required.";return;}
-    const ok=await addVehicle({plate,make,model,color:document.getElementById('v-color').value.trim(),
-      car_type:document.getElementById('v-type').value});
+    const ok=await addVehicle({plate,make,model,car_type,brand_id,model_id,
+      color:document.getElementById('v-color').value.trim()});
     if(ok){
       if(VEHICLES[0]) try{ localStorage.setItem('gl_active_vehicle', VEHICLES[0].id); }catch(e){}
       toast('Vehicle added ✓');renderHome();
     }
     else document.getElementById('v-err').textContent="Couldn't save — try again.";
   };
+}
+
+function onBrandPick(){
+  const bId=document.getElementById('v-brand').value;
+  const wrap=document.getElementById('v-model-wrap');
+  const manual=document.getElementById('v-manual');
+  const tag=document.getElementById('v-type-tag');
+  if(tag) tag.style.display='none';
+  if(bId==='__other'){ wrap.style.display='none'; manual.style.display='block'; return; }
+  manual.style.display='none';
+  if(!bId){ wrap.style.display='none'; return; }
+  const models=CAR_MODELS.filter(m=>String(m.brand_id)===String(bId));
+  const sel=document.getElementById('v-model-sel');
+  sel.innerHTML=`<option value="">— Select model —</option>`+models.map(m=>`<option value="${m.id}">${esc(m.name)}</option>`).join('')+`<option value="__other">Other (not listed)</option>`;
+  wrap.style.display='block';
+}
+function onModelPick(){
+  const mId=document.getElementById('v-model-sel').value;
+  const manual=document.getElementById('v-manual');
+  const tag=document.getElementById('v-type-tag');
+  if(mId==='__other'){
+    // prefill manual with the chosen brand
+    const bId=document.getElementById('v-brand').value;
+    const b=CAR_BRANDS.find(x=>String(x.id)===String(bId));
+    manual.style.display='block';
+    const mk=document.getElementById('v-make'); if(mk&&b) mk.value=b.name;
+    if(tag) tag.style.display='none';
+    return;
+  }
+  manual.style.display='none';
+  const m=CAR_MODELS.find(x=>String(x.id)===String(mId));
+  if(m&&tag){ tag.textContent='Type: '+m.type; tag.style.display='block'; }
 }
 
 function setActiveVehicle(id){
@@ -2802,7 +2878,7 @@ Object.defineProperty(window,'stepIndex',{get:()=>cur,set:v=>{cur=v;}});
   // TEMP: preview the main page directly (no login)
   if(PREVIEW_HOME){
     await Promise.allSettled([
-      fetchSlides(), fetchServices(), fetchCategories(), fetchStores(), fetchBrands()
+      fetchSlides(), fetchServices(), fetchCategories(), fetchStores(), fetchBrands(), fetchCarBrands()
     ]);
     try{ render(); indexScreens(); }catch(e){ console.error('render failed', e); }
     try{ enterGuest(); }catch(e){ console.error('enterGuest failed', e); }
@@ -2818,7 +2894,7 @@ Object.defineProperty(window,'stepIndex',{get:()=>cur,set:v=>{cur=v;}});
       fetchServices(),
       fetchCategories(),
       fetchStores(),
-      fetchBrands()
+      fetchBrands(), fetchCarBrands()
     ]);
     const prof = results[1].status==='fulfilled' ? results[1].value : null;
     render();                     // build onboarding stack (hidden) for fallback

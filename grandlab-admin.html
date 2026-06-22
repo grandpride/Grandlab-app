@@ -136,6 +136,7 @@
   .keybox{padding:20px 24px;}
   .keybox input{margin-top:8px;}
 </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
 <body>
 <div class="wrap">
@@ -170,6 +171,7 @@
         <button class="tab" data-tab="mysterybox" onclick="switchTab('mysterybox')">Mystery Box</button>
         <button class="tab" data-tab="warranty" onclick="switchTab('warranty')">Warranty Link</button>
         <button class="tab" data-tab="actionbtn" onclick="switchTab('actionbtn')">Action Button</button>
+        <button class="tab" data-tab="vehicles" onclick="switchTab('vehicles')">Vehicles</button>
         <button class="tab" data-tab="theme" onclick="switchTab('theme')">Theme</button>
         <button class="tab" data-tab="otppage" onclick="switchTab('otppage')">OTP Page</button>
         <button class="tab" data-tab="refpage" onclick="switchTab('refpage')">Referral Page</button>
@@ -609,6 +611,19 @@
         <div class="svc-hint" style="margin-top:6px">Tip: create the service first (e.g. “Free Car Wash”), tick “Hidden in app”, Save, then select it here.</div>
       </div>
 
+      <!-- VEHICLES (car brands + models) -->
+      <div class="panel" id="panel-vehicles">
+        <div class="hint">Car & motorcycle brands and models. Customers pick from this list when adding a vehicle — the model's <b>type</b> drives size-based pricing. Import from the Excel template, then upload a logo per brand.</div>
+        <div class="section-h" style="margin-top:14px">Import from Excel</div>
+        <div class="svc-hint">Upload the filled Grandlab Vehicle List template (Brands + Models sheets). This merges into your list (matches by name).</div>
+        <input type="file" accept=".xlsx,.xls" onchange="importVehiclesExcel(this)" style="margin-top:8px">
+        <div id="vehImportMsg" class="svc-hint" style="margin-top:6px"></div>
+
+        <div class="section-h" style="margin-top:20px">Brands</div>
+        <div id="brandModelList" style="margin-top:10px"></div>
+        <div class="add-row"><button class="btn btn-ghost" onclick="addCarBrand()">+ Add brand</button></div>
+      </div>
+
       <!-- THEME / STYLE -->
       <div class="panel" id="panel-theme">
         <div class="section-h">App Background Photo</div>
@@ -839,6 +854,9 @@ let hl = { items:[], autoslide:true, interval:4000 };
 let mb = { enabled:true, title:'Mystery Box', prizes:[], rules:'' };
 let warranty = { url:'https://axfilm.com.my/warranty/' };
 let actionbtn = { enabled:false, label:'Free Car Wash', service_id:'' };
+let carBrands = [];   // {id?, name, vehicle_kind, image_url, sort_order, _models:[{id?,name,type,sort_order}]}
+let deletedBrandIds2 = [];
+let deletedModelIds = [];
 let theme = { bg:"#0A0A0A", accent:"#F5C518", text:"#FFFFFF",
   logoSize:96, logoUrl:null, eyebrowSize:15, eyebrowColor:"#F5C518", titleSize:40, titleColor:"#FFFFFF",
   btnColor:"#F5C518", btnHeight:58, panelSize:78, btnNext:"Next", btnStart:"Get started", btnBack:"Back",
@@ -953,9 +971,16 @@ async function loadAll(){
     if(r.ok){const rows=await r.json();if(rows[0]&&rows[0].data)hl=Object.assign(hl,rows[0].data);}
     r=await sb("gl_settings?select=*&id=eq.actionbtn",{headers:H()});
     if(r.ok){const rows=await r.json();if(rows[0]&&rows[0].data)actionbtn=Object.assign(actionbtn,rows[0].data);}
+    // car brands + models
+    deletedBrandIds2=[]; deletedModelIds=[];
+    r=await sb("gl_car_brands?select=*&order=sort_order.asc",{headers:H()});
+    carBrands=r.ok?await r.json():[];
+    r=await sb("gl_car_models?select=*&order=sort_order.asc",{headers:H()});
+    const allModels=r.ok?await r.json():[];
+    carBrands.forEach(b=>{ b._models=allModels.filter(m=>m.brand_id===b.id); });
   }catch(e){}
   fillThemeControls();
-  renderSlides();renderServices();renderCategories();renderStores();renderBrands();renderPreview();
+  renderSlides();renderServices();renderCategories();renderStores();renderBrands();renderBrandModels();renderPreview();
 }
 
 /* ---------- ONBOARDING editor ---------- */
@@ -1333,6 +1358,106 @@ function fillActionBtn(){
   }
 }
 
+/* ---------- VEHICLES (brands + models) editor ---------- */
+const VEH_TYPES=['Sedan','SUV','MPV','Supercar','Motorcycle'];
+function renderBrandModels(){
+  const el=document.getElementById('brandModelList'); if(!el) return;
+  if(!carBrands.length){el.innerHTML='<div class="empty">No brands yet. Import the Excel or add one.</div>';return;}
+  el.innerHTML="";
+  carBrands.forEach((b,i)=>{
+    b._models=b._models||[];
+    const card=document.createElement('div');card.className="card";
+    card.innerHTML=`
+      <div class="card-head" style="cursor:pointer" onclick="toggleBrand(${i})">
+        <div class="card-title"><span style="color:var(--muted);margin-right:8px">${b._open?'▾':'▸'}</span>${esc(b.name||'Brand')}
+          <span style="color:var(--muted);font-weight:400;font-size:11px">· ${esc(b.vehicle_kind||'Car')} · ${b._models.length} model${b._models.length===1?'':'s'}</span></div>
+        <button class="btn btn-danger btn-sm" onclick="event.stopPropagation();delCarBrand(${i})">Delete</button>
+      </div>
+      ${b._open?`<div class="svc-body" onclick="event.stopPropagation()">
+        <div class="row">
+          <div><label>Brand name</label><input value="${esc(b.name||'')}" oninput="updCarBrand(${i},'name',this.value)"></div>
+          <div><label>Kind</label><select onchange="updCarBrand(${i},'vehicle_kind',this.value)">
+            <option ${b.vehicle_kind==='Car'?'selected':''}>Car</option>
+            <option ${b.vehicle_kind==='Motorcycle'?'selected':''}>Motorcycle</option>
+          </select></div>
+        </div>
+        <label style="margin-top:8px">Logo <span class="svc-hint">square ~3×3 cm (360×360 px), transparent PNG</span></label>
+        <div style="display:flex;align-items:center;gap:10px;margin-top:4px">
+          <div>${b.image_url?`<img src="${b.image_url}" style="height:48px;width:48px;object-fit:contain;border-radius:8px;border:1px solid var(--line);background:#fff">`:'<span style="color:var(--muted);font-size:12px">No logo</span>'}</div>
+          <input type="file" accept="image/*" onchange="uploadCarBrandLogo(${i},this)">
+        </div>
+        <div class="svc-sub">Models</div>
+        <div>${b._models.map((m,mi)=>`
+          <div class="mini-row">
+            <input value="${esc(m.name||'')}" oninput="updCarModel(${i},${mi},'name',this.value)" placeholder="Model name" style="flex:1">
+            <select onchange="updCarModel(${i},${mi},'type',this.value)" style="max-width:120px">
+              ${VEH_TYPES.map(t=>`<option ${m.type===t?'selected':''}>${t}</option>`).join('')}
+            </select>
+            <button class="btn btn-danger btn-sm" onclick="delCarModel(${i},${mi})">✕</button>
+          </div>`).join('')}</div>
+        <button class="btn btn-ghost btn-sm" onclick="addCarModel(${i})">+ Add model</button>
+      </div>`:''}`;
+    el.appendChild(card);
+  });
+}
+function toggleBrand(i){carBrands[i]._open=!carBrands[i]._open;renderBrandModels();}
+function addCarBrand(){carBrands.push({name:"New Brand",vehicle_kind:"Car",image_url:null,sort_order:carBrands.length+1,_models:[],_open:true});renderBrandModels();}
+function delCarBrand(i){if(carBrands[i].id)deletedBrandIds2.push(carBrands[i].id);(carBrands[i]._models||[]).forEach(m=>{if(m.id)deletedModelIds.push(m.id);});carBrands.splice(i,1);renderBrandModels();}
+function updCarBrand(i,f,v){carBrands[i][f]=v;}
+function addCarModel(i){carBrands[i]._models=carBrands[i]._models||[];carBrands[i]._models.push({name:"",type:"Sedan",sort_order:carBrands[i]._models.length+1});renderBrandModels();}
+function delCarModel(i,mi){const m=carBrands[i]._models[mi];if(m&&m.id)deletedModelIds.push(m.id);carBrands[i]._models.splice(mi,1);renderBrandModels();}
+function updCarModel(i,mi,f,v){carBrands[i]._models[mi][f]=v;}
+async function uploadCarBrandLogo(i,input){
+  const f=input.files[0]; if(!f) return; toast("Uploading…");
+  const path=`carbrand-${Date.now()}-${f.name.replace(/[^a-z0-9.]/gi,'_')}`;
+  const r=await fetch(`${SUPA_URL}/storage/v1/object/${BUCKET}/${path}`,{method:"POST",headers:{apikey:SVC_KEY,Authorization:`Bearer ${SVC_KEY}`},body:f});
+  if(!r.ok){toast("Upload failed — is gl-images bucket public?");return;}
+  carBrands[i].image_url=`${SUPA_URL}/storage/v1/object/public/${BUCKET}/${path}`;
+  renderBrandModels();toast("Brand logo ✓");
+}
+function importVehiclesExcel(input){
+  const f=input.files[0]; if(!f) return;
+  const msg=document.getElementById('vehImportMsg');
+  if(typeof XLSX==='undefined'){ if(msg)msg.textContent='Excel library not loaded — check your connection and reload.'; return; }
+  const reader=new FileReader();
+  reader.onload=e=>{
+    try{
+      const wb=XLSX.read(e.target.result,{type:'array'});
+      const bSheet=wb.Sheets['Brands']||wb.Sheets[wb.SheetNames.find(n=>/brand/i.test(n))];
+      const mSheet=wb.Sheets['Models']||wb.Sheets[wb.SheetNames.find(n=>/model/i.test(n))];
+      if(!bSheet||!mSheet){ if(msg)msg.textContent='Could not find "Brands" and "Models" sheets in that file.'; return; }
+      const brandsRows=XLSX.utils.sheet_to_json(bSheet);
+      const modelsRows=XLSX.utils.sheet_to_json(mSheet);
+      const byName={}; carBrands.forEach(b=>byName[(b.name||'').trim().toLowerCase()]=b);
+      let addedB=0, addedM=0;
+      brandsRows.forEach(r=>{
+        const nm=String(r.brand_name||'').trim(); if(!nm) return;
+        const key=nm.toLowerCase();
+        if(!byName[key]){
+          const nb={name:nm,vehicle_kind:String(r.vehicle_kind||'Car').trim()||'Car',image_url:null,sort_order:Number(r.sort_order||carBrands.length+1),_models:[]};
+          carBrands.push(nb); byName[key]=nb; addedB++;
+        } else if(r.vehicle_kind){ byName[key].vehicle_kind=String(r.vehicle_kind).trim(); }
+      });
+      modelsRows.forEach(r=>{
+        const bn=String(r.brand_name||'').trim(); const mn=String(r.model_name||'').trim();
+        if(!bn||!mn) return;
+        let b=byName[bn.toLowerCase()];
+        if(!b){ b={name:bn,vehicle_kind:'Car',image_url:null,sort_order:carBrands.length+1,_models:[]}; carBrands.push(b); byName[bn.toLowerCase()]=b; addedB++; }
+        b._models=b._models||[];
+        const exists=b._models.some(m=>(m.name||'').trim().toLowerCase()===mn.toLowerCase());
+        if(!exists){
+          const ty=String(r.type||'Sedan').trim();
+          b._models.push({name:mn,type:VEH_TYPES.includes(ty)?ty:'Sedan',sort_order:Number(r.sort_order||b._models.length+1)});
+          addedM++;
+        }
+      });
+      if(msg)msg.textContent=`Imported ${addedB} new brand(s) and ${addedM} new model(s). Review below, then Save all changes.`;
+      renderBrandModels();
+    }catch(err){ if(msg)msg.textContent='Import failed: '+err.message; }
+  };
+  reader.readAsArrayBuffer(f);
+}
+
 /* ---------- MYSTERY BOX logo ---------- */
 async function uploadMbLogo(input){
   const f=input.files[0]; if(!f) return; toast("Uploading…");
@@ -1654,6 +1779,23 @@ async function saveAll(){
     for(const id of deletedStoreIds){ await sb(`gl_stores?id=eq.${id}`,{method:"DELETE",headers:H()}); }
     for(const id of deletedBrandIds){ await sb(`gl_brands?id=eq.${id}`,{method:"DELETE",headers:H()}); }
     deletedSlideIds=[]; deletedServiceIds=[]; deletedCategoryIds=[]; deletedStoreIds=[]; deletedBrandIds=[];
+    // car brands + models
+    carBrands.forEach((b,i)=>{ if(b.sort_order==null) b.sort_order=i+1; });
+    for(const b of carBrands){
+      const body={name:b.name,vehicle_kind:b.vehicle_kind||'Car',image_url:b.image_url||null,sort_order:Number(b.sort_order||0),active:true};
+      if(b.id){await sb(`gl_car_brands?id=eq.${b.id}`,{method:"PATCH",headers:H(),body:JSON.stringify(body)});}
+      else{const rr=await sb("gl_car_brands",{method:"POST",headers:H({Prefer:"return=representation"}),body:JSON.stringify(body)});if(rr.ok){const j=await rr.json();b.id=j[0].id;}}
+      // models for this brand
+      (b._models||[]).forEach((m,mi)=>{ if(m.sort_order==null) m.sort_order=mi+1; });
+      for(const m of (b._models||[])){
+        const mbody={brand_id:b.id,brand_name:b.name,name:m.name,type:m.type||'Sedan',sort_order:Number(m.sort_order||0),active:true};
+        if(m.id){await sb(`gl_car_models?id=eq.${m.id}`,{method:"PATCH",headers:H(),body:JSON.stringify(mbody)});}
+        else{const rr=await sb("gl_car_models",{method:"POST",headers:H({Prefer:"return=representation"}),body:JSON.stringify(mbody)});if(rr.ok){const j=await rr.json();m.id=j[0].id;}}
+      }
+    }
+    for(const id of deletedModelIds){ await sb(`gl_car_models?id=eq.${id}`,{method:"DELETE",headers:H()}); }
+    for(const id of deletedBrandIds2){ await sb(`gl_car_brands?id=eq.${id}`,{method:"DELETE",headers:H()}); }
+    deletedModelIds=[]; deletedBrandIds2=[];
     // rewards
     REWARDS_DATA.forEach((r,i)=>r.sort_order=i+1);
     for(const r of REWARDS_DATA){
@@ -1891,6 +2033,7 @@ function switchTab(t){
   else if(t==='mysterybox')fillMbControls();
   else if(t==='warranty')fillWarrantyControls();
   else if(t==='actionbtn')fillActionBtn();
+  else if(t==='vehicles')renderBrandModels();
   else if(t==='onboarding')setPv('onb');
   else if(t==='otppage'){fillOtpControls();setPv('otp');}
   else if(t==='refpage'){fillRefControls();setPv('ref');}
