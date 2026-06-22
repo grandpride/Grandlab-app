@@ -619,6 +619,30 @@
   .od-sec{font-size:14px;font-weight:700;color:var(--yellow);margin-top:20px;}
   .od-text{font-size:13.5px;line-height:1.5;margin-top:6px;color:var(--text);}
   .od-hours{margin-top:8px;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:8px 14px;}
+  .od-addr-row{display:flex;align-items:flex-start;gap:10px;}
+  .od-nav-arrow{flex:0 0 auto;width:34px;height:34px;border-radius:50%;border:1px solid var(--line);background:var(--surface);
+    color:var(--yellow);font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+  .nav-list{margin-top:10px;background:var(--surface);border:1px solid var(--line);border-radius:14px;overflow:hidden;}
+  .nav-item{display:flex;align-items:center;gap:12px;padding:14px 16px;cursor:pointer;border-bottom:1px solid var(--line);}
+  .nav-item:last-child{border-bottom:none;}
+  .nav-item:active{background:var(--surface2);}
+  .nav-ic{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;flex:0 0 auto;
+    border:1px solid var(--line);}
+  .nav-ic-gmap{background:#1a73e810;} .nav-ic-waze{background:#33ccff10;}
+  .nav-tx{flex:1;font-size:14.5px;font-weight:600;}
+  .nav-chev{color:var(--muted);font-size:18px;}
+  /* bottom sheet */
+  .sheet-ov{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:210;display:flex;align-items:flex-end;}
+  .sheet{width:100%;background:var(--bg);border-radius:20px 20px 0 0;padding:10px 16px calc(20px + env(safe-area-inset-bottom));
+    animation:sheetUp .22s ease;}
+  @keyframes sheetUp{from{transform:translateY(100%);}to{transform:translateY(0);}}
+  .sheet-handle{width:40px;height:4px;border-radius:2px;background:var(--line);margin:6px auto 14px;}
+  .sheet-title{font-size:14px;font-weight:700;color:var(--muted);text-align:center;margin-bottom:8px;}
+  .sheet-item{display:flex;align-items:center;gap:12px;padding:16px 8px;font-size:15.5px;font-weight:600;cursor:pointer;border-bottom:1px solid var(--line);}
+  .sheet-item:active{background:var(--surface);}
+  .sheet-ic{font-size:18px;width:26px;text-align:center;}
+  .sheet-cancel{width:100%;margin-top:12px;padding:14px;border-radius:14px;border:none;background:var(--surface);
+    color:var(--text);font-size:15px;font-weight:700;cursor:pointer;}
   .oh-row{display:flex;justify-content:space-between;font-size:13px;padding:6px 0;border-bottom:1px solid var(--line);}
   .oh-row:last-child{border-bottom:none;}
   .oh-row span:first-child{color:var(--muted);font-weight:600;}
@@ -1869,13 +1893,68 @@ async function openOutletDetail(id){
       <div style="padding:16px 18px 0">
         <div class="app-h1">${esc(st.name||'')}</div>
         <div class="od-sec">Address</div>
-        <div class="od-text">${esc(st.address||'—')}</div>
+        <div class="od-addr-row">
+          <div class="od-text" style="flex:1">${esc(st.address||'—')}</div>
+          ${st.address?`<button class="od-nav-arrow" onclick="openNavSheet(${st.id})" aria-label="Navigate">◈</button>`:''}
+        </div>
         ${st.contact_number?`<div class="od-sec">Contact number</div><div class="od-text">${esc(st.contact_number)}</div>`:''}
         <div class="od-sec">Operating hours</div>
         <div class="od-hours">${hoursHtml}</div>
+        ${st.address?`
+        <div class="od-sec">Navigate to Outlet</div>
+        <div class="nav-list">
+          <div class="nav-item" onclick="copyAddress(${st.id})"><div class="nav-ic nav-ic-copy">◈</div><div class="nav-tx">Copy Address</div><div class="nav-chev">⧉</div></div>
+          <div class="nav-item" onclick="openMaps(${st.id})"><div class="nav-ic nav-ic-gmap">📍</div><div class="nav-tx">Open in Google Maps</div><div class="nav-chev">›</div></div>
+          <div class="nav-item" onclick="openWaze(${st.id})"><div class="nav-ic nav-ic-waze">🚗</div><div class="nav-tx">Open in Waze</div><div class="nav-chev">›</div></div>
+        </div>`:''}
       </div>
     </div>
     ${wa?`<div class="sd-checkout-bar"><button class="btn btn-primary wa-btn" onclick="window.open('https://wa.me/${wa}','_blank')"><span style="font-size:18px">🟢</span> WhatsApp ${esc(st.name||'')}</button></div>`:''}`;
+}
+
+// navigation helpers
+function _navTarget(st){
+  // prefer precise coordinates, else use the address text
+  if(st.lat!=null && st.lng!=null) return {q:`${st.lat},${st.lng}`, isCoord:true};
+  return {q: encodeURIComponent(st.address||st.name||''), isCoord:false};
+}
+function openMaps(id){
+  const st=STORES.find(x=>String(x.id)===String(id)); if(!st) return;
+  const t=_navTarget(st);
+  window.open(`https://www.google.com/maps/search/?api=1&query=${t.q}`,'_blank');
+}
+function openWaze(id){
+  const st=STORES.find(x=>String(x.id)===String(id)); if(!st) return;
+  if(st.lat!=null && st.lng!=null){ window.open(`https://waze.com/ul?ll=${st.lat},${st.lng}&navigate=yes`,'_blank'); }
+  else { window.open(`https://waze.com/ul?q=${encodeURIComponent(st.address||st.name||'')}&navigate=yes`,'_blank'); }
+}
+function copyAddress(id){
+  const st=STORES.find(x=>String(x.id)===String(id)); if(!st) return;
+  const text=st.address||'';
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(text).then(()=>toast('Address copied ✓'),()=>fallbackCopy(text));
+  } else fallbackCopy(text);
+}
+function fallbackCopy(text){
+  try{
+    const ta=document.createElement('textarea'); ta.value=text; ta.style.position='fixed'; ta.style.opacity='0';
+    document.body.appendChild(ta); ta.focus(); ta.select(); document.execCommand('copy'); ta.remove();
+    toast('Address copied ✓');
+  }catch(e){ toast('Could not copy'); }
+}
+function openNavSheet(id){
+  const st=STORES.find(x=>String(x.id)===String(id)); if(!st) return;
+  const ov=document.createElement('div'); ov.className='sheet-ov'; ov.onclick=()=>ov.remove();
+  ov.innerHTML=`
+    <div class="sheet" onclick="event.stopPropagation()">
+      <div class="sheet-handle"></div>
+      <div class="sheet-title">Navigate to ${esc(st.name||'Outlet')}</div>
+      <div class="sheet-item" onclick="copyAddress(${st.id});this.closest('.sheet-ov').remove()"><span class="sheet-ic">◈</span> Copy Address</div>
+      <div class="sheet-item" onclick="openMaps(${st.id});this.closest('.sheet-ov').remove()"><span class="sheet-ic">📍</span> Open in Google Maps</div>
+      <div class="sheet-item" onclick="openWaze(${st.id});this.closest('.sheet-ov').remove()"><span class="sheet-ic">🚗</span> Open in Waze</div>
+      <button class="sheet-cancel" onclick="this.closest('.sheet-ov').remove()">Cancel</button>
+    </div>`;
+  document.body.appendChild(ov);
 }
 
 function onDelVehicle(id){
