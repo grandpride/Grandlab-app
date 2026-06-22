@@ -607,6 +607,9 @@
   .mem-card-tier{font-size:22px;font-weight:800;color:var(--yellow);}
   .mem-card-brand{font-size:16px;font-weight:800;letter-spacing:.15em;color:rgba(255,255,255,.5);align-self:flex-end;}
   .mem-tier-name{text-align:center;font-size:20px;font-weight:800;margin-top:16px;}
+  .mem-free{font-size:12px;font-weight:800;color:#0d4d44;background:#bff0e4;padding:2px 8px;border-radius:10px;vertical-align:middle;margin-left:6px;}
+  .mem-current-tag{text-align:center;margin-top:16px;background:var(--surface2);border:1px solid var(--gold-line-soft);
+    border-radius:24px;padding:12px;font-size:13px;font-weight:600;color:var(--yellow);}
   .mem-benefits{margin-top:12px;}
   .mem-benefit{display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid var(--line);font-size:14px;}
   .mem-tick{color:var(--yellow);font-weight:800;}
@@ -1642,19 +1645,28 @@ function serviceEmoji(name){
 let _sliderTimers={};
 function startSlider(trackId, interval){
   if(_sliderTimers[trackId]){ clearInterval(_sliderTimers[trackId]); delete _sliderTimers[trackId]; }
-  const track=document.getElementById(trackId);
-  if(!track) return;
-  const cards=track.children;
-  if(cards.length<2) return;
-  let idx=0;
-  const go=()=>{
-    idx=(idx+1)%cards.length;
-    const card=cards[idx];
-    if(card) track.scrollTo({left:card.offsetLeft - track.offsetLeft, behavior:'smooth'});
-  };
-  _sliderTimers[trackId]=setInterval(go, interval||4000);
-  // pause auto-slide briefly while the user is swiping
-  track.addEventListener('touchstart',()=>{ if(_sliderTimers[trackId]){clearInterval(_sliderTimers[trackId]);delete _sliderTimers[trackId];} },{passive:true});
+  // defer so the DOM has laid out and offsetLeft values are real
+  setTimeout(()=>{
+    const track=document.getElementById(trackId);
+    if(!track) return;
+    const cards=track.children;
+    if(cards.length<2) return;
+    let idx=0, paused=false;
+    const go=()=>{
+      if(paused) return;
+      idx=(idx+1)%cards.length;
+      const card=cards[idx];
+      if(card) track.scrollTo({left:card.offsetLeft - track.offsetLeft, behavior:'smooth'});
+    };
+    _sliderTimers[trackId]=setInterval(go, interval||4000);
+    // pause while user is interacting, resume after
+    const pause=()=>{ paused=true; };
+    const resume=()=>{ setTimeout(()=>{ paused=false; }, 3000); };
+    track.addEventListener('touchstart',pause,{passive:true});
+    track.addEventListener('touchend',resume,{passive:true});
+    track.addEventListener('mousedown',pause);
+    track.addEventListener('mouseup',resume);
+  }, 300);
 }
 function shade(hex){
   // darken a hex color ~25% for gradient end
@@ -1821,7 +1833,19 @@ function openMembership(){
   let active=1;
   const render=()=>{
     const t=tiers.find(x=>x.key===active)||tiers[0];
+    const isNonMember = active===1;
+    const userTier = PROFILE?.tier_level || 1; // 1 = non-member by default
+    const isCurrent = active===userTier;
     const benList=(t.ben||'').split('\\n').filter(Boolean).map(b=>`<div class="mem-benefit"><span class="mem-tick">✓</span><span>${esc(b)}</span></div>`).join('');
+    // CTA differs: non-member = current/free baseline; paid tiers = subscribe
+    let cta;
+    if(isNonMember){
+      cta=`<div class="mem-current-tag">✓ This is your default plan — free, no subscription needed</div>`;
+    } else if(isCurrent){
+      cta=`<div class="mem-current-tag">✓ Your current plan</div>`;
+    } else {
+      cta=`<button class="btn btn-primary" style="margin-top:16px" onclick="subscribeTier(${active},'${esc((t.name||'').replace(/'/g,"\\'"))}')">${esc(STYLE.memSubscribeBtn||'Subscribe Now')}</button>`;
+    }
     appRoot.innerHTML=`
       <div class="topbar-app"><button class="back" onclick="goBack()">‹</button><div class="ttl">${esc(STYLE.memTitle||'All Membership Plan')}</div></div>
       <div class="app-scroll" style="padding-top:14px">
@@ -1833,9 +1857,9 @@ function openMembership(){
             <div class="mem-card-overlay"><div class="mem-card-tier">${esc(t.name||'')}</div><div class="mem-card-brand">GRANDLAB</div></div>`
           :`<div class="mem-card-placeholder"><div class="mem-card-tier">${esc(t.name||'')}</div><div class="mem-card-brand">GRANDLAB</div></div>`}
         </div>
-        <div class="mem-tier-name">${esc(t.name||'')}</div>
-        <button class="btn btn-primary" style="margin-top:16px" onclick="toast('Subscription coming soon')">${esc(STYLE.memSubscribeBtn||'Subscribe Now')}</button>
-        <div class="sec-title">Benefits</div>
+        <div class="mem-tier-name">${esc(t.name||'')}${isNonMember?' <span class="mem-free">FREE</span>':''}</div>
+        ${cta}
+        <div class="sec-title">${isNonMember?'What you get as Non-Member':'Benefits'}</div>
         <div class="mem-benefits">${benList||'<div class="app-sub">No benefits listed.</div>'}</div>
       </div>`;
     appRoot.querySelectorAll('.mem-tab').forEach(tab=>{
@@ -1843,6 +1867,12 @@ function openMembership(){
     });
   };
   render();
+}
+
+function subscribeTier(tierKey, tierName){
+  // subscription/payment not yet wired — confirm intent and record interest
+  if(IS_GUEST){ toast("Sign in to subscribe"); return; }
+  toast(`${tierName} subscription — payment coming soon`);
 }
 
 function openNotifications(){
