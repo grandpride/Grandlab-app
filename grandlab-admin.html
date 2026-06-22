@@ -827,7 +827,7 @@
 const SUPA_URL = "https://eychljpzorzmaveixlnu.supabase.co";
 let SVC_KEY = localStorage.getItem("gl_svc_key") || "";
 const BUCKET = "gl-images";
-const CAR_TYPES = ["Sedan","SUV","MPV","Supercar"];
+const CAR_TYPES = ["Sedan","SUV","MPV","Supercar","Motorcycle"];
 const ICONS = ["🛡️","📋","✨","🚗","💧","🧴","🪄","⭐","🏁","🔧","🌟","🧽"];
 
 let slides = [];     // {id?, eyebrow,title,glyph,image_url,sort_order,active}
@@ -1133,7 +1133,7 @@ function renderServices(){
 function toggleSvc(i){ services[i]._open=!services[i]._open; renderServices(); }
 function addService(){services.push({name:"New service",category:"",category2:"",section:"",base_price:0,price_by_type:null,media:[],variations:[],addons:[],is_package:false,hidden:false,active:true,sort_order:services.length+1,_open:true});renderServices();renderPreview();}
 function delService(i){if(services[i].id)deletedServiceIds.push(services[i].id);services.splice(i,1);renderServices();renderPreview();}
-function toggleSized(i,on){services[i].price_by_type=on?{Sedan:0,SUV:0,MPV:0,Supercar:0}:null;renderServices();renderPreview();}
+function toggleSized(i,on){services[i].price_by_type=on?{Sedan:0,SUV:0,MPV:0,Supercar:0,Motorcycle:0}:null;renderServices();renderPreview();}
 function updPrice(i,t,v){if(!services[i].price_by_type)services[i].price_by_type={};services[i].price_by_type[t]=v===''?null:Number(v);renderPreview();}
 /* variations */
 function addVari(i){services[i].variations=services[i].variations||[];services[i].variations.push({label:'',price:0});renderServices();}

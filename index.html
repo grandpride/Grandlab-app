@@ -2173,11 +2173,26 @@ function resolveAddon(a){
 function svcDetailPrice(){
   const s=SVC_SEL.service; if(!s) return 0;
   let base=0;
-  if(s.variations && s.variations.length){ base=Number(s.variations[SVC_SEL.variIdx]?.price||0); }
-  else { base=Number(s.base_price||0); }
+  if(s.variations && s.variations.length){
+    base=Number(s.variations[SVC_SEL.variIdx]?.price||0);
+  } else if(s.price_by_type){
+    base=Number(s.price_by_type[currentSizeType()]||0);
+  } else {
+    base=Number(s.base_price||0);
+  }
   let total=base*SVC_SEL.qty;
   (s.addons||[]).forEach((a,i)=>{ if(SVC_SEL.addons[i]) total+=resolveAddon(a).price; });
   return total;
+}
+// the size tier used for size-based pricing: from the selected car, else manual override, else first available
+function currentSizeType(){
+  const s=SVC_SEL.service; if(!s||!s.price_by_type) return null;
+  const avail=Object.keys(s.price_by_type).filter(t=>s.price_by_type[t]!=null&&s.price_by_type[t]!=='');
+  if(SVC_SEL.sizeType && avail.includes(SVC_SEL.sizeType)) return SVC_SEL.sizeType;
+  // derive from the selected car's type
+  const car=(VEHICLES||[]).find(v=>String(v.id)===String(SVC_SEL.carId));
+  if(car && car.car_type && avail.includes(car.car_type)) return car.car_type;
+  return avail[0]||null;
 }
 function money(n){ return Number(n||0).toLocaleString('en-MY',{minimumFractionDigits:2,maximumFractionDigits:2}); }
 
@@ -2197,6 +2212,13 @@ function renderServiceDetail(){
     variBlock=`<div class="sd-sec-t">Select variation</div>
       <div class="sd-vari">${s.variations.map((v,i)=>`
         <button class="sd-chip ${i===SVC_SEL.variIdx?'on':''}" onclick="selVari(${i})">${esc(v.label||('Option '+(i+1)))}</button>`).join('')}</div>`;
+  } else if(s.price_by_type){
+    // size-based pricing → show selectable size tiers with their prices
+    const avail=Object.keys(s.price_by_type).filter(t=>s.price_by_type[t]!=null&&s.price_by_type[t]!=='');
+    const cur=currentSizeType();
+    variBlock=`<div class="sd-sec-t">Vehicle type</div>
+      <div class="sd-vari">${avail.map(t=>`
+        <button class="sd-chip ${t===cur?'on':''}" onclick="selSize('${t}')">${esc(t)} · RM${money(s.price_by_type[t])}</button>`).join('')}</div>`;
   }
 
   // quantity (hide for packages — usually qty 1)
@@ -2284,7 +2306,18 @@ function actionBtnHtml(currentSvc){
   if(String(ACTIONBTN.service_id)===String(currentSvc.id)) return '';
   return `<button class="btn sd-action" onclick="openService('${ACTIONBTN.service_id}')">⭐ ${esc(ACTIONBTN.label||'Free')}</button>`;
 }
-function selCar(id){ SVC_SEL.carId=id; try{localStorage.setItem('gl_active_vehicle',id);}catch(e){} renderServiceDetail(); }
+function selCar(id){
+  SVC_SEL.carId=id;
+  // if the chosen car's type matches a size tier, switch pricing to it
+  const car=(VEHICLES||[]).find(v=>String(v.id)===String(id));
+  const s=SVC_SEL.service;
+  if(car && car.car_type && s && s.price_by_type && s.price_by_type[car.car_type]!=null){
+    SVC_SEL.sizeType=car.car_type;
+  }
+  try{localStorage.setItem('gl_active_vehicle',id);}catch(e){}
+  renderServiceDetail();
+}
+function selSize(t){ SVC_SEL.sizeType=t; renderServiceDetail(); }
 
 function selVari(i){ SVC_SEL.variIdx=i; renderServiceDetail(); }
 function setQty(d){ SVC_SEL.qty=Math.max(1,SVC_SEL.qty+d); renderServiceDetail(); }
