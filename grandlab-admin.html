@@ -1981,18 +1981,13 @@ async function saveAll(){
     for(const id of deletedModelIds){ await sb(`gl_car_models?id=eq.${id}`,{method:"DELETE",headers:H()}); }
     for(const id of deletedBrandIds2){ await sb(`gl_car_brands?id=eq.${id}`,{method:"DELETE",headers:H()}); }
     deletedModelIds=[]; deletedBrandIds2=[];
-    // flash deals (do NOT send grabbed — the app owns that counter)
-    flashDeals.forEach((d,i)=>{ if(d.sort_order==null) d.sort_order=i+1; });
-    for(const d of flashDeals){
-      const body={title:d.title||null,image_url:d.image_url||null,service_id:d.service_id||null,
-        deal_price:d.deal_price??null,orig_price:d.orig_price??null,ends_at:d.ends_at||null,
-        total_qty:Number(d.total_qty||0),active:d.active!==false,sort_order:Number(d.sort_order||0)};
-      if(d.id){await sb(`gl_flash_deals?id=eq.${d.id}`,{method:"PATCH",headers:H(),body:JSON.stringify(body)});}
-      else{ body.grabbed=0; const rr=await sb("gl_flash_deals",{method:"POST",headers:H({Prefer:"return=representation"}),body:JSON.stringify(body)});if(rr.ok){const j=await rr.json();d.id=j[0].id;}}
-    }
-    for(const id of deletedFlashIds){ await sb(`gl_flash_deals?id=eq.${id}`,{method:"DELETE",headers:H()}); }
-    deletedFlashIds=[];
-    // popup setting
+    // ---- settings saves FIRST (these are independent and must not be blocked by a later failure) ----
+    await sb("gl_settings",{method:"POST",headers:H({Prefer:"resolution=merge-duplicates"}),body:JSON.stringify({id:"style",data:theme})});
+    await sb("gl_settings",{method:"POST",headers:H({Prefer:"resolution=merge-duplicates"}),body:JSON.stringify({id:"referral",data:refSettings})});
+    await sb("gl_settings",{method:"POST",headers:H({Prefer:"resolution=merge-duplicates"}),body:JSON.stringify({id:"mysterybox",data:mb})});
+    await sb("gl_settings",{method:"POST",headers:H({Prefer:"resolution=merge-duplicates"}),body:JSON.stringify({id:"warranty",data:warranty})});
+    await sb("gl_settings",{method:"POST",headers:H({Prefer:"resolution=merge-duplicates"}),body:JSON.stringify({id:"highlights",data:hl})});
+    await sb("gl_settings",{method:"POST",headers:H({Prefer:"resolution=merge-duplicates"}),body:JSON.stringify({id:"actionbtn",data:actionbtn})});
     await sb("gl_settings",{method:"POST",headers:H({Prefer:"resolution=merge-duplicates"}),body:JSON.stringify({id:"popup",data:popup})});
     // rewards
     REWARDS_DATA.forEach((r,i)=>r.sort_order=i+1);
@@ -2003,17 +1998,21 @@ async function saveAll(){
     }
     for(const id of deletedRewardIds){ await sb(`gl_rewards?id=eq.${id}`,{method:"DELETE",headers:H()}); }
     deletedRewardIds=[];
-    // style -> gl_settings (id='style', data jsonb). upsert.
-    await sb("gl_settings",{method:"POST",headers:H({Prefer:"resolution=merge-duplicates"}),body:JSON.stringify({id:"style",data:theme})});
-    // referral settings
-    await sb("gl_settings",{method:"POST",headers:H({Prefer:"resolution=merge-duplicates"}),body:JSON.stringify({id:"referral",data:refSettings})});
-    // mystery box + warranty settings
-    await sb("gl_settings",{method:"POST",headers:H({Prefer:"resolution=merge-duplicates"}),body:JSON.stringify({id:"mysterybox",data:mb})});
-    await sb("gl_settings",{method:"POST",headers:H({Prefer:"resolution=merge-duplicates"}),body:JSON.stringify({id:"warranty",data:warranty})});
-    await sb("gl_settings",{method:"POST",headers:H({Prefer:"resolution=merge-duplicates"}),body:JSON.stringify({id:"highlights",data:hl})});
-    await sb("gl_settings",{method:"POST",headers:H({Prefer:"resolution=merge-duplicates"}),body:JSON.stringify({id:"actionbtn",data:actionbtn})});
+    // ---- flash deals LAST (may fail if promos_v7.sql not run; won't block the above) ----
+    flashDeals.forEach((d,i)=>{ if(d.sort_order==null) d.sort_order=i+1; });
+    for(const d of flashDeals){
+      const body={title:d.title||null,image_url:d.image_url||null,service_id:d.service_id||null,
+        deal_price:d.deal_price??null,orig_price:d.orig_price??null,ends_at:d.ends_at||null,
+        total_qty:Number(d.total_qty||0),active:d.active!==false,sort_order:Number(d.sort_order||0)};
+      let rr;
+      if(d.id){ rr=await sb(`gl_flash_deals?id=eq.${d.id}`,{method:"PATCH",headers:H(),body:JSON.stringify(body)}); }
+      else{ body.grabbed=0; rr=await sb("gl_flash_deals",{method:"POST",headers:H({Prefer:"return=representation"}),body:JSON.stringify(body)}); if(rr.ok){const j=await rr.json();d.id=j[0].id;} }
+      if(rr && !rr.ok){ const t=await rr.text(); throw new Error('Flash deals save failed — '+(t.includes('does not exist')?'run promos_v7.sql in Supabase first.':t.slice(0,120))); }
+    }
+    for(const id of deletedFlashIds){ await sb(`gl_flash_deals?id=eq.${id}`,{method:"DELETE",headers:H()}); }
+    deletedFlashIds=[];
     toast("Saved ✓  Customer app will reflect changes on reload");
-  }catch(e){toast("Save error — check console");console.error(e);}
+  }catch(e){toast("Save error: "+(e.message||'check console')); console.error(e); alert("Save error:\n\n"+(e.message||e)); }
 }
 
 /* ---------- LIVE PREVIEW ---------- */
