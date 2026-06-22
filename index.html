@@ -348,6 +348,9 @@
   .sec-title{font-size:17px;font-weight:800;margin-top:26px;padding-left:12px;position:relative;}
   .sec-title::before{content:"";position:absolute;left:0;top:3px;bottom:3px;width:3px;
     border-radius:3px;background:linear-gradient(var(--yellow),var(--yellow-dim));}
+  .sec-title-row{display:flex;align-items:flex-end;justify-content:space-between;}
+  .sec-title-row .sec-title{flex:1;}
+  .see-all{background:none;border:none;color:var(--yellow);font-size:13px;font-weight:600;cursor:pointer;margin-top:26px;}
   .svc-card{background:var(--surface);border:1px solid var(--line);border-radius:16px;
     overflow:hidden;margin-top:12px;cursor:pointer;transition:.12s;}
   .svc-card:active{transform:scale(.99);}
@@ -1382,6 +1385,7 @@ async function renderHome(){
   const name = PROFILE?.name ? PROFILE.name.split(' ')[0] : (IS_GUEST?'Guest':'there');
   const initial = (PROFILE?.name||'G')[0].toUpperCase();
   try{ if(!SERVICES.length) await fetchServices(); }catch(e){ console.error('services', e); }
+  try{ if(!CATEGORIES.length) await fetchCategories(); }catch(e){ console.error('categories', e); }
   try{ if(!IS_GUEST && SESSION?.user?.id) await fetchVehicles(); }catch(e){ console.error('vehicles', e); }
   try{ if(!IS_GUEST && SESSION?.user?.id) await fetchCheckin(); }catch(e){ console.error('checkin', e); }
   const refCode = PROFILE?.referral_code || '';
@@ -1434,12 +1438,21 @@ async function renderHome(){
        </div>`
     : `<div class="add-veh-btn" onclick="openAddVehicle()">+ Add Vehicle</div>`;
 
-  // services grid (icons) - use first 8 services
-  const grid = SERVICES.slice(0,8).map(s=>`
-    <div class="svc-tile" onclick="openService('${s.id}')">
-      <div class="svc-tile-ic">${s.icon||serviceEmoji(s.name)}</div>
-      <div class="svc-tile-nm">${esc(s.name||'')}</div>
-    </div>`).join('') || '<div class="guest-banner" style="grid-column:1/-1">No services yet. Add them in the admin.</div>';
+  // services grid → show CATEGORIES (icon tiles), not individual services
+  const norm = v => (v||'').trim().toLowerCase();
+  let catTiles = CATEGORIES.map(c=>`
+    <div class="svc-tile" onclick="openCategory('${(c.name||'').replace(/'/g,"\\'")}')">
+      <div class="svc-tile-ic">${c.icon||serviceEmoji(c.name)}</div>
+      <div class="svc-tile-nm">${esc(c.name||'')}</div>
+    </div>`);
+  // uncategorized services -> "Other" tile
+  const managed = new Set(CATEGORIES.map(c=>norm(c.name)));
+  const hasOrphans = SERVICES.some(s=>!managed.has(norm(s.category)));
+  if(hasOrphans){
+    catTiles.push(`<div class="svc-tile" onclick="openCategory('Other')">
+      <div class="svc-tile-ic">🧽</div><div class="svc-tile-nm">Other</div></div>`);
+  }
+  const grid = catTiles.slice(0,8).join('') || '<div class="guest-banner" style="grid-column:1/-1">No services yet. Add them in the admin.</div>';
 
   appRoot.innerHTML=`
     <div class="app-scroll">
@@ -1485,8 +1498,11 @@ async function renderHome(){
         <div class="join-member-btn" onclick="openMembership()">${esc(STYLE.homeJoinMemberBtn||'Join Member')}</div>
       </div>
 
-      <!-- services grid -->
-      <div class="sec-title">${esc(STYLE.homeServicesTitle||'Our Services')}</div>
+      <!-- services grid (categories) -->
+      <div class="sec-title-row">
+        <div class="sec-title">${esc(STYLE.homeServicesTitle||'Our Services')}</div>
+        <button class="see-all" onclick="routeTab('services')">See all ›</button>
+      </div>
       <div class="svc-grid">${grid}</div>
 
       <!-- daily check-in (7-day streak → mystery gift) -->
