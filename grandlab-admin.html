@@ -566,6 +566,23 @@
         <div class="hint">Outlets shown as “Choose Store” on the service detail page and in the “Our Stores” section on home. Add name, address, contact, WhatsApp, operating hours, map coordinates, and a photo.</div>
         <label style="margin-top:14px">WhatsApp button label <span class="svc-hint">use {name} for the outlet name</span></label>
         <input id="waLabel" value="${''}" oninput="theme.waLabel=this.value" placeholder="WhatsApp {name}">
+        <label style="margin-top:14px">Navigation icons <span class="svc-hint">square ~2×2 cm (240×240 px) PNG. Leave blank to use built-in logos.</span></label>
+        <div style="display:flex;gap:16px;margin-top:6px;flex-wrap:wrap">
+          <div>
+            <div class="svc-hint">Google Maps</div>
+            <div style="display:flex;align-items:center;gap:8px;margin-top:4px">
+              <div id="gmapIconThumb"></div>
+              <input type="file" accept="image/*" onchange="uploadNavIcon('gmap',this)">
+            </div>
+          </div>
+          <div>
+            <div class="svc-hint">Waze</div>
+            <div style="display:flex;align-items:center;gap:8px;margin-top:4px">
+              <div id="wazeIconThumb"></div>
+              <input type="file" accept="image/*" onchange="uploadNavIcon('waze',this)">
+            </div>
+          </div>
+        </div>
         <div id="storeList" style="margin-top:14px"></div>
         <div class="add-row"><button class="btn btn-ghost" onclick="addStore()">+ Add store</button></div>
       </div>
@@ -1343,6 +1360,7 @@ function clearCatPhoto(i){categories[i].image_url=null;renderCategories();}
 let deletedStoreIds = [];
 function renderStores(){
   const wl=document.getElementById('waLabel'); if(wl) wl.value=theme.waLabel||'';
+  fillNavIcons();
   const el=document.getElementById('storeList'); if(!el) return;
   if(!stores.length){el.innerHTML='<div class="empty">No stores yet. Add your outlets.</div>';return;}
   el.innerHTML="";
@@ -1400,6 +1418,24 @@ async function uploadStorePhoto(i,input){
   if(!r.ok){toast("Upload failed — is gl-images bucket public?");return;}
   stores[i].image_url=`${SUPA_URL}/storage/v1/object/public/${BUCKET}/${path}`;
   renderStores();toast("Store photo ✓");
+}
+async function uploadNavIcon(which,input){
+  const f=input.files[0]; if(!f) return; toast("Uploading…");
+  const path=`navicon-${which}-${Date.now()}-${f.name.replace(/[^a-z0-9.]/gi,'_')}`;
+  const r=await fetch(`${SUPA_URL}/storage/v1/object/${BUCKET}/${path}`,{method:"POST",headers:{apikey:SVC_KEY,Authorization:`Bearer ${SVC_KEY}`},body:f});
+  if(!r.ok){toast("Upload failed — is gl-images bucket public?");return;}
+  const url=`${SUPA_URL}/storage/v1/object/public/${BUCKET}/${path}`;
+  if(which==='gmap') theme.gmapIcon=url; else theme.wazeIcon=url;
+  fillNavIcons(); toast("Icon ✓");
+}
+function fillNavIcons(){
+  const g=document.getElementById('gmapIconThumb');
+  const w=document.getElementById('wazeIconThumb');
+  const thumb=(url,which)=> url
+    ? `<img src="${url}" style="height:32px;width:32px;object-fit:contain;border-radius:6px;border:1px solid var(--line);background:#fff"> <button class="btn btn-ghost btn-sm" onclick="theme.${which}=null;fillNavIcons();toast('Removed')">✕</button>`
+    : '<span style="color:var(--muted);font-size:12px">built-in</span>';
+  if(g) g.innerHTML=thumb(theme.gmapIcon,'gmapIcon');
+  if(w) w.innerHTML=thumb(theme.wazeIcon,'wazeIcon');
 }
 
 /* ---------- MYSTERY BOX editor ---------- */
