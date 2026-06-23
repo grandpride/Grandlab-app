@@ -493,6 +493,19 @@
   .popup-dot.on{background:var(--yellow);}
   .popup-dismiss{display:flex;align-items:center;gap:8px;justify-content:center;padding:12px;font-size:13px;color:var(--muted);cursor:pointer;flex:0 0 auto;}
   .popup-dismiss input{width:16px;height:16px;accent-color:var(--yellow);}
+  /* brand tiles (category → brand → items) */
+  .brand-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  .brand-tile{background:var(--surface);border:1px solid var(--gold-line-soft);border-radius:16px;overflow:hidden;cursor:pointer;}
+  .brand-tile:active{transform:scale(.98);}
+  .brand-tile-img{width:100%;aspect-ratio:16/10;background:var(--surface2);display:flex;align-items:center;justify-content:center;overflow:hidden;}
+  .brand-tile-img img{width:100%;height:100%;object-fit:cover;}
+  .brand-tile-ph{font-size:16px;font-weight:800;color:var(--muted);text-align:center;padding:8px;}
+  .brand-tile-nm{padding:10px 12px;font-size:14px;font-weight:700;text-align:center;}
+  .brand-tile-warr{font-size:10.5px;font-weight:700;color:var(--yellow);margin-top:3px;}
+  .brand-warr-banner{background:rgba(245,197,24,.12);border:1px solid var(--gold-line-soft);color:var(--yellow);
+    font-size:13px;font-weight:700;border-radius:12px;padding:10px 14px;margin-bottom:6px;}
+  .sd-warr{display:inline-block;background:rgba(245,197,24,.12);color:var(--yellow);font-size:12.5px;font-weight:700;
+    border-radius:10px;padding:5px 12px;margin-top:8px;}
   /* referral page */
   .help-btn{position:absolute;right:16px;top:50%;transform:translateY(-50%);width:30px;height:30px;border-radius:50%;
     border:1px solid var(--line);background:var(--surface);color:var(--muted);font-size:15px;font-weight:700;cursor:pointer;}
@@ -1014,7 +1027,7 @@ async function fetchSlides(){
   }catch(e){}
   // mystery box + warranty settings
   try{
-    const r3=await fetch(`${SUPA_URL}/rest/v1/gl_settings?select=id,data&id=in.(mysterybox,warranty,highlights,actionbtn,popup,referral)`,
+    const r3=await fetch(`${SUPA_URL}/rest/v1/gl_settings?select=id,data&id=in.(mysterybox,warranty,highlights,actionbtn,popup,referral,brandinfo)`,
       { headers:{ apikey:SUPA_ANON, Authorization:`Bearer ${SUPA_ANON}` } });
     if(r3.ok){ const rows=await r3.json();
       rows.forEach(row=>{
@@ -1024,6 +1037,7 @@ async function fetchSlides(){
         if(row.id==='actionbtn') ACTIONBTN=Object.assign({},ACTIONBTN,row.data||{});
         if(row.id==='popup') POPUP=Object.assign({},POPUP,row.data||{});
         if(row.id==='referral') REFERRAL=Object.assign({},REFERRAL,row.data||{});
+        if(row.id==='brandinfo') BRAND_INFO=Object.assign({},row.data||{});
       });
     }
   }catch(e){}
@@ -1065,6 +1079,7 @@ let HIGHLIGHTS = { items:[], autoslide:true, interval:4000 };
 let ACTIONBTN = { enabled:false, label:'Free Car Wash', service_id:null };
 let POPUP = { enabled:false, posters:[] };
 let REFERRAL = { terms:[], wash_service_id:null, need_tier:true, need_wash:true, target:5 };
+let BRAND_INFO = {}; // { "PPF::One+": {logo, warranty}, "AXFilm G Series": {warranty:"3 Years"} }
 let FLASH = [];   // gl_flash_deals rows
 let CLAIMS = [];  // gl_claims rows (free services already claimed by this user)
 let PACKAGES = []; // gl_packages rows (multi-use redeemable packages)
@@ -2713,27 +2728,66 @@ async function openCategory(name){
   } else {
     list = visible.filter(s=>svcInCategory(s,name));
   }
-  // group by section (sub-category). Services with no section go under "" (shown first, no heading).
-  const sections = {};
-  const order = [];
-  list.forEach(s=>{
-    const sec = (s.section||'').trim();
-    if(!(sec in sections)){ sections[sec]=[]; order.push(sec); }
-    sections[sec].push(s);
-  });
-  // render: no-section group first (no heading), then each named section with a heading
-  order.sort((a,b)=> (a===''? -1 : b===''? 1 : a.localeCompare(b)));
-  const body = list.length ? order.map(sec=>`
-      ${sec?`<div class="sec-title" style="margin-top:22px">${esc(sec)}</div>`:''}
-      <div class="pkg-grid">${sections[sec].map(s=>pkgCard(s)).join('')}</div>
-    `).join('') : '<div class="guest-banner">No services in this category yet.</div>';
+  // if any services in this category have a brand, show BRAND TILES first
+  const brands=[];
+  list.forEach(s=>{ const b=(s.brand||'').trim(); if(b && !brands.includes(b)) brands.push(b); });
+  const noBrandItems = list.filter(s=>!(s.brand||'').trim());
+  if(brands.length){
+    const tiles = brands.map(b=>{
+      const info = BRAND_INFO[name+'::'+b] || BRAND_INFO[b] || {};
+      const logo = info.logo||'';
+      const warr = info.warranty||'';
+      return `<div class="brand-tile" onclick="openBrand('${esc(name)}','${esc(b)}')">
+        <div class="brand-tile-img">${logo?`<img src="${logo}">`:`<div class="brand-tile-ph">${esc(b)}</div>`}</div>
+        <div class="brand-tile-nm">${esc(b)}${warr?`<div class="brand-tile-warr">🛡️ ${esc(warr)}</div>`:''}</div>
+      </div>`;
+    }).join('');
+    const looseBody = noBrandItems.length ? renderSectioned(noBrandItems) : '';
+    appRoot.innerHTML=`
+      <div class="topbar-app"><button class="back" onclick="routeTab('home')">‹</button><div class="ttl">${esc(name)}</div><button class="home-btn" onclick="routeTab('home')">⌂</button></div>
+      <div class="app-scroll" style="padding-top:14px">
+        <div class="brand-grid">${tiles}</div>
+        ${looseBody}
+      </div>`;
+    return;
+  }
+  const body = list.length ? renderSectioned(list) : '<div class="guest-banner">No services in this category yet.</div>';
   appRoot.innerHTML=`
     <div class="topbar-app"><button class="back" onclick="routeTab('home')">‹</button><div class="ttl">${esc(name)}</div><button class="home-btn" onclick="routeTab('home')">⌂</button></div>
     <div class="app-scroll" style="padding-top:14px">${body}</div>`;
 }
+async function openBrand(catName, brand){
+  if(!SERVICES.length) await fetchServices();
+  const visible = visibleServices();
+  const list = visible.filter(s=>svcInCategory(s,catName) && (s.brand||'').trim()===brand);
+  const info = BRAND_INFO[catName+'::'+brand] || BRAND_INFO[brand] || {};
+  const warrBanner = info.warranty ? `<div class="brand-warr-banner">🛡️ ${esc(info.warranty)}</div>` : '';
+  const body = list.length ? renderSectioned(list) : '<div class="guest-banner">No services here yet.</div>';
+  appRoot.innerHTML=`
+    <div class="topbar-app"><button class="back" onclick="openCategory('${esc(catName)}')">‹</button><div class="ttl">${esc(brand)}</div><button class="home-btn" onclick="routeTab('home')">⌂</button></div>
+    <div class="app-scroll" style="padding-top:14px">${warrBanner}${body}</div>`;
+}
+// shared: render a list grouped by section heading
+function renderSectioned(list){
+  const sections={}; const order=[];
+  list.forEach(s=>{ const sec=(s.section||'').trim(); if(!(sec in sections)){ sections[sec]=[]; order.push(sec); } sections[sec].push(s); });
+  order.sort((a,b)=> (a===''? -1 : b===''? 1 : 0));
+  return order.map(sec=>`
+      ${sec?`<div class="sec-title" style="margin-top:22px">${esc(sec)}</div>`:''}
+      <div class="pkg-grid">${sections[sec].map(s=>pkgCard(s)).join('')}</div>
+    `).join('');
+}
 
+function svcWarranty(s){
+  const b=(s.brand||'').trim(); if(!b) return '';
+  const cat=(s.category||'').trim();
+  const info = BRAND_INFO[cat+'::'+b] || BRAND_INFO[b] || {};
+  return info.warranty || '';
+}
 function pkgCard(s){
-  const badge = s.subtitle ? `<div class="pkg-badge">${esc(s.subtitle)}</div>` : '';
+  const warr = svcWarranty(s);
+  const badgeText = s.subtitle || warr;  // subtitle wins if set, else brand warranty
+  const badge = badgeText ? `<div class="pkg-badge">${esc(badgeText)}</div>` : '';
   const media = (Array.isArray(s.media)&&s.media.length) ? s.media[0].url : s.image_url;
   return `<div class="pkg-card" onclick="openService('${s.id}')">
     <div class="pkg-img">${media?`<img src="${media}">`:`<div class="pkg-img-ph">Image</div>`}${badge}</div>
@@ -2885,10 +2939,11 @@ function resolveAddon(a){
 function svcDetailPrice(){
   const s=SVC_SEL.service; if(!s) return 0;
   let base=0;
-  if(s.option_type && s.option_pricing){
-    // option pricing: one price per choice (no car size)
-    const choice = currentOptionChoice();
-    base = Number(s.option_pricing[choice]||0);
+  if(s.option_type && optionChoicesFor(s)){
+    // option pricing: one price per choice (custom labels)
+    const choiceLabel = currentOptionChoice();
+    const ch = optionChoicesFor(s).find(c=>c.label===choiceLabel);
+    base = Number(ch?.price||0);
   } else if(s.variations && s.variations.length){
     base=Number(s.variations[SVC_SEL.variIdx]?.price||0);
   } else if(s.price_by_type){
@@ -2902,16 +2957,13 @@ function svcDetailPrice(){
 }
 function currentOptionChoice(){
   const s=SVC_SEL.service; const choices=optionChoicesFor(s); if(!choices) return null;
-  return (SVC_SEL.optChoice && choices.includes(SVC_SEL.optChoice)) ? SVC_SEL.optChoice : choices[0];
+  const labels=choices.map(c=>c.label);
+  return (SVC_SEL.optChoice && labels.includes(SVC_SEL.optChoice)) ? SVC_SEL.optChoice : labels[0];
 }
-// option choices per type
-const OPTION_CHOICES = { side:['One Side','One Set'], door:['1 Door','2 Door','3 Door','4 Door'] };
+// option choices: array of {label, price} set in admin
 function optionChoicesFor(s){
-  if(!s || !s.option_type || !OPTION_CHOICES[s.option_type]) return null;
-  const all = OPTION_CHOICES[s.option_type];
-  const op = s.option_pricing||{};
-  // only show choices that have a price set (so a coupe with 1/2 door only shows those)
-  const avail = all.filter(c=>op[c]!=null && op[c]!=='');
+  if(!s || !s.option_type || !Array.isArray(s.option_choices)) return null;
+  const avail = s.option_choices.filter(c=>c.label && c.price!=null && c.price!=='');
   return avail.length ? avail : null;
 }
 
@@ -2944,13 +2996,13 @@ function renderServiceDetail(){
   // variations / options / size
   let variBlock='';
   const optChoices = optionChoicesFor(s);
-  if(optChoices && s.option_pricing){
-    // OPTION pricing: pick a choice; each has one price (no car size)
+  if(optChoices){
+    // OPTION pricing: pick a choice; each has one price (custom labels)
     const choice = currentOptionChoice();
-    const optLabel = s.option_type==='door' ? 'How many doors?' : 'Choose option';
-    variBlock = `<div class="sd-sec-t">${optLabel}</div>
+    const optLabel = s.option_label || 'Choose option';
+    variBlock = `<div class="sd-sec-t">${esc(optLabel)}</div>
       <div class="sd-vari">${optChoices.map(c=>`
-        <button class="sd-chip ${c===choice?'on':''}" onclick="selOption('${esc(c)}')">${esc(c)} · RM${money(s.option_pricing[c])}</button>`).join('')}</div>`;
+        <button class="sd-chip ${c.label===choice?'on':''}" onclick="selOption('${esc(c.label)}')">${esc(c.label)} · RM${money(c.price)}</button>`).join('')}</div>`;
   } else if(s.variations && s.variations.length){
     variBlock=`<div class="sd-sec-t">Select variation</div>
       <div class="sd-vari">${s.variations.map((v,i)=>`
@@ -3026,6 +3078,7 @@ function renderServiceDetail(){
           <div class="sd-price-tag">${priceLabel(s)}</div>
         </div>
         ${s.subtitle?`<div class="sd-badge">⭐ ${esc(s.subtitle)}</div>`:''}
+        ${svcWarranty(s)?`<div class="sd-warr">🛡️ ${esc(svcWarranty(s))} Warranty</div>`:''}
         ${carBlock}
         ${variBlock}
         ${qtyBlock}

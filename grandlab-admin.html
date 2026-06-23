@@ -565,6 +565,9 @@
         <div class="svc-hint">Upload the filled Grandlab Services template. Merges by name (existing services with the same name are updated). Photos/variations/add-ons are added here after import.</div>
         <input type="file" accept=".xlsx,.xls" onchange="importServicesExcel(this)" style="margin-top:8px">
         <div id="svcImportMsg" class="svc-hint" style="margin-top:6px"></div>
+        <div class="section-h" style="margin-top:16px">Brand / series warranty &amp; logo</div>
+        <div class="svc-hint">Set the warranty &amp; tile image once per brand (e.g. One+ = 1 Year, AXFilm G Series = 3 Years). It shows on every service in that brand. Brands come from the "Brand / series" field on your services.</div>
+        <div id="brandInfoList" style="margin-top:8px"></div>
         <div id="svcList" style="margin-top:14px"></div>
         <div class="add-row"><button class="btn btn-ghost" onclick="addService()">+ Add service</button></div>
       </div>
@@ -1042,6 +1045,8 @@ async function loadAll(){
     if(r.ok){const rows=await r.json();if(rows[0]&&rows[0].data)hl=Object.assign(hl,rows[0].data);}
     r=await sb("gl_settings?select=*&id=eq.actionbtn",{headers:H()});
     if(r.ok){const rows=await r.json();if(rows[0]&&rows[0].data)actionbtn=Object.assign(actionbtn,rows[0].data);}
+    r=await sb("gl_settings?select=*&id=eq.brandinfo",{headers:H()});
+    if(r.ok){const rows=await r.json();if(rows[0]&&rows[0].data)brandInfo=Object.assign({},rows[0].data);}
     // car brands + models
     deletedBrandIds2=[]; deletedModelIds=[];
     r=await sb("gl_car_brands?select=*&order=sort_order.asc",{headers:H()});
@@ -1131,7 +1136,40 @@ function moveSlide(i,d){const j=i+d;if(j<0||j>=slides.length)return;[slides[i],s
 
 /* ---------- SERVICES editor ---------- */
 let svcSearch = '';
+let brandInfo={}; // { "PPF::One+": {warranty, logo} }  keyed by category::brand
+function brandKey(s){ return ((s.category||'').trim())+'::'+((s.brand||'').trim()); }
+function renderBrandInfo(){
+  const el=document.getElementById('brandInfoList'); if(!el) return;
+  // collect unique category::brand combos from services
+  const combos=[];
+  services.forEach(s=>{ const b=(s.brand||'').trim(); if(b){ const k=brandKey(s); if(!combos.some(c=>c.k===k)) combos.push({k,cat:(s.category||'').trim(),brand:b}); } });
+  if(!combos.length){ el.innerHTML='<div class="svc-hint">No brands yet — add a "Brand / series" to a service first.</div>'; return; }
+  el.innerHTML=combos.map(c=>{
+    const info=brandInfo[c.k]||{};
+    return `<div class="card" style="margin-top:8px">
+      <div style="font-weight:700;font-size:13px">${esc(c.brand)} <span style="color:var(--muted);font-weight:400">· ${esc(c.cat)}</span></div>
+      <label style="margin-top:6px">Warranty label</label>
+      <input value="${esc(info.warranty||'')}" oninput="updBrandInfo('${esc(c.k)}','warranty',this.value)" placeholder="e.g. 1 Year, 3 Years">
+      <label style="margin-top:6px">Tile image</label>
+      <div style="display:flex;align-items:center;gap:8px;margin-top:4px">
+        <div>${info.logo?`<img src="${info.logo}" style="height:40px;border-radius:6px">`:'<span class="svc-hint">none</span>'}</div>
+        <input type="file" accept="image/*" onchange="uploadBrandLogo('${esc(c.k)}',this)">
+        ${info.logo?`<button class="btn btn-danger btn-sm" onclick="updBrandInfo('${esc(c.k)}','logo',null);renderBrandInfo()">✕</button>`:''}
+      </div>
+    </div>`;
+  }).join('');
+}
+function updBrandInfo(key,field,val){ brandInfo[key]=brandInfo[key]||{}; if(val===null) delete brandInfo[key][field]; else brandInfo[key][field]=val; }
+async function uploadBrandLogo(key,input){
+  const f=input.files[0]; if(!f) return; toast("Uploading…");
+  const path=`brand-${Date.now()}-${f.name.replace(/[^a-z0-9.]/gi,'_')}`;
+  const r=await fetch(`${SUPA_URL}/storage/v1/object/${BUCKET}/${path}`,{method:"POST",headers:{apikey:SVC_KEY,Authorization:`Bearer ${SVC_KEY}`},body:f});
+  if(!r.ok){toast("Upload failed — is gl-images bucket public?");return;}
+  updBrandInfo(key,'logo',`${SUPA_URL}/storage/v1/object/public/${BUCKET}/${path}`);
+  renderBrandInfo(); toast("Logo ✓");
+}
 function renderServices(){
+  renderBrandInfo();
   const el=document.getElementById('svcList');
   if(!services.length){el.innerHTML='<div class="empty">No services yet. Add your first one.</div>';return;}
   el.innerHTML="";
@@ -1172,6 +1210,10 @@ function renderServices(){
         ${categories.map(c=>`<option value="${esc(c.name)}" ${(s.category2||'')===c.name?'selected':''}>${esc(c.name)}</option>`).join('')}
         ${(s.category2 && !categories.some(c=>c.name===s.category2))?`<option value="${esc(s.category2)}" selected>${esc(s.category2)} (unlisted)</option>`:''}
       </select>
+      <label style="margin-top:8px">Brand / series (optional) <span class="svc-hint">middle tile inside the category, e.g. One+, AXFilm G Series</span></label>
+      <input value="${esc(s.brand||'')}" oninput="upd('svc',${i},'brand',this.value)" placeholder="e.g. One+, AXFilm G Series" list="brandList${i}">
+      <datalist id="brandList${i}">${[...new Set(services.map(x=>x.brand).filter(Boolean))].map(b=>`<option value="${esc(b)}">`).join('')}</datalist>
+      <div class="svc-hint">Same brand = grouped into one tile. Tapping the tile shows these services. Leave blank to show directly under the category.</div>
       <label style="margin-top:8px">Section / sub-category heading (optional)</label>
       <input value="${esc(s.section||'')}" oninput="upd('svc',${i},'section',this.value)" placeholder="e.g. Packages, Ala-Carte" list="sectionList${i}">
       <datalist id="sectionList${i}">${[...new Set(services.map(x=>x.section).filter(Boolean))].map(sec=>`<option value="${esc(sec)}">`).join('')}</datalist>
@@ -1220,18 +1262,26 @@ function renderServices(){
         <input type="number" value="${s.base_price??''}" oninput="upd('svc',${i},'base_price',this.value)">
       `}
 
-      <div class="svc-sub">Option pricing <span class="svc-hint">e.g. Fender = side (One Side/One Set) · Door = 1/2/3/4 — each × car size</span></div>
-      <select onchange="setOptionType(${i},this.value)">
-        <option value="">— No option —</option>
-        <option value="side" ${s.option_type==='side'?'selected':''}>Side (One Side / One Set)</option>
-        <option value="door" ${s.option_type==='door'?'selected':''}>Door (1 / 2 / 3 / 4 Door)</option>
-      </select>
+      <div class="svc-sub">Option pricing <span class="svc-hint">e.g. Bumper = Front/Rear · Fender = One Side/One Set · Door = 1/2/3/4 — one price each</span></div>
+      <label style="display:flex;align-items:center"><input type="checkbox" style="width:auto;margin-right:7px" ${s.option_type?'checked':''} onchange="toggleOption(${i},this.checked)">Enable option pricing</label>
       ${s.option_type?`
-        <div class="price-grid" style="margin-top:8px;grid-template-columns:1fr 1fr">
-          ${(ADMIN_OPTION_CHOICES[s.option_type]||[]).map(c=>`
-            <div class="pc"><label>${c}</label><input type="number" value="${(s.option_pricing&&s.option_pricing[c])??''}" oninput="updOptPrice(${i},'${esc(c)}',this.value)" placeholder="RM"></div>`).join('')}
+        <div style="margin-top:6px">
+          <label>Option heading <span class="svc-hint">shown above the choices (e.g. "Choose part", "How many doors?")</span></label>
+          <input value="${esc(s.option_label||'')}" oninput="upd('svc',${i},'option_label',this.value)" placeholder="Choose option">
         </div>
-        <div class="svc-hint">Leave a choice blank if it's not offered (e.g. a coupe only has 1 &amp; 2 door — fill only those).</div>
+        <div class="svc-hint" style="margin-top:8px">Quick fill: 
+          <a href="#" onclick="optPreset(${i},'side');return false">Side set</a> · 
+          <a href="#" onclick="optPreset(${i},'door');return false">Doors 1-4</a> · 
+          <a href="#" onclick="optPreset(${i},'bumper');return false">Bumper F/R</a>
+        </div>
+        <div id="optList${i}" style="margin-top:6px">${(s.option_choices||[]).map((c,ci)=>`
+          <div class="mini-row">
+            <input value="${esc(c.label||'')}" oninput="updOptChoice(${i},${ci},'label',this.value)" placeholder="Label e.g. Front" style="flex:1">
+            <input type="number" value="${c.price??''}" oninput="updOptChoice(${i},${ci},'price',this.value)" placeholder="RM" style="max-width:90px">
+            <button class="btn btn-danger btn-sm" onclick="delOptChoice(${i},${ci})">✕</button>
+          </div>`).join('')}</div>
+        <button class="btn btn-ghost btn-sm" onclick="addOptChoice(${i})">+ Add choice</button>
+        <div class="svc-hint">Only add the choices you offer. A coupe bumper might be Front/Rear; a coupe door might be just 1 &amp; 2.</div>
       `:''}
 
       <div class="svc-sub">Variations <span class="svc-hint">customer picks one; its price overrides base price</span></div>
@@ -1302,21 +1352,21 @@ function importServicesExcel(input){
         s.category=String(r.category||'').trim()||null;
         s.category2=String(r.category2||'').trim()||null;
         s.section=String(r.section||'').trim()||null;
+        s.brand=String(r.brand||'').trim()||null;
         s.price_by_type=price_by_type;
         s.base_price=base_price;
-        // option pricing (side / door) — one price per choice (no car size)
-        const optType=String(r.option_type||'').trim().toLowerCase();
-        if(optType==='side'||optType==='door'){
-          s.option_type=optType;
-          const op={};
-          if(optType==='side'){
-            if(num(r.side_oneside)!=null) op['One Side']=num(r.side_oneside);
-            if(num(r.side_oneset)!=null)  op['One Set']=num(r.side_oneset);
-          } else {
-            [1,2,3,4].forEach(n=>{ const v=num(r['door_'+n]); if(v!=null) op[n+' Door']=v; });
-          }
-          s.option_pricing=Object.keys(op).length?op:null;
-        } else { s.option_type=null; s.option_pricing=null; }
+        // option pricing — custom label/price pairs: opt_label + opt1_label/opt1_price ... opt6
+        const choices=[];
+        for(let n=1;n<=6;n++){
+          const lab=String(r['opt'+n+'_label']||'').trim();
+          const pr=num(r['opt'+n+'_price']);
+          if(lab && pr!=null) choices.push({label:lab, price:pr});
+        }
+        if(choices.length){
+          s.option_type='custom';
+          s.option_label=String(r.opt_label||'').trim()||'Choose option';
+          s.option_choices=choices;
+        } else { s.option_type=null; s.option_choices=null; s.option_pricing=null; }
         s.subtitle=String(r.subtitle||'').trim()||null;
         s.item_info=String(r.item_info||'').trim()||null;
         s.est_time=String(r.est_time||'').trim()||null;
@@ -1336,17 +1386,29 @@ function importServicesExcel(input){
 function addService(){services.push({name:"New service",category:"",category2:"",section:"",base_price:0,price_by_type:null,media:[],variations:[],addons:[],is_package:false,hidden:false,active:true,sort_order:services.length+1,_open:true});renderServices();renderPreview();}
 function delService(i){if(services[i].id)deletedServiceIds.push(services[i].id);services.splice(i,1);renderServices();renderPreview();}
 function toggleSized(i,on){services[i].price_by_type=on?{Sedan:0,SUV:0,MPV:0,Supercar:0,Motorcycle:0}:null;renderServices();renderPreview();}
-const ADMIN_OPTION_CHOICES={ side:['One Side','One Set'], door:['1 Door','2 Door','3 Door','4 Door'] };
-function setOptionType(i,val){
-  services[i].option_type = val||null;
-  if(!val){ services[i].option_pricing=null; }
-  else { services[i].option_pricing = services[i].option_pricing || {}; }
+function toggleOption(i,on){
+  if(on){ services[i].option_type='custom'; services[i].option_choices=services[i].option_choices||[{label:'',price:null}]; services[i].option_label=services[i].option_label||'Choose option'; }
+  else { services[i].option_type=null; services[i].option_choices=null; services[i].option_pricing=null; }
   renderServices();
 }
-function updOptPrice(i,choice,val){
-  services[i].option_pricing = services[i].option_pricing || {};
-  if(val===''){ delete services[i].option_pricing[choice]; }
-  else { services[i].option_pricing[choice] = Number(val); }
+function addOptChoice(i){ services[i].option_choices=services[i].option_choices||[]; services[i].option_choices.push({label:'',price:null}); renderServices(); }
+function delOptChoice(i,ci){ services[i].option_choices.splice(ci,1); renderServices(); }
+function updOptChoice(i,ci,f,v){
+  services[i].option_choices=services[i].option_choices||[];
+  services[i].option_choices[ci][f] = (f==='price') ? (v===''?null:Number(v)) : v;
+}
+function optPreset(i,kind){
+  const presets={
+    side:[{label:'One Side',price:null},{label:'One Set',price:null}],
+    door:[{label:'1 Door',price:null},{label:'2 Door',price:null},{label:'3 Door',price:null},{label:'4 Door',price:null}],
+    bumper:[{label:'Front',price:null},{label:'Rear',price:null}]
+  };
+  services[i].option_type='custom';
+  services[i].option_choices=presets[kind].map(x=>Object.assign({},x));
+  if(kind==='door') services[i].option_label='How many doors?';
+  else if(kind==='bumper') services[i].option_label='Front or Rear?';
+  else services[i].option_label='Choose option';
+  renderServices();
 }
 function updPrice(i,t,v){if(!services[i].price_by_type)services[i].price_by_type={};services[i].price_by_type[t]=v===''?null:Number(v);renderPreview();}
 /* variations */
@@ -2068,11 +2130,12 @@ async function saveAll(){
         variations:(s.variations&&s.variations.length)?s.variations:null,
         addons:(s.addons&&s.addons.length)?s.addons:null,
         item_info:s.item_info||null,est_time:s.est_time||null,is_package:!!s.is_package,subtitle:s.subtitle||null,
-        category2:s.category2||null,hidden:!!s.hidden,section:s.section||null,
+        category2:s.category2||null,hidden:!!s.hidden,section:s.section||null,brand:s.brand||null,
         pkg_uses:s.pkg_uses??null,pkg_type:s.pkg_type||null,
         milestones:(Array.isArray(s.milestones)&&s.milestones.length)?s.milestones:null,
         option_type:s.option_type||null,
-        option_pricing:(s.option_type&&s.option_pricing)?s.option_pricing:null};
+        option_label:s.option_type?(s.option_label||'Choose option'):null,
+        option_choices:(s.option_type&&Array.isArray(s.option_choices))?s.option_choices.filter(c=>c.label&&c.price!=null):null};
       if(s.id){await sb(`gl_services?id=eq.${s.id}`,{method:"PATCH",headers:H(),body:JSON.stringify(body)});}
       else{const r=await sb("gl_services",{method:"POST",headers:H({Prefer:"return=representation"}),body:JSON.stringify(body)});if(r.ok){const j=await r.json();s.id=j[0].id;}}
     }
@@ -2125,6 +2188,7 @@ async function saveAll(){
     // ---- settings saves FIRST (these are independent and must not be blocked by a later failure) ----
     await sb("gl_settings",{method:"POST",headers:H({Prefer:"resolution=merge-duplicates"}),body:JSON.stringify({id:"style",data:theme})});
     await sb("gl_settings",{method:"POST",headers:H({Prefer:"resolution=merge-duplicates"}),body:JSON.stringify({id:"referral",data:refSettings})});
+    await sb("gl_settings",{method:"POST",headers:H({Prefer:"resolution=merge-duplicates"}),body:JSON.stringify({id:"brandinfo",data:brandInfo})});
     await sb("gl_settings",{method:"POST",headers:H({Prefer:"resolution=merge-duplicates"}),body:JSON.stringify({id:"mysterybox",data:mb})});
     await sb("gl_settings",{method:"POST",headers:H({Prefer:"resolution=merge-duplicates"}),body:JSON.stringify({id:"warranty",data:warranty})});
     await sb("gl_settings",{method:"POST",headers:H({Prefer:"resolution=merge-duplicates"}),body:JSON.stringify({id:"highlights",data:hl})});
