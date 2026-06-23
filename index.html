@@ -436,6 +436,7 @@
   .sd-action{flex:1;min-width:0;background:#ff4d2e !important;color:#fff !important;border:none;white-space:nowrap;
     overflow:hidden;text-overflow:ellipsis;font-size:14px;}
   .sd-action.claimed{background:var(--surface2) !important;color:var(--muted) !important;cursor:not-allowed;}
+  .sd-action.voucher{background:#2e7d32 !important;color:#fff !important;}
   /* select a car */
   .sd-cars{display:flex;gap:10px;overflow-x:auto;padding-bottom:4px;}
   .sd-cars::-webkit-scrollbar{display:none;}
@@ -2232,20 +2233,39 @@ async function openMyPackages(){
   appRoot.innerHTML=`
     <div class="topbar-app"><button class="back" onclick="goBack()">‹</button><div class="ttl">My Packages</div></div>
     <div class="app-scroll" style="padding-top:18px"><div class="app-sub">Loading…</div></div>`;
-  await Promise.allSettled([ fetchPackages(), (!VEHICLES.length?fetchVehicles():Promise.resolve()) ]);
+  await Promise.allSettled([ fetchPackages(), fetchClaims(), (!VEHICLES.length?fetchVehicles():Promise.resolve()) ]);
   const active = PACKAGES.filter(p=>p.status==='active' && p.used_uses<p.total_uses);
   const done   = PACKAGES.filter(p=>!(p.status==='active' && p.used_uses<p.total_uses));
   // group by vehicle
   const byVeh={}; const order=[];
   active.forEach(p=>{ const k=p.vehicle_label||'Other'; if(!(k in byVeh)){byVeh[k]=[];order.push(k);} byVeh[k].push(p); });
-  const body = PACKAGES.length ? `
-      ${order.map(vl=>`
+  // claim vouchers (free car wash etc.)
+  const vouchers = (CLAIMS||[]).filter(c=>c.barcode);
+  const voucherHtml = vouchers.length ? `
+      <div class="sec-title" style="margin-top:10px">🎟️ My Vouchers</div>
+      ${vouchers.map(c=>`
+        <div class="pkg-bal-card ${c.status==='redeemed'?'done':''}">
+          <div class="pkg-bal-top">
+            <div><div class="pkg-bal-name">${esc(c.label||'Free Voucher')}</div></div>
+            <div class="pkg-bal-count">${c.status==='redeemed'?'<span class="pkg-done-tag">Redeemed</span>':'<span class="pkg-done-tag" style="background:#d8f5c8;color:#2e7d32">Active</span>'}</div>
+          </div>
+          ${c.status!=='redeemed'?`
+            <div class="pkg-barcode">${barcodeSvg(c.barcode||'GL0')}</div>
+            <div class="pkg-barcode-num">${esc(c.barcode||'')}</div>
+            <div class="pkg-barcode-hint">Show this to our staff to redeem</div>
+          `:`<div class="pkg-bal-sub" style="margin-top:8px">Redeemed${c.redeemed_at?(' on '+fmtDateTime(c.redeemed_at)):''}</div>`}
+        </div>`).join('')}
+    ` : '';
+  const hasAny = PACKAGES.length || vouchers.length;
+  const body = hasAny ? `
+      ${voucherHtml}
+      ${order.length?order.map(vl=>`
         <div class="pkg-veh-h">🚗 ${esc(vl)}</div>
         ${byVeh[vl].map(p=>pkgCardHtml(p)).join('')}
-      `).join('')}
+      `).join(''):''}
       ${done.length?`<div class="sec-title" style="margin-top:24px">Completed</div>
         ${done.map(p=>pkgCardHtml(p,true)).join('')}`:''}
-    ` : `<div class="guest-banner">No packages yet. Buy a multi-use package (e.g. 10× wash) and it'll appear here.</div>`;
+    ` : `<div class="guest-banner">No packages or vouchers yet.</div>`;
   appRoot.innerHTML=`
     <div class="topbar-app"><button class="back" onclick="goBack()">‹</button><div class="ttl">My Packages</div></div>
     <div class="app-scroll" style="padding-top:18px">${body}</div>`;
@@ -2992,9 +3012,13 @@ function actionBtnHtml(currentSvc){
   if(!ACTIONBTN || ACTIONBTN.enabled===false || !ACTIONBTN.service_id) return '';
   // don't show the button on its own target service page
   if(String(ACTIONBTN.service_id)===String(currentSvc.id)) return '';
-  const claimed = hasClaimed(ACTIONBTN.service_id);
-  if(claimed){
-    return `<button class="btn sd-action claimed" disabled>✓ Claimed</button>`;
+  const claim = CLAIMS.find(c=>String(c.service_id)===String(ACTIONBTN.service_id));
+  if(claim){
+    if(claim.status==='redeemed'){
+      return `<button class="btn sd-action claimed" disabled>✓ Redeemed</button>`;
+    }
+    // claimed but not yet used → show voucher (barcode) for staff to scan
+    return `<button class="btn sd-action voucher" onclick="showClaimVoucher('${ACTIONBTN.service_id}')">🎟️ View voucher</button>`;
   }
   return `<button class="btn sd-action" onclick="claimAction()">⭐ ${esc(ACTIONBTN.label||'Free')}</button>`;
 }
@@ -3004,20 +3028,41 @@ async function claimAction(){
   if(hasClaimed(ACTIONBTN.service_id)){ toast('Already claimed'); return; }
   const btn=document.querySelector('.sd-action');
   if(btn){ btn.disabled=true; btn.textContent='Claiming…'; }
+  const barcode=genBarcodeValue();
   try{
-    const r=await fetch(`${SUPA_URL}/rest/v1/gl_claims`,{method:'POST',headers:authHeaders(),
-      body:JSON.stringify({owner_id:SESSION.user.id, service_id:ACTIONBTN.service_id, label:ACTIONBTN.label||'Free', status:'claimed'})});
+    const r=await fetch(`${SUPA_URL}/rest/v1/gl_claims`,{method:'POST',headers:Object.assign(authHeaders(),{Prefer:'return=representation'}),
+      body:JSON.stringify({owner_id:SESSION.user.id, service_id:ACTIONBTN.service_id, label:ACTIONBTN.label||'Free', status:'claimed', barcode:barcode})});
     if(r.ok){
-      CLAIMS.push({service_id:ACTIONBTN.service_id, label:ACTIONBTN.label});
-      toast('🎉 '+(ACTIONBTN.label||'Free')+' claimed! Show this at the outlet.');
+      const row=(await r.json())[0]||{service_id:ACTIONBTN.service_id, label:ACTIONBTN.label, barcode:barcode, status:'claimed'};
+      CLAIMS.push(row);
+      toast('🎉 Voucher added! Show the barcode to our staff to redeem.');
       renderServiceDetail();
+      showClaimVoucher(ACTIONBTN.service_id);
     } else if(r.status===409){
-      // unique violation → already claimed
-      CLAIMS.push({service_id:ACTIONBTN.service_id});
-      toast('You already claimed this');
+      CLAIMS.push({service_id:ACTIONBTN.service_id, barcode:barcode, status:'claimed'});
+      toast('You already have this voucher');
       renderServiceDetail();
     } else { toast('Could not claim — try again'); if(btn){btn.disabled=false;btn.textContent='⭐ '+(ACTIONBTN.label||'Free');} }
   }catch(e){ toast('Error claiming'); if(btn){btn.disabled=false;} }
+}
+function showClaimVoucher(serviceId){
+  const c=CLAIMS.find(x=>String(x.service_id)===String(serviceId));
+  if(!c){ toast('No voucher'); return; }
+  const ov=document.createElement('div'); ov.className='popup-ov'; ov.onclick=()=>ov.remove();
+  ov.innerHTML=`
+    <div class="popup-box" style="max-width:340px" onclick="event.stopPropagation()">
+      <button class="popup-x" onclick="this.closest('.popup-ov').remove()">✕</button>
+      <div style="padding:24px 18px">
+        <div style="text-align:center;font-size:13px;color:var(--muted)">Voucher</div>
+        <div style="text-align:center;font-size:19px;font-weight:800;margin-top:4px">${esc(c.label||'Free Car Wash')}</div>
+        ${c.status==='redeemed'
+          ? `<div style="text-align:center;margin-top:18px;color:#0d4d44;background:#bff0e4;border-radius:12px;padding:14px;font-weight:700">✓ Redeemed${c.redeemed_at?(' on '+fmtDateTime(c.redeemed_at)):''}</div>`
+          : `<div style="background:#fff;border-radius:10px;padding:14px 14px 6px;margin-top:18px">${barcodeSvg(c.barcode||'GL0')}</div>
+             <div class="pkg-barcode-num">${esc(c.barcode||'')}</div>
+             <div class="pkg-barcode-hint">Show this to our staff to redeem your free wash</div>`}
+      </div>
+    </div>`;
+  document.body.appendChild(ov);
 }
 function selCar(id){
   SVC_SEL.carId=id;
