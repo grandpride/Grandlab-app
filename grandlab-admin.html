@@ -1227,15 +1227,11 @@ function renderServices(){
         <option value="door" ${s.option_type==='door'?'selected':''}>Door (1 / 2 / 3 / 4 Door)</option>
       </select>
       ${s.option_type?`
-        <div class="opt-grid-wrap" style="margin-top:8px;overflow-x:auto">
-          <table class="opt-grid">
-            <tr><th></th>${CAR_TYPES.map(t=>`<th>${t}</th>`).join('')}</tr>
-            ${(ADMIN_OPTION_CHOICES[s.option_type]||[]).map(c=>`
-              <tr><td class="opt-rowh">${c}</td>${CAR_TYPES.map(t=>`
-                <td><input type="number" value="${(s.option_pricing&&s.option_pricing[c]&&s.option_pricing[c][t])??''}" oninput="updOptPrice(${i},'${esc(c)}','${t}',this.value)" placeholder="RM"></td>`).join('')}</tr>`).join('')}
-          </table>
+        <div class="price-grid" style="margin-top:8px;grid-template-columns:1fr 1fr">
+          ${(ADMIN_OPTION_CHOICES[s.option_type]||[]).map(c=>`
+            <div class="pc"><label>${c}</label><input type="number" value="${(s.option_pricing&&s.option_pricing[c])??''}" oninput="updOptPrice(${i},'${esc(c)}',this.value)" placeholder="RM"></div>`).join('')}
         </div>
-        <div class="svc-hint">Leave a cell blank if that size isn't offered for that choice.</div>
+        <div class="svc-hint">Leave a choice blank if it's not offered (e.g. a coupe only has 1 &amp; 2 door — fill only those).</div>
       `:''}
 
       <div class="svc-sub">Variations <span class="svc-hint">customer picks one; its price overrides base price</span></div>
@@ -1308,22 +1304,16 @@ function importServicesExcel(input){
         s.section=String(r.section||'').trim()||null;
         s.price_by_type=price_by_type;
         s.base_price=base_price;
-        // option pricing (side / door) — columns like: side_oneside_sedan, door_2_suv, etc.
+        // option pricing (side / door) — one price per choice (no car size)
         const optType=String(r.option_type||'').trim().toLowerCase();
         if(optType==='side'||optType==='door'){
           s.option_type=optType;
           const op={};
           if(optType==='side'){
-            const map={'One Side':'oneside','One Set':'oneset'};
-            Object.keys(map).forEach(label=>{ const k=map[label];
-              const row={Sedan:num(r['side_'+k+'_sedan']),SUV:num(r['side_'+k+'_suv']),MPV:num(r['side_'+k+'_mpv']),Supercar:num(r['side_'+k+'_supercar']),Motorcycle:num(r['side_'+k+'_motorcycle'])};
-              if(Object.values(row).some(v=>v!=null)) op[label]=row;
-            });
+            if(num(r.side_oneside)!=null) op['One Side']=num(r.side_oneside);
+            if(num(r.side_oneset)!=null)  op['One Set']=num(r.side_oneset);
           } else {
-            [1,2,3,4].forEach(n=>{ const label=n+' Door';
-              const row={Sedan:num(r['door_'+n+'_sedan']),SUV:num(r['door_'+n+'_suv']),MPV:num(r['door_'+n+'_mpv']),Supercar:num(r['door_'+n+'_supercar']),Motorcycle:num(r['door_'+n+'_motorcycle'])};
-              if(Object.values(row).some(v=>v!=null)) op[label]=row;
-            });
+            [1,2,3,4].forEach(n=>{ const v=num(r['door_'+n]); if(v!=null) op[n+' Door']=v; });
           }
           s.option_pricing=Object.keys(op).length?op:null;
         } else { s.option_type=null; s.option_pricing=null; }
@@ -1350,16 +1340,13 @@ const ADMIN_OPTION_CHOICES={ side:['One Side','One Set'], door:['1 Door','2 Door
 function setOptionType(i,val){
   services[i].option_type = val||null;
   if(!val){ services[i].option_pricing=null; }
-  else {
-    services[i].option_pricing = services[i].option_pricing || {};
-    (ADMIN_OPTION_CHOICES[val]||[]).forEach(c=>{ services[i].option_pricing[c]=services[i].option_pricing[c]||{}; });
-  }
+  else { services[i].option_pricing = services[i].option_pricing || {}; }
   renderServices();
 }
-function updOptPrice(i,choice,size,val){
+function updOptPrice(i,choice,val){
   services[i].option_pricing = services[i].option_pricing || {};
-  services[i].option_pricing[choice] = services[i].option_pricing[choice] || {};
-  services[i].option_pricing[choice][size] = (val===''?null:Number(val));
+  if(val===''){ delete services[i].option_pricing[choice]; }
+  else { services[i].option_pricing[choice] = Number(val); }
 }
 function updPrice(i,t,v){if(!services[i].price_by_type)services[i].price_by_type={};services[i].price_by_type[t]=v===''?null:Number(v);renderPreview();}
 /* variations */
