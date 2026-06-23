@@ -513,6 +513,19 @@
   .redeem-ic{width:30px;height:30px;border-radius:50%;background:#bff0e4;color:#0d4d44;display:flex;align-items:center;justify-content:center;font-weight:800;flex:0 0 auto;}
   .redeem-title{font-size:14px;font-weight:600;}
   .redeem-date{font-size:12px;color:var(--muted);margin-top:2px;}
+  /* milestone rewards */
+  .ms-wrap{margin-top:16px;border-top:1px solid var(--line);padding-top:14px;}
+  .ms-title{font-size:13px;font-weight:700;margin-bottom:10px;}
+  .ms-item{display:flex;align-items:center;gap:12px;padding:10px 0;}
+  .ms-badge{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;flex:0 0 auto;}
+  .ms-item.locked .ms-badge{background:var(--surface2);color:var(--muted);}
+  .ms-item.unlocked .ms-badge{background:var(--yellow);color:#080808;}
+  .ms-item.redeemed .ms-badge{background:#bff0e4;color:#0d4d44;}
+  .ms-item.locked{opacity:.55;}
+  .ms-body{flex:1;min-width:0;}
+  .ms-label{font-size:14px;font-weight:600;}
+  .ms-sub{font-size:11.5px;color:var(--muted);margin-top:2px;}
+  .ms-show-btn{flex:0 0 auto;background:var(--yellow);color:#080808;border:none;border-radius:10px;padding:8px 12px;font-size:12px;font-weight:700;cursor:pointer;}
   /* flash deals */
   .flash-strip{display:flex;gap:12px;overflow-x:auto;margin-top:12px;padding-bottom:4px;}
   .flash-strip::-webkit-scrollbar{display:none;}
@@ -1134,8 +1147,13 @@ function hasClaimed(serviceId){ return CLAIMS.some(c=>String(c.service_id)===Str
 async function fetchPackages(){
   if(!SESSION?.user?.id){ PACKAGES=[]; return PACKAGES; }
   try{
-    const r=await fetch(`${SUPA_URL}/rest/v1/gl_packages?select=*&owner_id=eq.${SESSION.user.id}&order=created_at.desc`,{headers:authHeaders()});
-    if(r.ok) PACKAGES=await r.json();
+    const [rp,rr]=await Promise.all([
+      fetch(`${SUPA_URL}/rest/v1/gl_packages?select=*&owner_id=eq.${SESSION.user.id}&order=created_at.desc`,{headers:authHeaders()}),
+      fetch(`${SUPA_URL}/rest/v1/gl_package_rewards?select=*&owner_id=eq.${SESSION.user.id}&order=at_use.asc`,{headers:authHeaders()})
+    ]);
+    if(rp.ok) PACKAGES=await rp.json();
+    const rewards = rr.ok ? await rr.json() : [];
+    PACKAGES.forEach(p=>{ p._rewards = rewards.filter(x=>x.package_id===p.id); });
   }catch(e){}
   return PACKAGES;
 }
@@ -2215,8 +2233,48 @@ function pkgCardHtml(p, completed){
       <div class="pkg-barcode-num">${esc(p.barcode||'')}</div>
       <div class="pkg-barcode-hint">Show this to our staff to redeem one use</div>
     `:''}
+    ${milestonesHtml(p)}
     <button class="pkg-history-btn" onclick="openPkgHistory(${p.id})">View redemption history ›</button>
   </div>`;
+}
+function milestonesHtml(p){
+  const rewards = p._rewards||[];
+  if(!rewards.length) return '';
+  return `<div class="ms-wrap">
+    <div class="ms-title">🎁 Milestone rewards</div>
+    ${rewards.sort((a,b)=>a.at_use-b.at_use).map(r=>{
+      const used=p.used_uses||0;
+      const isRedeemed = r.status==='redeemed';
+      const isUnlocked = r.status==='unlocked' || (r.status!=='redeemed' && used>=r.at_use);
+      const cls = isRedeemed?'redeemed':(isUnlocked?'unlocked':'locked');
+      return `<div class="ms-item ${cls}">
+        <div class="ms-badge">${isRedeemed?'✓':(isUnlocked?'🎉':r.at_use)}</div>
+        <div class="ms-body">
+          <div class="ms-label">${esc(r.label||'Reward')}</div>
+          <div class="ms-sub">${isRedeemed?('Redeemed '+(r.redeemed_at?fmtDateTime(r.redeemed_at):'')):(isUnlocked?'Unlocked — ready to redeem':('Unlocks at use #'+r.at_use))}</div>
+        </div>
+        ${isUnlocked&&!isRedeemed?`<button class="ms-show-btn" onclick="showRewardBarcode(${r.id})">Show code</button>`:''}
+      </div>`;
+    }).join('')}
+  </div>`;
+}
+function showRewardBarcode(rwId){
+  let rw=null, pkg=null;
+  PACKAGES.forEach(p=>{ (p._rewards||[]).forEach(r=>{ if(String(r.id)===String(rwId)){ rw=r; pkg=p; } }); });
+  if(!rw) return;
+  const ov=document.createElement('div'); ov.className='popup-ov'; ov.onclick=()=>ov.remove();
+  ov.innerHTML=`
+    <div class="popup-box" style="max-width:340px" onclick="event.stopPropagation()">
+      <button class="popup-x" onclick="this.closest('.popup-ov').remove()">✕</button>
+      <div style="padding:22px 18px">
+        <div style="font-size:13px;color:var(--muted);text-align:center">Milestone reward</div>
+        <div style="font-size:18px;font-weight:800;text-align:center;margin-top:4px">${esc(rw.label||'Reward')}</div>
+        <div style="background:#fff;border-radius:10px;padding:14px 14px 6px;margin-top:16px">${barcodeSvg(rw.barcode||'GL0')}</div>
+        <div class="pkg-barcode-num">${esc(rw.barcode||'')}</div>
+        <div class="pkg-barcode-hint">Show this to our staff to redeem your reward</div>
+      </div>
+    </div>`;
+  document.body.appendChild(ov);
 }
 async function openPkgHistory(pkgId){
   const p=PACKAGES.find(x=>String(x.id)===String(pkgId));
@@ -2886,11 +2944,26 @@ async function checkoutService(){
       const uses = Number(s.pkg_uses||0);
       if(uses>1){
         const barcode = genBarcodeValue();
-        await fetch(`${SUPA_URL}/rest/v1/gl_packages`,{
-          method:"POST",headers:authHeaders(),
+        const pr=await fetch(`${SUPA_URL}/rest/v1/gl_packages`,{
+          method:"POST",headers:Object.assign(authHeaders(),{Prefer:"return=representation"}),
           body:JSON.stringify({owner_id:SESSION.user.id, vehicle_id:car?.id||null, vehicle_label:carLabel,
             service_id:s.id, service_name:s.name, pkg_type:s.pkg_type||'custom',
             total_uses:uses, used_uses:0, barcode:barcode, status:'active', source:'app'})});
+        // create milestone reward rows (each its own barcode)
+        if(pr.ok){
+          const pkgRow=(await pr.json())[0];
+          const ms=Array.isArray(s.milestones)?s.milestones:[];
+          if(pkgRow && ms.length){
+            const rows=ms.filter(m=>m && m.at).map(m=>({
+              package_id:pkgRow.id, owner_id:SESSION.user.id, at_use:Number(m.at),
+              service_id:m.service_id||null, label:m.label||'Reward',
+              barcode:genBarcodeValue(), status:'locked'}));
+            if(rows.length){
+              await fetch(`${SUPA_URL}/rest/v1/gl_package_rewards`,{
+                method:"POST",headers:authHeaders(),body:JSON.stringify(rows)});
+            }
+          }
+        }
         PACKAGES=[]; // force refresh next time
         toast(`Order placed ✓ — ${uses}× package added to ${carLabel}`);
         routeTab('order');

@@ -1181,6 +1181,19 @@ function renderServices(){
         </div>
       </div>
       <div class="svc-hint">If "Number of uses" is set (e.g. 10), buying this gives the customer a redeemable package with a barcode on that car. Blank = normal single service.</div>
+      ${s.pkg_uses>1?`
+      <label style="margin-top:10px">Milestone rewards <span class="svc-hint">free reward at a certain use # (e.g. #5 windscreen, #10 3-step)</span></label>
+      <div id="msList${i}">${(s.milestones||[]).map((m,mi)=>`
+        <div class="mini-row">
+          <input type="number" value="${m.at??''}" oninput="updMilestone(${i},${mi},'at',this.value)" placeholder="At #" style="max-width:70px">
+          <select onchange="updMilestone(${i},${mi},'service_id',this.value)" style="flex:1">
+            <option value="">— Reward service —</option>
+            ${services.filter(x=>x!==s).map(x=>`<option value="${esc(String(x.id||''))}" ${String(m.service_id||'')===String(x.id||'')?'selected':''}>${esc(x.name||'')}</option>`).join('')}
+          </select>
+          <button class="btn btn-danger btn-sm" onclick="delMilestone(${i},${mi})">✕</button>
+        </div>`).join('')}</div>
+      <button class="btn btn-ghost btn-sm" onclick="addMilestone(${i})">+ Add milestone</button>
+      `:''}
 
       <div class="svc-sub">Pricing</div>
       <label><input type="checkbox" style="width:auto;margin-right:7px" ${sized?'checked':''} onchange="toggleSized(${i},this.checked)">Size-based pricing (Sedan/SUV/MPV/Supercar)</label>
@@ -1288,6 +1301,15 @@ function delVari(i,vi){services[i].variations.splice(vi,1);renderServices();}
 function updVari(i,vi,f,v){services[i].variations[vi][f]=(f==='price')?(v===''?null:Number(v)):v;}
 /* add-ons */
 function addAddon(i){services[i].addons=services[i].addons||[];services[i].addons.push({service_id:'',price:0});renderServices();}
+function addMilestone(i){services[i].milestones=services[i].milestones||[];services[i].milestones.push({at:null,service_id:'',label:''});renderServices();}
+function delMilestone(i,mi){services[i].milestones.splice(mi,1);renderServices();}
+function updMilestone(i,mi,f,v){
+  services[i].milestones=services[i].milestones||[];
+  if(f==='at') v=(v===''?null:Number(v));
+  services[i].milestones[mi][f]=v;
+  // auto-fill label from the linked service name
+  if(f==='service_id'){ const svc=services.find(x=>String(x.id||'')===String(v)); services[i].milestones[mi].label=svc?('Free '+svc.name):''; }
+}
 function delAddon(i,ai){services[i].addons.splice(ai,1);renderServices();}
 function updAddon(i,ai,f,v){services[i].addons[ai][f]=(f==='price')?(v===''?null:Number(v)):v;}
 async function uploadAddonImg(i,ai,input){
@@ -1801,7 +1823,7 @@ function upd(kind,i,field,val){
   const arr=kind==='slide'?slides:services;
   arr[i][field]=(val===''&&field==='base_price')?null:val;
   if(kind==='slide'&&field==='glyph')renderSlides();
-  if(kind==='svc'&&(field==='is_package'||field==='hidden'))renderServices();
+  if(kind==='svc'&&(field==='is_package'||field==='hidden'||field==='pkg_uses'))renderServices();
   renderPreview();
 }
 function tStyle(key){theme[key]=!theme[key];syncTextBtns();renderPreview();}
@@ -1993,7 +2015,8 @@ async function saveAll(){
         addons:(s.addons&&s.addons.length)?s.addons:null,
         item_info:s.item_info||null,est_time:s.est_time||null,is_package:!!s.is_package,subtitle:s.subtitle||null,
         category2:s.category2||null,hidden:!!s.hidden,section:s.section||null,
-        pkg_uses:s.pkg_uses??null,pkg_type:s.pkg_type||null};
+        pkg_uses:s.pkg_uses??null,pkg_type:s.pkg_type||null,
+        milestones:(Array.isArray(s.milestones)&&s.milestones.length)?s.milestones:null};
       if(s.id){await sb(`gl_services?id=eq.${s.id}`,{method:"PATCH",headers:H(),body:JSON.stringify(body)});}
       else{const r=await sb("gl_services",{method:"POST",headers:H({Prefer:"return=representation"}),body:JSON.stringify(body)});if(r.ok){const j=await r.json();s.id=j[0].id;}}
     }
