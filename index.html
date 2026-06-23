@@ -492,6 +492,38 @@
   .popup-dot.on{background:var(--yellow);}
   .popup-dismiss{display:flex;align-items:center;gap:8px;justify-content:center;padding:12px;font-size:13px;color:var(--muted);cursor:pointer;flex:0 0 auto;}
   .popup-dismiss input{width:16px;height:16px;accent-color:var(--yellow);}
+  /* referral page */
+  .help-btn{position:absolute;right:16px;top:50%;transform:translateY(-50%);width:30px;height:30px;border-radius:50%;
+    border:1px solid var(--line);background:var(--surface);color:var(--muted);font-size:15px;font-weight:700;cursor:pointer;}
+  .ref-head{display:flex;align-items:center;gap:14px;margin-bottom:20px;}
+  .ref-avatar{width:54px;height:54px;border-radius:50%;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:24px;overflow:hidden;}
+  .ref-avatar img{width:100%;height:100%;object-fit:cover;}
+  .ref-name{font-size:17px;font-weight:700;}
+  .ref-code-row{font-size:12.5px;color:var(--muted);margin-top:3px;}
+  .ref-code-row b{color:var(--yellow);letter-spacing:1px;}
+  .ref-copy{cursor:pointer;margin-left:6px;}
+  .ref-earn-t{font-size:16px;font-weight:800;margin-bottom:12px;}
+  .ref-check{display:flex;align-items:center;gap:10px;font-size:13.5px;color:var(--muted);padding:7px 0;}
+  .ref-check.on{color:var(--text);}
+  .ref-tick{width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;background:var(--surface2);color:var(--muted);flex:0 0 auto;}
+  .ref-check.on .ref-tick{background:var(--yellow);color:#080808;font-weight:800;}
+  .ref-invite-row{display:flex;justify-content:space-between;font-size:13.5px;font-weight:600;margin-top:14px;margin-bottom:8px;}
+  .ref-bar{height:7px;background:var(--surface2);border-radius:4px;overflow:hidden;}
+  .ref-bar-fill{height:100%;background:var(--yellow);border-radius:4px;transition:width .3s;}
+  .ref-actions{display:flex;gap:12px;align-items:center;margin-top:18px;}
+  .ref-share{flex:1;}
+  .ref-qr-btn{width:58px;height:58px;border-radius:50%;border:none;background:var(--surface2);color:var(--text);cursor:pointer;display:flex;align-items:center;justify-content:center;flex:0 0 auto;}
+  .ref-list-t{font-size:16px;font-weight:800;margin-top:26px;}
+  .ref-list-hint{font-size:12px;color:var(--muted);margin-top:4px;margin-bottom:12px;line-height:1.4;}
+  .ref-friend{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--line);}
+  .ref-friend-av{width:38px;height:38px;border-radius:50%;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:18px;flex:0 0 auto;}
+  .ref-friend-nm{flex:1;font-size:14px;font-weight:600;}
+  .ref-friend-status{font-size:11.5px;font-weight:700;padding:3px 10px;border-radius:10px;}
+  .ref-friend-status.joined{background:#bff0e4;color:#0d4d44;}
+  .ref-friend-status.pending{background:var(--surface2);color:var(--muted);}
+  .ref-empty{text-align:center;color:var(--muted);font-size:13px;padding:30px 0;}
+  .ref-terms{margin:10px 0 4px;padding-left:20px;}
+  .ref-terms li{font-size:13px;line-height:1.6;color:var(--text);margin-bottom:8px;}
   /* my packages */
   .pkg-veh-h{font-size:13px;font-weight:700;color:var(--muted);margin:20px 0 8px;}
   .pkg-bal-card{background:var(--surface);border:1px solid var(--gold-line-soft);border-radius:16px;padding:16px;margin-bottom:14px;}
@@ -981,7 +1013,7 @@ async function fetchSlides(){
   }catch(e){}
   // mystery box + warranty settings
   try{
-    const r3=await fetch(`${SUPA_URL}/rest/v1/gl_settings?select=id,data&id=in.(mysterybox,warranty,highlights,actionbtn,popup)`,
+    const r3=await fetch(`${SUPA_URL}/rest/v1/gl_settings?select=id,data&id=in.(mysterybox,warranty,highlights,actionbtn,popup,referral)`,
       { headers:{ apikey:SUPA_ANON, Authorization:`Bearer ${SUPA_ANON}` } });
     if(r3.ok){ const rows=await r3.json();
       rows.forEach(row=>{
@@ -990,6 +1022,7 @@ async function fetchSlides(){
         if(row.id==='highlights') HIGHLIGHTS=Object.assign({},HIGHLIGHTS,row.data||{});
         if(row.id==='actionbtn') ACTIONBTN=Object.assign({},ACTIONBTN,row.data||{});
         if(row.id==='popup') POPUP=Object.assign({},POPUP,row.data||{});
+        if(row.id==='referral') REFERRAL=Object.assign({},REFERRAL,row.data||{});
       });
     }
   }catch(e){}
@@ -1030,6 +1063,7 @@ let CAR_MODELS = [];    // gl_car_models rows
 let HIGHLIGHTS = { items:[], autoslide:true, interval:4000 };
 let ACTIONBTN = { enabled:false, label:'Free Car Wash', service_id:null };
 let POPUP = { enabled:false, posters:[] };
+let REFERRAL = { terms:[], wash_service_id:null, need_tier:true, need_wash:true, target:5 };
 let FLASH = [];   // gl_flash_deals rows
 let CLAIMS = [];  // gl_claims rows (free services already claimed by this user)
 let PACKAGES = []; // gl_packages rows (multi-use redeemable packages)
@@ -2359,27 +2393,117 @@ function openNotifications(){
     </div>`;
 }
 
-function showReferralQR(){
-  const refCode = PROFILE?.referral_code || '';
-  if(!refCode){ toast(IS_GUEST?'Sign in to get your referral code':'No referral code yet — ask admin to set one'); return; }
-  const link = `${location.origin}${location.pathname}?ref=${encodeURIComponent(refCode)}`;
+async function showReferralQR(){
+  if(IS_GUEST){ toast('Sign in to get your referral code'); return; }
+  openReferralPage();
+}
+
+async function openReferralPage(){
+  appRoot.innerHTML=`<div class="topbar-app"><button class="back" onclick="goBack()">‹</button><div class="ttl">Referral</div></div><div class="app-scroll" style="padding-top:18px"><div class="app-sub">Loading…</div></div>`;
+  // ensure profile + referrals loaded
+  await Promise.allSettled([ fetchProfile(), fetchReferrals() ]);
+  const code = PROFILE?.referral_code || '';
+  const qualified = PROFILE?.referral_qualified || 0;
+  const target = REFERRAL.target || 5;
+  const pct = Math.min(100, Math.round((qualified/target)*100));
+  const joined = REFERRALS.filter(r=>r.status==='joined');
+  const tierOk = (PROFILE?.tier_level||1) >= 2;   // bronze = tier 2
+  const washOk = !!PROFILE?.first_wash_done;       // set when they complete a wash (POS later)
+  appRoot.innerHTML=`
+    <div class="topbar-app">
+      <button class="back" onclick="goBack()">‹</button>
+      <div class="ttl">Referral</div>
+      <button class="help-btn" onclick="showReferralTerms()">?</button>
+    </div>
+    <div class="app-scroll" style="padding-top:14px">
+      <div class="ref-head">
+        <div class="ref-avatar">${PROFILE?.photo?`<img src="${PROFILE.photo}">`:'🧑'}</div>
+        <div>
+          <div class="ref-name">${esc(PROFILE?.name||'You')}</div>
+          <div class="ref-code-row">Referral Code: <b>${esc(code||'—')}</b>
+            ${code?`<span class="ref-copy" onclick="copyRefCode('${code}')">⧉</span>`:''}</div>
+        </div>
+      </div>
+
+      <div class="ref-earn-t">Earn a free car wash</div>
+      <div class="ref-check ${tierOk?'on':''}"><span class="ref-tick">${tierOk?'✓':'○'}</span> Subscribe to at least Bronze member</div>
+      <div class="ref-check ${washOk?'on':''}"><span class="ref-tick">${washOk?'✓':'○'}</span> Complete a car wash at any outlet</div>
+
+      <div class="ref-invite-row"><span>Invite ${target} friends</span><span>${qualified}/${target}</span></div>
+      <div class="ref-bar"><div class="ref-bar-fill" style="width:${pct}%"></div></div>
+
+      <div class="ref-actions">
+        <button class="btn btn-primary ref-share" onclick="shareReferral('${code}')">Share</button>
+        <button class="ref-qr-btn" onclick="showRefQRPopup()">${qrGlyph()}</button>
+      </div>
+
+      <div class="ref-list-t">Friends I have invited</div>
+      <div class="ref-list-hint">You can still invite friends as usual, but they only count once they create an account.</div>
+      ${joined.length? joined.map(r=>`
+        <div class="ref-friend">
+          <div class="ref-friend-av">🧑</div>
+          <div class="ref-friend-nm">${esc(r.friend_name||'Friend')}</div>
+          <div class="ref-friend-status joined">Joined</div>
+        </div>`).join('') : `<div class="ref-empty">No referral at the moment</div>`}
+    </div>`;
+}
+function qrGlyph(){ return '<svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M3 3h8v8H3V3zm2 2v4h4V5H5zm8-2h8v8h-8V3zm2 2v4h4V5h-4zM3 13h8v8H3v-8zm2 2v4h4v-4H5zm10-2h2v2h-2v-2zm4 0h2v2h-2v-2zm-4 4h2v2h-2v-2zm0 4h2v2h-2v-2zm4-4h2v2h-2v-2zm0 4h2v2h-2v-2z"/></svg>'; }
+
+let REFERRALS=[];
+async function fetchReferrals(){
+  if(!SESSION?.user?.id){ REFERRALS=[]; return REFERRALS; }
+  try{
+    const r=await fetch(`${SUPA_URL}/rest/v1/gl_referrals?select=*&referrer_id=eq.${SESSION.user.id}&order=created_at.desc`,{headers:authHeaders()});
+    if(r.ok) REFERRALS=await r.json();
+  }catch(e){}
+  return REFERRALS;
+}
+function copyRefCode(code){
+  if(navigator.clipboard?.writeText){ navigator.clipboard.writeText(code).then(()=>toast('Code copied ✓'),()=>{}); }
+  else toast(code);
+}
+function shareReferral(code){
+  const link=`${location.origin}${location.pathname}?ref=${encodeURIComponent(code)}`;
+  const msg=`Join me on Grandlab! Use my code ${code} when you sign up. ${link}`;
+  if(navigator.share){ navigator.share({title:'Grandlab',text:msg,url:link}).catch(()=>{}); }
+  else { copyRefCode(code); window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`,'_blank'); }
+}
+function showRefQRPopup(){
+  const code = PROFILE?.referral_code || '';
+  if(!code){ toast('No referral code yet'); return; }
+  const link = `${location.origin}${location.pathname}?ref=${encodeURIComponent(code)}`;
   const overlay=document.createElement('div'); overlay.className='qr-overlay';
   overlay.innerHTML=`
     <div class="qr-box" onclick="event.stopPropagation()">
-      <div class="qr-title">Your Referral Code</div>
+      <div class="qr-title">Your Referral QR</div>
       <div class="qr-code" id="qrCanvas"></div>
-      <div class="qr-code-text">${esc(refCode)}</div>
-      <div class="qr-hint">Friends scan this to sign up with your code — you both get rewarded.</div>
+      <div class="qr-code-text">${esc(code)}</div>
+      <div class="qr-hint">Friends scan this to sign up with your code.</div>
       <button class="btn btn-primary" style="margin-top:16px" onclick="this.closest('.qr-overlay').remove()">Done</button>
     </div>`;
   overlay.onclick=()=>overlay.remove();
   document.body.appendChild(overlay);
-  // generate QR
-  if(window.QRCode){
-    new QRCode(document.getElementById('qrCanvas'),{text:link,width:200,height:200,colorDark:"#111",colorLight:"#fff"});
-  } else {
-    document.getElementById('qrCanvas').innerHTML=`<img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(link)}" width="200" height="200">`;
-  }
+  if(window.QRCode){ new QRCode(document.getElementById('qrCanvas'),{text:link,width:200,height:200,colorDark:"#111",colorLight:"#fff"}); }
+  else { document.getElementById('qrCanvas').innerHTML=`<img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(link)}" width="200" height="200">`; }
+}
+function showReferralTerms(){
+  const terms = (REFERRAL.terms&&REFERRAL.terms.length)?REFERRAL.terms:[
+    'There is no limit to how many referrals you can invite.',
+    'Every 5 referrals who create an account will reward you with a free car wash.',
+    'Only friends who download the app and create an account are counted.',
+    'Once you successfully invite 5, you will receive a free car wash voucher.',
+    'You will need to subscribe to at least Bronze and complete a wash to claim.',
+    'Once you have used the voucher, it will be unavailable to use again.'
+  ];
+  const ov=document.createElement('div'); ov.className='sheet-ov'; ov.onclick=()=>ov.remove();
+  ov.innerHTML=`
+    <div class="sheet" onclick="event.stopPropagation()">
+      <div class="sheet-handle"></div>
+      <div class="sheet-title" style="font-size:16px;color:var(--text)">Referral terms &amp; rules</div>
+      <ol class="ref-terms">${terms.map(t=>`<li>${esc(t)}</li>`).join('')}</ol>
+      <button class="sheet-cancel" onclick="this.closest('.sheet-ov').remove()">Got it</button>
+    </div>`;
+  document.body.appendChild(ov);
 }
 
 function svcCard(s){
@@ -3377,19 +3501,38 @@ function renderProfileSetup(){
     const name=document.getElementById('ps-name').value.trim();
     const email=document.getElementById('ps-email').value.trim();
     const phone=document.getElementById('ps-phone').value.trim();
-    const ref=document.getElementById('ps-ref').value.trim();
+    const ref=document.getElementById('ps-ref').value.trim().toUpperCase();
     const err=document.getElementById('ps-err');
     if(!name||!email){ err.textContent="Name and email are required."; return; }
     const fields={name,email,phone};
     if(ref) fields.referred_by=ref;
+    // generate this user's own referral code if they don't have one
+    if(!PROFILE?.referral_code){ fields.referral_code = await uniqueRefCode(name); }
     const ok=await saveProfile(fields);
-    if(ref && ok){
-      try{ await fetch(`${SUPA_URL}/rest/v1/gl_referrals`,{method:"POST",
-        headers:authHeaders(),body:JSON.stringify({referrer_code:ref,new_user_id:SESSION.user.id})}); }catch(e){}
+    if(ok && ref){
+      // credit the referrer (counts only now that an account exists)
+      try{
+        await fetch(`${SUPA_URL}/rest/v1/rpc/gl_apply_referral`,{method:"POST",headers:authHeaders(),
+          body:JSON.stringify({code:ref, friend:SESSION.user.id, fname:name, wash_service:REFERRAL.wash_service_id||null})});
+      }catch(e){}
     }
     if(ok){ toast("Welcome to Grandlab ✓"); enterApp('home'); }
     else err.textContent="Couldn't save — try again.";
   };
+}
+
+// build a 6-char code from name initials + random digits, ensure uniqueness
+async function uniqueRefCode(name){
+  const letters=(name||'GL').toUpperCase().replace(/[^A-Z]/g,'').slice(0,3).padEnd(3,'X');
+  for(let tries=0;tries<6;tries++){
+    const num=String(Math.floor(Math.random()*1000)).padStart(3,'0');
+    const code=letters+num;
+    try{
+      const r=await fetch(`${SUPA_URL}/rest/v1/gl_profiles?select=id&referral_code=eq.${code}`,{headers:authHeaders()});
+      if(r.ok){ const rows=await r.json(); if(!rows.length) return code; }
+    }catch(e){ return code; }
+  }
+  return letters+String(Date.now()%1000).padStart(3,'0');
 }
 
 

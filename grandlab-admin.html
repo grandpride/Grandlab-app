@@ -533,6 +533,16 @@
           </div>
           <label style="margin-top:10px"><input type="checkbox" id="rf-enabled" style="width:auto;margin-right:7px" onchange="onReferral()">Referral rewards active</label>
         </div>
+        <div class="card" style="margin-top:14px">
+          <div class="section-h">Earn a free car wash (invite 5)</div>
+          <div class="svc-hint">When a customer gets 5 friends to create an account, they auto-receive this free wash voucher.</div>
+          <label style="margin-top:10px">Friends needed</label>
+          <input id="rf-target" type="number" value="5" oninput="refSettings.target=Number(this.value)">
+          <label style="margin-top:10px">Free wash service (the reward voucher)</label>
+          <select id="rf-wash" onchange="refSettings.wash_service_id=this.value"></select>
+          <label style="margin-top:10px">Terms &amp; rules <span class="svc-hint">one rule per line</span></label>
+          <textarea id="rf-terms" rows="7" oninput="refSettings.terms=this.value.split('\\n').map(s=>s.trim()).filter(Boolean)" style="width:100%;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px;color:var(--text);font-size:13px;font-family:inherit" placeholder="There is no limit to how many referrals you can invite.&#10;Every 5 referrals who create an account reward you with a free car wash.&#10;Only friends who create an account are counted."></textarea>
+        </div>
         <div id="refList" style="margin-top:14px"></div>
       </div>
 
@@ -2728,19 +2738,24 @@ async function loadReferrals(){
   document.getElementById('rf-newuser').value=refSettings.newuser;
   document.getElementById('rf-referrer').value=refSettings.referrer;
   document.getElementById('rf-enabled').checked=!!refSettings.enabled;
+  // free-wash settings
+  const tg=document.getElementById('rf-target'); if(tg) tg.value=refSettings.target||5;
+  const tx=document.getElementById('rf-terms'); if(tx) tx.value=(refSettings.terms||[]).join('\n');
+  const ws=document.getElementById('rf-wash');
+  if(ws){ ws.innerHTML='<option value="">— Pick a service —</option>'+services.map(x=>`<option value="${esc(String(x.id||''))}" ${String(refSettings.wash_service_id||'')===String(x.id||'')?'selected':''}>${esc(x.name||'')}</option>`).join(''); }
   // recent referrals log
   const el=document.getElementById('refList');
   let rows=[];
   try{const r=await sb("gl_referrals?select=*&order=created_at.desc&limit=50",{headers:H()});rows=r.ok?await r.json():[];}catch(e){}
   el.innerHTML='<div class="section-h">Recent referrals</div>'+(rows.length?rows.map(x=>`
-    <div class="card"><div style="font-size:13px">Code <b style="color:var(--yellow)">${esc(x.referrer_code||'')}</b> used ${x.rewarded?'· rewarded ✓':'· pending'}</div>
+    <div class="card"><div style="font-size:13px">Code <b style="color:var(--yellow)">${esc(x.referrer_code||'')}</b> · ${esc(x.friend_name||'friend')} ${x.status==='joined'?'· joined ✓':'· pending'}</div>
     <div style="font-size:11px;color:var(--muted);margin-top:4px">${new Date(x.created_at).toLocaleString()}</div></div>`).join(''):'<div class="empty">No referrals yet.</div>');
 }
 function onReferral(){
-  refSettings={type:document.getElementById('rf-type').value,
-    newuser:+document.getElementById('rf-newuser').value||0,
-    referrer:+document.getElementById('rf-referrer').value||0,
-    enabled:document.getElementById('rf-enabled').checked};
+  refSettings.type=document.getElementById('rf-type').value;
+  refSettings.newuser=+document.getElementById('rf-newuser').value||0;
+  refSettings.referrer=+document.getElementById('rf-referrer').value||0;
+  refSettings.enabled=document.getElementById('rf-enabled').checked;
 }
 
 function esc(s){return(s==null?'':String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
