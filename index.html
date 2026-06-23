@@ -2859,7 +2859,7 @@ async function openService(id, from){
   let preCar=null;
   try{ const av=localStorage.getItem('gl_active_vehicle'); if(av && VEHICLES.some(v=>String(v.id)===String(av))) preCar=av; }catch(e){}
   if(!preCar && VEHICLES.length===1) preCar=VEHICLES[0].id;
-  SVC_SEL = { service:s, variIdx:0, qty:1, addons:{}, storeIdx:0, carId:preCar, from:from||'category' };
+  SVC_SEL = { service:s, variIdx:0, qty:1, addons:{}, storeIdx:0, carId:preCar, optChoice:null, from:from||'category' };
   renderServiceDetail();
 }
 
@@ -2879,7 +2879,13 @@ function resolveAddon(a){
 function svcDetailPrice(){
   const s=SVC_SEL.service; if(!s) return 0;
   let base=0;
-  if(s.variations && s.variations.length){
+  if(s.option_type && s.option_pricing){
+    // option pricing: option choice × car size
+    const choice = currentOptionChoice();
+    const sizeMap = s.option_pricing[choice] || {};
+    const size = currentSizeType(sizeMap);
+    base = Number(sizeMap[size]||0);
+  } else if(s.variations && s.variations.length){
     base=Number(s.variations[SVC_SEL.variIdx]?.price||0);
   } else if(s.price_by_type){
     base=Number(s.price_by_type[currentSizeType()]||0);
@@ -2890,10 +2896,20 @@ function svcDetailPrice(){
   (s.addons||[]).forEach((a,i)=>{ if(SVC_SEL.addons[i]) total+=resolveAddon(a).price; });
   return total;
 }
+function currentOptionChoice(){
+  const s=SVC_SEL.service; const choices=optionChoicesFor(s); if(!choices) return null;
+  return (SVC_SEL.optChoice && choices.includes(SVC_SEL.optChoice)) ? SVC_SEL.optChoice : choices[0];
+}
+// option choices per type
+const OPTION_CHOICES = { side:['One Side','One Set'], door:['1 Door','2 Door','3 Door','4 Door'] };
+function optionChoicesFor(s){ return (s && s.option_type && OPTION_CHOICES[s.option_type]) ? OPTION_CHOICES[s.option_type] : null; }
+
 // the size tier used for size-based pricing: from the selected car, else manual override, else first available
-function currentSizeType(){
-  const s=SVC_SEL.service; if(!s||!s.price_by_type) return null;
-  const avail=Object.keys(s.price_by_type).filter(t=>s.price_by_type[t]!=null&&s.price_by_type[t]!=='');
+function currentSizeType(sizeMap){
+  const s=SVC_SEL.service;
+  const map = sizeMap || (s && s.price_by_type);
+  if(!map) return null;
+  const avail=Object.keys(map).filter(t=>map[t]!=null&&map[t]!=='');
   if(SVC_SEL.sizeType && avail.includes(SVC_SEL.sizeType)) return SVC_SEL.sizeType;
   // derive from the selected car's type
   const car=(VEHICLES||[]).find(v=>String(v.id)===String(SVC_SEL.carId));
@@ -2914,9 +2930,25 @@ function renderServiceDetail(){
       : `<img class="sd-slide" src="${m.url}">`).join('') || `<div class="sd-slide sd-empty">${serviceEmoji(s.name)}</div>`;
   const dots = media.length>1 ? `<div class="sd-dots">${media.map((_,i)=>`<span class="sd-dot ${i===0?'on':''}"></span>`).join('')}</div>` : '';
 
-  // variations
+  // variations / options / size
   let variBlock='';
-  if(s.variations && s.variations.length){
+  const optChoices = optionChoicesFor(s);
+  if(optChoices && s.option_pricing){
+    // OPTION pricing: pick option choice, then size — both as chips
+    const choice = currentOptionChoice();
+    const sizeMap = s.option_pricing[choice] || {};
+    const optLabel = s.option_type==='door' ? 'How many doors?' : 'Choose option';
+    variBlock = `<div class="sd-sec-t">${optLabel}</div>
+      <div class="sd-vari">${optChoices.map(c=>`
+        <button class="sd-chip ${c===choice?'on':''}" onclick="selOption('${esc(c)}')">${esc(c)}</button>`).join('')}</div>`;
+    const availS=Object.keys(sizeMap).filter(t=>sizeMap[t]!=null&&sizeMap[t]!=='');
+    if(availS.length){
+      const curS=currentSizeType(sizeMap);
+      variBlock += `<div class="sd-sec-t">Vehicle type</div>
+        <div class="sd-vari">${availS.map(t=>`
+          <button class="sd-chip ${t===curS?'on':''}" onclick="selSize('${t}')">${esc(t)} · RM${money(sizeMap[t])}</button>`).join('')}</div>`;
+    }
+  } else if(s.variations && s.variations.length){
     variBlock=`<div class="sd-sec-t">Select variation</div>
       <div class="sd-vari">${s.variations.map((v,i)=>`
         <button class="sd-chip ${i===SVC_SEL.variIdx?'on':''}" onclick="selVari(${i})">${esc(v.label||('Option '+(i+1)))}</button>`).join('')}</div>`;
@@ -3076,6 +3108,7 @@ function selCar(id){
   renderServiceDetail();
 }
 function selSize(t){ SVC_SEL.sizeType=t; renderServiceDetail(); }
+function selOption(c){ SVC_SEL.optChoice=c; renderServiceDetail(); }
 
 function selVari(i){ SVC_SEL.variIdx=i; renderServiceDetail(); }
 function setQty(d){ SVC_SEL.qty=Math.max(1,SVC_SEL.qty+d); renderServiceDetail(); }

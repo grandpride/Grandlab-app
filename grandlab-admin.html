@@ -76,6 +76,11 @@
   input[type=range]{width:100%;accent-color:var(--yellow);height:6px;margin:4px 0 2px;cursor:pointer;}
   .add-row{margin:6px 0 26px;}
   .price-grid{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;}
+  .opt-grid{border-collapse:collapse;width:100%;min-width:420px;}
+  .opt-grid th{font-size:11px;color:var(--muted);font-weight:600;padding:4px 6px;text-align:center;white-space:nowrap;}
+  .opt-grid td{padding:3px;}
+  .opt-grid .opt-rowh{font-size:12px;font-weight:600;white-space:nowrap;padding-right:8px;}
+  .opt-grid input{width:72px;}
   .price-grid .pc label{margin-top:0;}
   .svc-sub{font-size:13px;font-weight:700;color:var(--accent);margin-top:18px;padding-top:14px;border-top:1px solid var(--line);}
   .svc-body{margin-top:14px;padding-top:4px;}
@@ -1215,6 +1220,24 @@ function renderServices(){
         <input type="number" value="${s.base_price??''}" oninput="upd('svc',${i},'base_price',this.value)">
       `}
 
+      <div class="svc-sub">Option pricing <span class="svc-hint">e.g. Fender = side (One Side/One Set) · Door = 1/2/3/4 — each × car size</span></div>
+      <select onchange="setOptionType(${i},this.value)">
+        <option value="">— No option —</option>
+        <option value="side" ${s.option_type==='side'?'selected':''}>Side (One Side / One Set)</option>
+        <option value="door" ${s.option_type==='door'?'selected':''}>Door (1 / 2 / 3 / 4 Door)</option>
+      </select>
+      ${s.option_type?`
+        <div class="opt-grid-wrap" style="margin-top:8px;overflow-x:auto">
+          <table class="opt-grid">
+            <tr><th></th>${CAR_TYPES.map(t=>`<th>${t}</th>`).join('')}</tr>
+            ${(ADMIN_OPTION_CHOICES[s.option_type]||[]).map(c=>`
+              <tr><td class="opt-rowh">${c}</td>${CAR_TYPES.map(t=>`
+                <td><input type="number" value="${(s.option_pricing&&s.option_pricing[c]&&s.option_pricing[c][t])??''}" oninput="updOptPrice(${i},'${esc(c)}','${t}',this.value)" placeholder="RM"></td>`).join('')}</tr>`).join('')}
+          </table>
+        </div>
+        <div class="svc-hint">Leave a cell blank if that size isn't offered for that choice.</div>
+      `:''}
+
       <div class="svc-sub">Variations <span class="svc-hint">customer picks one; its price overrides base price</span></div>
       <div id="svcVari${i}">${s.variations.map((v,vi)=>`
         <div class="mini-row">
@@ -1285,6 +1308,25 @@ function importServicesExcel(input){
         s.section=String(r.section||'').trim()||null;
         s.price_by_type=price_by_type;
         s.base_price=base_price;
+        // option pricing (side / door) — columns like: side_oneside_sedan, door_2_suv, etc.
+        const optType=String(r.option_type||'').trim().toLowerCase();
+        if(optType==='side'||optType==='door'){
+          s.option_type=optType;
+          const op={};
+          if(optType==='side'){
+            const map={'One Side':'oneside','One Set':'oneset'};
+            Object.keys(map).forEach(label=>{ const k=map[label];
+              const row={Sedan:num(r['side_'+k+'_sedan']),SUV:num(r['side_'+k+'_suv']),MPV:num(r['side_'+k+'_mpv']),Supercar:num(r['side_'+k+'_supercar']),Motorcycle:num(r['side_'+k+'_motorcycle'])};
+              if(Object.values(row).some(v=>v!=null)) op[label]=row;
+            });
+          } else {
+            [1,2,3,4].forEach(n=>{ const label=n+' Door';
+              const row={Sedan:num(r['door_'+n+'_sedan']),SUV:num(r['door_'+n+'_suv']),MPV:num(r['door_'+n+'_mpv']),Supercar:num(r['door_'+n+'_supercar']),Motorcycle:num(r['door_'+n+'_motorcycle'])};
+              if(Object.values(row).some(v=>v!=null)) op[label]=row;
+            });
+          }
+          s.option_pricing=Object.keys(op).length?op:null;
+        } else { s.option_type=null; s.option_pricing=null; }
         s.subtitle=String(r.subtitle||'').trim()||null;
         s.item_info=String(r.item_info||'').trim()||null;
         s.est_time=String(r.est_time||'').trim()||null;
@@ -1304,6 +1346,21 @@ function importServicesExcel(input){
 function addService(){services.push({name:"New service",category:"",category2:"",section:"",base_price:0,price_by_type:null,media:[],variations:[],addons:[],is_package:false,hidden:false,active:true,sort_order:services.length+1,_open:true});renderServices();renderPreview();}
 function delService(i){if(services[i].id)deletedServiceIds.push(services[i].id);services.splice(i,1);renderServices();renderPreview();}
 function toggleSized(i,on){services[i].price_by_type=on?{Sedan:0,SUV:0,MPV:0,Supercar:0,Motorcycle:0}:null;renderServices();renderPreview();}
+const ADMIN_OPTION_CHOICES={ side:['One Side','One Set'], door:['1 Door','2 Door','3 Door','4 Door'] };
+function setOptionType(i,val){
+  services[i].option_type = val||null;
+  if(!val){ services[i].option_pricing=null; }
+  else {
+    services[i].option_pricing = services[i].option_pricing || {};
+    (ADMIN_OPTION_CHOICES[val]||[]).forEach(c=>{ services[i].option_pricing[c]=services[i].option_pricing[c]||{}; });
+  }
+  renderServices();
+}
+function updOptPrice(i,choice,size,val){
+  services[i].option_pricing = services[i].option_pricing || {};
+  services[i].option_pricing[choice] = services[i].option_pricing[choice] || {};
+  services[i].option_pricing[choice][size] = (val===''?null:Number(val));
+}
 function updPrice(i,t,v){if(!services[i].price_by_type)services[i].price_by_type={};services[i].price_by_type[t]=v===''?null:Number(v);renderPreview();}
 /* variations */
 function addVari(i){services[i].variations=services[i].variations||[];services[i].variations.push({label:'',price:0});renderServices();}
@@ -2026,7 +2083,9 @@ async function saveAll(){
         item_info:s.item_info||null,est_time:s.est_time||null,is_package:!!s.is_package,subtitle:s.subtitle||null,
         category2:s.category2||null,hidden:!!s.hidden,section:s.section||null,
         pkg_uses:s.pkg_uses??null,pkg_type:s.pkg_type||null,
-        milestones:(Array.isArray(s.milestones)&&s.milestones.length)?s.milestones:null};
+        milestones:(Array.isArray(s.milestones)&&s.milestones.length)?s.milestones:null,
+        option_type:s.option_type||null,
+        option_pricing:(s.option_type&&s.option_pricing)?s.option_pricing:null};
       if(s.id){await sb(`gl_services?id=eq.${s.id}`,{method:"PATCH",headers:H(),body:JSON.stringify(body)});}
       else{const r=await sb("gl_services",{method:"POST",headers:H({Prefer:"return=representation"}),body:JSON.stringify(body)});if(r.ok){const j=await r.json();s.id=j[0].id;}}
     }
