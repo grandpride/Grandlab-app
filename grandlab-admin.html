@@ -1168,6 +1168,20 @@ function renderServices(){
       <label style="margin-top:8px">Subtitle / badge (optional)</label>
       <input value="${esc(s.subtitle||'')}" oninput="upd('svc',${i},'subtitle',this.value)" placeholder="Japanese Certified Professional">
 
+      <div class="svc-sub">Multi-use package (redeemable) <span class="svc-hint">e.g. 10× wash, or 2/4/6× coating maintenance</span></div>
+      <div class="row">
+        <div><label>Number of uses</label><input type="number" value="${s.pkg_uses??''}" oninput="upd('svc',${i},'pkg_uses',this.value===''?null:Number(this.value))" placeholder="leave blank for single-use"></div>
+        <div><label>Package type</label>
+          <select onchange="upd('svc',${i},'pkg_type',this.value)">
+            <option value="">— None —</option>
+            <option value="wash" ${s.pkg_type==='wash'?'selected':''}>Car Wash</option>
+            <option value="maintenance" ${s.pkg_type==='maintenance'?'selected':''}>Coating Maintenance</option>
+            <option value="custom" ${s.pkg_type==='custom'?'selected':''}>Custom</option>
+          </select>
+        </div>
+      </div>
+      <div class="svc-hint">If "Number of uses" is set (e.g. 10), buying this gives the customer a redeemable package with a barcode on that car. Blank = normal single service.</div>
+
       <div class="svc-sub">Pricing</div>
       <label><input type="checkbox" style="width:auto;margin-right:7px" ${sized?'checked':''} onchange="toggleSized(${i},this.checked)">Size-based pricing (Sedan/SUV/MPV/Supercar)</label>
       ${sized?`
@@ -1252,6 +1266,8 @@ function importServicesExcel(input){
         s.item_info=String(r.item_info||'').trim()||null;
         s.est_time=String(r.est_time||'').trim()||null;
         s.is_package=yes(r.is_package);
+        s.pkg_uses=(r.pkg_uses==null||r.pkg_uses==='')?null:Number(r.pkg_uses);
+        s.pkg_type=String(r.pkg_type||'').trim()||null;
         s.hidden=yes(r.hidden);
         if(r.sort_order!=null&&r.sort_order!=='') s.sort_order=num(r.sort_order);
         s.media=s.media||[]; s.variations=s.variations||[]; s.addons=s.addons||[];
@@ -1976,7 +1992,8 @@ async function saveAll(){
         variations:(s.variations&&s.variations.length)?s.variations:null,
         addons:(s.addons&&s.addons.length)?s.addons:null,
         item_info:s.item_info||null,est_time:s.est_time||null,is_package:!!s.is_package,subtitle:s.subtitle||null,
-        category2:s.category2||null,hidden:!!s.hidden,section:s.section||null};
+        category2:s.category2||null,hidden:!!s.hidden,section:s.section||null,
+        pkg_uses:s.pkg_uses??null,pkg_type:s.pkg_type||null};
       if(s.id){await sb(`gl_services?id=eq.${s.id}`,{method:"PATCH",headers:H(),body:JSON.stringify(body)});}
       else{const r=await sb("gl_services",{method:"POST",headers:H({Prefer:"return=representation"}),body:JSON.stringify(body)});if(r.ok){const j=await r.json();s.id=j[0].id;}}
     }

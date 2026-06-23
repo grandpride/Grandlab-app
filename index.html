@@ -492,6 +492,27 @@
   .popup-dot.on{background:var(--yellow);}
   .popup-dismiss{display:flex;align-items:center;gap:8px;justify-content:center;padding:12px;font-size:13px;color:var(--muted);cursor:pointer;flex:0 0 auto;}
   .popup-dismiss input{width:16px;height:16px;accent-color:var(--yellow);}
+  /* my packages */
+  .pkg-veh-h{font-size:13px;font-weight:700;color:var(--muted);margin:20px 0 8px;}
+  .pkg-bal-card{background:var(--surface);border:1px solid var(--gold-line-soft);border-radius:16px;padding:16px;margin-bottom:14px;}
+  .pkg-bal-card.done{opacity:.6;}
+  .pkg-bal-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;}
+  .pkg-bal-name{font-size:15.5px;font-weight:700;}
+  .pkg-bal-sub{font-size:12px;color:var(--muted);margin-top:2px;}
+  .pkg-bal-count{text-align:right;white-space:nowrap;}
+  .pkg-rem{font-size:24px;font-weight:800;color:var(--yellow);}
+  .pkg-rem-of{font-size:12px;color:var(--muted);margin-left:4px;}
+  .pkg-done-tag{font-size:12px;font-weight:700;color:#0d4d44;background:#bff0e4;padding:3px 10px;border-radius:10px;}
+  .pkg-bar{height:6px;background:var(--surface2);border-radius:4px;margin-top:12px;overflow:hidden;}
+  .pkg-bar-fill{height:100%;background:var(--yellow);border-radius:4px;transition:width .3s;}
+  .pkg-barcode{background:#fff;border-radius:10px;padding:12px 14px 6px;margin-top:14px;}
+  .pkg-barcode-num{text-align:center;font-size:12px;letter-spacing:2px;color:var(--text);margin-top:6px;font-variant-numeric:tabular-nums;}
+  .pkg-barcode-hint{text-align:center;font-size:11px;color:var(--muted);margin-top:4px;}
+  .pkg-history-btn{width:100%;margin-top:12px;background:none;border:none;color:var(--yellow);font-size:13px;font-weight:600;cursor:pointer;padding:6px;text-align:right;}
+  .redeem-row{display:flex;align-items:center;gap:12px;padding:14px 4px;border-bottom:1px solid var(--line);}
+  .redeem-ic{width:30px;height:30px;border-radius:50%;background:#bff0e4;color:#0d4d44;display:flex;align-items:center;justify-content:center;font-weight:800;flex:0 0 auto;}
+  .redeem-title{font-size:14px;font-weight:600;}
+  .redeem-date{font-size:12px;color:var(--muted);margin-top:2px;}
   /* flash deals */
   .flash-strip{display:flex;gap:12px;overflow-x:auto;margin-top:12px;padding-bottom:4px;}
   .flash-strip::-webkit-scrollbar{display:none;}
@@ -998,6 +1019,8 @@ let ACTIONBTN = { enabled:false, label:'Free Car Wash', service_id:null };
 let POPUP = { enabled:false, posters:[] };
 let FLASH = [];   // gl_flash_deals rows
 let CLAIMS = [];  // gl_claims rows (free services already claimed by this user)
+let PACKAGES = []; // gl_packages rows (multi-use redeemable packages)
+let REDEEMS = [];  // gl_redemptions rows
 let MYSTERY = {
   enabled:true, title:'Mystery Box',
   prizes:[{name:'Interior Sterilization'},{name:'Mineral Off'},{name:'Box Free Sig. Wash'},
@@ -1107,6 +1130,42 @@ async function fetchClaims(){
   return CLAIMS;
 }
 function hasClaimed(serviceId){ return CLAIMS.some(c=>String(c.service_id)===String(serviceId)); }
+
+async function fetchPackages(){
+  if(!SESSION?.user?.id){ PACKAGES=[]; return PACKAGES; }
+  try{
+    const r=await fetch(`${SUPA_URL}/rest/v1/gl_packages?select=*&owner_id=eq.${SESSION.user.id}&order=created_at.desc`,{headers:authHeaders()});
+    if(r.ok) PACKAGES=await r.json();
+  }catch(e){}
+  return PACKAGES;
+}
+async function fetchRedemptions(pkgId){
+  try{
+    const r=await fetch(`${SUPA_URL}/rest/v1/gl_redemptions?select=*&package_id=eq.${pkgId}&order=redeemed_at.desc`,{headers:authHeaders()});
+    if(r.ok) return await r.json();
+  }catch(e){}
+  return [];
+}
+
+/* ---------- Code128-B barcode (self-contained SVG, no library) ---------- */
+const _C128B=["212222","222122","222221","121223","121322","131222","122213","122312","132212","221213","221312","231212","112232","122132","122231","113222","123122","123221","223211","221132","221231","213212","223112","312131","311222","321122","321221","312212","322112","322211","212123","212321","232121","111323","131123","131321","112313","132113","132311","211313","231113","231311","112133","112331","132131","113123","113321","133121","313121","211331","231131","213113","213311","213131","311123","311321","331121","312113","312311","332111","314111","221411","431111","111224","111422","121124","121421","141122","141221","112214","112412","122114","122411","142112","142211","241211","221114","413111","241112","134111","111242","121142","121241","114212","124112","124211","411212","421112","421211","212141","214121","412121","111143","111341","131141","114113","114311","411113","411311","113141","114131","311141","411131","211412","211214","211232","2331112"];
+function code128B(text){
+  // returns array of bar widths. Start B = 104, checksum, Stop = 106 (pattern incl term bar)
+  let codes=[104]; let sum=104;
+  for(let i=0;i<text.length;i++){ const v=text.charCodeAt(i)-32; codes.push(v); sum+=v*(i+1); }
+  codes.push(sum%103);
+  codes.push(106);
+  let widths=[];
+  codes.forEach(c=>{ const pat=_C128B[c]; for(const ch of pat) widths.push(parseInt(ch,10)); });
+  return widths;
+}
+function barcodeSvg(text, opts){
+  opts=opts||{}; const h=opts.height||64; const unit=opts.unit||2;
+  const widths=code128B(text);
+  let x=0, rects='';
+  widths.forEach((w,i)=>{ const ww=w*unit; if(i%2===0){ rects+=`<rect x="${x}" y="0" width="${ww}" height="${h}" fill="#000"/>`; } x+=ww; });
+  return `<svg class="barcode" viewBox="0 0 ${x} ${h}" width="100%" height="${h}" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg" style="background:#fff">${rects}</svg>`;
+}
 async function fetchCarBrands(){
   try{
     const [rb,rm]=await Promise.all([
@@ -2115,6 +2174,72 @@ function openMyVehicles(){
     </div>`;
 }
 
+/* ---------- My Packages (multi-use redemption) ---------- */
+async function openMyPackages(){
+  if(IS_GUEST){ toast('Sign in to view packages'); return; }
+  appRoot.innerHTML=`
+    <div class="topbar-app"><button class="back" onclick="goBack()">‹</button><div class="ttl">My Packages</div></div>
+    <div class="app-scroll" style="padding-top:18px"><div class="app-sub">Loading…</div></div>`;
+  await Promise.allSettled([ fetchPackages(), (!VEHICLES.length?fetchVehicles():Promise.resolve()) ]);
+  const active = PACKAGES.filter(p=>p.status==='active' && p.used_uses<p.total_uses);
+  const done   = PACKAGES.filter(p=>!(p.status==='active' && p.used_uses<p.total_uses));
+  // group by vehicle
+  const byVeh={}; const order=[];
+  active.forEach(p=>{ const k=p.vehicle_label||'Other'; if(!(k in byVeh)){byVeh[k]=[];order.push(k);} byVeh[k].push(p); });
+  const body = PACKAGES.length ? `
+      ${order.map(vl=>`
+        <div class="pkg-veh-h">🚗 ${esc(vl)}</div>
+        ${byVeh[vl].map(p=>pkgCardHtml(p)).join('')}
+      `).join('')}
+      ${done.length?`<div class="sec-title" style="margin-top:24px">Completed</div>
+        ${done.map(p=>pkgCardHtml(p,true)).join('')}`:''}
+    ` : `<div class="guest-banner">No packages yet. Buy a multi-use package (e.g. 10× wash) and it'll appear here.</div>`;
+  appRoot.innerHTML=`
+    <div class="topbar-app"><button class="back" onclick="goBack()">‹</button><div class="ttl">My Packages</div></div>
+    <div class="app-scroll" style="padding-top:18px">${body}</div>`;
+}
+function pkgCardHtml(p, completed){
+  const remaining = (p.total_uses||0)-(p.used_uses||0);
+  const pct = p.total_uses ? Math.round((p.used_uses/p.total_uses)*100) : 0;
+  return `<div class="pkg-bal-card ${completed?'done':''}">
+    <div class="pkg-bal-top">
+      <div>
+        <div class="pkg-bal-name">${esc(p.service_name||'Package')}</div>
+        <div class="pkg-bal-sub">${esc(p.vehicle_label||'')}</div>
+      </div>
+      <div class="pkg-bal-count">${completed?'<span class="pkg-done-tag">Completed</span>':`<span class="pkg-rem">${remaining}</span><span class="pkg-rem-of">/ ${p.total_uses} left</span>`}</div>
+    </div>
+    <div class="pkg-bar"><div class="pkg-bar-fill" style="width:${pct}%"></div></div>
+    ${!completed?`
+      <div class="pkg-barcode">${barcodeSvg(p.barcode||'GL000000')}</div>
+      <div class="pkg-barcode-num">${esc(p.barcode||'')}</div>
+      <div class="pkg-barcode-hint">Show this to our staff to redeem one use</div>
+    `:''}
+    <button class="pkg-history-btn" onclick="openPkgHistory(${p.id})">View redemption history ›</button>
+  </div>`;
+}
+async function openPkgHistory(pkgId){
+  const p=PACKAGES.find(x=>String(x.id)===String(pkgId));
+  const reds=await fetchRedemptions(pkgId);
+  appRoot.innerHTML=`
+    <div class="topbar-app"><button class="back" onclick="openMyPackages()">‹</button><div class="ttl">Redemption History</div></div>
+    <div class="app-scroll" style="padding-top:18px">
+      <div class="pkg-bal-name" style="font-size:18px">${esc(p?.service_name||'Package')}</div>
+      <div class="pkg-bal-sub" style="margin-bottom:14px">${esc(p?.vehicle_label||'')} · ${(p?.total_uses||0)-(p?.used_uses||0)} of ${p?.total_uses||0} left</div>
+      ${reds.length? reds.map((r,i)=>`
+        <div class="redeem-row">
+          <div class="redeem-ic">✓</div>
+          <div style="flex:1">
+            <div class="redeem-title">Use ${p.total_uses - p.used_uses + (i+1) <= p.total_uses ? (p.used_uses - i) : (reds.length-i)} redeemed</div>
+            <div class="redeem-date">${fmtDateTime(r.redeemed_at)}${r.outlet?(' · '+esc(r.outlet)):''}</div>
+          </div>
+        </div>`).join('') : '<div class="guest-banner">No redemptions yet.</div>'}
+    </div>`;
+}
+function fmtDateTime(iso){ if(!iso) return ''; try{ const d=new Date(iso);
+  return d.toLocaleDateString('en-MY',{day:'2-digit',month:'short',year:'numeric'})+' · '+d.toLocaleTimeString('en-MY',{hour:'2-digit',minute:'2-digit'});
+}catch(e){ return iso; } }
+
 function openMembership(){
   const tiers=[
     {key:1,name:STYLE.memTier1,card:STYLE.memCard1,ben:STYLE.memBenefits1},
@@ -2756,9 +2881,32 @@ async function checkoutService(){
       body:JSON.stringify({owner_id:SESSION.user.id,service_name:s.name,service_id:s.id,
         vehicle:carLabel, vehicle_id:car?.id||null, vehicle_label:carLabel,
         appointment_date:null,appointment_time:null,note:note,status:'upcoming'})});
-    if(r.ok){ toast("Order placed ✓"); routeTab('order'); }
+    if(r.ok){
+      // multi-use package? create a redeemable package balance on this car
+      const uses = Number(s.pkg_uses||0);
+      if(uses>1){
+        const barcode = genBarcodeValue();
+        await fetch(`${SUPA_URL}/rest/v1/gl_packages`,{
+          method:"POST",headers:authHeaders(),
+          body:JSON.stringify({owner_id:SESSION.user.id, vehicle_id:car?.id||null, vehicle_label:carLabel,
+            service_id:s.id, service_name:s.name, pkg_type:s.pkg_type||'custom',
+            total_uses:uses, used_uses:0, barcode:barcode, status:'active', source:'app'})});
+        PACKAGES=[]; // force refresh next time
+        toast(`Order placed ✓ — ${uses}× package added to ${carLabel}`);
+        routeTab('order');
+        return;
+      }
+      toast("Order placed ✓"); routeTab('order');
+    }
     else { toast("Could not place order"); }
   }catch(e){ toast("Order error"); }
+}
+
+// unique-ish barcode value: GL + base36 timestamp + random — Code128-safe (digits+letters)
+function genBarcodeValue(){
+  const t=Date.now().toString(36).toUpperCase();
+  const r=Math.random().toString(36).slice(2,7).toUpperCase();
+  return ('GL'+t+r).replace(/[^A-Z0-9]/g,'');
 }
 
 async function fetchOrders(){
@@ -3045,7 +3193,7 @@ async function renderAccount(){
         ${row('Favourite Outlet', 'Grandlab HQ', "toast('Grandlab HQ — PJS 13, Petaling Jaya')")}
         ${row('Referral', '', "showReferralQR()")}
         ${row('My Cars', carLabel, "openMyVehicles()")}
-        ${row('Maintenance', '', "openMaintenance()")}
+        ${row('My Packages', '', "openMyPackages()")}
       </div>
 
       <div class="sec-title">General</div>
