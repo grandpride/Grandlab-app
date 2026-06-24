@@ -683,6 +683,11 @@
         <input type="file" accept=".xlsx,.xls" onchange="importVehiclesExcel(this)" style="margin-top:8px">
         <div id="vehImportMsg" class="svc-hint" style="margin-top:6px"></div>
 
+        <div class="section-h" style="margin-top:18px">Bulk brand logo upload</div>
+        <div class="svc-hint">Select many logos at once — each is matched to a brand by its <b>filename</b>. Name each file as the brand (e.g. <code>Toyota.png</code>, <code>BMW.png</code>). Case/spaces don't matter. Make sure the <code>gl-images</code> bucket is public.</div>
+        <input type="file" accept="image/*" multiple onchange="bulkBrandLogos(this)" style="margin-top:8px">
+        <div id="bulkBrandMsg" class="svc-hint" style="margin-top:6px"></div>
+
         <div class="section-h" style="margin-top:20px">Brands</div>
         <div id="brandModelList" style="margin-top:10px"></div>
         <div class="add-row"><button class="btn btn-ghost" onclick="addCarBrand()">+ Add brand</button></div>
@@ -1787,6 +1792,36 @@ function toggleBrand(i){carBrands[i]._open=!carBrands[i]._open;renderBrandModels
 function addCarBrand(){carBrands.push({name:"New Brand",vehicle_kind:"Car",image_url:null,sort_order:carBrands.length+1,_models:[],_open:true});renderBrandModels();}
 function delCarBrand(i){if(carBrands[i].id)deletedBrandIds2.push(carBrands[i].id);(carBrands[i]._models||[]).forEach(m=>{if(m.id)deletedModelIds.push(m.id);});carBrands.splice(i,1);renderBrandModels();}
 function updCarBrand(i,f,v){carBrands[i][f]=v;}
+async function bulkBrandLogos(input){
+  const files=[...input.files]; if(!files.length) return;
+  const msg=document.getElementById('bulkBrandMsg');
+  // match by brand name (filename minus extension, ignoring case/spaces/punctuation)
+  const key=s=>(s||'').toLowerCase().replace(/\.[a-z0-9]+$/,'').replace(/[^a-z0-9]/g,'');
+  const byKey={}; carBrands.forEach(b=>{ byKey[key(b.name)]=b; });
+  let matched=0, unmatched=[], done=0; const total=files.length;
+  msg.innerHTML=`Uploading 0/${total}…`;
+  for(let i=0;i<files.length;i+=5){
+    const batch=files.slice(i,i+5);
+    await Promise.all(batch.map(async f=>{
+      done++;
+      const b=byKey[key(f.name)];
+      if(!b){ unmatched.push(f.name); msg.innerHTML=`Uploading ${done}/${total}… (${matched} matched)`; return; }
+      const path=`brand-${Date.now()}-${Math.random().toString(36).slice(2,6)}-${f.name.replace(/[^a-z0-9.]/gi,'_')}`;
+      try{
+        const r=await fetch(`${SUPA_URL}/storage/v1/object/${BUCKET}/${path}`,{method:"POST",headers:{apikey:SVC_KEY,Authorization:`Bearer ${SVC_KEY}`},body:f});
+        if(r.ok){ b.image_url=`${SUPA_URL}/storage/v1/object/public/${BUCKET}/${path}`; matched++; }
+        else unmatched.push(f.name+' (upload failed)');
+      }catch(e){ unmatched.push(f.name+' (error)'); }
+      msg.innerHTML=`Uploading ${done}/${total}… (${matched} matched)`;
+    }));
+  }
+  renderBrandModels();
+  let report=`✅ ${matched} logos attached.`;
+  if(unmatched.length){ report+=`<br>⚠️ ${unmatched.length} not matched: <span style="font-size:11px;color:var(--muted)">${unmatched.slice(0,30).map(esc).join(', ')}${unmatched.length>30?' …':''}</span>`; }
+  report+=`<br><b>Now click "Save all changes" to keep these logos.</b>`;
+  msg.innerHTML=report;
+  toast(`${matched} brand logos attached ✓`);
+}
 function addCarModel(i){carBrands[i]._models=carBrands[i]._models||[];carBrands[i]._models.push({name:"",type:"Sedan",sort_order:carBrands[i]._models.length+1});renderBrandModels();}
 function delCarModel(i,mi){const m=carBrands[i]._models[mi];if(m&&m.id)deletedModelIds.push(m.id);carBrands[i]._models.splice(mi,1);renderBrandModels();}
 function updCarModel(i,mi,f,v){carBrands[i]._models[mi][f]=v;}
@@ -2286,20 +2321,46 @@ async function saveAll(){
     deletedSlideIds=[]; deletedServiceIds=[]; deletedCategoryIds=[]; deletedStoreIds=[]; deletedBrandIds=[];
     // car brands + models
     carBrands.forEach((b,i)=>{ if(b.sort_order==null) b.sort_order=i+1; });
-    for(const b of carBrands){
-      const body={name:b.name,vehicle_kind:b.vehicle_kind||'Car',image_url:b.image_url||null,sort_order:Number(b.sort_order||0),active:true};
-      if(b.id){await sb(`gl_car_brands?id=eq.${b.id}`,{method:"PATCH",headers:H(),body:JSON.stringify(body)});}
-      else{const rr=await sb("gl_car_brands",{method:"POST",headers:H({Prefer:"return=representation"}),body:JSON.stringify(body)});if(rr.ok){const j=await rr.json();b.id=j[0].id;}}
-      // models for this brand
-      (b._models||[]).forEach((m,mi)=>{ if(m.sort_order==null) m.sort_order=mi+1; });
-      for(const m of (b._models||[])){
-        const mbody={brand_id:b.id,brand_name:b.name,name:m.name,type:m.type||'Sedan',sort_order:Number(m.sort_order||0),active:true};
-        if(m.id){await sb(`gl_car_models?id=eq.${m.id}`,{method:"PATCH",headers:H(),body:JSON.stringify(mbody)});}
-        else{const rr=await sb("gl_car_models",{method:"POST",headers:H({Prefer:"return=representation"}),body:JSON.stringify(mbody)});if(rr.ok){const j=await rr.json();m.id=j[0].id;}}
+    // 1) brands: bulk-insert new ones, parallel-update existing
+    {
+      const newB=carBrands.filter(b=>!b.id), oldB=carBrands.filter(b=>b.id);
+      const bBody=b=>({name:b.name,vehicle_kind:b.vehicle_kind||'Car',image_url:b.image_url||null,sort_order:Number(b.sort_order||0),active:true});
+      for(let i=0;i<newB.length;i+=100){
+        const chunk=newB.slice(i,i+100);
+        const rr=await sb("gl_car_brands",{method:"POST",headers:H({Prefer:"return=representation"}),body:JSON.stringify(chunk.map(bBody))});
+        if(rr.ok){ const j=await rr.json(); j.forEach((row,k)=>chunk[k].id=row.id); }
+        else { throw new Error('Brand insert failed — '+(await rr.text()).slice(0,150)); }
+      }
+      for(let i=0;i<oldB.length;i+=25){
+        const chunk=oldB.slice(i,i+25);
+        await Promise.all(chunk.map(b=>sb(`gl_car_brands?id=eq.${b.id}`,{method:"PATCH",headers:H(),body:JSON.stringify(bBody(b))})));
       }
     }
-    for(const id of deletedModelIds){ await sb(`gl_car_models?id=eq.${id}`,{method:"DELETE",headers:H()}); }
-    for(const id of deletedBrandIds2){ await sb(`gl_car_brands?id=eq.${id}`,{method:"DELETE",headers:H()}); }
+    // 2) models: flatten ALL models across brands, then bulk-insert/update in big batches
+    {
+      const allNew=[], allOld=[];
+      carBrands.forEach(b=>{
+        (b._models||[]).forEach((m,mi)=>{ if(m.sort_order==null) m.sort_order=mi+1; m._brand=b; });
+        (b._models||[]).forEach(m=>{ (m.id?allOld:allNew).push(m); });
+      });
+      const mBody=m=>({brand_id:m._brand.id,brand_name:m._brand.name,name:m.name,type:m.type||'Sedan',sort_order:Number(m.sort_order||0),active:true});
+      let savedM=0, totalM=allNew.length+allOld.length;
+      for(let i=0;i<allNew.length;i+=200){
+        const chunk=allNew.slice(i,i+200);
+        toast(`Saving models… ${Math.min(i+200,allNew.length)}/${allNew.length}`);
+        const rr=await sb("gl_car_models",{method:"POST",headers:H({Prefer:"return=representation"}),body:JSON.stringify(chunk.map(mBody))});
+        if(rr.ok){ const j=await rr.json(); j.forEach((row,k)=>chunk[k].id=row.id); savedM+=chunk.length; }
+        else { throw new Error('Model insert failed — '+(await rr.text()).slice(0,150)); }
+      }
+      for(let i=0;i<allOld.length;i+=40){
+        const chunk=allOld.slice(i,i+40);
+        toast(`Updating models… ${Math.min(i+40,allOld.length)}/${allOld.length}`);
+        await Promise.all(chunk.map(m=>sb(`gl_car_models?id=eq.${m.id}`,{method:"PATCH",headers:H(),body:JSON.stringify(mBody(m))})));
+      }
+    }
+    // deletions in parallel batches
+    for(let i=0;i<deletedModelIds.length;i+=40){ await Promise.all(deletedModelIds.slice(i,i+40).map(id=>sb(`gl_car_models?id=eq.${id}`,{method:"DELETE",headers:H()}))); }
+    for(let i=0;i<deletedBrandIds2.length;i+=25){ await Promise.all(deletedBrandIds2.slice(i,i+25).map(id=>sb(`gl_car_brands?id=eq.${id}`,{method:"DELETE",headers:H()}))); }
     deletedModelIds=[]; deletedBrandIds2=[];
     // ---- settings saves FIRST (these are independent and must not be blocked by a later failure) ----
     await sb("gl_settings",{method:"POST",headers:H({Prefer:"resolution=merge-duplicates"}),body:JSON.stringify({id:"style",data:theme})});
