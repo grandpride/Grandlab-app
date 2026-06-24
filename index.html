@@ -484,6 +484,10 @@
   .botnav .ic{display:flex;align-items:center;justify-content:center;height:22px;}
   .botnav button.on .ic svg{filter:drop-shadow(0 0 6px rgba(245,197,24,.5));}
   .field{margin-top:16px;}
+  .veh-kind-toggle{display:flex;gap:8px;margin-bottom:14px;}
+  .vk-btn{flex:1;height:46px;background:var(--surface);border:1.5px solid var(--line);border-radius:14px;
+    color:var(--text);font-size:15px;font-weight:600;cursor:pointer;transition:.12s;}
+  .vk-btn.on{background:var(--yellow);color:#080808;border-color:var(--yellow);font-weight:700;}
   .veh-type-tag{margin-top:12px;display:inline-block;background:var(--surface2);border:1px solid var(--gold-line-soft);
     border-radius:20px;padding:6px 14px;font-size:13px;font-weight:600;color:var(--yellow);}
   /* login popup carousel */
@@ -2138,10 +2142,14 @@ async function openAddVehicle(){
     <div class="app-scroll" style="padding-top:18px">
       <div class="app-sub" style="margin-bottom:6px">Select your vehicle</div>
       ${hasList?`
+      <div class="veh-kind-toggle">
+        <button id="vk-car" class="vk-btn on" onclick="setVehKind('Car')">🚗 Car</button>
+        <button id="vk-moto" class="vk-btn" onclick="setVehKind('Motorcycle')">🏍️ Motorbike</button>
+      </div>
       <div class="field"><label>Brand</label>
         <select id="v-brand" onchange="onBrandPick()" style="width:100%;height:52px;background:var(--surface);border:1.5px solid var(--line);border-radius:14px;padding:0 16px;color:var(--text);font-size:16px">
           <option value="">— Select brand —</option>
-          ${CAR_BRANDS.map(b=>`<option value="${b.id}">${esc(b.name)}</option>`).join('')}
+          ${CAR_BRANDS.filter(b=>(b.vehicle_kind||'Car')!=='Motorcycle').map(b=>`<option value="${b.id}">${esc(b.name)}</option>`).join('')}
           <option value="__other">Other (not listed)</option>
         </select>
       </div>
@@ -2191,6 +2199,19 @@ async function openAddVehicle(){
   };
 }
 
+function setVehKind(kind){
+  // toggle button states
+  const cb=document.getElementById('vk-car'), mb=document.getElementById('vk-moto');
+  if(cb&&mb){ cb.classList.toggle('on',kind==='Car'); mb.classList.toggle('on',kind==='Motorcycle'); }
+  // rebuild brand options filtered by kind
+  const sel=document.getElementById('v-brand'); if(!sel) return;
+  const list=CAR_BRANDS.filter(b=> kind==='Motorcycle' ? (b.vehicle_kind||'Car')==='Motorcycle' : (b.vehicle_kind||'Car')!=='Motorcycle');
+  sel.innerHTML=`<option value="">— Select brand —</option>${list.map(b=>`<option value="${b.id}">${esc(b.name)}</option>`).join('')}<option value="__other">Other (not listed)</option>`;
+  // reset model + type below
+  const wrap=document.getElementById('v-model-wrap'); if(wrap) wrap.style.display='none';
+  const tag=document.getElementById('v-type-tag'); if(tag) tag.style.display='none';
+  const manual=document.getElementById('v-manual'); if(manual) manual.style.display='none';
+}
 function onBrandPick(){
   const bId=document.getElementById('v-brand').value;
   const wrap=document.getElementById('v-model-wrap');
