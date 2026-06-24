@@ -576,7 +576,8 @@
       <div class="panel" id="panel-categories">
         <div class="hint">Categories group your services on the Services tab. Each service picks its category by name. Drag order is set by the “Order” number (lower = first).</div>
         <div id="catList" style="margin-top:14px"></div>
-        <div class="add-row"><button class="btn btn-ghost" onclick="addCategory()">+ Add category</button></div>
+        <div class="add-row"><button class="btn btn-ghost" onclick="addCategory()">+ Add category</button>
+        <button class="btn btn-ghost" onclick="autoCategories()">⚡ Auto-create from services</button></div>
       </div>
 
       <!-- STORES -->
@@ -1488,6 +1489,32 @@ function renderCategories(){
   });
 }
 function addCategory(){categories.push({name:"New category",icon:"✨",image_url:null,sort_order:categories.length+1,active:true});renderCategories();renderServices();}
+function autoCategories(){
+  // build category tiles from the distinct categories used by services
+  const existing=new Set(categories.map(c=>(c.name||'').trim().toLowerCase()));
+  const order=[]; const seen=new Set();
+  services.forEach(s=>{ const c=(s.category||'').trim(); if(c && !seen.has(c.toLowerCase())){ seen.add(c.toLowerCase()); order.push(c); } });
+  let added=0;
+  order.forEach(name=>{
+    if(!existing.has(name.toLowerCase())){
+      categories.push({name, icon:serviceIcon(name), image_url:null, sort_order:categories.length+1, active:true});
+      added++;
+    }
+  });
+  renderCategories(); renderServices();
+  toast(added?`Added ${added} categories ✓ — now click Save all changes`:'All categories already exist');
+}
+function serviceIcon(name){
+  const n=(name||'').toLowerCase();
+  if(n.includes('wash')) return '🚿';
+  if(n.includes('coat')) return '✨';
+  if(n.includes('ppf')) return '🛡️';
+  if(n.includes('wrap')) return '🎨';
+  if(n.includes('tint')) return '🌓';
+  if(n.includes('detail')) return '🧽';
+  if(n.includes('bike')||n.includes('motor')) return '🏍️';
+  return '🚗';
+}
 function delCategory(i){if(categories[i].id)deletedCategoryIds.push(categories[i].id);categories.splice(i,1);renderCategories();renderServices();}
 function moveCategory(i,d){const j=i+d;if(j<0||j>=categories.length)return;[categories[i],categories[j]]=[categories[j],categories[i]];categories.forEach((c,k)=>c.sort_order=k+1);renderCategories();}
 function updCat(i,field,val){
@@ -2124,8 +2151,9 @@ async function saveAll(){
       if(s.id){await sb(`gl_onboarding_slides?id=eq.${s.id}`,{method:"PATCH",headers:H(),body:JSON.stringify(body)});}
       else{const r=await sb("gl_onboarding_slides",{method:"POST",headers:H({Prefer:"return=representation"}),body:JSON.stringify(body)});if(r.ok){const j=await r.json();s.id=j[0].id;}}
     }
-    for(const s of services){
-      const body={name:s.name,category:s.category,base_price:s.price_by_type?null:Number(s.base_price||0),price_by_type:s.price_by_type,sort_order:s.sort_order,active:true,
+    // --- services: BATCH to avoid 400 sequential requests (which hangs the browser) ---
+    function svcBody(s){
+      return {name:s.name,category:s.category,base_price:s.price_by_type?null:Number(s.base_price||0),price_by_type:s.price_by_type,sort_order:s.sort_order,active:true,
         media:(s.media&&s.media.length)?s.media:null,
         variations:(s.variations&&s.variations.length)?s.variations:null,
         addons:(s.addons&&s.addons.length)?s.addons:null,
@@ -2136,8 +2164,25 @@ async function saveAll(){
         option_type:s.option_type||null,
         option_label:s.option_type?(s.option_label||'Choose option'):null,
         option_choices:(s.option_type&&Array.isArray(s.option_choices))?s.option_choices.filter(c=>c.label&&c.price!=null):null};
-      if(s.id){await sb(`gl_services?id=eq.${s.id}`,{method:"PATCH",headers:H(),body:JSON.stringify(body)});}
-      else{const r=await sb("gl_services",{method:"POST",headers:H({Prefer:"return=representation"}),body:JSON.stringify(body)});if(r.ok){const j=await r.json();s.id=j[0].id;}}
+    }
+    {
+      const newOnes = services.filter(s=>!s.id);
+      const existing = services.filter(s=>s.id);
+      // 1) bulk-insert all new services in chunks of 100
+      for(let i=0;i<newOnes.length;i+=100){
+        toast(`Saving services… ${Math.min(i+100,newOnes.length)}/${newOnes.length}`);
+        const chunk=newOnes.slice(i,i+100);
+        const r=await sb("gl_services",{method:"POST",headers:H({Prefer:"return=representation"}),body:JSON.stringify(chunk.map(svcBody))});
+        if(r.ok){ const j=await r.json(); j.forEach((row,k)=>{ chunk[k].id=row.id; }); }
+        else { const t=await r.text(); throw new Error('Service insert failed — '+t.slice(0,160)); }
+      }
+      // 2) update existing services in parallel batches of 25
+      for(let i=0;i<existing.length;i+=25){
+        const chunk=existing.slice(i,i+25);
+        const res=await Promise.all(chunk.map(s=>sb(`gl_services?id=eq.${s.id}`,{method:"PATCH",headers:H(),body:JSON.stringify(svcBody(s))})));
+        const bad=res.find(r=>!r.ok);
+        if(bad){ const t=await bad.text(); throw new Error('Service update failed — '+t.slice(0,160)); }
+      }
     }
     // categories (saved alongside services; matched to services by name)
     for(const c of categories){
