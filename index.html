@@ -501,11 +501,13 @@
   .brand-tile-img img{width:100%;height:100%;object-fit:cover;}
   .brand-tile-ph{font-size:16px;font-weight:800;color:var(--muted);text-align:center;padding:8px;}
   .brand-tile-nm{padding:10px 12px;font-size:14px;font-weight:700;text-align:center;}
-  .brand-tile-warr{font-size:10.5px;font-weight:700;color:var(--yellow);margin-top:3px;}
-  .brand-warr-banner{background:rgba(245,197,24,.12);border:1px solid var(--gold-line-soft);color:var(--yellow);
-    font-size:13px;font-weight:700;border-radius:12px;padding:10px 14px;margin-bottom:6px;}
-  .sd-warr{display:inline-block;background:rgba(245,197,24,.12);color:var(--yellow);font-size:12.5px;font-weight:700;
-    border-radius:10px;padding:5px 12px;margin-top:8px;}
+  .brand-tile-warr{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;color:var(--yellow);margin-top:5px;
+    background:rgba(245,197,24,.1);padding:3px 9px;border-radius:20px;}
+  .brand-tile-warr .warr-ic{flex:0 0 auto;}
+  .brand-warr-banner{display:inline-flex;align-items:center;gap:7px;background:rgba(245,197,24,.1);border:1px solid var(--gold-line-soft);color:var(--yellow);
+    font-size:13px;font-weight:700;border-radius:20px;padding:8px 16px;margin-bottom:6px;}
+  .sd-warr{display:inline-flex;align-items:center;gap:6px;background:rgba(245,197,24,.1);color:var(--yellow);font-size:12.5px;font-weight:700;
+    border-radius:20px;padding:6px 14px;margin-top:8px;}
   /* referral page */
   .help-btn{position:absolute;right:16px;top:50%;transform:translateY(-50%);width:30px;height:30px;border-radius:50%;
     border:1px solid var(--line);background:var(--surface);color:var(--muted);font-size:15px;font-weight:700;cursor:pointer;}
@@ -2047,6 +2049,9 @@ function navIconHtml(which){
   if(url) return `<img src="${url}" style="width:22px;height:22px;object-fit:contain;border-radius:5px">`;
   return which==='gmap' ? gmapsLogoSvg() : wazeLogoSvg();
 }
+function shieldSvg(){
+  return `<svg class="warr-ic" width="13" height="13" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 2l7 3v6c0 4.6-3 8.3-7 9.5C8 19.3 5 15.6 5 11V5l7-3z" fill="currentColor" opacity="0.18"/><path d="M12 2l7 3v6c0 4.6-3 8.3-7 9.5C8 19.3 5 15.6 5 11V5l7-3z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M9 11.5l2 2 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+}
 function gmapsLogoSvg(){
   // Google Maps pin (multi-colour)
   return `<svg width="20" height="20" viewBox="0 0 24 24" style="flex:0 0 auto"><path d="M12 2C7.8 2 4.4 5.4 4.4 9.6c0 5.1 6.3 11.3 6.6 11.6.3.3.7.3 1 0 .3-.3 6.6-6.5 6.6-11.6C18.6 5.4 15.2 2 12 2z" fill="#34A853"/><path d="M12 2c3.2 0 6.6 3.4 6.6 7.6 0 1.4-.5 2.9-1.2 4.3L9.3 4.2C10.1 3 11 2 12 2z" fill="#4285F4"/><path d="M16.9 6.2 7.5 16.4c-1.2-1.9-3.1-4.9-3.1-6.8 0-2 .8-3.8 2-5.1l10.5 1.7z" fill="#FBBC04"/><path d="M5.1 5.4C6.5 3.4 9 2 12 2c1.8 0 3.6.7 4.9 1.9l-4.9 4.3-6.9-2.8z" fill="#EA4335"/><circle cx="12" cy="9.6" r="2.7" fill="#fff"/></svg>`;
@@ -2739,7 +2744,7 @@ async function openCategory(name){
       const warr = info.warranty||'';
       return `<div class="brand-tile" onclick="openBrand('${esc(name)}','${esc(b)}')">
         <div class="brand-tile-img">${logo?`<img src="${logo}">`:`<div class="brand-tile-ph">${esc(b)}</div>`}</div>
-        <div class="brand-tile-nm">${esc(b)}${warr?`<div class="brand-tile-warr">🛡️ ${esc(warr)}</div>`:''}</div>
+        <div class="brand-tile-nm">${esc(b)}${warr?`<div class="brand-tile-warr">${shieldSvg()}${esc(warr)}</div>`:''}</div>
       </div>`;
     }).join('');
     const looseBody = noBrandItems.length ? renderSectioned(noBrandItems) : '';
@@ -2761,7 +2766,7 @@ async function openBrand(catName, brand){
   const visible = visibleServices();
   const list = visible.filter(s=>svcInCategory(s,catName) && (s.brand||'').trim()===brand);
   const info = BRAND_INFO[catName+'::'+brand] || BRAND_INFO[brand] || {};
-  const warrBanner = info.warranty ? `<div class="brand-warr-banner">🛡️ ${esc(info.warranty)}</div>` : '';
+  const warrBanner = info.warranty ? `<div class="brand-warr-banner">${shieldSvg()}<span>${esc(info.warranty)} Warranty</span></div>` : '';
   const body = list.length ? renderSectioned(list) : '<div class="guest-banner">No services here yet.</div>';
   appRoot.innerHTML=`
     <div class="topbar-app"><button class="back" onclick="openCategory('${esc(catName)}')">‹</button><div class="ttl">${esc(brand)}</div><button class="home-btn" onclick="routeTab('home')">⌂</button></div>
@@ -3078,7 +3083,7 @@ function renderServiceDetail(){
           <div class="sd-price-tag">${priceLabel(s)}</div>
         </div>
         ${s.subtitle?`<div class="sd-badge">⭐ ${esc(s.subtitle)}</div>`:''}
-        ${svcWarranty(s)?`<div class="sd-warr">🛡️ ${esc(svcWarranty(s))} Warranty</div>`:''}
+        ${svcWarranty(s)?`<div class="sd-warr">${shieldSvg()}<span>${esc(svcWarranty(s))} Warranty</span></div>`:''}
         ${carBlock}
         ${variBlock}
         ${qtyBlock}
