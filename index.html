@@ -760,9 +760,13 @@
   /* vehicle section (below greeting) */
   .veh-section{margin-top:16px;}
   .active-veh{background:var(--card-grad);border:1px solid var(--gold-line);border-radius:14px;
-    padding:14px 16px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;transition:.12s;}
+    padding:14px 16px;display:flex;align-items:center;gap:12px;cursor:pointer;transition:.12s;}
   .active-veh:active{transform:scale(.99);}
+  .active-veh .veh-info{flex:1;min-width:0;}
   .veh-switch{color:var(--yellow);font-size:18px;font-weight:700;}
+  .veh-logo{flex:0 0 auto;width:44px;height:44px;border-radius:10px;background:#fff;
+    display:flex;align-items:center;justify-content:center;overflow:hidden;}
+  .veh-logo img{width:100%;height:100%;object-fit:contain;padding:5px;}
   .myveh-row{background:var(--surface);border:1px solid var(--line);border-radius:14px;
     padding:14px 16px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;transition:.12s;}
   .myveh-row.active{border-color:var(--yellow);}
@@ -1723,6 +1727,7 @@ async function renderHome(){
     (!FLASH.length)      ? fetchFlash()      : Promise.resolve(),
     (!STORES.length)     ? fetchStores()     : Promise.resolve(),
     (!IS_GUEST && SESSION?.user?.id) ? fetchVehicles() : Promise.resolve(),
+    (!CAR_BRANDS.length) ? fetchCarBrands() : Promise.resolve(),
     (!IS_GUEST && SESSION?.user?.id) ? fetchCheckin()  : Promise.resolve()
   ]);
   const refCode = PROFILE?.referral_code || '';
@@ -1772,11 +1777,18 @@ async function renderHome(){
     const bm=[v.make,v.model].filter(Boolean).join(' ');
     return (bm? bm : 'Vehicle') + (v.plate? ' - '+v.plate : '');
   };
+  const vehLogo=v=>{
+    if(!v) return '';
+    const b=(CAR_BRANDS||[]).find(x=>String(x.id)===String(v.brand_id));
+    return (b&&b.image_url)||'';
+  };
   let activeId=null;
   try{ activeId=localStorage.getItem('gl_active_vehicle'); }catch(e){}
   let activeVeh = VEHICLES.find(v=>v.id===activeId) || VEHICLES[0] || null;
+  const _alogo = vehLogo(activeVeh);
   const vehicleSection = activeVeh
     ? `<div class="active-veh" onclick="openMyVehicles()">
+         ${_alogo?`<div class="veh-logo"><img src="${_alogo}"></div>`:''}
          <div class="veh-info"><div class="veh-name">${esc(vehLabel(activeVeh))}</div>${activeVeh.color?`<div class="veh-meta">${esc(activeVeh.color)} · ${esc(activeVeh.car_type||'Car')}</div>`:''}</div>
          <span class="veh-switch">⌄</span>
        </div>`
@@ -2255,11 +2267,15 @@ function openMyVehicles(){
   try{ activeId=localStorage.getItem('gl_active_vehicle'); }catch(e){}
   if(!activeId && VEHICLES[0]) activeId=VEHICLES[0].id;
   const vehLabel=v=>{ const bm=[v.make,v.model].filter(Boolean).join(' '); return (bm||'Vehicle')+(v.plate?' - '+v.plate:''); };
+  const vLogo=v=>{ const b=(CAR_BRANDS||[]).find(x=>String(x.id)===String(v.brand_id)); return (b&&b.image_url)||''; };
   const list = VEHICLES.length ? VEHICLES.map(v=>`
     <div class="myveh-row ${v.id===activeId?'active':''}" onclick="setActiveVehicle('${v.id}')">
-      <div class="veh-info">
-        <div class="veh-name">${esc(vehLabel(v))}</div>
-        ${v.color?`<div class="veh-meta">${esc(v.color)} · ${esc(v.car_type||'Car')}</div>`:''}
+      <div style="display:flex;align-items:center;gap:12px;min-width:0">
+        ${vLogo(v)?`<div class="veh-logo"><img src="${vLogo(v)}"></div>`:''}
+        <div class="veh-info" style="min-width:0">
+          <div class="veh-name">${esc(vehLabel(v))}</div>
+          ${v.color?`<div class="veh-meta">${esc(v.color)} · ${esc(v.car_type||'Car')}</div>`:''}
+        </div>
       </div>
       <div style="display:flex;align-items:center;gap:10px">
         ${v.id===activeId?`<span class="myveh-active-tag">Active</span>`:''}
