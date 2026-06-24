@@ -43,6 +43,10 @@
 
   .section-h{font-size:13px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
     color:var(--muted);margin:22px 0 10px;}
+  .cat-chip{background:var(--panel);border:1px solid var(--line);color:var(--muted);font-size:12px;font-weight:600;
+    padding:6px 12px;border-radius:20px;cursor:pointer;white-space:nowrap;}
+  .cat-chip:hover{border-color:var(--yellow);}
+  .cat-chip.on{background:var(--yellow);color:#080808;border-color:var(--yellow);font-weight:700;}
   .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);
     padding:16px;margin-bottom:12px;}
   .card.dragging{opacity:.5;}
@@ -565,6 +569,10 @@
         <div class="svc-hint">Upload the filled Grandlab Services template. Merges by name (existing services with the same name are updated). Photos/variations/add-ons are added here after import.</div>
         <input type="file" accept=".xlsx,.xls" onchange="importServicesExcel(this)" style="margin-top:8px">
         <div id="svcImportMsg" class="svc-hint" style="margin-top:6px"></div>
+        <div class="section-h" style="margin-top:14px">Bulk photo upload</div>
+        <div class="svc-hint">Two ways to match photos to services:<br>① <b>Best:</b> fill the <code>photo_filename</code> column in your Excel with each photo's filename (e.g. <code>IMG_1234.jpg</code>), then upload the photos as-is — no renaming needed.<br>② Or name each photo the same as the service (e.g. <code>One+ - Bumper PPF.jpg</code>).<br>Tip: upload in batches of 50–100. Make sure the <code>gl-images</code> bucket is public.</div>
+        <input type="file" accept="image/*" multiple onchange="bulkPhotoUpload(this)" style="margin-top:8px">
+        <div id="bulkPhotoMsg" class="svc-hint" style="margin-top:6px"></div>
         <div class="section-h" style="margin-top:16px">Brand / series warranty &amp; logo</div>
         <div class="svc-hint">Set the warranty &amp; tile image once per brand (e.g. One+ = 1 Year, AXFilm G Series = 3 Years). It shows on every service in that brand. Brands come from the "Brand / series" field on your services.</div>
         <div id="brandInfoList" style="margin-top:8px"></div>
@@ -1137,6 +1145,7 @@ function moveSlide(i,d){const j=i+d;if(j<0||j>=slides.length)return;[slides[i],s
 
 /* ---------- SERVICES editor ---------- */
 let svcSearch = '';
+let svcCatFilter = '';  // '' = all categories
 let brandInfo={}; // { "PPF::One+": {warranty, logo} }  keyed by category::brand
 function brandKey(s){ return ((s.category||'').trim())+'::'+((s.brand||'').trim()); }
 function renderBrandInfo(){
@@ -1174,13 +1183,26 @@ function renderServices(){
   const el=document.getElementById('svcList');
   if(!services.length){el.innerHTML='<div class="empty">No services yet. Add your first one.</div>';return;}
   el.innerHTML="";
+  // category filter chips
+  const catCounts={}; services.forEach(s=>{ const c=(s.category||'(none)').trim()||'(none)'; catCounts[c]=(catCounts[c]||0)+1; });
+  const cats=Object.keys(catCounts).sort();
+  const chipBox=document.createElement('div');
+  chipBox.style.cssText='display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px';
+  chipBox.innerHTML=`
+    <button class="cat-chip ${svcCatFilter===''?'on':''}" onclick="svcCatFilter='';renderServices()">All (${services.length})</button>
+    ${cats.map(c=>`<button class="cat-chip ${svcCatFilter===c?'on':''}" onclick="svcCatFilter=${JSON.stringify(c).replace(/"/g,'&quot;')};renderServices()">${esc(c)} (${catCounts[c]})</button>`).join('')}`;
+  el.appendChild(chipBox);
   // optional search box at top
   const searchBox=document.createElement('div');
   searchBox.innerHTML=`<input id="svcSearchBox" value="${esc(svcSearch)}" oninput="svcSearch=this.value;renderServices();setTimeout(()=>{const b=document.getElementById('svcSearchBox');if(b){b.focus();b.setSelectionRange(b.value.length,b.value.length);}},0)" placeholder="🔍 Search services…" style="margin-bottom:12px">`;
   el.appendChild(searchBox);
   const q=svcSearch.trim().toLowerCase();
+  let shown=0;
   services.forEach((s,i)=>{
-    if(q && !((s.name||'').toLowerCase().includes(q) || (s.category||'').toLowerCase().includes(q) || (s.section||'').toLowerCase().includes(q))) return;
+    // category filter
+    if(svcCatFilter){ const sc=(s.category||'(none)').trim()||'(none)'; if(sc!==svcCatFilter) return; }
+    if(q && !((s.name||'').toLowerCase().includes(q) || (s.category||'').toLowerCase().includes(q) || (s.section||'').toLowerCase().includes(q) || (s.brand||'').toLowerCase().includes(q))) return;
+    shown++;
     const sized=!!s.price_by_type;
     const pbt=s.price_by_type||{};
     s.media=s.media||[]; s.variations=s.variations||[]; s.addons=s.addons||[];
@@ -1323,6 +1345,7 @@ function renderServices(){
     `;
     el.appendChild(c);
   });
+  if(shown===0){ const e=document.createElement('div'); e.className='empty'; e.textContent='No services match this filter.'; el.appendChild(e); }
 }
 function toggleSvc(i){ services[i]._open=!services[i]._open; renderServices(); }
 function importServicesExcel(input){
@@ -1354,6 +1377,7 @@ function importServicesExcel(input){
         s.category2=String(r.category2||'').trim()||null;
         s.section=String(r.section||'').trim()||null;
         s.brand=String(r.brand||'').trim()||null;
+        s.photo_filename=String(r.photo_filename||'').trim()||null;
         s.price_by_type=price_by_type;
         s.base_price=base_price;
         // option pricing — custom label/price pairs: opt_label + opt1_label/opt1_price ... opt6
@@ -1452,6 +1476,53 @@ async function uploadSvcMedia(i,input){
   renderServices();toast("Media uploaded ✓");
 }
 function delMedia(i,mi){services[i].media.splice(mi,1);renderServices();}
+
+// match a filename (minus extension) ignoring case/spaces/punctuation
+function _matchKey(s){ return (s||'').toLowerCase().replace(/\.[a-z0-9]+$/,'').replace(/[^a-z0-9]/g,''); }
+// key that keeps the extension (for exact photo_filename match like IMG_1234.jpg)
+function _fileKey(s){ return (s||'').toLowerCase().replace(/[^a-z0-9.]/g,''); }
+async function bulkPhotoUpload(input){
+  const files=[...input.files]; if(!files.length) return;
+  const msg=document.getElementById('bulkPhotoMsg');
+  // build two lookups:
+  //  1) by photo_filename column (exact filename incl extension) — preferred
+  //  2) by service name (fallback) — so it still works if no column set
+  const byFile={}, byName={};
+  services.forEach(s=>{
+    if(s.photo_filename){ byFile[_fileKey(s.photo_filename)]=s; }
+    byName[_matchKey(s.name)]=s;
+  });
+  let matched=0, unmatched=[], done=0;
+  const total=files.length;
+  msg.innerHTML=`Uploading 0/${total}…`;
+  // process in small parallel batches to stay fast but not overwhelm
+  for(let i=0;i<files.length;i+=5){
+    const batch=files.slice(i,i+5);
+    await Promise.all(batch.map(async f=>{
+      // try photo_filename match first (with extension, then without), else service name
+      const svc = byFile[_fileKey(f.name)] || byFile[_fileKey(f.name).replace(/\.[a-z0-9]+$/,'')] || byName[_matchKey(f.name)];
+      done++;
+      if(!svc){ unmatched.push(f.name); msg.innerHTML=`Uploading ${done}/${total}… (${matched} matched)`; return; }
+      const path=`svc-${Date.now()}-${Math.random().toString(36).slice(2,7)}-${f.name.replace(/[^a-z0-9.]/gi,'_')}`;
+      try{
+        const r=await fetch(`${SUPA_URL}/storage/v1/object/${BUCKET}/${path}`,{method:"POST",headers:{apikey:SVC_KEY,Authorization:`Bearer ${SVC_KEY}`},body:f});
+        if(r.ok){
+          svc.media=svc.media||[];
+          // put new photo first so it's the cover
+          svc.media.unshift({type:'image',url:`${SUPA_URL}/storage/v1/object/public/${BUCKET}/${path}`});
+          matched++;
+        } else { unmatched.push(f.name+' (upload failed)'); }
+      }catch(e){ unmatched.push(f.name+' (error)'); }
+      msg.innerHTML=`Uploading ${done}/${total}… (${matched} matched)`;
+    }));
+  }
+  renderServices();
+  let report=`✅ ${matched} photos attached.`;
+  if(unmatched.length){ report+=`<br>⚠️ ${unmatched.length} not matched to a service:<br><span style="font-size:11px;color:var(--muted)">${unmatched.slice(0,30).map(esc).join(', ')}${unmatched.length>30?' …':''}</span>`; }
+  report+=`<br><b>Now click "Save all changes" to keep these photos.</b>`;
+  msg.innerHTML=report;
+  toast(`${matched} photos attached ✓`);
+}
 
 /* ---------- CATEGORIES editor ---------- */
 let deletedCategoryIds = [];
