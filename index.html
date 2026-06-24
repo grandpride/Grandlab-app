@@ -519,6 +519,23 @@
     font-size:13px;font-weight:700;border-radius:20px;padding:8px 16px;margin-bottom:6px;}
   .sd-warr{display:inline-flex;align-items:center;gap:6px;background:rgba(245,197,24,.1);color:var(--yellow);font-size:12.5px;font-weight:700;
     border-radius:20px;padding:6px 14px;margin-top:8px;}
+  /* payment sheet */
+  .pay-sheet-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:200;display:flex;align-items:flex-end;
+    opacity:0;transition:opacity .2s;}
+  .pay-sheet-overlay.show{opacity:1;}
+  .pay-sheet{width:100%;background:var(--bg);border-radius:22px 22px 0 0;padding:10px 18px calc(22px + env(safe-area-inset-bottom));
+    border-top:1px solid var(--gold-line-soft);transform:translateY(100%);transition:transform .22s;}
+  .pay-sheet-overlay.show .pay-sheet{transform:translateY(0);}
+  .pay-sheet-handle{width:40px;height:4px;background:var(--line);border-radius:3px;margin:6px auto 14px;}
+  .pay-sheet-title{font-size:18px;font-weight:800;}
+  .pay-sheet-amt{font-size:14px;color:var(--yellow);font-weight:700;margin:4px 0 16px;}
+  .pay-opt{display:flex;align-items:center;gap:14px;width:100%;text-align:left;background:var(--surface);
+    border:1px solid var(--line);border-radius:14px;padding:15px;margin-bottom:10px;cursor:pointer;transition:.12s;}
+  .pay-opt:active{transform:scale(.99);} .pay-opt:hover{border-color:var(--gold-line);}
+  .pay-opt-ic{font-size:24px;flex:0 0 auto;}
+  .pay-opt-nm{font-size:15px;font-weight:700;}
+  .pay-opt-sub{font-size:12px;color:var(--muted);margin-top:2px;}
+  .pay-cancel{width:100%;background:none;border:none;color:var(--muted);font-size:14px;padding:12px;margin-top:4px;cursor:pointer;}
   /* referral page */
   .help-btn{position:absolute;right:16px;top:50%;transform:translateY(-50%);width:30px;height:30px;border-radius:50%;
     border:1px solid var(--line);background:var(--surface);color:var(--muted);font-size:15px;font-weight:700;cursor:pointer;}
@@ -830,6 +847,10 @@
    ========================================================================= */
 
 const SUPA_URL  = "https://eychljpzorzmaveixlnu.supabase.co";
+// SenangPay Edge Function base URL — set after deploying the function.
+// e.g. "https://eychljpzorzmaveixlnu.functions.supabase.co/senangpay"
+// leave blank to disable online payment (only "Pay at counter" shows).
+const SENANGPAY_FN = "https://eychljpzorzmaveixlnu.functions.supabase.co/senangpay";
 const IS_LIVE = true;
 // Set to true once OTP (WhatsApp/SMS) is connected & working.
 // While false: the Sign in button is hidden, everyone uses guest mode.
@@ -3250,63 +3271,138 @@ function refreshCheckoutBar(){
 async function checkoutService(){
   const s=SVC_SEL.service; if(!s) return;
   if(IS_GUEST){ toast("Sign in to book"); return; }
-  // car is required
   if(!SVC_SEL.carId){ toast("Please select a car first"); return; }
+  // show payment choice first
+  openPaymentSheet();
+}
+function openPaymentSheet(){
+  const amt = svcDetailPrice();
+  const online = !!SENANGPAY_FN;
+  const sheet=document.createElement('div');
+  sheet.className='pay-sheet-overlay';
+  sheet.innerHTML=`
+    <div class="pay-sheet">
+      <div class="pay-sheet-handle"></div>
+      <div class="pay-sheet-title">Choose payment</div>
+      <div class="pay-sheet-amt">Total: RM${money(amt)}</div>
+      ${online?`<button class="pay-opt" onclick="doCheckout('senangpay')">
+        <div class="pay-opt-ic">💳</div>
+        <div><div class="pay-opt-nm">Pay online now</div><div class="pay-opt-sub">Card · FPX · e-Wallet via senangPay</div></div>
+      </button>`:''}
+      <button class="pay-opt" onclick="doCheckout('counter')">
+        <div class="pay-opt-ic">🏪</div>
+        <div><div class="pay-opt-nm">Pay at outlet</div><div class="pay-opt-sub">Book now, pay when you arrive</div></div>
+      </button>
+      <button class="pay-cancel" onclick="closePaymentSheet()">Cancel</button>
+    </div>`;
+  sheet.onclick=e=>{ if(e.target===sheet) closePaymentSheet(); };
+  document.body.appendChild(sheet);
+  requestAnimationFrame(()=>sheet.classList.add('show'));
+}
+function closePaymentSheet(){
+  const o=document.querySelector('.pay-sheet-overlay');
+  if(o){ o.classList.remove('show'); setTimeout(()=>o.remove(),200); }
+}
+async function doCheckout(method){
+  closePaymentSheet();
+  const s=SVC_SEL.service; if(!s) return;
   const car = (VEHICLES||[]).find(v=>String(v.id)===String(SVC_SEL.carId));
   const carLabel = car ? ([car.make,car.model].filter(Boolean).join(' ') + (car.plate?' - '+car.plate:'') || 'Vehicle') : '';
   const vari = s.variations?.[SVC_SEL.variIdx]?.label || '';
   const store = STORES[SVC_SEL.storeIdx]?.name || '';
   const addonNames = (s.addons||[]).filter((a,i)=>SVC_SEL.addons[i]).map(a=>resolveAddon(a).label);
+  const amt = svcDetailPrice();
   const noteBits=[];
   if(vari) noteBits.push('Variation: '+vari);
   if(SVC_SEL.qty>1) noteBits.push('Qty: '+SVC_SEL.qty);
   if(addonNames.length) noteBits.push('Add-ons: '+addonNames.join(', '));
   if(store) noteBits.push('Store: '+store);
-  noteBits.push('Total: RM'+money(svcDetailPrice()));
+  noteBits.push('Total: RM'+money(amt));
   const note=noteBits.join(' · ');
+  const orderRef = 'GL'+Date.now().toString(36).toUpperCase()+Math.random().toString(36).slice(2,5).toUpperCase();
   try{
     const r=await fetch(`${SUPA_URL}/rest/v1/gl_orders`,{
-      method:"POST",headers:authHeaders(),
+      method:"POST",headers:Object.assign(authHeaders(),{Prefer:"return=representation"}),
       body:JSON.stringify({owner_id:SESSION.user.id,service_name:s.name,service_id:s.id,
         vehicle:carLabel, vehicle_id:car?.id||null, vehicle_label:carLabel,
-        appointment_date:null,appointment_time:null,note:note,status:'upcoming'})});
+        appointment_date:null,appointment_time:null,note:note,status:'upcoming',
+        amount:amt, order_ref:orderRef,
+        payment_method:method, payment_status: method==='counter'?'unpaid':'unpaid'})});
     if(r.ok){
-      // multi-use package? create a redeemable package balance on this car
-      const uses = Number(s.pkg_uses||0);
-      if(uses>1){
-        const barcode = genBarcodeValue();
-        const pr=await fetch(`${SUPA_URL}/rest/v1/gl_packages`,{
-          method:"POST",headers:Object.assign(authHeaders(),{Prefer:"return=representation"}),
-          body:JSON.stringify({owner_id:SESSION.user.id, vehicle_id:car?.id||null, vehicle_label:carLabel,
-            service_id:s.id, service_name:s.name, pkg_type:s.pkg_type||'custom',
-            total_uses:uses, used_uses:0, barcode:barcode, status:'active', source:'app'})});
-        // create milestone reward rows (each its own barcode)
-        if(pr.ok){
-          const pkgRow=(await pr.json())[0];
-          const ms=Array.isArray(s.milestones)?s.milestones:[];
-          if(pkgRow && ms.length){
-            const rows=ms.filter(m=>m && m.at).map(m=>({
-              package_id:pkgRow.id, owner_id:SESSION.user.id, at_use:Number(m.at),
-              service_id:m.service_id||null, label:m.label||'Reward',
-              barcode:genBarcodeValue(), status:'locked'}));
-            if(rows.length){
-              await fetch(`${SUPA_URL}/rest/v1/gl_package_rewards`,{
-                method:"POST",headers:authHeaders(),body:JSON.stringify(rows)});
-            }
-          }
-        }
-        PACKAGES=[]; // force refresh next time
-        toast(`Order placed ✓ — ${uses}× package added to ${carLabel}`);
-        routeTab('order');
-        return;
+      const orderRow=(await r.json())[0];
+      // multi-use package handling (only finalize package on PAID or counter; for online we still create on return)
+      if(method==='counter'){
+        await afterOrderCreated(s, car, carLabel);
+        toast("Booked ✓ — pay at outlet"); routeTab('order'); return;
       }
-      toast("Order placed ✓"); routeTab('order');
-    }
-    else { toast("Could not place order"); }
+      // online → get senangPay URL from the edge function and redirect
+      toast("Opening payment…");
+      const pr=await fetch(`${SENANGPAY_FN}/create`,{
+        method:"POST",headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({order_ref:orderRef, amount:amt,
+          name:(PROFILE?.name||SESSION?.user?.user_metadata?.name||'Customer'),
+          email:(SESSION?.user?.email||''),
+          phone:(PROFILE?.phone||''),
+          detail:('Grandlab '+s.name).slice(0,200)})});
+      if(pr.ok){
+        const data=await pr.json();
+        if(data.pay_url){ window.location.href=data.pay_url; return; }
+      }
+      toast("Couldn't open payment — try Pay at outlet");
+    } else { toast("Could not place order"); }
   }catch(e){ toast("Order error"); }
 }
-
+// create package + milestone rewards after an order is placed (used by counter + paid online)
+async function afterOrderCreated(s, car, carLabel){
+  const uses = Number(s.pkg_uses||0);
+  if(uses>1){
+    const barcode = genBarcodeValue();
+    const pr=await fetch(`${SUPA_URL}/rest/v1/gl_packages`,{
+      method:"POST",headers:Object.assign(authHeaders(),{Prefer:"return=representation"}),
+      body:JSON.stringify({owner_id:SESSION.user.id, vehicle_id:car?.id||null, vehicle_label:carLabel,
+        service_id:s.id, service_name:s.name, pkg_type:s.pkg_type||'custom',
+        total_uses:uses, used_uses:0, barcode:barcode, status:'active', source:'app'})});
+    if(pr.ok){
+      const pkgRow=(await pr.json())[0];
+      const ms=Array.isArray(s.milestones)?s.milestones:[];
+      if(pkgRow && ms.length){
+        const rows=ms.filter(m=>m && m.at).map(m=>({
+          package_id:pkgRow.id, owner_id:SESSION.user.id, at_use:Number(m.at),
+          service_id:m.service_id||null, label:m.label||'Reward',
+          barcode:genBarcodeValue(), status:'locked'}));
+        if(rows.length){
+          await fetch(`${SUPA_URL}/rest/v1/gl_package_rewards`,{
+            method:"POST",headers:authHeaders(),body:JSON.stringify(rows)});
+        }
+      }
+    }
+    PACKAGES=[];
+  }
+}
 // unique-ish barcode value: GL + base36 timestamp + random — Code128-safe (digits+letters)
+async function handlePayReturn(){
+  const pr=window._PAY_RETURN; if(!pr) return;
+  window._PAY_RETURN=null;
+  if(pr.result==='success'){
+    toast('Payment successful ✓');
+    // fetch the paid order and finalize any package/milestones
+    try{
+      const r=await fetch(`${SUPA_URL}/rest/v1/gl_orders?select=*&order_ref=eq.${encodeURIComponent(pr.ref)}`,{headers:authHeaders()});
+      if(r.ok){
+        const rows=await r.json(); const ord=rows[0];
+        if(ord){
+          const svc=(SERVICES||[]).find(x=>String(x.id)===String(ord.service_id));
+          const car=(VEHICLES||[]).find(v=>String(v.id)===String(ord.vehicle_id));
+          if(svc) await afterOrderCreated(svc, car, ord.vehicle_label||'');
+        }
+      }
+    }catch(e){}
+    routeTab('order');
+  } else {
+    toast('Payment not completed');
+    routeTab('order');
+  }
+}
 function genBarcodeValue(){
   const t=Date.now().toString(36).toUpperCase();
   const r=Math.random().toString(36).slice(2,7).toUpperCase();
@@ -3776,6 +3872,17 @@ Object.defineProperty(window,'stepIndex',{get:()=>cur,set:v=>{cur=v;}});
 
 /* ---------- Init ---------- */
 (async function init(){
+  // handle return from senangPay payment
+  try{
+    const qp=new URLSearchParams(location.search);
+    const payResult=qp.get('pay'), payRef=qp.get('ref');
+    if(payResult && payRef){
+      // clean the URL so refresh doesn't re-trigger
+      history.replaceState({}, '', location.pathname);
+      // wait until session loads, then handle
+      window._PAY_RETURN={result:payResult, ref:payRef};
+    }
+  }catch(e){}
   // TEMP: preview the main page directly (no login)
   if(PREVIEW_HOME){
     await Promise.allSettled([
@@ -3809,6 +3916,7 @@ Object.defineProperty(window,'stepIndex',{get:()=>cur,set:v=>{cur=v;}});
     }
     if(PROFILE && PROFILE.name){ enterApp('home'); }
     else { enterApp('profile'); }
+    handlePayReturn();
     return;
   }
   await fetchSlides();
