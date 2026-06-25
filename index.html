@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
 <meta name="theme-color" content="#0A0A0A" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -33,7 +33,7 @@
     display:flex; justify-content:center;
   }
   /* phone-shaped on desktop, full-bleed on real phones */
-  .app{height:100%;width:100%;max-width:440px;display:flex;flex-direction:column;
+  .app{height:100%;width:100%;max-width:440px;margin:0 auto;display:flex;flex-direction:column;
     background:var(--bg);position:relative;
     box-shadow:0 0 80px -20px rgba(245,197,24,.08);}
   .safe-top{padding-top:env(safe-area-inset-top);}
@@ -117,7 +117,7 @@
   @keyframes sweep{0%{left:-50%}55%{left:130%}100%{left:130%}}
   .ob-glyph{font-size:120px;filter:grayscale(.1);}
   .ob-foot{position:absolute;left:26px;right:26px;bottom:0;
-    padding:0 0 calc(6px + env(safe-area-inset-bottom));}
+    padding:0 0 16px;}
   .ob-nav{display:flex;gap:14px;}
 
   /* ---------- Buttons ---------- */
