@@ -1978,6 +1978,24 @@ setAppHeight();
 window.addEventListener('resize', setAppHeight);
 window.addEventListener('orientationchange', ()=>setTimeout(setAppHeight, 100));
 window.addEventListener('pageshow', setAppHeight);
+// TEMP DEBUG — remove after diagnosing the bottom gap
+setTimeout(()=>{
+  try{
+    const app=document.querySelector('.app');
+    const screens=document.getElementById('screens');
+    const scr=document.querySelector('.screen');
+    const d=document.createElement('div');
+    d.style.cssText='position:fixed;top:50px;left:8px;z-index:99999;background:rgba(255,0,0,.85);color:#fff;font:11px monospace;padding:6px 8px;border-radius:6px;white-space:pre;line-height:1.4;pointer-events:none;';
+    d.textContent =
+      'innerH: '+window.innerHeight+'\n'+
+      'screenH: '+window.screen.height+'\n'+
+      'app: '+(app?Math.round(app.getBoundingClientRect().height):'?')+'\n'+
+      'screens: '+(screens?Math.round(screens.getBoundingClientRect().height):'?')+'\n'+
+      'screen(.screen): '+(scr?Math.round(scr.getBoundingClientRect().height):'?')+'\n'+
+      'body: '+Math.round(document.body.getBoundingClientRect().height);
+    document.body.appendChild(d);
+  }catch(e){}
+}, 800);
 let _appBgApplied = null;
 function applyAppBg(){
   const layer=document.getElementById('appBgLayer');
