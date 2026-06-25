@@ -482,9 +482,6 @@
     background:linear-gradient(180deg,#0e0e0c,#0a0a0a);
     padding-bottom:env(safe-area-inset-bottom);
     border-radius:0;}
-  /* fill the home-bar strip below the nav with the same dark colour (kills the gap) */
-  .botnav::after{content:"";position:fixed;left:0;right:0;bottom:0;
-    height:env(safe-area-inset-bottom);background:#0a0a0a;z-index:-1;}
   .botnav button{flex:1;background:none;border:none;color:var(--muted);padding:10px 0;
     display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;font-size:10px;font-weight:600;}
   .botnav button.on{color:var(--yellow);}
@@ -1026,7 +1023,7 @@ const APP_VERSION = "1.0.0";
 // DOKU Checkout Edge Function base URL. Use the .functions.supabase.co format
 // to match the webhook path (/doku/notify) configured in the DOKU dashboard.
 // Leave blank to disable online payment (only "Pay at outlet" shows).
-const SENANGPAY_FN = "https://eychljpzorzmaveixlnu.supabase.co/functions/v1/doku";
+const SENANGPAY_FN = "https://eychljpzorzmaveixlnu.functions.supabase.co/doku";
 const IS_LIVE = true;
 // Set to true once OTP (WhatsApp/SMS) is connected & working.
 // While false: the Sign in button is hidden, everyone uses guest mode.
