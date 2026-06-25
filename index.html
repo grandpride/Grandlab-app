@@ -1971,28 +1971,38 @@ function startCountdown(el){
    MAIN APP (post-login): home, services, profile, guest
    ============================================================ */
 const appRoot = document.getElementById('appRoot');
-// ===== TEMP: manual bottom-gap adjuster (remove after we get the value) =====
+// ===== TEMP: manual size/position adjuster (remove after we get values) =====
 setTimeout(()=>{
   const box=document.createElement('div');
   box.style.cssText='position:fixed;left:8px;right:8px;bottom:8px;z-index:99999;background:rgba(0,0,0,.92);border:1px solid #f5c518;border-radius:12px;padding:12px 14px;font:13px -apple-system,monospace;color:#fff;';
   box.innerHTML=
-    '<div style="font-weight:700;color:#f5c518;margin-bottom:8px">Bottom Gap Adjuster</div>'+
-    '<div style="display:flex;align-items:center;gap:10px">'+
-      '<span>Push up</span>'+
-      '<input id="gapSlider" type="range" min="0" max="160" value="0" style="flex:1">'+
-      '<span id="gapVal" style="min-width:54px;text-align:right;color:#f5c518;font-weight:700">0px</span>'+
+    '<div style="font-weight:700;color:#f5c518;margin-bottom:8px">App Size Adjuster</div>'+
+    '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">'+
+      '<span style="min-width:48px">Height</span>'+
+      '<input id="hSlider" type="range" min="-100" max="100" value="0" style="flex:1">'+
+      '<span id="hVal" style="min-width:54px;text-align:right;color:#f5c518;font-weight:700">0</span>'+
     '</div>'+
-    '<div style="font-size:11px;opacity:.7;margin-top:6px">Drag until the gap is gone, then tell me the px number.</div>';
+    '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">'+
+      '<span style="min-width:48px">Move ↕</span>'+
+      '<input id="ySlider" type="range" min="-100" max="100" value="0" style="flex:1">'+
+      '<span id="yVal" style="min-width:54px;text-align:right;color:#f5c518;font-weight:700">0</span>'+
+    '</div>'+
+    '<div style="font-size:11px;opacity:.7">Adjust until it fills top & bottom, then tell me both numbers.</div>';
   document.body.appendChild(box);
-  const sl=box.querySelector('#gapSlider'), val=box.querySelector('#gapVal');
-  // push every screen up from the bottom by N px
+  const hSl=box.querySelector('#hSlider'), hVal=box.querySelector('#hVal');
+  const ySl=box.querySelector('#ySlider'), yVal=box.querySelector('#yVal');
   const style=document.createElement('style'); document.head.appendChild(style);
-  const apply=(n)=>{
-    val.textContent=n+'px';
-    style.textContent='.app{transform:translateY(-'+n+'px)} body{background:#0a0a0a}';
+  const apply=()=>{
+    const h=parseInt(hSl.value,10), y=parseInt(ySl.value,10);
+    hVal.textContent=h; yVal.textContent=y;
+    // h: grow/shrink app height. y: move up/down.
+    style.textContent=
+      '.app{height:calc(100% + '+h+'px) !important;transform:translateY('+y+'px) !important}'+
+      'body{background:#0a0a0a}';
   };
-  sl.addEventListener('input',()=>apply(parseInt(sl.value,10)));
-  apply(0);
+  hSl.addEventListener('input',apply);
+  ySl.addEventListener('input',apply);
+  apply();
 }, 700);
 let _appBgApplied = null;
 function applyAppBg(){
