@@ -4209,7 +4209,10 @@ async function confirmTopUp(amount, payNow){
       const pr=await fetch(`${SENANGPAY_FN}/create`,{method:"POST",headers:{'Content-Type':'application/json'},
         body:JSON.stringify({order_ref:orderRef, amount:amount, name:(PROFILE?.name||'Customer'),
           email:(SESSION?.user?.email||''), phone:(PROFILE?.phone||''), detail:'Grandlab Wallet Top-Up'})});
-      if(pr.ok){ const d=await pr.json(); if(d.pay_url){ window.location.href=d.pay_url; return; } }
+      if(pr.ok){ const d=await pr.json(); if(d.pay_url){ window.location.href=d.pay_url; return; }
+        const em=(d.doku_response&&(d.doku_response.error_messages||d.doku_response.message))||d.error||'unknown';
+        alert('Payment error:\n'+JSON.stringify(em)); console.log('DOKU error detail:',d);
+      } else { const t=await pr.text(); alert('Payment failed ('+pr.status+'):\n'+t); }
       toast("Couldn't open payment");
     }catch(e){ toast('Error — try again'); }
   } else {
