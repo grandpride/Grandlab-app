@@ -1041,7 +1041,7 @@ const SUPA_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIs
    Set VAPID_PUBLIC below (public half of your Grandlab VAPID keypair).
    The private half lives ONLY as a Supabase secret in the push-send function.
    ============================================================ */
-const VAPID_PUBLIC = "BF8hmkUPBWFrwdGq8op9kzVv_cR_4yDX83iTkvRrMMKGlVd9v7IIoHHY51HT3V9sXHeKbuz7hOo3NoAnno20RF0";
+const VAPID_PUBLIC = "PASTE_YOUR_GRANDLAB_VAPID_PUBLIC_KEY_HERE";
 
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', function(){
@@ -1105,11 +1105,13 @@ async function enablePush(){
       });
     }
     const id = 'ps' + Math.abs(sub.endpoint.split('').reduce((a,c)=>((a<<5)-a+c.charCodeAt(0))|0,0));
-    await fetch(`${SUPA_URL}/rest/v1/gl_push_subs`, {
+    const resp = await fetch(`${SUPA_URL}/rest/v1/gl_push_subs`, {
       method:'POST',
-      headers:{ 'Content-Type':'application/json', apikey:SUPA_ANON, Authorization:`Bearer ${SUPA_ANON}`, Prefer:'resolution=merge-duplicates' },
+      headers: Object.assign({}, authHeaders(), { Prefer:'resolution=merge-duplicates' }),
       body: JSON.stringify({ id, owner_id: SESSION.user.id, sub: JSON.parse(JSON.stringify(sub)), updated_at: new Date().toISOString() })
     });
+    if(!resp.ok){ const t = await resp.text(); console.error('push sub save failed', resp.status, t); return false; }
+    console.log('push sub saved', id);
     return true;
   }catch(e){ console.warn('push setup failed', e); return false; }
 }
