@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Grandlab — Send Notification</title>
+<style>
+  :root{ --yellow:#F5C518; --black:#080808; --panel:#141210; --line:#2a2620; --muted:#8A8A8A; --text:#f5f3ee; }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:-apple-system,Segoe UI,Roboto,sans-serif;background:#0a0908;color:var(--text);
+    min-height:100vh;display:flex;align-items:flex-start;justify-content:center;padding:30px 16px;}
+  .wrap{width:100%;max-width:520px;}
+  h1{font-size:22px;font-weight:800;letter-spacing:-.02em;margin-bottom:4px;}
+  .sub{color:var(--muted);font-size:13px;margin-bottom:22px;}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:16px;}
+  label{display:block;font-size:12px;color:var(--muted);font-weight:600;margin:12px 0 6px;text-transform:uppercase;letter-spacing:.05em;}
+  label:first-child{margin-top:0;}
+  input,textarea,select{width:100%;background:#0a0908;border:1px solid var(--line);border-radius:10px;
+    padding:11px 13px;color:var(--text);font-size:14px;font-family:inherit;}
+  textarea{resize:vertical;min-height:70px;}
+  .row{display:flex;gap:10px;}
+  .row>div{flex:1;}
+  button{background:var(--yellow);color:#0A0A0A;border:none;border-radius:10px;padding:13px;
+    font-weight:700;font-size:15px;cursor:pointer;width:100%;margin-top:18px;transition:.12s;}
+  button:active{transform:scale(.98);}
+  button:disabled{opacity:.5;cursor:default;}
+  button.ghost{background:none;border:1px solid var(--line);color:var(--text);margin-top:10px;}
+  .hint{font-size:12px;color:var(--muted);margin-top:6px;line-height:1.5;}
+  .result{margin-top:14px;padding:12px;border-radius:10px;font-size:13px;display:none;}
+  .result.ok{background:rgba(80,200,120,.12);border:1px solid rgba(80,200,120,.4);color:#8ee0a8;display:block;}
+  .result.err{background:rgba(220,80,80,.12);border:1px solid rgba(220,80,80,.4);color:#e89090;display:block;}
+  .preset{display:inline-block;background:#0a0908;border:1px solid var(--line);border-radius:8px;
+    padding:7px 11px;font-size:12px;margin:4px 4px 0 0;cursor:pointer;color:var(--text);}
+  .preset:hover{border-color:var(--yellow);}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🔔 Send Notification</h1>
+  <div class="sub">Push a message to Grandlab app customers who enabled notifications.</div>
+
+  <div class="card">
+    <label>Push function URL</label>
+    <input id="fnUrl" value="https://eychljpzorzmaveixlnu.supabase.co/functions/v1/push-send">
+    <label>Supabase anon key</label>
+    <input id="anonKey" type="password" placeholder="Paste anon key (for authorization)">
+    <div class="hint">Stored only in this browser. Needed so the function accepts the request.</div>
+  </div>
+
+  <div class="card">
+    <label>Quick templates</label>
+    <div>
+      <span class="preset" onclick="tpl('🔥 Flash Deal!','Limited time offer — check the app now!')">🔥 Flash Deal</span>
+      <span class="preset" onclick="tpl('🛡️ Coating Reminder','Your coating maintenance is due soon. Book now!')">🛡️ Coating Due</span>
+      <span class="preset" onclick="tpl('🏪 Shop Notice','We are closed today for the public holiday.')">🏪 Closed Notice</span>
+      <span class="preset" onclick="tpl('🎉 New Promo','A new promotion just dropped. Tap to see!')">🎉 Promo</span>
+    </div>
+
+    <label>Title</label>
+    <input id="title" placeholder="e.g. 🔥 Flash Deal!">
+
+    <label>Message</label>
+    <textarea id="body" placeholder="The notification text customers will see"></textarea>
+
+    <label>Send to</label>
+    <select id="target">
+      <option value="all">All subscribers</option>
+    </select>
+    <div class="hint">"All" sends to everyone who enabled notifications.</div>
+
+    <button id="sendBtn" onclick="send()">Send Notification</button>
+    <button class="ghost" onclick="sendTest()">Send test to all (preview text)</button>
+
+    <div id="result" class="result"></div>
+  </div>
+</div>
+
+<script>
+  // remember inputs locally
+  const $ = id => document.getElementById(id);
+  ['fnUrl','anonKey'].forEach(k=>{
+    const v=localStorage.getItem('glpush_'+k); if(v) $(k).value=v;
+    $(k).addEventListener('input',()=>localStorage.setItem('glpush_'+k,$(k).value));
+  });
+
+  function tpl(t,b){ $('title').value=t; $('body').value=b; }
+
+  function showResult(ok,msg){
+    const r=$('result'); r.className='result '+(ok?'ok':'err'); r.textContent=msg;
+  }
+
+  async function doSend(payload){
+    const url=$('fnUrl').value.trim(), key=$('anonKey').value.trim();
+    if(!url||!key){ showResult(false,'Fill in the function URL and anon key first.'); return; }
+    $('sendBtn').disabled=true;
+    try{
+      const r=await fetch(url,{
+        method:'POST',
+        headers:{ 'Content-Type':'application/json', 'Authorization':'Bearer '+key, 'apikey':key },
+        body: JSON.stringify(payload)
+      });
+      const data=await r.json();
+      if(r.ok){
+        showResult(true, `Sent to ${data.sent||0} device(s).` + (data.removed?` Cleaned ${data.removed} expired.`:'') + (data.note?` (${data.note})`:''));
+      }else{
+        showResult(false, 'Error: '+(data.error||JSON.stringify(data)));
+      }
+    }catch(e){ showResult(false,'Failed: '+e.message); }
+    $('sendBtn').disabled=false;
+  }
+
+  function send(){
+    const title=$('title').value.trim(), body=$('body').value.trim();
+    if(!title){ showResult(false,'Enter a title.'); return; }
+    if(!confirm('Send "'+title+'" to all subscribers?')) return;
+    doSend({ title, body, target:$('target').value, url:'https://grandpride.github.io/Grandlab-app/' });
+  }
+
+  function sendTest(){
+    doSend({ title:'🔔 Test', body:'This is a test notification.', target:'all', url:'https://grandpride.github.io/Grandlab-app/' });
+  }
+</script>
+</body>
+</html>
