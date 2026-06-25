@@ -1110,8 +1110,13 @@ async function enablePush(){
       headers: Object.assign({}, authHeaders(), { Prefer:'resolution=merge-duplicates' }),
       body: JSON.stringify({ id, owner_id: SESSION.user.id, sub: JSON.parse(JSON.stringify(sub)), updated_at: new Date().toISOString() })
     });
-    if(!resp.ok){ const t = await resp.text(); console.error('push sub save failed', resp.status, t); return false; }
-    console.log('push sub saved', id);
+    if(!resp.ok){
+      const t = await resp.text();
+      console.error('push sub save failed', resp.status, t);
+      alert('Push save failed ('+resp.status+'): '+t);   // TEMP: visible error for debugging
+      return false;
+    }
+    alert('Push saved OK: '+id);   // TEMP: confirm success
     return true;
   }catch(e){ console.warn('push setup failed', e); return false; }
 }
