@@ -1061,6 +1061,15 @@ function vapidToUint8(base64){
    If not yet asked, show a tappable banner (iOS only allows the popup on a real tap). */
 function maybeShowPushBanner(){
   try{
+    // TEMP debug button — always show so we can test on demand
+    if(!document.getElementById('pushTestBtn')){
+      const tb=document.createElement('button');
+      tb.id='pushTestBtn';
+      tb.textContent='🔔 TEST PUSH';
+      tb.style.cssText='position:fixed;right:12px;bottom:160px;z-index:99999;background:#F5C518;color:#0A0A0A;border:none;border-radius:10px;padding:10px 14px;font-weight:700;font-size:13px;box-shadow:0 4px 16px rgba(0,0,0,.5)';
+      tb.addEventListener('click', async ()=>{ const ok=await enablePush(); alert('enablePush returned: '+ok); });
+      document.body.appendChild(tb);
+    }
     if(VAPID_PUBLIC.indexOf('PASTE_')===0) return;                      // not configured yet
     if(!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) return;
     if(!(typeof SESSION!=='undefined' && SESSION && SESSION.user)) return;
@@ -1090,12 +1099,12 @@ function maybeShowPushBanner(){
 /* asks permission (must be a user tap on iOS), saves this device's subscription to gl_push_subs */
 async function enablePush(){
   try{
-    if(VAPID_PUBLIC.indexOf('PASTE_')===0) return false;
-    if(!('serviceWorker' in navigator) || !('PushManager' in window)) return false;
-    if(!(typeof SESSION!=='undefined' && SESSION && SESSION.user)) return false;
-    if(Notification.permission === 'denied') return false;
+    if(VAPID_PUBLIC.indexOf('PASTE_')===0){ alert('DBG: VAPID key not set'); return false; }
+    if(!('serviceWorker' in navigator) || !('PushManager' in window)){ alert('DBG: no SW/PushManager support'); return false; }
+    if(!(typeof SESSION!=='undefined' && SESSION && SESSION.user)){ alert('DBG: no SESSION.user'); return false; }
+    if(Notification.permission === 'denied'){ alert('DBG: permission denied'); return false; }
     const perm = await Notification.requestPermission();
-    if(perm !== 'granted') return false;
+    if(perm !== 'granted'){ alert('DBG: permission not granted = '+perm); return false; }
     const reg = await navigator.serviceWorker.ready;
     let sub = await reg.pushManager.getSubscription();
     if(!sub){
@@ -1104,6 +1113,7 @@ async function enablePush(){
         applicationServerKey: vapidToUint8(VAPID_PUBLIC)
       });
     }
+    alert('DBG: got subscription, saving...');
     const id = 'ps' + Math.abs(sub.endpoint.split('').reduce((a,c)=>((a<<5)-a+c.charCodeAt(0))|0,0));
     const resp = await fetch(`${SUPA_URL}/rest/v1/gl_push_subs`, {
       method:'POST',
@@ -1118,7 +1128,7 @@ async function enablePush(){
     }
     alert('Push saved OK: '+id);   // TEMP: confirm success
     return true;
-  }catch(e){ console.warn('push setup failed', e); return false; }
+  }catch(e){ console.warn('push setup failed', e); alert('DBG: push error — '+(e&&e.message?e.message:e)); return false; }
 }
 
 
