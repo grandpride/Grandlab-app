@@ -33,7 +33,7 @@
     display:flex; justify-content:center;
   }
   /* phone-shaped on desktop, full-bleed on real phones */
-  .app{height:100%;width:100%;max-width:440px;margin:0 auto;display:flex;flex-direction:column;
+  .app{height:100%;width:100%;max-width:440px;display:flex;flex-direction:column;
     background:var(--bg);position:relative;
     box-shadow:0 0 80px -20px rgba(245,197,24,.08);}
   .safe-top{padding-top:env(safe-area-inset-top);}
@@ -116,8 +116,7 @@
   }
   @keyframes sweep{0%{left:-50%}55%{left:130%}100%{left:130%}}
   .ob-glyph{font-size:120px;filter:grayscale(.1);}
-  .ob-foot{position:absolute;left:26px;right:26px;bottom:0;
-    padding:0 0 16px;}
+  .ob-foot{margin-top:auto;padding:0 0 16px;}
   .ob-nav{display:flex;gap:14px;}
 
   /* ---------- Buttons ---------- */
