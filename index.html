@@ -211,7 +211,7 @@
     background-size:cover;background-position:center;background-repeat:no-repeat;pointer-events:none;}
   #appBgLayer.show{display:block;}
   #appBgLayer::after{content:"";position:absolute;inset:0;background:rgba(0,0,0,var(--app-bg-dark,.55));}
-  #appRoot{position:fixed;top:0;left:0;right:0;bottom:0;height:auto;max-width:440px;margin:0 auto;
+  #appRoot{position:fixed;top:0;left:0;right:0;height:100dvh;max-width:440px;margin:0 auto;overflow:hidden;
     background:radial-gradient(120% 80% at 50% 0%, #161410 0%, #0d0d0c 40%, #080808 100%);
     display:none;flex-direction:column;z-index:20;}
   #appRoot.show{display:flex;}
