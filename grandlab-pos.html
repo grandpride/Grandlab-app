@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Grandlab POS</title>
+<style>
+  :root{ --bg:#0A0A0A; --surface:#141414; --surface2:#1C1C1C; --line:#2A2A2A;
+    --text:#F5F5F5; --muted:#9A9A9A; --yellow:#F5C518; --green:#2ECC71; --red:#E5533C; --blue:#3B82F6; }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--text);font-size:15px;line-height:1.45;height:100vh;overflow:hidden;}
+  button{font-family:inherit;cursor:pointer;}
+  input,select{font-family:inherit;}
+  .topbar{display:flex;align-items:center;justify-content:space-between;padding:10px 18px;background:var(--surface);border-bottom:1px solid var(--line);height:56px;}
+  .logo{font-size:17px;font-weight:900;letter-spacing:.06em;color:var(--yellow);}
+  .logo span{color:var(--text);font-weight:600;font-size:12px;letter-spacing:0;}
+  .tabbar{display:flex;gap:6px;}
+  .tabbtn{background:var(--surface2);border:1px solid var(--line);color:var(--muted);border-radius:10px;padding:8px 18px;font-size:14px;font-weight:600;}
+  .tabbtn.on{background:var(--yellow);color:#080808;border-color:var(--yellow);}
+  .staff{font-size:12px;color:var(--muted);}
+
+  .pos-layout{display:flex;height:calc(100vh - 56px);}
+  .pos-left{flex:1;display:flex;flex-direction:column;min-width:0;}
+  .pos-right{width:380px;background:var(--surface);border-left:1px solid var(--line);display:flex;flex-direction:column;}
+  .cat-row{display:flex;gap:8px;padding:14px 16px;overflow-x:auto;border-bottom:1px solid var(--line);flex-shrink:0;}
+  .cat-chip{background:var(--surface2);border:1px solid var(--line);color:var(--text);border-radius:20px;padding:8px 16px;font-size:13px;white-space:nowrap;}
+  .cat-chip.on{background:var(--yellow);color:#080808;border-color:var(--yellow);font-weight:700;}
+  .search-row{padding:12px 16px;border-bottom:1px solid var(--line);}
+  .search-row input{width:100%;height:44px;background:var(--surface2);border:1px solid var(--line);border-radius:11px;padding:0 14px;color:var(--text);font-size:15px;}
+  .prod-grid{flex:1;overflow-y:auto;padding:16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px;align-content:start;}
+  .prod{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px 12px;text-align:left;transition:.1s;display:flex;flex-direction:column;min-height:96px;}
+  .prod:active{transform:scale(.97);border-color:var(--yellow);}
+  .prod-nm{font-size:13.5px;font-weight:600;line-height:1.3;flex:1;}
+  .prod-cat{font-size:10.5px;color:var(--muted);margin-top:4px;}
+  .prod-pr{font-size:15px;font-weight:800;color:var(--yellow);margin-top:8px;}
+  .prod-empty{grid-column:1/-1;text-align:center;color:var(--muted);padding:40px;}
+
+  .cart-cust{padding:14px 16px;border-bottom:1px solid var(--line);}
+  .cust-pick{display:flex;align-items:center;justify-content:space-between;background:var(--surface2);border:1px solid var(--line);border-radius:11px;padding:11px 14px;}
+  .cust-pick-nm{font-size:14px;font-weight:600;}
+  .cust-pick-sub{font-size:11.5px;color:var(--muted);}
+  .cust-change{font-size:12px;color:var(--yellow);background:none;border:none;}
+  .cart-items{flex:1;overflow-y:auto;padding:8px 16px;}
+  .cart-empty{text-align:center;color:var(--muted);padding:40px 0;font-size:13px;}
+  .citem{display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid var(--line);}
+  .citem-info{flex:1;min-width:0;}
+  .citem-nm{font-size:13.5px;font-weight:600;}
+  .citem-pr{font-size:12px;color:var(--muted);margin-top:2px;}
+  .qty{display:flex;align-items:center;gap:8px;}
+  .qty button{width:28px;height:28px;border-radius:8px;background:var(--surface2);border:1px solid var(--line);color:var(--text);font-size:16px;font-weight:700;}
+  .qty span{min-width:20px;text-align:center;font-size:14px;font-weight:700;}
+  .citem-total{font-size:14px;font-weight:700;min-width:64px;text-align:right;}
+  .citem-x{background:none;border:none;color:var(--muted);font-size:16px;padding:0 2px;}
+  .cart-foot{border-top:1px solid var(--line);padding:16px;}
+  .sum-row{display:flex;justify-content:space-between;font-size:14px;margin-bottom:8px;color:var(--muted);}
+  .sum-row.total{color:var(--text);font-size:20px;font-weight:800;margin-bottom:0;padding-top:10px;border-top:1px solid var(--line);margin-top:6px;}
+  .cart-actions{display:flex;gap:8px;margin:12px 0;}
+  .mini-btn{flex:1;background:var(--surface2);border:1px solid var(--line);color:var(--text);border-radius:10px;padding:10px;font-size:12.5px;font-weight:600;}
+  .pay-btn{width:100%;height:56px;background:var(--green);color:#062814;border:none;border-radius:14px;font-size:18px;font-weight:800;}
+  .pay-btn:disabled{opacity:.4;}
+
+  .ov{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:50;display:flex;align-items:center;justify-content:center;padding:20px;}
+  .modal{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:22px;width:100%;max-width:440px;max-height:86vh;overflow-y:auto;}
+  .modal h3{font-size:18px;margin-bottom:14px;}
+  .modal input,.modal select{width:100%;height:48px;background:var(--surface2);border:1px solid var(--line);border-radius:11px;padding:0 14px;color:var(--text);font-size:15px;margin-bottom:10px;}
+  .pm-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:8px 0 16px;}
+  .pm{background:var(--surface2);border:1.5px solid var(--line);border-radius:13px;padding:16px;text-align:center;font-size:14px;font-weight:600;}
+  .pm.on{border-color:var(--yellow);background:rgba(245,197,24,.1);}
+  .pm-ic{font-size:24px;display:block;margin-bottom:6px;}
+  .cust-result{padding:12px 14px;border:1px solid var(--line);border-radius:11px;margin-bottom:8px;}
+  .cust-result:active{background:var(--surface2);}
+  .modal-btns{display:flex;gap:10px;margin-top:8px;}
+  .mb{flex:1;height:48px;border-radius:12px;font-size:15px;font-weight:700;border:none;}
+  .mb-cancel{background:var(--surface2);color:var(--text);border:1px solid var(--line);}
+  .mb-ok{background:var(--yellow);color:#080808;}
+
+  .wrap{padding:20px;max-width:560px;margin:0 auto;height:calc(100vh - 56px);overflow-y:auto;}
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:18px;margin-bottom:14px;}
+  .card label{display:block;font-size:13px;font-weight:600;margin-bottom:7px;}
+  .card input{width:100%;height:52px;background:var(--surface2);border:1.5px solid var(--line);border-radius:13px;padding:0 16px;color:var(--text);font-size:17px;}
+  .btn{width:100%;height:52px;border:none;border-radius:13px;font-size:16px;font-weight:700;}
+  .btn-primary{background:var(--yellow);color:#080808;}
+  .btn-ghost{background:var(--surface2);color:var(--text);border:1px solid var(--line);}
+  .btn-green{background:var(--green);color:#062814;}
+  .btn+.btn{margin-top:10px;}
+  .res-card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:18px;margin-top:6px;}
+  .res-type{display:inline-block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:4px 10px;border-radius:8px;background:rgba(245,197,24,.15);color:var(--yellow);margin-bottom:12px;}
+  .res-name{font-size:19px;font-weight:800;}
+  .res-row{display:flex;justify-content:space-between;font-size:14px;padding:8px 0;border-bottom:1px solid var(--line);}
+  .res-row:last-of-type{border-bottom:none;}
+  .res-label{color:var(--muted);}
+  .res-uses{font-size:34px;font-weight:900;color:var(--yellow);text-align:center;margin:8px 0;}
+  .res-uses small{font-size:15px;color:var(--muted);font-weight:600;}
+  .msg{padding:14px;border-radius:12px;font-size:14px;font-weight:600;text-align:center;margin-bottom:14px;}
+  .msg.ok{background:rgba(46,204,113,.15);color:var(--green);}
+  .msg.err{background:rgba(229,83,60,.15);color:var(--red);}
+  .scan-box{aspect-ratio:1;background:#000;border-radius:16px;overflow:hidden;position:relative;margin-bottom:14px;display:none;}
+  .scan-box.on{display:block;}
+  #scanVideo{width:100%;height:100%;object-fit:cover;}
+  .scan-frame{position:absolute;inset:18%;border:3px solid var(--yellow);border-radius:14px;}
+
+  .setup{background:rgba(245,197,24,.08);border:1px solid var(--yellow);border-radius:14px;padding:20px;max-width:440px;margin:40px auto;}
+  .setup label{display:block;font-size:13px;font-weight:600;margin-bottom:8px;}
+  .setup input{width:100%;height:50px;background:var(--surface2);border:1px solid var(--line);border-radius:12px;padding:0 14px;color:var(--text);font-size:15px;margin-bottom:12px;}
+  .hide{display:none!important;}
+  .toast{position:fixed;bottom:30px;left:50%;transform:translateX(-50%);background:#fff;color:#111;padding:12px 22px;border-radius:30px;font-size:14px;font-weight:600;z-index:100;box-shadow:0 8px 30px rgba(0,0,0,.4);opacity:0;transition:.2s;pointer-events:none;}
+  .toast.show{opacity:1;}
+  @media(max-width:760px){
+    .pos-layout{flex-direction:column;}
+    .pos-right{width:100%;border-left:none;border-top:1px solid var(--line);max-height:48vh;}
+    .pos-left{max-height:52vh;}
+  }
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div class="logo">GRANDLAB <span>POS</span></div>
+  <div class="tabbar" id="tabbar">
+    <button class="tabbtn on" data-tab="sales" onclick="switchTab('sales')">🛒 Sales</button>
+    <button class="tabbtn" data-tab="redeem" onclick="switchTab('redeem')">🎟️ Redeem</button>
+  </div>
+  <div class="staff" id="staffName">Staff</div>
+</div>
+
+<div class="setup hide" id="setupBox">
+  <label>Staff access key (one time)</label>
+  <input id="keyInput" type="password" placeholder="Paste the POS access key">
+  <label>Your name (shows on bills)</label>
+  <input id="staffInput" placeholder="e.g. Koko">
+  <button class="btn btn-primary" onclick="saveKey()">Start</button>
+  <div style="font-size:12px;color:var(--muted);margin-top:10px">Ask management for the key. Stored only on this device.</div>
+</div>
+
+<div id="tab-sales" class="hide">
+  <div class="pos-layout">
+    <div class="pos-left">
+      <div class="cat-row" id="catRow"></div>
+      <div class="search-row"><input id="prodSearch" placeholder="Search service / product…" oninput="renderProducts()"></div>
+      <div class="prod-grid" id="prodGrid"></div>
+    </div>
+    <div class="pos-right">
+      <div class="cart-cust">
+        <div class="cust-pick" id="custPick" onclick="openCustomerModal()">
+          <div><div class="cust-pick-nm" id="custNm">Walk-in customer</div><div class="cust-pick-sub" id="custSub">Tap to select customer</div></div>
+          <button class="cust-change">Select</button>
+        </div>
+      </div>
+      <div class="cart-items" id="cartItems"><div class="cart-empty">Cart is empty.<br>Tap services to add.</div></div>
+      <div class="cart-foot">
+        <div class="sum-row"><span>Subtotal</span><span id="sumSub">RM0.00</span></div>
+        <div class="sum-row" id="sumDiscRow" style="display:none"><span id="sumDiscLabel">Discount</span><span id="sumDisc">-RM0.00</span></div>
+        <div class="sum-row total"><span>Total</span><span id="sumTotal">RM0.00</span></div>
+        <div class="cart-actions">
+          <button class="mini-btn" onclick="openDiscount()">% Discount</button>
+          <button class="mini-btn" onclick="clearCart()">Clear</button>
+        </div>
+        <button class="pay-btn" id="payBtn" disabled onclick="openPayment()">Charge RM0.00</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="tab-redeem" class="hide">
+  <div class="wrap">
+    <div class="scan-box" id="scanBox"><video id="scanVideo" playsinline></video><div class="scan-frame"></div></div>
+    <div class="card">
+      <label>Barcode</label>
+      <input id="codeInput" placeholder="GL..." autocomplete="off" autocapitalize="characters" onkeydown="if(event.key==='Enter')lookup()">
+      <button class="btn btn-primary" style="margin-top:12px" onclick="lookup()">Look up</button>
+      <button class="btn btn-ghost" style="margin-top:10px" id="scanBtn" onclick="toggleScan()">📷 Scan with camera</button>
+    </div>
+    <div id="rdMsg"></div>
+    <div id="rdResult"></div>
+  </div>
+</div>
+
+<div id="modalRoot"></div>
+<div class="toast" id="toast"></div>
+
+<script src="https://unpkg.com/@zxing/library@0.21.0/umd/index.min.js"></script>
+<script>
+const SUPA_URL = "https://eychljpzorzmaveixlnu.supabase.co";
+const SUPA_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV5Y2hsanB6b3J6bWF2ZWl4bG51Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2NDk2NjQsImV4cCI6MjA5NzIyNTY2NH0.6dA1zhz5ZIwf8byFB8vhfOzPI-uPPdPihEr1b8GG_oA";
+let SVC_KEY = localStorage.getItem("gl_pos_key") || "";
+let STAFF = localStorage.getItem("gl_pos_staff") || "";
+const MANAGER_PIN = "9999";
+
+function H(){ const k=SVC_KEY||SUPA_ANON; return {apikey:k, Authorization:`Bearer ${k}`, "Content-Type":"application/json"}; }
+function esc(s){ return (s==null?'':String(s)).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function money(n){ return Number(n||0).toFixed(2); }
+function toast(m){ const t=document.getElementById('toast'); t.textContent=m; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2200); }
+
+let SERVICES=[], CATS=[], CART=[], CUR_CAT='All', CUSTOMER=null, DISCOUNT=0, DISCOUNT_REASON='', PAY_METHOD='cash';
+
+async function init(){
+  if(!SVC_KEY || !STAFF){ document.getElementById('setupBox').classList.remove('hide'); return; }
+  document.getElementById('staffName').textContent=STAFF;
+  switchTab('sales');
+  await loadServices();
+}
+function saveKey(){
+  const k=document.getElementById('keyInput').value.trim();
+  const s=document.getElementById('staffInput').value.trim();
+  if(!k||!s){ toast('Enter key and your name'); return; }
+  SVC_KEY=k; STAFF=s; localStorage.setItem('gl_pos_key',k); localStorage.setItem('gl_pos_staff',s);
+  document.getElementById('setupBox').classList.add('hide');
+  document.getElementById('staffName').textContent=STAFF;
+  switchTab('sales'); loadServices();
+}
+function switchTab(t){
+  document.querySelectorAll('.tabbtn').forEach(b=>b.classList.toggle('on',b.dataset.tab===t));
+  document.getElementById('tab-sales').classList.toggle('hide',t!=='sales');
+  document.getElementById('tab-redeem').classList.toggle('hide',t!=='redeem');
+  if(t==='redeem') setTimeout(()=>document.getElementById('codeInput').focus(),100);
+}
+async function loadServices(){
+  try{
+    const r=await fetch(`${SUPA_URL}/rest/v1/gl_services?select=id,name,category,base_price,price_by_type,hidden&order=category.asc,sort_order.asc`,{headers:H()});
+    if(r.ok){
+      SERVICES=(await r.json()).filter(s=>!s.hidden);
+      CATS=['All',...[...new Set(SERVICES.map(s=>s.category).filter(Boolean))]];
+      renderCats(); renderProducts();
+    }
+  }catch(e){ toast('Could not load services'); }
+}
+function svcPrice(s){
+  if(s.base_price) return Number(s.base_price);
+  if(s.price_by_type){ const vals=Object.values(s.price_by_type).map(Number).filter(n=>n>0); if(vals.length) return Math.min(...vals); }
+  return 0;
+}
+function renderCats(){
+  document.getElementById('catRow').innerHTML=CATS.map(c=>`<button class="cat-chip ${c===CUR_CAT?'on':''}" onclick="CUR_CAT='${esc(c)}';renderCats();renderProducts()">${esc(c)}</button>`).join('');
+}
+function renderProducts(){
+  const q=(document.getElementById('prodSearch')?.value||'').toLowerCase();
+  let list=SERVICES.filter(s=>CUR_CAT==='All'||s.category===CUR_CAT);
+  if(q) list=list.filter(s=>(s.name||'').toLowerCase().includes(q));
+  const el=document.getElementById('prodGrid');
+  if(!list.length){ el.innerHTML='<div class="prod-empty">No services found.</div>'; return; }
+  el.innerHTML=list.map(s=>{
+    const pr=svcPrice(s);
+    return `<button class="prod" onclick='addToCart(${JSON.stringify({id:s.id,name:s.name,price:pr}).replace(/'/g,"&#39;")})'>
+      <div class="prod-nm">${esc(s.name)}</div><div class="prod-cat">${esc(s.category||'')}</div><div class="prod-pr">RM${money(pr)}</div></button>`;
+  }).join('');
+}
+function addToCart(item){ const ex=CART.find(c=>c.id===item.id); if(ex) ex.qty++; else CART.push({...item,qty:1}); renderCart(); }
+function changeQty(id,d){ const c=CART.find(x=>x.id===id); if(!c)return; c.qty+=d; if(c.qty<=0)CART=CART.filter(x=>x.id!==id); renderCart(); }
+function removeItem(id){ CART=CART.filter(x=>x.id!==id); renderCart(); }
+function clearCart(){ if(CART.length&&!confirm('Clear the cart?'))return; CART=[]; DISCOUNT=0; DISCOUNT_REASON=''; renderCart(); }
+function cartSubtotal(){ return CART.reduce((s,c)=>s+c.price*c.qty,0); }
+function cartTotal(){ return Math.max(0,cartSubtotal()-DISCOUNT); }
+function renderCart(){
+  const el=document.getElementById('cartItems');
+  if(!CART.length) el.innerHTML='<div class="cart-empty">Cart is empty.<br>Tap services to add.</div>';
+  else el.innerHTML=CART.map(c=>`<div class="citem"><div class="citem-info"><div class="citem-nm">${esc(c.name)}</div><div class="citem-pr">RM${money(c.price)} each</div></div>
+      <div class="qty"><button onclick="changeQty('${c.id}',-1)">−</button><span>${c.qty}</span><button onclick="changeQty('${c.id}',1)">+</button></div>
+      <div class="citem-total">RM${money(c.price*c.qty)}</div><button class="citem-x" onclick="removeItem('${c.id}')">✕</button></div>`).join('');
+  const sub=cartSubtotal(), tot=cartTotal();
+  document.getElementById('sumSub').textContent='RM'+money(sub);
+  document.getElementById('sumTotal').textContent='RM'+money(tot);
+  document.getElementById('sumDiscRow').style.display=DISCOUNT>0?'flex':'none';
+  document.getElementById('sumDisc').textContent='-RM'+money(DISCOUNT);
+  document.getElementById('sumDiscLabel').textContent='Discount'+(DISCOUNT_REASON?(' ('+DISCOUNT_REASON+')'):'');
+  const pay=document.getElementById('payBtn'); pay.disabled=CART.length===0; pay.textContent='Charge RM'+money(tot);
+  document.getElementById('custNm').textContent=CUSTOMER?CUSTOMER.name:'Walk-in customer';
+  document.getElementById('custSub').textContent=CUSTOMER?(CUSTOMER.phone||'Member'):'Tap to select customer';
+}
+function openCustomerModal(){
+  document.getElementById('modalRoot').innerHTML=`<div class="ov" onclick="if(event.target===this)closeModal()"><div class="modal">
+    <h3>Select customer</h3>
+    <input id="custSearch" placeholder="Search name or phone…" oninput="searchCustomers(this.value)" autofocus>
+    <div id="custResults"></div>
+    <div class="modal-btns"><button class="mb mb-cancel" onclick="setWalkIn()">Walk-in (no customer)</button></div></div></div>`;
+}
+let _custTimer=null;
+function searchCustomers(q){
+  clearTimeout(_custTimer);
+  if(!q||q.length<2){ document.getElementById('custResults').innerHTML=''; return; }
+  _custTimer=setTimeout(async()=>{
+    try{
+      const r=await fetch(`${SUPA_URL}/rest/v1/gl_profiles?select=id,name,phone,points,wallet&or=(name.ilike.*${encodeURIComponent(q)}*,phone.ilike.*${encodeURIComponent(q)}*)&limit=10`,{headers:H()});
+      const rows=r.ok?await r.json():[];
+      document.getElementById('custResults').innerHTML=rows.length?rows.map(c=>`<div class="cust-result" onclick='pickCustomer(${JSON.stringify(c).replace(/'/g,"&#39;")})'>
+        <div style="font-weight:600">${esc(c.name||'—')}</div><div style="font-size:12px;color:var(--muted)">${esc(c.phone||'')} · ${c.points||0} pts · RM${money(c.wallet)} wallet</div></div>`).join(''):'<div style="color:var(--muted);font-size:13px;padding:8px">No match found.</div>';
+    }catch(e){}
+  },300);
+}
+function pickCustomer(c){ CUSTOMER=c; closeModal(); renderCart(); }
+function setWalkIn(){ CUSTOMER=null; closeModal(); renderCart(); }
+function closeModal(){ document.getElementById('modalRoot').innerHTML=''; }
+function openDiscount(){
+  if(!CART.length){ toast('Cart is empty'); return; }
+  document.getElementById('modalRoot').innerHTML=`<div class="ov" onclick="if(event.target===this)closeModal()"><div class="modal">
+    <h3>Apply discount</h3><label style="font-size:13px;color:var(--muted)">Manager PIN required</label>
+    <input id="discPin" type="password" inputmode="numeric" placeholder="PIN">
+    <input id="discAmt" type="number" inputmode="decimal" placeholder="Discount amount (RM)">
+    <input id="discReason" placeholder="Reason (optional)">
+    <div class="modal-btns"><button class="mb mb-cancel" onclick="closeModal()">Cancel</button><button class="mb mb-ok" onclick="applyDiscount()">Apply</button></div></div></div>`;
+}
+function applyDiscount(){
+  if(document.getElementById('discPin').value!==MANAGER_PIN){ toast('Wrong PIN'); return; }
+  const amt=Number(document.getElementById('discAmt').value)||0;
+  if(amt<=0){ toast('Enter amount'); return; }
+  DISCOUNT=Math.min(amt,cartSubtotal()); DISCOUNT_REASON=document.getElementById('discReason').value.trim();
+  closeModal(); renderCart();
+}
+function openPayment(){
+  if(!CART.length) return; PAY_METHOD='cash';
+  const tot=cartTotal();
+  document.getElementById('modalRoot').innerHTML=`<div class="ov" onclick="if(event.target===this)closeModal()"><div class="modal">
+    <h3>Payment — RM${money(tot)}</h3>
+    <div class="pm-grid">${[['cash','💵','Cash'],['card','💳','Card'],['ewallet','📱','E-Wallet'],['wallet','👛','G Wallet']].map(([k,ic,l])=>`<div class="pm ${k==='cash'?'on':''}" data-pm="${k}" onclick="pickPM('${k}')"><span class="pm-ic">${ic}</span>${l}</div>`).join('')}</div>
+    <input id="payRemark" placeholder="Service note for customer (optional)">
+    <input id="payNext" placeholder="Next recommended / due (optional)">
+    <div class="modal-btns"><button class="mb mb-cancel" onclick="closeModal()">Cancel</button><button class="mb mb-ok" id="confirmPayBtn" onclick="completeSale()">Complete sale</button></div></div></div>`;
+}
+function pickPM(k){ PAY_METHOD=k; document.querySelectorAll('.pm').forEach(p=>p.classList.toggle('on',p.dataset.pm===k)); }
+async function completeSale(){
+  const btn=document.getElementById('confirmPayBtn'); if(btn){ btn.disabled=true; btn.textContent='Processing…'; }
+  const sub=cartSubtotal(), tot=cartTotal();
+  const remark=document.getElementById('payRemark')?.value.trim()||null;
+  const nextNote=document.getElementById('payNext')?.value.trim()||null;
+  let billNo='';
+  try{ const r=await fetch(`${SUPA_URL}/rest/v1/rpc/gl_next_bill`,{method:"POST",headers:H(),body:'{}'}); if(r.ok) billNo=(await r.json())||''; }catch(e){}
+  const sale={ bill_no:billNo||('GL-'+Date.now()),
+    customer_id:CUSTOMER?.id||null, customer_name:CUSTOMER?.name||'Walk-in', customer_phone:CUSTOMER?.phone||null,
+    items:CART.map(c=>({name:c.name,qty:c.qty,price:c.price,line_total:c.price*c.qty})),
+    subtotal:sub, discount:DISCOUNT, discount_reason:DISCOUNT_REASON||null, total:tot,
+    payment_method:PAY_METHOD, staff:STAFF, remark:remark, next_note:nextNote, status:'paid' };
+  try{
+    const r=await fetch(`${SUPA_URL}/rest/v1/gl_sales`,{method:"POST",headers:Object.assign(H(),{Prefer:"return=representation"}),body:JSON.stringify(sale)});
+    if(!r.ok){ toast('Could not save sale'); if(btn){btn.disabled=false;btn.textContent='Complete sale';} return; }
+    if(CUSTOMER?.id){
+      const svcNames=CART.map(c=>c.name).join(', ');
+      await fetch(`${SUPA_URL}/rest/v1/gl_service_records`,{method:"POST",headers:H(),body:JSON.stringify({
+        owner_id:CUSTOMER.id, service_name:svcNames, amount:tot, payment_method:PAY_METHOD, remark:remark, next_note:nextNote, staff:STAFF })}).catch(()=>{});
+    }
+    closeModal(); showReceipt(sale);
+    CART=[]; DISCOUNT=0; DISCOUNT_REASON=''; CUSTOMER=null; renderCart();
+  }catch(e){ toast('Error saving sale'); if(btn){btn.disabled=false;btn.textContent='Complete sale';} }
+}
+function showReceipt(sale){
+  const waMsg=encodeURIComponent(`*GRANDLAB DETAILING*\nBill: ${sale.bill_no}\n`+sale.items.map(i=>`${i.name} x${i.qty}  RM${money(i.line_total)}`).join('\n')+`\n${sale.discount>0?'Discount -RM'+money(sale.discount)+'\n':''}*Total: RM${money(sale.total)}*\nPaid: ${sale.payment_method}\nThank you!`);
+  const waBtn = sale.customer_phone ? `<a class="btn btn-green" style="display:flex;align-items:center;justify-content:center;text-decoration:none;margin-top:10px" href="https://wa.me/${sale.customer_phone.replace(/[^0-9]/g,'')}?text=${waMsg}" target="_blank">📱 Send WhatsApp receipt</a>` : '';
+  document.getElementById('modalRoot').innerHTML=`<div class="ov"><div class="modal">
+    <div style="text-align:center;font-size:40px">✅</div><h3 style="text-align:center">Sale complete</h3>
+    <div style="text-align:center;color:var(--muted);font-size:13px;margin-bottom:14px">Bill ${esc(sale.bill_no)}</div>
+    <div style="background:var(--surface2);border-radius:12px;padding:14px;margin-bottom:14px">
+      ${sale.items.map(i=>`<div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px"><span>${esc(i.name)} ×${i.qty}</span><span>RM${money(i.line_total)}</span></div>`).join('')}
+      ${sale.discount>0?`<div style="display:flex;justify-content:space-between;font-size:13px;color:var(--muted)"><span>Discount</span><span>-RM${money(sale.discount)}</span></div>`:''}
+      <div style="display:flex;justify-content:space-between;font-weight:800;font-size:16px;border-top:1px solid var(--line);padding-top:8px;margin-top:8px"><span>Total</span><span>RM${money(sale.total)}</span></div></div>
+    ${waBtn}<button class="btn btn-primary" style="margin-top:10px" onclick="closeModal()">New sale</button></div></div>`;
+}
+function rdMsg(m,t){ document.getElementById('rdMsg').innerHTML=m?`<div class="msg ${t}">${m}</div>`:''; }
+async function lookup(){
+  rdMsg('',''); document.getElementById('rdResult').innerHTML='';
+  const code=document.getElementById('codeInput').value.trim().toUpperCase();
+  if(!code){ toast('Enter a barcode'); return; }
+  rdMsg('Looking up…','ok');
+  try{
+    let r=await fetch(`${SUPA_URL}/rest/v1/gl_packages?select=*&barcode=eq.${encodeURIComponent(code)}`,{headers:H()});
+    let rows=r.ok?await r.json():[];
+    if(rows.length){ rdMsg('',''); return renderPackage(rows[0]); }
+    r=await fetch(`${SUPA_URL}/rest/v1/gl_package_rewards?select=*&barcode=eq.${encodeURIComponent(code)}`,{headers:H()});
+    rows=r.ok?await r.json():[];
+    if(rows.length){ rdMsg('',''); return renderReward(rows[0]); }
+    r=await fetch(`${SUPA_URL}/rest/v1/gl_claims?select=*&barcode=eq.${encodeURIComponent(code)}`,{headers:H()});
+    rows=r.ok?await r.json():[];
+    if(rows.length){ rdMsg('',''); return renderClaim(rows[0]); }
+    rdMsg('No package, voucher or reward found for this code.','err');
+  }catch(e){ rdMsg('Lookup error — check connection.','err'); }
+}
+function renderPackage(p){
+  const remaining=(p.total_uses||0)-(p.used_uses||0); const done=remaining<=0||p.status!=='active';
+  document.getElementById('rdResult').innerHTML=`<div class="res-card"><div class="res-type">Package</div>
+    <div class="res-name">${esc(p.service_name||'Package')}</div><div class="res-uses">${remaining}<small> / ${p.total_uses} uses left</small></div>
+    <div class="res-row"><span class="res-label">Vehicle</span><span>${esc(p.vehicle_label||'—')}</span></div>
+    <div class="res-row"><span class="res-label">Code</span><span>${esc(p.barcode||'')}</span></div>
+    ${done?'<div class="msg err" style="margin-top:14px">No uses remaining.</div>':`<button class="btn btn-green" style="margin-top:16px" onclick="doRedeem('gl_redeem_package','${p.barcode}')">✓ Redeem 1 use</button>`}</div>`;
+}
+function renderReward(r){
+  const used=r.status==='redeemed', unlocked=r.status==='unlocked'||used;
+  document.getElementById('rdResult').innerHTML=`<div class="res-card"><div class="res-type">Milestone Reward</div>
+    <div class="res-name">${esc(r.label||'Reward')}</div><div class="res-row"><span class="res-label">Unlocks at use</span><span>#${r.at_use||'-'}</span></div>
+    <div class="res-row"><span class="res-label">Code</span><span>${esc(r.barcode||'')}</span></div>
+    ${used?'<div class="msg err" style="margin-top:14px">Already redeemed.</div>':unlocked?`<button class="btn btn-green" style="margin-top:16px" onclick="doRedeem('gl_redeem_reward','${r.barcode}')">✓ Redeem reward</button>`:`<div class="msg err" style="margin-top:14px">Not unlocked yet (needs use #${r.at_use}).</div>`}</div>`;
+}
+function renderClaim(c){
+  const used=c.status==='redeemed';
+  document.getElementById('rdResult').innerHTML=`<div class="res-card"><div class="res-type">Voucher</div>
+    <div class="res-name">${esc(c.label||'Voucher')}</div><div class="res-row"><span class="res-label">Code</span><span>${esc(c.barcode||'')}</span></div>
+    ${used?'<div class="msg err" style="margin-top:14px">Already redeemed.</div>':`<button class="btn btn-green" style="margin-top:16px" onclick="doRedeem('gl_redeem_claim','${c.barcode}')">✓ Redeem voucher</button>`}</div>`;
+}
+async function doRedeem(fn,barcode){
+  if(!confirm('Confirm redeem?')) return;
+  try{
+    const r=await fetch(`${SUPA_URL}/rest/v1/rpc/${fn}`,{method:"POST",headers:H(),body:JSON.stringify({p_barcode:barcode})});
+    if(r.ok){ toast('Redeemed ✓'); rdMsg('Redeemed successfully.','ok'); setTimeout(()=>lookup(),400); }
+    else rdMsg('Could not redeem: '+(await r.text()),'err');
+  }catch(e){ rdMsg('Redeem error.','err'); }
+}
+let codeReader=null, scanning=false;
+async function toggleScan(){
+  if(scanning){ stopScan(); return; }
+  if(!window.ZXing){ toast('Scanner loading…'); return; }
+  try{
+    codeReader=new ZXing.BrowserMultiFormatReader();
+    document.getElementById('scanBox').classList.add('on'); scanning=true;
+    document.getElementById('scanBtn').textContent='✕ Stop camera';
+    const devices=await codeReader.listVideoInputDevices();
+    const back=devices.find(d=>/back|rear|environment/i.test(d.label))||devices[devices.length-1];
+    codeReader.decodeFromVideoDevice(back?back.deviceId:null,'scanVideo',(res)=>{ if(res){ document.getElementById('codeInput').value=res.getText().toUpperCase(); stopScan(); lookup(); } });
+  }catch(e){ toast('Camera not available'); stopScan(); }
+}
+function stopScan(){ scanning=false; document.getElementById('scanBox').classList.remove('on'); document.getElementById('scanBtn').textContent='📷 Scan with camera'; try{ codeReader&&codeReader.reset(); codeReader=null; }catch(e){} }
+init();
+</script>
+</body>
+</html>

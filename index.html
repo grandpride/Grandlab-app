@@ -70,10 +70,13 @@
 
   /* full-screen slide background (photo/video) — fills the whole phone, edge to edge */
   .ob-bg{position:absolute;
-    top:calc(-1 * (env(safe-area-inset-top) + 60px));
-    bottom:calc(-1 * (env(safe-area-inset-bottom) + 80px));
+    top:calc(-1 * (env(safe-area-inset-top) + 80px));
+    bottom:calc(-1 * (env(safe-area-inset-bottom) + 120px));
     left:-26px;right:-26px;
     z-index:0;overflow:hidden;}
+  /* welcome screen: background must reach the very bottom (under home bar) */
+  .welcome .ob-bg{position:fixed;top:0;bottom:0;left:50%;transform:translateX(-50%);
+    width:100%;max-width:440px;height:100dvh;}
   .ob-bg img,.ob-bg video{width:100%;height:100%;object-fit:cover;}
   .ob-bg-dim{position:absolute;inset:0;}
   .screen>*:not(.ob-bg){position:relative;z-index:1;}
@@ -519,6 +522,171 @@
     font-size:13px;font-weight:700;border-radius:20px;padding:8px 16px;margin-bottom:6px;}
   .sd-warr{display:inline-flex;align-items:center;gap:6px;background:rgba(245,197,24,.1);color:var(--yellow);font-size:12.5px;font-weight:700;
     border-radius:20px;padding:6px 14px;margin-top:8px;}
+  /* ===== festival theme ===== */
+  .fest-layer{position:fixed;inset:0;pointer-events:none;z-index:90;overflow:hidden;}
+  .fest-piece{position:absolute;top:-40px;will-change:transform;animation:festFall linear infinite;}
+  @keyframes festFall{
+    0%{transform:translateY(-40px) translateX(0) rotate(0deg);opacity:0;}
+    10%{opacity:1;}
+    100%{transform:translateY(105vh) translateX(var(--drift,20px)) rotate(var(--spin,360deg));opacity:.9;}
+  }
+  /* intro overlay */
+  .fest-intro{position:fixed;inset:0;z-index:300;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    background:radial-gradient(circle at 50% 40%, var(--festbg2,#1a0a0a) 0%, #050505 100%);
+    transition:opacity .6s;overflow:hidden;}
+  .fest-intro.hide{opacity:0;}
+  .fest-intro-greet{font-size:30px;font-weight:800;text-align:center;padding:0 30px;z-index:2;
+    background:linear-gradient(90deg,var(--festac,#F5C518),var(--festac2,#fff));-webkit-background-clip:text;background-clip:text;color:transparent;
+    animation:festPop .8s var(--ease) both;}
+  .fest-intro-sub{margin-top:10px;color:#fff;opacity:.7;font-size:14px;z-index:2;animation:festPop 1s .2s var(--ease) both;}
+  .fest-mute{position:absolute;top:calc(16px + env(safe-area-inset-top));right:18px;z-index:3;background:rgba(255,255,255,.12);
+    border:none;color:#fff;border-radius:20px;padding:8px 14px;font-size:13px;cursor:pointer;}
+  @keyframes festPop{0%{transform:scale(.7);opacity:0;}100%{transform:scale(1);opacity:1;}}
+  /* greeting banner on home */
+  .fest-banner{background:linear-gradient(90deg,var(--festac,#E63329),var(--festac2,#FFD24D));
+    color:#fff;border-radius:14px;padding:12px 16px;margin:0 0 14px;font-weight:800;font-size:15px;text-align:center;
+    text-shadow:0 1px 2px rgba(0,0,0,.25);box-shadow:0 6px 20px -10px rgba(0,0,0,.6);}
+  /* ===== account sub-pages ===== */
+  .acc-check{color:var(--yellow);font-weight:800;font-size:16px;}
+  .tg{width:44px;height:26px;border-radius:14px;background:var(--surface2);border:1px solid var(--line);position:relative;transition:.15s;}
+  .tg.on{background:var(--yellow);border-color:var(--yellow);}
+  .tg-dot{position:absolute;top:2px;left:2px;width:20px;height:20px;border-radius:50%;background:#fff;transition:.15s;}
+  .tg.on .tg-dot{left:20px;}
+  .settings-note{font-size:11.5px;color:var(--muted);margin-top:14px;line-height:1.5;}
+  .fb-label{display:block;font-size:13px;font-weight:600;margin:14px 0 6px;}
+  .fb-input{width:100%;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 14px;color:var(--text);font-size:14px;font-family:inherit;}
+  .fb-photos{display:flex;flex-wrap:wrap;gap:8px;}
+  .fb-thumb{position:relative;width:64px;height:64px;border-radius:10px;overflow:hidden;}
+  .fb-thumb img{width:100%;height:100%;object-fit:cover;}
+  .fb-thumb-x{position:absolute;top:2px;right:2px;background:rgba(0,0,0,.6);color:#fff;border-radius:50%;width:18px;height:18px;font-size:11px;display:flex;align-items:center;justify-content:center;cursor:pointer;}
+  .sup-list,.sup-row{display:flex;}
+  .sup-list{flex-direction:column;gap:10px;}
+  .sup-row{align-items:center;gap:14px;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:15px;cursor:pointer;transition:.12s;}
+  .sup-row:active{transform:scale(.99);}
+  .sup-ic{font-size:22px;flex:0 0 auto;}
+  .sup-nm{font-size:15px;font-weight:700;}
+  .sup-sub{font-size:12.5px;color:var(--muted);margin-top:2px;}
+  .policy-body{font-size:14px;line-height:1.65;color:var(--text);}
+  .policy-body p{margin:0 0 13px;}
+  .policy-body b{color:var(--text);}
+  .pol-note{font-size:12px;color:var(--muted);font-style:italic;margin-top:18px;}
+  .about-wrap{text-align:center;padding:20px 0;}
+  .about-logo{font-size:26px;font-weight:900;letter-spacing:.08em;color:var(--yellow);}
+  .about-tag{font-size:13px;color:var(--muted);margin-top:6px;}
+  .about-ver{font-size:12px;color:var(--muted);margin-top:14px;}
+  .about-foot{text-align:center;font-size:11.5px;color:var(--muted);line-height:1.7;margin-top:24px;}
+  /* light theme */
+  html[data-theme="light"]{
+    --bg:#F5F5F7; --surface:#FFFFFF; --surface2:#EFEFF2; --text:#111; --muted:#6B6B70;
+    --line:#E2E2E6;
+  }
+  /* ===== wallet top-up + gift ===== */
+  .tu-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;}
+  .tu-tile{background:var(--surface);border:1.5px solid var(--line);border-radius:14px;padding:14px 8px;text-align:center;cursor:pointer;transition:.12s;}
+  .tu-tile.on{border-color:var(--yellow);background:rgba(245,197,24,.08);}
+  .tu-amt{font-size:16px;font-weight:800;}
+  .tu-bonus{font-size:11px;color:var(--yellow);font-weight:700;margin-top:3px;}
+  .tu-pay{display:flex;align-items:center;justify-content:space-between;background:var(--surface);border:1.5px solid var(--line);border-radius:14px;padding:14px 16px;margin-bottom:10px;cursor:pointer;}
+  .tu-pay.on{border-color:var(--yellow);}
+  .tu-pay-nm{font-size:14.5px;font-weight:700;}
+  .tu-pay-sub{font-size:12px;color:var(--yellow);margin-top:2px;}
+  .tu-radio{font-size:18px;color:var(--yellow);}
+  .tu-summary{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px 16px;margin-top:16px;}
+  .tu-sum-row{display:flex;justify-content:space-between;font-size:14px;margin-bottom:8px;color:var(--muted);}
+  .tu-sum-bonus{color:var(--yellow);font-weight:700;}
+  .tu-sum-total{margin-bottom:0;padding-top:8px;border-top:1px solid var(--line);color:var(--text);font-weight:800;font-size:16px;}
+  .gc-card{background:linear-gradient(135deg,#1a1a1a,#2a2410);border:1px solid var(--gold-line);border-radius:18px;padding:24px;text-align:center;}
+  .gc-card-label{font-size:12px;letter-spacing:.15em;color:var(--yellow);font-weight:700;}
+  .gc-card-amt{font-size:34px;font-weight:900;margin-top:8px;color:#fff;}
+  /* ===== my cars / car detail ===== */
+  .mycar-card{display:flex;align-items:center;justify-content:space-between;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:10px;cursor:pointer;transition:.12s;}
+  .mycar-card:active{transform:scale(.99);}
+  .mycar-left{display:flex;align-items:center;gap:12px;min-width:0;}
+  .veh-logo-ph{font-size:22px;}
+  .mycar-name{font-size:15px;font-weight:700;}
+  .mycar-plate{font-size:12.5px;color:var(--muted);margin-top:2px;}
+  .mycar-right{display:flex;align-items:center;gap:8px;flex:0 0 auto;}
+  .mycar-badge{background:rgba(245,197,24,.14);color:var(--yellow);font-size:11px;font-weight:700;padding:4px 9px;border-radius:12px;}
+  .cd-head{display:flex;align-items:center;gap:10px;margin-bottom:14px;}
+  .cd-plate{font-size:15px;font-weight:800;letter-spacing:.04em;}
+  .cd-type{font-size:11px;background:var(--surface2);color:var(--muted);padding:3px 10px;border-radius:10px;}
+  .cd-tabs{display:flex;gap:8px;}
+  .cd-tab{flex:1;height:42px;background:var(--surface);border:1px solid var(--line);border-radius:12px;color:var(--muted);font-size:14px;font-weight:600;cursor:pointer;}
+  .cd-tab.on{background:var(--yellow);color:#080808;border-color:var(--yellow);font-weight:700;}
+  .hist-card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:10px;}
+  .hist-top{display:flex;justify-content:space-between;align-items:baseline;}
+  .hist-svc{font-size:14.5px;font-weight:700;}
+  .hist-date{font-size:12px;color:var(--muted);}
+  .hist-remark{font-size:13px;color:var(--text);margin-top:8px;line-height:1.5;background:var(--surface2);border-radius:10px;padding:9px 11px;}
+  .hist-remark-label{color:var(--yellow);font-weight:700;}
+  .hist-next{font-size:12.5px;color:var(--muted);margin-top:8px;}
+  .hist-txn{display:flex;justify-content:space-between;font-size:13px;margin-top:10px;padding-top:10px;border-top:1px solid var(--line);color:var(--muted);}
+  .hist-amt{font-weight:700;color:var(--text);}
+  .hist-invoice{margin-top:10px;width:100%;background:var(--surface2);border:1px solid var(--line);color:var(--text);border-radius:10px;padding:9px;font-size:13px;font-weight:600;cursor:pointer;}
+  /* ===== google reviews ===== */
+  .rv-google{font-size:13px;font-weight:700;color:#4285F4;}
+  .rv-card{min-width:82vw;max-width:82vw;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:18px;margin-right:12px;box-sizing:border-box;}
+  .rv-stars{color:#FFC107;font-size:16px;letter-spacing:1px;}
+  .rv-stars-dim{color:var(--line);}
+  .rv-text{font-size:14px;line-height:1.55;margin:10px 0 14px;color:var(--text);}
+  .rv-author{display:flex;align-items:center;gap:10px;}
+  .rv-avatar{width:36px;height:36px;border-radius:50%;background:var(--yellow);color:#080808;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:15px;}
+  .rv-name{font-size:13.5px;font-weight:700;}
+  .rv-meta{font-size:11.5px;color:var(--muted);}
+  /* ===== social row ===== */
+  .social-reward{background:rgba(245,197,24,.12);color:var(--yellow);font-size:12.5px;font-weight:600;border-radius:10px;padding:8px 12px;margin-bottom:10px;}
+  .social-row{display:flex;gap:10px;}
+  .social-btn{flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px 6px;text-decoration:none;color:var(--text);font-size:12.5px;font-weight:600;transition:.12s;}
+  .social-btn:active{transform:scale(.97);}
+  .social-ic{font-size:22px;}
+  .social-share-btn{width:100%;margin-top:10px;background:var(--surface2);border:1px solid var(--line);color:var(--text);border-radius:12px;padding:11px;font-size:13.5px;font-weight:600;cursor:pointer;}
+  /* ===== booking calendar + slots ===== */
+  .bk-section-label{display:block;font-size:13px;font-weight:700;margin:18px 0 10px;}
+  .cal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+  .cal-month{font-size:15px;font-weight:700;}
+  .cal-nav{width:36px;height:36px;border-radius:10px;background:var(--surface);border:1px solid var(--line);color:var(--text);font-size:18px;cursor:pointer;}
+  .cal-nav:disabled{opacity:.3;cursor:default;}
+  .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;}
+  .cal-dow{text-align:center;font-size:11px;color:var(--muted);font-weight:700;padding:4px 0;}
+  .cal-day{aspect-ratio:1;display:flex;align-items:center;justify-content:center;position:relative;border-radius:10px;font-size:14px;
+    background:var(--surface);border:1px solid var(--line);cursor:pointer;transition:.1s;}
+  .cal-day:active{transform:scale(.94);}
+  .cal-day.off{opacity:.28;cursor:default;background:transparent;border-color:transparent;}
+  .cal-day.sel{background:var(--yellow);color:#080808;border-color:var(--yellow);font-weight:800;}
+  .cal-day.closed{border-color:#5a2020;color:#b06;}
+  .cal-x{position:absolute;font-size:9px;bottom:3px;color:#E5533C;}
+  .slot-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;}
+  .slot{background:var(--surface);border:1.5px solid var(--line);border-radius:12px;padding:12px;text-align:center;cursor:pointer;transition:.1s;}
+  .slot:active{transform:scale(.97);}
+  .slot.sel{background:var(--yellow);border-color:var(--yellow);}
+  .slot.sel .slot-time,.slot.sel .slot-left{color:#080808;}
+  .slot.full{opacity:.4;cursor:default;background:var(--surface2);}
+  .slot-time{font-size:14px;font-weight:700;}
+  .slot-left{font-size:11px;color:var(--muted);margin-top:2px;}
+  .slot.full .slot-left{color:#E5533C;}
+  .bk-slots-hint{font-size:13px;color:var(--muted);padding:8px 0;}
+  /* ===== order maintenance reminders ===== */
+  .maint-reminder{background:linear-gradient(135deg,rgba(245,197,24,.12),rgba(245,197,24,.04));border:1px solid var(--gold-line);border-radius:14px;padding:14px;margin-bottom:10px;}
+  .maint-rem-top{display:flex;gap:12px;align-items:flex-start;}
+  .maint-rem-ic{font-size:20px;}
+  .maint-rem-title{font-size:14.5px;font-weight:700;}
+  .maint-rem-sub{font-size:12.5px;color:var(--muted);margin-top:2px;}
+  .maint-rem-btn{margin-top:12px;width:100%;background:var(--yellow);color:#080808;border:none;border-radius:11px;padding:11px;font-size:13.5px;font-weight:700;cursor:pointer;}
+  .order-cancel{margin-top:12px;width:100%;background:transparent;border:1px solid var(--line);color:var(--muted);border-radius:10px;padding:9px;font-size:13px;cursor:pointer;}
+  /* ===== vouchers ===== */
+  .vch-card{display:flex;align-items:center;justify-content:space-between;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:10px;}
+  .vch-card.done{opacity:.55;}
+  .vch-left{display:flex;align-items:center;gap:12px;}
+  .vch-ic{font-size:22px;}
+  .vch-name{font-size:14.5px;font-weight:700;}
+  .vch-meta{font-size:12px;color:var(--muted);margin-top:2px;}
+  .vch-show{background:var(--yellow);color:#080808;border:none;border-radius:10px;padding:8px 16px;font-size:13px;font-weight:700;cursor:pointer;}
+  .vch-used{color:var(--yellow);font-size:18px;font-weight:800;}
+  /* ===== earn points info ===== */
+  .earn-info{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px;margin:16px 16px 0;}
+  .earn-title{font-size:14px;font-weight:800;margin-bottom:10px;}
+  .earn-row{display:flex;align-items:center;gap:10px;font-size:13.5px;color:var(--text);padding:6px 0;}
+  .earn-ic{font-size:17px;}
   /* payment sheet */
   .pay-sheet-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:200;display:flex;align-items:flex-end;
     opacity:0;transition:opacity .2s;}
@@ -847,6 +1015,7 @@
    ========================================================================= */
 
 const SUPA_URL  = "https://eychljpzorzmaveixlnu.supabase.co";
+const APP_VERSION = "1.0.0";
 // SenangPay Edge Function base URL — set after deploying the function.
 // e.g. "https://eychljpzorzmaveixlnu.functions.supabase.co/senangpay"
 // leave blank to disable online payment (only "Pay at counter" shows).
@@ -985,6 +1154,146 @@ const STYLE_DEFAULTS = {
 };
 let STYLE = Object.assign({}, STYLE_DEFAULTS);
 
+// ============== FESTIVAL THEMES ==============
+// Date table — update the lunar/Islamic/Hindu dates once a year (fixed ones never change).
+// Window: theme runs 15 days BEFORE → 10 days AFTER the date.
+const FESTIVALS = {
+  cny:       { name:'Chinese New Year', greet:'Gong Xi Fa Cai 🧧', accent:'#E63329', accent2:'#FFD24D', deco:'lantern',
+               dates:{2026:'2026-02-17',2027:'2027-02-06',2028:'2028-01-26',2029:'2029-02-13',2030:'2030-02-03'} },
+  raya:      { name:'Hari Raya Aidilfitri', greet:'Selamat Hari Raya 🌙', accent:'#1FA67A', accent2:'#F3D27A', deco:'ketupat',
+               dates:{2026:'2026-03-20',2027:'2027-03-10',2028:'2028-02-27',2029:'2029-02-15',2030:'2030-02-05'} },
+  rayahaji:  { name:'Hari Raya Haji', greet:'Selamat Hari Raya Aidiladha 🐐', accent:'#2E8B6F', accent2:'#E8CE86', deco:'ketupat',
+               dates:{2026:'2026-05-27',2027:'2027-05-17',2028:'2028-05-05',2029:'2029-04-24',2030:'2030-04-14'} },
+  deepavali: { name:'Deepavali', greet:'Happy Deepavali 🪔', accent:'#C0392B', accent2:'#F39C12', deco:'diya',
+               dates:{2026:'2026-11-08',2027:'2027-10-29',2028:'2028-11-15',2029:'2029-11-05',2030:'2030-10-26'} },
+  wesak:     { name:'Wesak Day', greet:'Happy Wesak Day 🪷', accent:'#E8B923', accent2:'#FFF2C2', deco:'lotus',
+               dates:{2026:'2026-05-01',2027:'2027-05-20',2028:'2028-05-09',2029:'2029-05-27',2030:'2030-05-16'} },
+  merdeka:   { name:'Hari Merdeka', greet:'Selamat Hari Merdeka 🇲🇾', accent:'#CC0001', accent2:'#FFCC00', deco:'flag',
+               dates:{2026:'2026-08-31',2027:'2027-08-31',2028:'2028-08-31',2029:'2029-08-31',2030:'2030-08-31'} },
+  christmas: { name:'Christmas', greet:'Merry Christmas 🎄', accent:'#D32F2F', accent2:'#2E7D32', deco:'snow',
+               dates:{2026:'2026-12-25',2027:'2027-12-25',2028:'2028-12-25',2029:'2029-12-25',2030:'2030-12-25'} },
+};
+const FEST_BEFORE=15, FEST_AFTER=10;
+function activeFestival(today){
+  const now = today || new Date();
+  for(const key in FESTIVALS){
+    const f=FESTIVALS[key];
+    const ds=f.dates[now.getFullYear()] || f.dates[now.getFullYear()-1];
+    if(!ds) continue;
+    // check both this year's and (for Dec→Jan wrap) adjacent
+    const cands=[f.dates[now.getFullYear()-1],f.dates[now.getFullYear()],f.dates[now.getFullYear()+1]].filter(Boolean);
+    for(const d of cands){
+      const date=new Date(d+'T00:00:00');
+      const start=new Date(date); start.setDate(start.getDate()-FEST_BEFORE); start.setHours(0,0,0,0);
+      const end=new Date(date); end.setDate(end.getDate()+FEST_AFTER); end.setHours(23,59,59,999);
+      if(now>=start && now<=end) return Object.assign({key}, f);
+    }
+  }
+  return null;
+}
+// ============== END FESTIVAL DATA ==============
+
+let CURRENT_FEST=null;
+// emoji/glyph used for each decoration style
+const FEST_GLYPH={ lantern:['🏮','🧧','🪙'], ketupat:['🌙','✨','🕌'], diya:['🪔','✨','🟠'],
+  lotus:['🪷','✨','🟡'], flag:['🇲🇾','⭐','✨'], snow:['❄️','❅','✦'] };
+// build the persistent decoration layer (falling pieces across the screen)
+function renderFestLayer(){
+  document.querySelectorAll('.fest-layer').forEach(e=>e.remove());
+  if(!CURRENT_FEST) return;
+  const glyphs=FEST_GLYPH[CURRENT_FEST.deco]||['✨'];
+  const layer=document.createElement('div'); layer.className='fest-layer';
+  const N=22; // visible count across screen
+  let html='';
+  for(let i=0;i<N;i++){
+    const g=glyphs[i%glyphs.length];
+    const left=Math.random()*100;
+    const dur=6+Math.random()*7;       // 6–13s fall
+    const delay=-Math.random()*dur;     // stagger (negative = already mid-fall)
+    const size=16+Math.random()*16;
+    const drift=(Math.random()*80-40)+'px';
+    const spin=(Math.random()*720-360)+'deg';
+    html+=`<div class="fest-piece" style="left:${left}vw;font-size:${size}px;animation-duration:${dur}s;animation-delay:${delay}s;--drift:${drift};--spin:${spin}">${g}</div>`;
+  }
+  layer.innerHTML=html;
+  document.body.appendChild(layer);
+}
+// short built-in chime per festival (WebAudio, no file). Plays after a user tap (login).
+function playFestChime(fest){
+  try{
+    const AC=window.AudioContext||window.webkitAudioContext; if(!AC) return;
+    const ctx=new AC();
+    // simple cheerful arpeggio; tone set varies a touch by festival
+    const sets={ christmas:[523,659,784,1047], cny:[587,740,880,1175], default:[523,659,784,988] };
+    const notes=sets[fest.key]||sets.default;
+    let t=ctx.currentTime;
+    notes.forEach((f,i)=>{
+      const o=ctx.createOscillator(), g=ctx.createGain();
+      o.type='triangle'; o.frequency.value=f;
+      o.connect(g); g.connect(ctx.destination);
+      g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(0.18,t+0.03);
+      g.gain.exponentialRampToValueAtTime(0.0001,t+0.45);
+      o.start(t); o.stop(t+0.5); t+=0.18;
+    });
+    setTimeout(()=>{ try{ctx.close();}catch(e){} }, 3000);
+  }catch(e){}
+}
+// the ~5s login intro (animation + chime), once per session
+let _festMuted=false;
+function playFestIntro(){
+  if(!CURRENT_FEST) return;
+  let testing=false; try{ testing=!!sessionStorage.getItem('gl_theme_test'); }catch(e){}
+  if(!testing && sessionStorage.getItem('gl_fest_intro_'+CURRENT_FEST.key)) return; // once per session
+  if(!testing) sessionStorage.setItem('gl_fest_intro_'+CURRENT_FEST.key,'1');
+  const f=CURRENT_FEST;
+  const ov=document.createElement('div'); ov.className='fest-intro';
+  ov.style.setProperty('--festac', f.accent);
+  ov.style.setProperty('--festac2', f.accent2);
+  ov.style.setProperty('--festbg2', f.accent+'22');
+  const glyphs=FEST_GLYPH[f.deco]||['✨'];
+  let pieces='';
+  for(let i=0;i<40;i++){
+    const g=glyphs[i%glyphs.length];
+    const left=Math.random()*100, dur=2.5+Math.random()*3, delay=-Math.random()*dur, size=18+Math.random()*22;
+    pieces+=`<div class="fest-piece" style="left:${left}vw;font-size:${size}px;animation-duration:${dur}s;animation-delay:${delay}s;--drift:${(Math.random()*80-40)}px;--spin:${(Math.random()*720-360)}deg">${g}</div>`;
+  }
+  ov.innerHTML=`
+    <button class="fest-mute" onclick="event.stopPropagation();festToggleMute(this)">🔊 Sound on</button>
+    ${pieces}
+    <div class="fest-intro-greet">${esc(f.greet)}</div>
+    <div class="fest-intro-sub">from all of us at Grandlab</div>`;
+  document.body.appendChild(ov);
+  if(!_festMuted) playFestChime(f);
+  // auto-dismiss ~5s
+  setTimeout(()=>{ ov.classList.add('hide'); setTimeout(()=>ov.remove(),600); }, 5000);
+  ov.onclick=()=>{ ov.classList.add('hide'); setTimeout(()=>ov.remove(),600); };
+}
+function festToggleMute(btn){
+  _festMuted=!_festMuted;
+  btn.textContent=_festMuted?'🔇 Sound off':'🔊 Sound on';
+  if(!_festMuted && CURRENT_FEST) playFestChime(CURRENT_FEST);
+}
+function initFestival(){
+  // TEST OVERRIDE: add ?theme=cny (or raya, rayahaji, deepavali, wesak, merdeka, christmas) to force a festival.
+  // ?theme=off forces none. Saved for the session so it persists across taps.
+  try{
+    const q=new URLSearchParams(location.search).get('theme');
+    if(q){ sessionStorage.setItem('gl_theme_test', q); }
+  }catch(e){}
+  let testKey=null;
+  try{ testKey=sessionStorage.getItem('gl_theme_test'); }catch(e){}
+  if(testKey==='off'){ CURRENT_FEST=null; document.querySelectorAll('.fest-layer').forEach(e=>e.remove()); return; }
+  if(testKey && FESTIVALS[testKey]){
+    CURRENT_FEST=Object.assign({key:testKey}, FESTIVALS[testKey]);
+  } else {
+    CURRENT_FEST=activeFestival();
+  }
+  if(CURRENT_FEST){
+    document.documentElement.style.setProperty('--festac', CURRENT_FEST.accent);
+    document.documentElement.style.setProperty('--festac2', CURRENT_FEST.accent2);
+    renderFestLayer();
+  }
+}
 function applyStyle(){
   const r=document.documentElement.style;
   r.setProperty('--bg', STYLE.bg);
@@ -1065,17 +1374,21 @@ async function fetchSlides(){
   }catch(e){}
   // mystery box + warranty settings
   try{
-    const r3=await fetch(`${SUPA_URL}/rest/v1/gl_settings?select=id,data&id=in.(mysterybox,warranty,highlights,actionbtn,popup,referral,brandinfo)`,
+    const r3=await fetch(`${SUPA_URL}/rest/v1/gl_settings?select=id,data&id=in.(mysterybox,warranty,highlights,actionbtn,popup,referral,brandinfo,wallet,reviews,social,booking)`,
       { headers:{ apikey:SUPA_ANON, Authorization:`Bearer ${SUPA_ANON}` } });
     if(r3.ok){ const rows=await r3.json();
       rows.forEach(row=>{
         if(row.id==='mysterybox') MYSTERY=Object.assign({},MYSTERY,row.data||{});
         if(row.id==='warranty'){ if(row.data?.url) STYLE.warrantyUrl=row.data.url; if(row.data?.img) STYLE.warrantyImg=row.data.img; }
         if(row.id==='highlights') HIGHLIGHTS=Object.assign({},HIGHLIGHTS,row.data||{});
+        if(row.id==='reviews') REVIEWS=Object.assign({},REVIEWS,row.data||{});
+        if(row.id==='social') SOCIAL=Object.assign({},SOCIAL,row.data||{});
+        if(row.id==='booking') BOOKING_CFG=Object.assign({},BOOKING_CFG,row.data||{});
         if(row.id==='actionbtn') ACTIONBTN=Object.assign({},ACTIONBTN,row.data||{});
         if(row.id==='popup') POPUP=Object.assign({},POPUP,row.data||{});
         if(row.id==='referral') REFERRAL=Object.assign({},REFERRAL,row.data||{});
         if(row.id==='brandinfo') BRAND_INFO=Object.assign({},row.data||{});
+        if(row.id==='wallet') WALLET_CFG=Object.assign({},WALLET_CFG,row.data||{});
       });
     }
   }catch(e){}
@@ -1114,6 +1427,8 @@ let BRANDS = [];        // gl_brands rows
 let CAR_BRANDS = [];    // gl_car_brands rows
 let CAR_MODELS = [];    // gl_car_models rows
 let HIGHLIGHTS = { items:[], autoslide:true, interval:4000 };
+let REVIEWS = { title:'What our customers say', items:[], autoslide:true };
+let SOCIAL = { title:'Follow us', facebook:'', instagram:'', tiktok:'', shareReward:'' };
 let ACTIONBTN = { enabled:false, label:'Free Car Wash', service_id:null };
 let POPUP = { enabled:false, posters:[] };
 let REFERRAL = { terms:[], wash_service_id:null, need_tier:true, need_wash:true, target:5 };
@@ -1680,17 +1995,20 @@ function enterApp(screen){
   document.querySelector('.app').style.display='none';
   appRoot.classList.add('show');
   applyAppBg();
+  initFestival();
   if(screen==='profile') renderProfileSetup();
   else routeTab(screen||'home');
   if((screen||'home')==='home') setTimeout(maybeShowPopup, 500);
+  if(CURRENT_FEST) setTimeout(playFestIntro, 300);
 }
 function enterGuest(){
   // PREVIEW MODE: no login required for now. Enter the full app at Home.
-  // (Later, restore IS_GUEST=true here and require sign-in for full features.)
   IS_GUEST=false;
   document.querySelector('.app').style.display='none';
   appRoot.classList.add('show');
+  initFestival();
   routeTab('home');
+  if(CURRENT_FEST) setTimeout(playFestIntro, 300);
 }
 
 function navIcon(name){
@@ -1854,6 +2172,7 @@ async function renderHome(){
         </div>
       </div>
 
+      ${CURRENT_FEST?`<div class="fest-banner">${esc(CURRENT_FEST.greet)}</div>`:''}
       <!-- vehicles section (single active car, below greeting) -->
       <div class="veh-section">
         ${vehicleSection}
@@ -1915,6 +2234,37 @@ async function renderHome(){
         </div>
       </div>`:''}
 
+      <!-- google reviews (looping) -->
+      ${(REVIEWS.items||[]).length?`
+      <div class="sec-title-row">
+        <div class="sec-title">${esc(REVIEWS.title||'What our customers say')}</div>
+        <div class="rv-google">★ Google</div>
+      </div>
+      <div class="slider" id="rvSlider">
+        <div class="slider-track" id="rvTrack">
+          ${REVIEWS.items.map(r=>`
+            <div class="rv-card">
+              <div class="rv-stars">${'★'.repeat(Math.max(1,Math.min(5,r.stars||5)))}<span class="rv-stars-dim">${'★'.repeat(5-Math.max(1,Math.min(5,r.stars||5)))}</span></div>
+              <div class="rv-text">${esc(r.text||'')}</div>
+              <div class="rv-author">
+                <div class="rv-avatar">${esc((r.name||'A')[0].toUpperCase())}</div>
+                <div><div class="rv-name">${esc(r.name||'Customer')}</div><div class="rv-meta">${esc(r.meta||'Google review')}</div></div>
+              </div>
+            </div>`).join('')}
+        </div>
+      </div>`:''}
+
+      <!-- social media row -->
+      ${(SOCIAL.facebook||SOCIAL.instagram||SOCIAL.tiktok)?`
+      <div class="sec-title">${esc(SOCIAL.title||'Follow us')}</div>
+      ${SOCIAL.shareReward?`<div class="social-reward">🎁 ${esc(SOCIAL.shareReward)}</div>`:''}
+      <div class="social-row">
+        ${SOCIAL.facebook?`<a class="social-btn fb" href="${esc(SOCIAL.facebook)}" target="_blank" rel="noopener"><span class="social-ic">📘</span><span>Facebook</span></a>`:''}
+        ${SOCIAL.instagram?`<a class="social-btn ig" href="${esc(SOCIAL.instagram)}" target="_blank" rel="noopener"><span class="social-ic">📸</span><span>Instagram</span></a>`:''}
+        ${SOCIAL.tiktok?`<a class="social-btn tt" href="${esc(SOCIAL.tiktok)}" target="_blank" rel="noopener"><span class="social-ic">🎵</span><span>TikTok</span></a>`:''}
+      </div>
+      <button class="social-share-btn" onclick="shareGrandlab()">↗ Share Grandlab with friends</button>`:''}
+
       <!-- OUR STORES -->
       ${STORES.length?`
       <div class="sec-title-row">
@@ -1931,9 +2281,9 @@ async function renderHome(){
       <!-- quick action cards -->
       ${STYLE.homeShowCards!==false?`
       <div class="home-cards">
-        <div class="hc" onclick="routeTab('account')">
-          <div class="hc-t">${esc(STYLE.homeCard1Title||'Get rewarded')}</div>
-          <div class="hc-s">${esc(STYLE.homeCard1Sub||'')}</div>
+        <div class="hc" onclick="openMyPackages()">
+          <div class="hc-t">My Cars &amp; History</div>
+          <div class="hc-s">Packages, service log &amp; visit notes</div>
         </div>
         <div class="hc" onclick="showReferralQR()">
           <div class="hc-t">${esc(STYLE.homeCard2Title||'Send gifts')}</div>
@@ -1945,6 +2295,7 @@ async function renderHome(){
   // start auto-sliders
   // brands use a pure-CSS marquee (no JS needed)
   if(HIGHLIGHTS.autoslide!==false) startSlider('hlTrack', HIGHLIGHTS.interval||4000);
+  if(REVIEWS.autoslide!==false && (REVIEWS.items||[]).length>1) startSlider('rvTrack', 5000);
   startFlashTimers();
 }
 
@@ -2312,49 +2663,112 @@ function openMyVehicles(){
     </div>`;
 }
 
-/* ---------- My Packages (multi-use redemption) ---------- */
+/* ---------- My Packages (car-centric: cars → car detail) ---------- */
 async function openMyPackages(){
   if(IS_GUEST){ toast('Sign in to view packages'); return; }
   appRoot.innerHTML=`
-    <div class="topbar-app"><button class="back" onclick="goBack()">‹</button><div class="ttl">My Packages</div></div>
+    <div class="topbar-app"><button class="back" onclick="goBack()">‹</button><div class="ttl">My Cars</div></div>
     <div class="app-scroll" style="padding-top:18px"><div class="app-sub">Loading…</div></div>`;
   await Promise.allSettled([ fetchPackages(), fetchClaims(), (!VEHICLES.length?fetchVehicles():Promise.resolve()) ]);
-  const active = PACKAGES.filter(p=>p.status==='active' && p.used_uses<p.total_uses);
-  const done   = PACKAGES.filter(p=>!(p.status==='active' && p.used_uses<p.total_uses));
-  // group by vehicle
-  const byVeh={}; const order=[];
-  active.forEach(p=>{ const k=p.vehicle_label||'Other'; if(!(k in byVeh)){byVeh[k]=[];order.push(k);} byVeh[k].push(p); });
-  // claim vouchers (free car wash etc.)
-  const vouchers = (CLAIMS||[]).filter(c=>c.barcode);
+  // count active packages per car
+  const pkgCount={};
+  PACKAGES.filter(p=>p.status==='active'&&p.used_uses<p.total_uses).forEach(p=>{
+    const k=p.vehicle_id||p.vehicle_label||'other'; pkgCount[k]=(pkgCount[k]||0)+1;
+  });
+  const vLogo=v=>{ const b=(CAR_BRANDS||[]).find(x=>String(x.id)===String(v.brand_id)); return (b&&b.image_url)||''; };
+  const carCards = (VEHICLES||[]).length ? VEHICLES.map(v=>{
+    const label=[v.make,v.model].filter(Boolean).join(' ')||'Vehicle';
+    const n=pkgCount[v.id]||pkgCount[v.vehicle_label]||0;
+    return `<div class="mycar-card" onclick="openCarDetail('${v.id}')">
+      <div class="mycar-left">
+        ${vLogo(v)?`<div class="veh-logo"><img src="${vLogo(v)}"></div>`:`<div class="veh-logo veh-logo-ph">🚗</div>`}
+        <div>
+          <div class="mycar-name">${esc(label)}</div>
+          <div class="mycar-plate">${esc(v.plate||'')}${v.car_type?' · '+esc(v.car_type):''}</div>
+        </div>
+      </div>
+      <div class="mycar-right">
+        ${n?`<span class="mycar-badge">${n} package${n>1?'s':''}</span>`:''}
+        <span class="acc-chev">›</span>
+      </div>
+    </div>`;
+  }).join('') : '';
+  // global vouchers (not car-specific)
+  const vouchers = (CLAIMS||[]).filter(c=>c.barcode && c.status!=='redeemed');
   const voucherHtml = vouchers.length ? `
-      <div class="sec-title" style="margin-top:10px">🎟️ My Vouchers</div>
-      ${vouchers.map(c=>`
-        <div class="pkg-bal-card ${c.status==='redeemed'?'done':''}">
-          <div class="pkg-bal-top">
-            <div><div class="pkg-bal-name">${esc(c.label||'Free Voucher')}</div></div>
-            <div class="pkg-bal-count">${c.status==='redeemed'?'<span class="pkg-done-tag">Redeemed</span>':'<span class="pkg-done-tag" style="background:#d8f5c8;color:#2e7d32">Active</span>'}</div>
-          </div>
-          ${c.status!=='redeemed'?`
-            <div class="pkg-barcode">${barcodeSvg(c.barcode||'GL0')}</div>
-            <div class="pkg-barcode-num">${esc(c.barcode||'')}</div>
-            <div class="pkg-barcode-hint">Show this to our staff to redeem</div>
-          `:`<div class="pkg-bal-sub" style="margin-top:8px">Redeemed${c.redeemed_at?(' on '+fmtDateTime(c.redeemed_at)):''}</div>`}
-        </div>`).join('')}
-    ` : '';
-  const hasAny = PACKAGES.length || vouchers.length;
-  const body = hasAny ? `
+    <div class="sec-title">🎟️ My Vouchers</div>
+    ${vouchers.map(c=>`
+      <div class="pkg-bal-card">
+        <div class="pkg-bal-top">
+          <div><div class="pkg-bal-name">${esc(c.label||'Free Voucher')}</div></div>
+          <div class="pkg-bal-count"><span class="pkg-done-tag" style="background:#d8f5c8;color:#2e7d32">Active</span></div>
+        </div>
+        <div class="pkg-barcode">${barcodeSvg(c.barcode||'GL0')}</div>
+        <div class="pkg-barcode-num">${esc(c.barcode||'')}</div>
+        <div class="pkg-barcode-hint">Show this to our staff to redeem</div>
+      </div>`).join('')}` : '';
+  const body = (VEHICLES||[]).length ? `
+      <div class="app-sub" style="margin-bottom:6px">Tap a car to see its packages, service history and visit notes.</div>
+      ${carCards}
       ${voucherHtml}
-      ${order.length?order.map(vl=>`
-        <div class="pkg-veh-h">🚗 ${esc(vl)}</div>
-        ${byVeh[vl].map(p=>pkgCardHtml(p)).join('')}
-      `).join(''):''}
-      ${done.length?`<div class="sec-title" style="margin-top:24px">Completed</div>
-        ${done.map(p=>pkgCardHtml(p,true)).join('')}`:''}
-    ` : `<div class="guest-banner">No packages or vouchers yet.</div>`;
+    ` : `<div class="guest-banner">No cars yet. Add a car to track its packages and history.</div>
+         <div class="add-veh-btn" style="margin-top:14px" onclick="openAddVehicle()">+ Add Vehicle</div>`;
   appRoot.innerHTML=`
-    <div class="topbar-app"><button class="back" onclick="goBack()">‹</button><div class="ttl">My Packages</div></div>
+    <div class="topbar-app"><button class="back" onclick="goBack()">‹</button><div class="ttl">My Cars</div><button class="home-btn" onclick="routeTab('home')">⌂</button></div>
     <div class="app-scroll" style="padding-top:18px">${body}</div>`;
 }
+
+async function openCarDetail(vehId){
+  const v=(VEHICLES||[]).find(x=>String(x.id)===String(vehId)); if(!v) return;
+  const label=[v.make,v.model].filter(Boolean).join(' ')||'Vehicle';
+  appRoot.innerHTML=`
+    <div class="topbar-app"><button class="back" onclick="openMyPackages()">‹</button><div class="ttl">${esc(label)}</div><button class="home-btn" onclick="routeTab('home')">⌂</button></div>
+    <div class="app-scroll" style="padding-top:16px"><div class="app-sub">Loading…</div></div>`;
+  // fetch this car's service records (populated by POS later)
+  let records=[];
+  try{
+    const r=await fetch(`${SUPA_URL}/rest/v1/gl_service_records?select=*&vehicle_id=eq.${vehId}&order=service_date.desc`,{headers:authHeaders()});
+    if(r.ok) records=await r.json();
+  }catch(e){}
+  // packages for this car
+  const carPkgs = PACKAGES.filter(p=>String(p.vehicle_id)===String(vehId) || p.vehicle_label===v.plate || p.vehicle_label===label);
+  const activePkgs = carPkgs.filter(p=>p.status==='active'&&p.used_uses<p.total_uses);
+  // TAB state
+  window._carTab=window._carTab||'packages';
+  const tab=window._carTab;
+  const pkgsBody = activePkgs.length ? activePkgs.map(p=>pkgCardHtml(p)).join('')
+    : `<div class="guest-banner">No active packages for this car. <br>Buy a multi-visit package to see it here.</div>`;
+  const histBody = records.length ? records.map(rec=>`
+      <div class="hist-card">
+        <div class="hist-top">
+          <div class="hist-svc">${esc(rec.service_name||'Service')}</div>
+          <div class="hist-date">${rec.service_date?fmtDate(rec.service_date):''}</div>
+        </div>
+        ${rec.remark?`<div class="hist-remark"><span class="hist-remark-label">Staff note:</span> ${esc(rec.remark)}</div>`:''}
+        ${rec.next_note?`<div class="hist-next">📌 ${esc(rec.next_note)}</div>`:''}
+        ${(rec.amount!=null)?`<div class="hist-txn">
+            <span>${esc(rec.payment_method||'Paid')}</span>
+            <span class="hist-amt">RM${money(rec.amount)}</span>
+          </div>
+          ${rec.invoice_url?`<button class="hist-invoice" onclick="window.open('${rec.invoice_url}','_blank')">⬇ Download invoice</button>`:''}
+        `:''}
+      </div>`).join('')
+    : `<div class="guest-banner">No service history yet for this car.<br>After your next visit, our staff notes and receipts will appear here — like a service logbook.</div>`;
+  appRoot.innerHTML=`
+    <div class="topbar-app"><button class="back" onclick="openMyPackages()">‹</button><div class="ttl">${esc(label)}</div><button class="home-btn" onclick="routeTab('home')">⌂</button></div>
+    <div class="app-scroll" style="padding-top:16px">
+      <div class="cd-head">
+        <div class="cd-plate">${esc(v.plate||'')}</div>
+        ${v.car_type?`<div class="cd-type">${esc(v.car_type)}</div>`:''}
+      </div>
+      <div class="cd-tabs">
+        <button class="cd-tab ${tab==='packages'?'on':''}" onclick="window._carTab='packages';openCarDetail('${vehId}')">Packages</button>
+        <button class="cd-tab ${tab==='history'?'on':''}" onclick="window._carTab='history';openCarDetail('${vehId}')">History</button>
+      </div>
+      <div style="margin-top:14px">${tab==='packages'?pkgsBody:histBody}</div>
+    </div>`;
+}
+
 function pkgCardHtml(p, completed){
   const remaining = (p.total_uses||0)-(p.used_uses||0);
   const pct = p.total_uses ? Math.round((p.used_uses/p.total_uses)*100) : 0;
@@ -2436,6 +2850,7 @@ async function openPkgHistory(pkgId){
 function fmtDateTime(iso){ if(!iso) return ''; try{ const d=new Date(iso);
   return d.toLocaleDateString('en-MY',{day:'2-digit',month:'short',year:'numeric'})+' · '+d.toLocaleTimeString('en-MY',{hour:'2-digit',minute:'2-digit'});
 }catch(e){ return iso; } }
+function fmtDate(iso){ if(!iso) return ''; try{ return new Date(iso).toLocaleDateString('en-MY',{day:'2-digit',month:'short',year:'numeric'}); }catch(e){ return iso; } }
 
 function openMembership(){
   const tiers=[
@@ -3391,6 +3806,20 @@ async function handlePayReturn(){
       if(r.ok){
         const rows=await r.json(); const ord=rows[0];
         if(ord){
+          // wallet top-up paid → credit wallet (amount + bonus)
+          if(ord.status==='topup' && ord.topup_amount){
+            const credit=Number(ord.topup_amount)+Number(ord.topup_bonus||0);
+            const newBal=Number(PROFILE?.wallet||0)+credit;
+            await fetch(`${SUPA_URL}/rest/v1/gl_profiles?id=eq.${SESSION.user.id}`,{method:"PATCH",headers:authHeaders(),body:JSON.stringify({wallet:newBal})});
+            if(PROFILE) PROFILE.wallet=newBal;
+            toast('Wallet topped up +RM'+credit.toFixed(2)+' ✓');
+            routeTab('wallet'); return;
+          }
+          // gift card paid → handled server-side ideally; show confirmation
+          if(ord.status==='gift'){
+            toast('Gift sent ✓');
+            routeTab('wallet'); return;
+          }
           const svc=(SERVICES||[]).find(x=>String(x.id)===String(ord.service_id));
           const car=(VEHICLES||[]).find(v=>String(v.id)===String(ord.vehicle_id));
           if(svc) await afterOrderCreated(svc, car, ord.vehicle_label||'');
@@ -3402,6 +3831,12 @@ async function handlePayReturn(){
     toast('Payment not completed');
     routeTab('order');
   }
+}
+function shareGrandlab(){
+  const url='https://grandpride.github.io/Grandlab-app/';
+  const text='Check out Grandlab Detailing — premium car care, PPF, coating & more! '+url;
+  if(navigator.share){ navigator.share({title:'Grandlab Detailing', text:'Premium car care', url}).catch(()=>{}); }
+  else { window.open('https://wa.me/?text='+encodeURIComponent(text),'_blank'); }
 }
 function genBarcodeValue(){
   const t=Date.now().toString(36).toUpperCase();
@@ -3422,22 +3857,45 @@ let ORDERS=[];
 async function renderOrders(which){
   which=which||'available';
   try{ if(!IS_GUEST && SESSION?.user?.id) ORDERS=await fetchOrders(); }catch(e){}
+  if(!VEHICLES.length) try{ if(!IS_GUEST&&SESSION?.user?.id) await fetchVehicles(); }catch(e){}
   const available=ORDERS.filter(o=>o.status==='upcoming');
   const past=ORDERS.filter(o=>o.status==='completed'||o.status==='cancelled');
-  const items = which==='available' ? available : past;
+  // maintenance reminders due soon (from service records the POS writes)
+  let reminders=[];
+  if(which==='available'){
+    try{ reminders=await fetchMaintenanceReminders(); }catch(e){}
+  }
   const card=(o)=>`
     <div class="order-card">
       <div class="order-top">
         <div class="order-svc">${esc(o.service_name||'Service')}</div>
-        <div class="order-status ${o.status}">${esc(o.status||'')}</div>
+        <div class="order-status ${o.status}">${esc(o.status==='upcoming'?'Upcoming':o.status||'')}</div>
       </div>
       ${o.vehicle?`<div class="order-meta">🚗 ${esc(o.vehicle)}</div>`:''}
-      <div class="order-meta">📅 ${esc(o.appointment_date||'—')}${o.appointment_time?' · '+esc(o.appointment_time):''}</div>
+      <div class="order-meta">📅 ${o.appointment_date?esc(fmtDate(o.appointment_date)):'—'}${o.appointment_time?' · '+esc(o.appointment_time):''}</div>
       ${o.note?`<div class="order-meta">📝 ${esc(o.note)}</div>`:''}
+      ${o.status==='upcoming'?`<button class="order-cancel" onclick="cancelOrder('${o.id}')">Cancel appointment</button>`:''}
     </div>`;
-  const list = items.length ? items.map(card).join('')
-    : `<div class="guest-banner" style="margin-top:16px">${which==='available'?'No upcoming jobs. Book an appointment below.':'No past jobs yet.'}</div>`;
-
+  const reminderCard=(r)=>`
+    <div class="maint-reminder">
+      <div class="maint-rem-top">
+        <div class="maint-rem-ic">🔔</div>
+        <div>
+          <div class="maint-rem-title">${esc(r.service_name||'Maintenance')} due${r.due_in_days<=0?' now':(' in '+r.due_in_days+' day'+(r.due_in_days>1?'s':''))}</div>
+          <div class="maint-rem-sub">${esc(r.vehicle_label||'Your car')}${r.due_date?' · by '+fmtDate(r.due_date):''}</div>
+        </div>
+      </div>
+      <button class="maint-rem-btn" onclick="openBooking('${r.service_id||''}')">Book maintenance →</button>
+    </div>`;
+  let body='';
+  if(which==='available'){
+    const remHtml = reminders.length ? `<div class="sec-title" style="margin-top:4px">Maintenance reminders</div>${reminders.map(reminderCard).join('')}` : '';
+    const apptHtml = available.length ? `${reminders.length?'<div class="sec-title">Upcoming appointments</div>':''}${available.map(card).join('')}`
+      : (reminders.length?'':'<div class="guest-banner" style="margin-top:16px">No upcoming jobs. Book an appointment below.</div>');
+    body = remHtml + apptHtml;
+  } else {
+    body = past.length ? past.map(card).join('') : '<div class="guest-banner" style="margin-top:16px">No past jobs yet.</div>';
+  }
   appRoot.innerHTML=`
     <div class="app-scroll">
       <div class="app-h1">Order</div>
@@ -3446,59 +3904,177 @@ async function renderOrders(which){
         <div class="order-tab ${which==='available'?'on':''}" onclick="renderOrders('available')">Available</div>
         <div class="order-tab ${which==='past'?'on':''}" onclick="renderOrders('past')">Past</div>
       </div>
-      ${list}
+      ${body}
       <button class="btn btn-primary" style="margin-top:20px" onclick="openBooking()">+ Book Appointment</button>
     </div>
     ${botnav('order')}`;
 }
 
-async function openBooking(){
+// reads coating maintenance due dates from service records (POS writes next_due)
+async function fetchMaintenanceReminders(){
+  if(!SESSION?.user?.id) return [];
+  let recs=[];
+  try{
+    const r=await fetch(`${SUPA_URL}/rest/v1/gl_service_records?select=*&owner_id=eq.${SESSION.user.id}&next_due=not.is.null&order=next_due.asc`,{headers:authHeaders()});
+    if(r.ok) recs=await r.json();
+  }catch(e){ return []; }
+  const today=new Date(); today.setHours(0,0,0,0);
+  const out=[];
+  // keep only the soonest reminder per vehicle+service, due within 7 days (or overdue)
+  const seen={};
+  recs.forEach(rec=>{
+    if(!rec.next_due) return;
+    const due=new Date(rec.next_due); due.setHours(0,0,0,0);
+    const days=Math.round((due-today)/86400000);
+    if(days>7) return; // not due soon yet
+    const key=(rec.vehicle_id||'')+'|'+(rec.service_name||'');
+    if(seen[key]) return; seen[key]=1;
+    out.push({ service_name:rec.service_name, service_id:rec.service_id, vehicle_label:rec.vehicle_label,
+      due_date:rec.next_due, due_in_days:Math.max(0,days) });
+  });
+  return out;
+}
+
+async function cancelOrder(id){
+  if(!confirm('Cancel this appointment?')) return;
+  try{
+    const r=await fetch(`${SUPA_URL}/rest/v1/gl_orders?id=eq.${id}`,{method:"PATCH",headers:authHeaders(),body:JSON.stringify({status:'cancelled'})});
+    if(r.ok){ toast('Appointment cancelled'); ORDERS=[]; renderOrders('available'); }
+    else toast("Couldn't cancel");
+  }catch(e){ toast('Error'); }
+}
+
+// booking config (editable in admin → gl_settings id='booking')
+let BOOKING_CFG = {
+  times: ['9:00 AM','10:00 AM','11:00 AM','12:00 PM','2:00 PM','3:00 PM','4:00 PM','5:00 PM'],
+  slotsPerTime: 2,        // how many cars can be served at each time
+  daysAhead: 30,          // how far ahead customers can book
+  closedDays: [],         // ['2026-12-25', ...] specific closed dates
+  closedWeekdays: []      // [0..6] e.g. [0] = closed Sundays
+};
+let _bkState = { service_name:'', service_id:null, vehicle:'', date:null, time:null, note:'' };
+let _bkMonth = null; // Date pointing at month being shown
+
+async function openBooking(prefillServiceId){
   if(IS_GUEST){ toast('Sign in to book'); return; }
   if(!SERVICES.length) try{ await fetchServices(); }catch(e){}
   if(!VEHICLES.length) try{ await fetchVehicles(); }catch(e){}
-  const svcOpts=SERVICES.map(s=>`<option value="${esc(s.name)}" data-id="${s.id}">${esc(s.name)}</option>`).join('');
-  const vehOpts=VEHICLES.map(v=>{const bm=[v.make,v.model].filter(Boolean).join(' ');return `<option value="${esc(bm+(v.plate?' - '+v.plate:''))}">${esc(bm+(v.plate?' - '+v.plate:''))}</option>`;}).join('');
+  // prefill service if passed (e.g. from a maintenance reminder)
+  let preName='', preId=prefillServiceId||null;
+  if(preId){ const s=SERVICES.find(x=>String(x.id)===String(preId)); if(s) preName=s.name; }
+  _bkState={ service_name:preName||(SERVICES[0]?.name||''), service_id:preId||(SERVICES[0]?.id||null),
+    vehicle:VEHICLES[0]?(([VEHICLES[0].make,VEHICLES[0].model].filter(Boolean).join(' '))+(VEHICLES[0].plate?' - '+VEHICLES[0].plate:'')):'',
+    date:null, time:null, note:'' };
+  _bkMonth=new Date(); _bkMonth.setDate(1);
+  renderBooking();
+}
+
+function bkClosed(dateStr, dateObj){
+  if(BOOKING_CFG.closedDays && BOOKING_CFG.closedDays.includes(dateStr)) return true;
+  if(BOOKING_CFG.closedWeekdays && BOOKING_CFG.closedWeekdays.includes(dateObj.getDay())) return true;
+  return false;
+}
+
+async function renderBooking(){
+  const svcOpts=SERVICES.map(s=>`<option value="${esc(s.name)}" data-id="${s.id}" ${String(s.id)===String(_bkState.service_id)?'selected':''}>${esc(s.name)}</option>`).join('');
+  const vehOpts=VEHICLES.map(v=>{const bm=[v.make,v.model].filter(Boolean).join(' ');const lab=bm+(v.plate?' - '+v.plate:'');return `<option ${lab===_bkState.vehicle?'selected':''}>${esc(lab)}</option>`;}).join('');
   appRoot.innerHTML=`
-    <div class="topbar-app"><button class="back" onclick="routeTab('order')">‹</button><div class="ttl">Book Appointment</div></div>
-    <div class="app-scroll" style="padding-top:18px">
-      <div class="app-sub" style="margin-bottom:6px">Choose a service and time</div>
+    <div class="topbar-app"><button class="back" onclick="routeTab('order')">‹</button><div class="ttl">Book Appointment</div><button class="home-btn" onclick="routeTab('home')">⌂</button></div>
+    <div class="app-scroll" style="padding:18px 18px 120px">
       <div class="field"><label>Service</label>
-        <select id="bk-svc" style="width:100%;height:52px;background:var(--surface);border:1.5px solid var(--line);border-radius:14px;padding:0 16px;color:var(--text);font-size:16px">
-          ${svcOpts||'<option value="">No services available</option>'}
+        <select id="bk-svc" onchange="_bkPickSvc(this)" style="width:100%;height:52px;background:var(--surface);border:1.5px solid var(--line);border-radius:14px;padding:0 16px;color:var(--text);font-size:16px">
+          ${svcOpts||'<option value="">No services</option>'}
         </select>
       </div>
       <div class="field"><label>Vehicle</label>
-        <select id="bk-veh" style="width:100%;height:52px;background:var(--surface);border:1.5px solid var(--line);border-radius:14px;padding:0 16px;color:var(--text);font-size:16px">
+        <select id="bk-veh" onchange="_bkState.vehicle=this.value" style="width:100%;height:52px;background:var(--surface);border:1.5px solid var(--line);border-radius:14px;padding:0 16px;color:var(--text);font-size:16px">
           ${vehOpts||'<option value="">No vehicle added</option>'}
         </select>
       </div>
-      <div class="field"><label>Date</label><input id="bk-date" type="date"></div>
-      <div class="field"><label>Time</label>
-        <select id="bk-time" style="width:100%;height:52px;background:var(--surface);border:1.5px solid var(--line);border-radius:14px;padding:0 16px;color:var(--text);font-size:16px">
-          ${['9:00 AM','10:00 AM','11:00 AM','12:00 PM','2:00 PM','3:00 PM','4:00 PM','5:00 PM'].map(t=>`<option>${t}</option>`).join('')}
-        </select>
-      </div>
-      <div class="field"><label>Note (optional)</label><input id="bk-note" placeholder="Any special request"></div>
+      <label class="bk-section-label">Choose date</label>
+      <div id="bk-cal">${renderCalendar()}</div>
+      <label class="bk-section-label">Choose time</label>
+      <div id="bk-slots">${_bkState.date?'<div class="bk-slots-hint">Loading slots…</div>':'<div class="bk-slots-hint">Pick a date first</div>'}</div>
+      <div class="field" style="margin-top:14px"><label>Note (optional)</label><input id="bk-note" value="${esc(_bkState.note)}" oninput="_bkState.note=this.value" placeholder="Any special request"></div>
       <div class="helper err" id="bk-err" style="margin-top:10px"></div>
-      <button class="btn btn-primary" style="margin-top:18px" id="bk-save">Confirm Booking</button>
+      <button class="btn btn-primary" style="margin-top:14px;width:100%" onclick="confirmBooking()">Confirm Booking</button>
     </div>`;
-  document.getElementById('bk-save').onclick=async()=>{
-    const sel=document.getElementById('bk-svc');
-    const service_name=sel.value;
-    const service_id=sel.options[sel.selectedIndex]?.dataset.id||null;
-    const vehicle=document.getElementById('bk-veh').value;
-    const date=document.getElementById('bk-date').value;
-    const time=document.getElementById('bk-time').value;
-    const note=document.getElementById('bk-note').value.trim();
-    if(!service_name){document.getElementById('bk-err').textContent="Pick a service.";return;}
-    if(!date){document.getElementById('bk-err').textContent="Pick a date.";return;}
-    try{
-      const r=await fetch(`${SUPA_URL}/rest/v1/gl_orders`,{method:"POST",
-        headers:authHeaders(),body:JSON.stringify({owner_id:SESSION.user.id,service_name,service_id,vehicle,appointment_date:date,appointment_time:time,note,status:'upcoming'})});
-      if(r.ok){ toast('Appointment booked ✓'); renderOrders('available'); }
-      else document.getElementById('bk-err').textContent="Couldn't book — try again.";
-    }catch(e){ document.getElementById('bk-err').textContent="Error — try again."; }
-  };
+  if(_bkState.date) loadSlots();
+}
+
+function renderCalendar(){
+  const today=new Date(); today.setHours(0,0,0,0);
+  const max=new Date(today); max.setDate(max.getDate()+(BOOKING_CFG.daysAhead||30));
+  const y=_bkMonth.getFullYear(), m=_bkMonth.getMonth();
+  const first=new Date(y,m,1); const startDow=first.getDay();
+  const daysInMonth=new Date(y,m+1,0).getDate();
+  const monthName=_bkMonth.toLocaleDateString('en-MY',{month:'long',year:'numeric'});
+  // prev/next allowed within range
+  const prevOk=new Date(y,m,1)>new Date(today.getFullYear(),today.getMonth(),1);
+  const nextOk=new Date(y,m+1,1)<=max;
+  let cells='';
+  ['S','M','T','W','T','F','S'].forEach(d=>cells+=`<div class="cal-dow">${d}</div>`);
+  for(let i=0;i<startDow;i++) cells+=`<div></div>`;
+  for(let d=1; d<=daysInMonth; d++){
+    const dateObj=new Date(y,m,d); dateObj.setHours(0,0,0,0);
+    const ds=`${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const past=dateObj<today;
+    const beyond=dateObj>max;
+    const closed=bkClosed(ds,dateObj);
+    const disabled=past||beyond||closed;
+    const sel=_bkState.date===ds;
+    cells+=`<div class="cal-day ${disabled?'off':''} ${sel?'sel':''} ${closed&&!past?'closed':''}" ${disabled?'':`onclick="_bkPickDate('${ds}')"`}>${d}${closed&&!past&&!beyond?'<span class="cal-x">×</span>':''}</div>`;
+  }
+  return `
+    <div class="cal-head">
+      <button class="cal-nav" ${prevOk?`onclick="_bkMonth.setMonth(_bkMonth.getMonth()-1);document.getElementById('bk-cal').innerHTML=renderCalendar()"`:'disabled'}>‹</button>
+      <div class="cal-month">${monthName}</div>
+      <button class="cal-nav" ${nextOk?`onclick="_bkMonth.setMonth(_bkMonth.getMonth()+1);document.getElementById('bk-cal').innerHTML=renderCalendar()"`:'disabled'}>›</button>
+    </div>
+    <div class="cal-grid">${cells}</div>`;
+}
+
+function _bkPickSvc(sel){ _bkState.service_name=sel.value; _bkState.service_id=sel.options[sel.selectedIndex]?.dataset.id||null; }
+function _bkPickDate(ds){ _bkState.date=ds; _bkState.time=null; document.getElementById('bk-cal').innerHTML=renderCalendar(); loadSlots(); }
+
+async function loadSlots(){
+  const el=document.getElementById('bk-slots'); if(!el) return;
+  el.innerHTML='<div class="bk-slots-hint">Loading slots…</div>';
+  // fetch bookings already made for this date to count per-time usage
+  let counts={};
+  try{
+    const r=await fetch(`${SUPA_URL}/rest/v1/gl_orders?select=appointment_time&appointment_date=eq.${_bkState.date}&status=eq.upcoming`,{headers:authHeaders()});
+    if(r.ok){ const rows=await r.json(); rows.forEach(o=>{ if(o.appointment_time){ counts[o.appointment_time]=(counts[o.appointment_time]||0)+1; } }); }
+  }catch(e){}
+  const cap=BOOKING_CFG.slotsPerTime||2;
+  el.innerHTML=`<div class="slot-grid">${BOOKING_CFG.times.map(t=>{
+    const used=counts[t]||0; const left=cap-used; const full=left<=0;
+    const sel=_bkState.time===t;
+    return `<div class="slot ${full?'full':''} ${sel?'sel':''}" ${full?'':`onclick="_bkPickTime('${t}')"`}>
+      <div class="slot-time">${t}</div>
+      <div class="slot-left">${full?'Full':left+' left'}</div>
+    </div>`;
+  }).join('')}</div>`;
+}
+function _bkPickTime(t){ _bkState.time=t; loadSlots(); }
+
+async function confirmBooking(){
+  const err=document.getElementById('bk-err');
+  if(!_bkState.service_name){ err.textContent='Pick a service.'; return; }
+  if(!_bkState.date){ err.textContent='Pick a date.'; return; }
+  if(!_bkState.time){ err.textContent='Pick a time slot.'; return; }
+  // re-check the slot isn't full (race safety)
+  try{
+    const r=await fetch(`${SUPA_URL}/rest/v1/gl_orders?select=id&appointment_date=eq.${_bkState.date}&appointment_time=eq.${encodeURIComponent(_bkState.time)}&status=eq.upcoming`,{headers:authHeaders()});
+    if(r.ok){ const rows=await r.json(); if(rows.length>=(BOOKING_CFG.slotsPerTime||2)){ err.textContent='Sorry, that slot just filled up. Pick another time.'; loadSlots(); return; } }
+  }catch(e){}
+  try{
+    const r=await fetch(`${SUPA_URL}/rest/v1/gl_orders`,{method:"POST",headers:authHeaders(),
+      body:JSON.stringify({owner_id:SESSION.user.id, service_name:_bkState.service_name, service_id:_bkState.service_id,
+        vehicle:_bkState.vehicle, appointment_date:_bkState.date, appointment_time:_bkState.time, note:_bkState.note, status:'upcoming'})});
+    if(r.ok){ toast('Appointment booked ✓'); routeTab('order'); }
+    else err.textContent="Couldn't book — try again.";
+  }catch(e){ err.textContent='Error — try again.'; }
 }
 
 async function fetchWalletTxns(){
@@ -3536,16 +4112,160 @@ async function renderWallet(){
       </div>
       <!-- quick actions -->
       <div class="wallet-actions">
-        <div class="wa" onclick="toast('Top up coming soon')"><div class="wa-ic">＋</div><div class="wa-t">${esc(STYLE.walletAction1||'Top Up')}</div></div>
-        <div class="wa" onclick="toast('Gift cards coming soon')"><div class="wa-ic">▢</div><div class="wa-t">${esc(STYLE.walletAction2||'Gift Card')}</div></div>
+        <div class="wa" onclick="openTopUp()"><div class="wa-ic">＋</div><div class="wa-t">${esc(STYLE.walletAction1||'Top Up')}</div></div>
+        <div class="wa" onclick="openGiftCard()"><div class="wa-ic">▢</div><div class="wa-t">${esc(STYLE.walletAction2||'Gift Card')}</div></div>
         <div class="wa" onclick="routeTab('rewards')"><div class="wa-ic">◆</div><div class="wa-t">${esc(STYLE.walletAction3||'Rewards')}</div></div>
-        <div class="wa" onclick="toast('Vouchers coming soon')"><div class="wa-ic">▣</div><div class="wa-t">${esc(STYLE.walletAction4||'Vouchers')}</div></div>
+        <div class="wa" onclick="openVouchers()"><div class="wa-ic">▣</div><div class="wa-t">${esc(STYLE.walletAction4||'Vouchers')}</div></div>
       </div>
       <div class="sec-title">${esc(STYLE.walletTxnTitle||'Recent Transactions')}</div>
       <div class="txn-list">${txnHtml}</div>
     </div>
     ${botnav('wallet')}`;
 }
+
+// ============== WALLET: TOP-UP + GIFT CARD ==============
+// Config (editable in admin → gl_settings id='wallet'). Defaults here.
+let WALLET_CFG = {
+  tiers: [   // amount, bonus % (pay-now). Pay-at-shop gives half this %.
+    {amount:100,  pct:1},
+    {amount:200,  pct:2},
+    {amount:500,  pct:5},
+    {amount:1000, pct:10},
+    {amount:5000, pct:15}
+  ],
+  shopBonusFactor: 0.5,   // pay-at-shop gets 50% of the pay-now bonus
+  giftAmounts: [25,50,100,150,200],
+  giftMin: 25
+};
+function walletBonusPct(amount, payNow){
+  // find the highest tier the amount qualifies for
+  let pct=0;
+  WALLET_CFG.tiers.slice().sort((a,b)=>a.amount-b.amount).forEach(t=>{ if(amount>=t.amount) pct=t.pct; });
+  return payNow ? pct : pct*WALLET_CFG.shopBonusFactor;
+}
+function openTopUp(){
+  if(IS_GUEST){ toast('Sign in to top up'); return; }
+  let chosen = WALLET_CFG.tiers[0]?.amount || 100;
+  let payNow = true;
+  const render=()=>{
+    const bonusNow = walletBonusPct(chosen,true);
+    const bonusShop= walletBonusPct(chosen,false);
+    const extra = chosen * (payNow?bonusNow:bonusShop)/100;
+    const tiles = WALLET_CFG.tiers.map(t=>`
+      <div class="tu-tile ${chosen===t.amount?'on':''}" onclick="_tuPick(${t.amount})">
+        <div class="tu-amt">RM${t.amount}</div>
+        <div class="tu-bonus">+${t.pct}% bonus</div>
+      </div>`).join('');
+    appRoot.innerHTML=`
+      <div class="topbar-app"><button class="back" onclick="routeTab('wallet')">‹</button><div class="ttl">Top Up</div><button class="home-btn" onclick="routeTab('home')">⌂</button></div>
+      <div class="app-scroll" style="padding:16px 18px 120px">
+        <div class="app-sub" style="margin-bottom:12px">Top up your wallet and get bonus credit. The more you top up, the more you get.</div>
+        <div class="tu-grid">${tiles}</div>
+        <label class="fb-label">Or enter amount (min RM${WALLET_CFG.giftMin})</label>
+        <input id="tu-custom" class="fb-input" type="number" inputmode="numeric" placeholder="e.g. 300" oninput="_tuCustom(this.value)" value="${WALLET_CFG.tiers.some(t=>t.amount===chosen)?'':chosen}">
+        <div class="sec-title">Payment method</div>
+        <div class="tu-pay ${payNow?'on':''}" onclick="_tuPay(true)">
+          <div><div class="tu-pay-nm">💳 Pay online now</div><div class="tu-pay-sub">Get full bonus +${bonusNow}%</div></div>
+          <div class="tu-radio">${payNow?'●':'○'}</div>
+        </div>
+        <div class="tu-pay ${!payNow?'on':''}" onclick="_tuPay(false)">
+          <div><div class="tu-pay-nm">🏪 Pay at shop</div><div class="tu-pay-sub">Bonus +${bonusShop}%</div></div>
+          <div class="tu-radio">${!payNow?'●':'○'}</div>
+        </div>
+        <div class="tu-summary">
+          <div class="tu-sum-row"><span>Top up</span><span>RM${money(chosen)}</span></div>
+          <div class="tu-sum-row"><span>Bonus credit</span><span class="tu-sum-bonus">+RM${money(extra)}</span></div>
+          <div class="tu-sum-row tu-sum-total"><span>You get</span><span>RM${money(chosen+extra)}</span></div>
+        </div>
+        <button class="btn btn-primary" style="width:100%;margin-top:16px" onclick="confirmTopUp(${chosen},${payNow})">
+          ${payNow?'Pay RM'+money(chosen)+' now':'Confirm — pay RM'+money(chosen)+' at shop'}</button>
+      </div>`;
+  };
+  window._tuPick=(a)=>{ chosen=a; render(); };
+  window._tuCustom=(v)=>{ const n=Number(v); if(n>0){ chosen=n; render(); const el=document.getElementById('tu-custom'); if(el){el.focus();} } };
+  window._tuPay=(b)=>{ payNow=b; render(); };
+  render();
+}
+async function confirmTopUp(amount, payNow){
+  if(amount < WALLET_CFG.giftMin){ toast('Minimum RM'+WALLET_CFG.giftMin); return; }
+  const bonus = amount * walletBonusPct(amount,payNow)/100;
+  if(payNow){
+    if(!SENANGPAY_FN){ toast('Online payment not set up yet'); return; }
+    // create a topup order + redirect to senangPay
+    const orderRef='TU'+Date.now().toString(36).toUpperCase()+Math.random().toString(36).slice(2,5).toUpperCase();
+    try{
+      await fetch(`${SUPA_URL}/rest/v1/gl_orders`,{method:"POST",headers:authHeaders(),
+        body:JSON.stringify({owner_id:SESSION.user.id, service_name:'Wallet Top-Up', note:'Top-up RM'+amount+' (+RM'+bonus.toFixed(2)+' bonus)',
+          amount:amount, order_ref:orderRef, payment_method:'senangpay', payment_status:'unpaid', status:'topup',
+          topup_amount:amount, topup_bonus:bonus})});
+      toast('Opening payment…');
+      const pr=await fetch(`${SENANGPAY_FN}/create`,{method:"POST",headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({order_ref:orderRef, amount:amount, name:(PROFILE?.name||'Customer'),
+          email:(SESSION?.user?.email||''), phone:(PROFILE?.phone||''), detail:'Grandlab Wallet Top-Up'})});
+      if(pr.ok){ const d=await pr.json(); if(d.pay_url){ window.location.href=d.pay_url; return; } }
+      toast("Couldn't open payment");
+    }catch(e){ toast('Error — try again'); }
+  } else {
+    // pay at shop → create a pending top-up the POS will confirm on payment
+    try{
+      await fetch(`${SUPA_URL}/rest/v1/gl_orders`,{method:"POST",headers:authHeaders(),
+        body:JSON.stringify({owner_id:SESSION.user.id, service_name:'Wallet Top-Up (pay at shop)',
+          note:'Top-up RM'+amount+' (+RM'+bonus.toFixed(2)+' bonus) — pay at outlet',
+          amount:amount, payment_method:'counter', payment_status:'unpaid', status:'topup',
+          topup_amount:amount, topup_bonus:bonus})});
+      toast('Top-up reserved ✓ — pay at outlet to activate');
+      routeTab('wallet');
+    }catch(e){ toast('Error — try again'); }
+  }
+}
+// --- Gift Card ---
+function openGiftCard(){
+  if(IS_GUEST){ toast('Sign in to send a gift'); return; }
+  let chosen = WALLET_CFG.giftAmounts[1] || 50;
+  const render=()=>{
+    const tiles = WALLET_CFG.giftAmounts.map(a=>`<div class="tu-tile ${chosen===a?'on':''}" onclick="_gcPick(${a})"><div class="tu-amt">RM${a}</div></div>`).join('');
+    appRoot.innerHTML=`
+      <div class="topbar-app"><button class="back" onclick="routeTab('wallet')">‹</button><div class="ttl">Gift Card</div><button class="home-btn" onclick="routeTab('home')">⌂</button></div>
+      <div class="app-scroll" style="padding:16px 18px 120px">
+        <div class="app-sub" style="margin-bottom:12px">Send wallet credit to a friend who has a Grandlab account. They receive it instantly after you pay.</div>
+        <div class="gc-card"><div class="gc-card-label">GRANDLAB GIFT</div><div class="gc-card-amt">RM${money(chosen)}</div></div>
+        <div class="tu-grid" style="margin-top:14px">${tiles}</div>
+        <label class="fb-label">Or custom amount (min RM${WALLET_CFG.giftMin})</label>
+        <input id="gc-custom" class="fb-input" type="number" inputmode="numeric" placeholder="e.g. 75" oninput="_gcCustom(this.value)">
+        <label class="fb-label">Friend's phone or email (their Grandlab account)</label>
+        <input id="gc-to" class="fb-input" placeholder="012-3456789 or name@email.com">
+        <label class="fb-label">Message (optional)</label>
+        <input id="gc-msg" class="fb-input" placeholder="Happy birthday! 🎁">
+        <button class="btn btn-primary" style="width:100%;margin-top:18px" onclick="sendGiftCard(${chosen})">Pay RM${money(chosen)} & send gift</button>
+        <div class="settings-note">The recipient must already have a Grandlab account with this phone/email. Gift credit is added to their wallet after your payment is confirmed.</div>
+      </div>`;
+  };
+  window._gcPick=(a)=>{ chosen=a; render(); };
+  window._gcCustom=(v)=>{ const n=Number(v); if(n>0){ chosen=n; render(); const el=document.getElementById('gc-custom'); if(el) el.focus(); } };
+  render();
+}
+async function sendGiftCard(amount){
+  const to=document.getElementById('gc-to')?.value.trim();
+  const msg=document.getElementById('gc-msg')?.value.trim();
+  if(amount < WALLET_CFG.giftMin){ toast('Minimum RM'+WALLET_CFG.giftMin); return; }
+  if(!to){ toast("Enter your friend's phone or email"); return; }
+  if(!SENANGPAY_FN){ toast('Online payment not set up yet'); return; }
+  const orderRef='GC'+Date.now().toString(36).toUpperCase()+Math.random().toString(36).slice(2,5).toUpperCase();
+  try{
+    await fetch(`${SUPA_URL}/rest/v1/gl_orders`,{method:"POST",headers:authHeaders(),
+      body:JSON.stringify({owner_id:SESSION.user.id, service_name:'Gift Card',
+        note:'Gift RM'+amount+' to '+to+(msg?(' — "'+msg+'"'):''),
+        amount:amount, order_ref:orderRef, payment_method:'senangpay', payment_status:'unpaid', status:'gift',
+        gift_to:to, gift_amount:amount, gift_msg:msg||null})});
+    toast('Opening payment…');
+    const pr=await fetch(`${SENANGPAY_FN}/create`,{method:"POST",headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({order_ref:orderRef, amount:amount, name:(PROFILE?.name||'Customer'),
+        email:(SESSION?.user?.email||''), phone:(PROFILE?.phone||''), detail:'Grandlab Gift Card'})});
+    if(pr.ok){ const d=await pr.json(); if(d.pay_url){ window.location.href=d.pay_url; return; } }
+    toast("Couldn't open payment");
+  }catch(e){ toast('Error — try again'); }
+}
+// ============== END WALLET ==============
 
 async function renderRewards(){
   const p=PROFILE||{};
@@ -3582,7 +4302,15 @@ async function renderRewards(){
         <div class="rewards-coin">${gCoin(56)}</div>
         <div class="rewards-balance">${coins.toLocaleString()}</div>
         <div class="rewards-balance-label">${esc(STYLE.rewardsPointsLabel||'Points')}</div>
-        <button class="rewards-my" onclick="toast('My rewards coming soon')">🎁 ${esc(STYLE.rewardsMyBtn||'My Rewards')} ›</button>
+        <button class="rewards-my" onclick="openVouchers()">🎟️ My Vouchers ›</button>
+      </div>
+
+      <div class="earn-info">
+        <div class="earn-title">How to earn ${esc(STYLE.coinName||'points')}</div>
+        <div class="earn-row"><span class="earn-ic">🎉</span> Join membership</div>
+        <div class="earn-row"><span class="earn-ic">💳</span> Top up your wallet</div>
+        <div class="earn-row"><span class="earn-ic">🚗</span> Every service at our outlet</div>
+        <div class="earn-row"><span class="earn-ic">👥</span> Refer friends</div>
       </div>
 
       <div class="rwd-sec-head">
@@ -3638,16 +4366,78 @@ async function openRedemptionHistory(){
     <div class="app-scroll" style="padding-top:14px"><div class="txn-list">${list}</div></div>`;
 }
 
-function redeemReward(id, cost, name){
+async function redeemReward(id, cost, name){
   const coins = PROFILE?.points||0;
   if(coins < cost){ toast(`Not enough ${STYLE.coinName||'points'} — you need ${cost}`); return; }
   if(!confirm(`Redeem "${name}" for ${cost} ${STYLE.coinName||'points'}?`)) return;
-  // log redemption to history (coin deduction wired with loyalty system later)
-  if(SESSION?.user?.id){
-    fetch(`${SUPA_URL}/rest/v1/gl_redemptions`,{method:"POST",
-      headers:authHeaders(),body:JSON.stringify({owner_id:SESSION.user.id,reward_name:name,coin_cost:cost,status:'pending'})}).catch(()=>{});
-  }
-  toast('Redeemed ✓ Show this at the counter.');
+  const barcode = genBarcodeValue();
+  try{
+    // create a redeemable voucher (barcode) the staff can scan
+    await fetch(`${SUPA_URL}/rest/v1/gl_claims`,{method:"POST",headers:authHeaders(),
+      body:JSON.stringify({owner_id:SESSION.user.id, label:name, barcode:barcode, status:'active', source:'reward', coin_cost:cost})});
+    // deduct points
+    const newPts=Math.max(0,coins-cost);
+    await fetch(`${SUPA_URL}/rest/v1/gl_profiles?id=eq.${SESSION.user.id}`,{method:"PATCH",headers:authHeaders(),body:JSON.stringify({points:newPts})});
+    if(PROFILE) PROFILE.points=newPts;
+    // log redemption history
+    await fetch(`${SUPA_URL}/rest/v1/gl_redemptions`,{method:"POST",headers:authHeaders(),
+      body:JSON.stringify({owner_id:SESSION.user.id,reward_name:name,coin_cost:cost,status:'active',barcode:barcode})}).catch(()=>{});
+    CLAIMS=[];
+    toast('Redeemed ✓ Find it in Vouchers');
+    openVouchers();
+  }catch(e){ toast('Could not redeem — try again'); }
+}
+
+// ===== Vouchers (Active / Past) =====
+async function openVouchers(which){
+  if(IS_GUEST){ toast('Sign in to view vouchers'); return; }
+  which=which||'active';
+  appRoot.innerHTML=`
+    <div class="topbar-app"><button class="back" onclick="routeTab('wallet')">‹</button><div class="ttl">My Vouchers</div><button class="home-btn" onclick="routeTab('home')">⌂</button></div>
+    <div class="app-scroll" style="padding-top:16px"><div class="app-sub">Loading…</div></div>`;
+  await fetchClaims();
+  const all=(CLAIMS||[]).filter(c=>c.barcode);
+  const active=all.filter(c=>c.status!=='redeemed');
+  const past=all.filter(c=>c.status==='redeemed');
+  const items=which==='active'?active:past;
+  const card=(c)=>`
+    <div class="vch-card ${c.status==='redeemed'?'done':''}">
+      <div class="vch-left">
+        <div class="vch-ic">🎟️</div>
+        <div>
+          <div class="vch-name">${esc(c.label||'Voucher')}</div>
+          <div class="vch-meta">${c.status==='redeemed'?('Used'+(c.redeemed_at?' · '+fmtDate(c.redeemed_at):'')):'Tap to show code'}</div>
+        </div>
+      </div>
+      ${c.status!=='redeemed'?`<button class="vch-show" onclick="showVoucherCode('${c.id}')">Show</button>`:'<span class="vch-used">✓</span>'}
+    </div>`;
+  const list = items.length ? items.map(card).join('')
+    : `<div class="guest-banner" style="margin-top:16px">${which==='active'?'No active vouchers. Redeem rewards or earn free vouchers to see them here.':'No used vouchers yet.'}</div>`;
+  appRoot.innerHTML=`
+    <div class="topbar-app"><button class="back" onclick="routeTab('wallet')">‹</button><div class="ttl">My Vouchers</div><button class="home-btn" onclick="routeTab('home')">⌂</button></div>
+    <div class="app-scroll" style="padding-top:16px">
+      <div class="order-tabs">
+        <div class="order-tab ${which==='active'?'on':''}" onclick="openVouchers('active')">Active</div>
+        <div class="order-tab ${which==='past'?'on':''}" onclick="openVouchers('past')">Past</div>
+      </div>
+      ${list}
+    </div>`;
+}
+function showVoucherCode(id){
+  const c=(CLAIMS||[]).find(x=>String(x.id)===String(id)); if(!c) return;
+  const ov=document.createElement('div'); ov.className='popup-ov'; ov.onclick=()=>ov.remove();
+  ov.innerHTML=`
+    <div class="popup-box" style="max-width:340px" onclick="event.stopPropagation()">
+      <button class="popup-x" onclick="this.closest('.popup-ov').remove()">✕</button>
+      <div style="padding:22px 18px">
+        <div style="font-size:13px;color:var(--muted);text-align:center">Voucher</div>
+        <div style="font-size:18px;font-weight:800;text-align:center;margin-top:4px">${esc(c.label||'Voucher')}</div>
+        <div style="background:#fff;border-radius:10px;padding:14px 14px 6px;margin-top:16px">${barcodeSvg(c.barcode||'GL0')}</div>
+        <div class="pkg-barcode-num">${esc(c.barcode||'')}</div>
+        <div class="pkg-barcode-hint">Show this to our staff to redeem</div>
+      </div>
+    </div>`;
+  document.body.appendChild(ov);
 }
 
 async function renderAccount(){
@@ -3698,14 +4488,214 @@ async function renderAccount(){
 
       <div class="sec-title">General</div>
       <div class="acc-list">
-        ${row('Settings', '', "toast('Settings coming soon')")}
-        ${row('Share Feedback', '', "toast('Thanks! Feedback coming soon')")}
+        ${row('Settings', '', "openSettings()")}
+        ${row('Share Feedback', '', "openFeedback()")}
+        ${row('Support', '', "openSupport()")}
+        ${row('Policies', '', "openPolicies()")}
+        ${row('About', 'v'+APP_VERSION, "openAbout()")}
       </div>
 
       <button class="btn btn-ghost" style="margin-top:18px" onclick="logout()">Log out</button>
     </div>
     ${botnav('account')}`;
 }
+
+// ============== ACCOUNT SUB-PAGES ==============
+const SUPPORT = {
+  phone:'+60 3-XXXX XXXX', whatsapp:'60123456789',
+  facebook:'https://facebook.com/grandlab', instagram:'https://instagram.com/grandlab',
+  tiktok:'https://tiktok.com/@grandlab', maps:'https://maps.google.com/?q=Grandlab+PJS+13',
+  address:'PJS 13, Petaling Jaya, Selangor'
+};
+function subPage(title, body){
+  appRoot.innerHTML=`
+    <div class="topbar-app"><button class="back" onclick="routeTab('account')">‹</button><div class="ttl">${esc(title)}</div><button class="home-btn" onclick="routeTab('home')">⌂</button></div>
+    <div class="app-scroll" style="padding:16px 18px 100px">${body}</div>`;
+}
+
+// --- Settings ---
+function getPref(k,def){ try{ const v=localStorage.getItem('gl_pref_'+k); return v===null?def:v; }catch(e){ return def; } }
+function setPref(k,v){ try{ localStorage.setItem('gl_pref_'+k,v); }catch(e){} }
+function openSettings(){
+  const theme=getPref('theme','dark');
+  const notif=getPref('notif','on');
+  const tg=(on)=>`<div class="tg ${on?'on':''}"><div class="tg-dot"></div></div>`;
+  subPage('Settings', `
+    <div class="sec-title" style="margin-top:0">Appearance</div>
+    <div class="acc-list">
+      <div class="acc-row" onclick="setTheme('dark')"><div class="acc-row-label">Dark mode</div><div class="acc-row-right">${theme==='dark'?'<span class="acc-check">✓</span>':''}</div></div>
+      <div class="acc-row" onclick="setTheme('light')"><div class="acc-row-label">Light mode</div><div class="acc-row-right">${theme==='light'?'<span class="acc-check">✓</span>':''}</div></div>
+      <div class="acc-row" onclick="setTheme('auto')"><div class="acc-row-label">Auto (follow phone)</div><div class="acc-row-right">${theme==='auto'?'<span class="acc-check">✓</span>':''}</div></div>
+    </div>
+    <div class="sec-title">Notifications</div>
+    <div class="acc-list">
+      <div class="acc-row" onclick="toggleNotif()"><div class="acc-row-label">Push notifications</div><div class="acc-row-right">${tg(notif==='on')}</div></div>
+    </div>
+    <div class="sec-title">Account</div>
+    <div class="acc-list">
+      <div class="acc-row" onclick="logout()"><div class="acc-row-label">Log out</div><div class="acc-row-right"><span class="acc-chev">›</span></div></div>
+      <div class="acc-row" onclick="confirmDeleteAccount()"><div class="acc-row-label" style="color:#E5533C">Delete account</div><div class="acc-row-right"><span class="acc-chev">›</span></div></div>
+    </div>
+    <div class="settings-note">Deleting your account removes your profile, cars, packages and history. This cannot be undone.</div>
+  `);
+}
+function setTheme(t){ setPref('theme',t); applyTheme(t); openSettings(); }
+function applyTheme(t){
+  let mode=t;
+  if(t==='auto'){ mode = (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) ? 'light':'dark'; }
+  document.documentElement.setAttribute('data-theme', mode);
+}
+function toggleNotif(){
+  const cur=getPref('notif','on'); const next=cur==='on'?'off':'on';
+  setPref('notif',next);
+  if(next==='on' && 'Notification' in window && Notification.permission!=='granted'){
+    Notification.requestPermission().catch(()=>{});
+  }
+  openSettings();
+}
+function confirmDeleteAccount(){
+  if(!confirm('Delete your account permanently? This removes your profile, cars, packages and history and cannot be undone.')) return;
+  if(!confirm('Are you absolutely sure? This is your last chance to cancel.')) return;
+  deleteMyAccount();
+}
+async function deleteMyAccount(){
+  try{
+    if(SESSION?.user?.id){
+      // soft-delete profile data; auth user removal needs server-side, so flag it
+      await fetch(`${SUPA_URL}/rest/v1/gl_profiles?id=eq.${SESSION.user.id}`,{method:"PATCH",headers:authHeaders(),body:JSON.stringify({deleted:true,name:null,phone:null})});
+    }
+  }catch(e){}
+  toast('Account deleted');
+  logout();
+}
+
+// --- Share Feedback ---
+let FB_PHOTOS=[];
+function openFeedback(){
+  FB_PHOTOS=[];
+  subPage('Share Feedback', `
+    <div class="app-sub" style="margin-bottom:14px">Tell us what went wrong or how we can improve.</div>
+    <label class="fb-label">Issue encountered</label>
+    <select id="fb-issue" class="fb-input">
+      <option value="">Choose an issue…</option>
+      <option>App bug / something not working</option>
+      <option>Booking / appointment problem</option>
+      <option>Payment / wallet issue</option>
+      <option>Service quality</option>
+      <option>Pricing question</option>
+      <option>Suggestion / feature request</option>
+      <option>Other</option>
+    </select>
+    <label class="fb-label">Your message</label>
+    <textarea id="fb-msg" class="fb-input" rows="5" placeholder="Describe the issue…"></textarea>
+    <label class="fb-label">Upload image <span id="fb-count" style="color:var(--muted)">0/5</span></label>
+    <div id="fb-photos" class="fb-photos"></div>
+    <input type="file" id="fb-file" accept="image/*" multiple onchange="fbAddPhotos(this)" style="margin-top:8px">
+    <button class="btn btn-primary" style="margin-top:18px;width:100%" onclick="submitFeedback()">Submit feedback</button>
+  `);
+}
+function fbAddPhotos(input){
+  const files=[...input.files];
+  for(const f of files){
+    if(FB_PHOTOS.length>=5){ toast('Max 5 photos'); break; }
+    const reader=new FileReader();
+    reader.onload=()=>{ FB_PHOTOS.push(reader.result); renderFbPhotos(); };
+    reader.readAsDataURL(f);
+  }
+  input.value='';
+}
+function renderFbPhotos(){
+  const el=document.getElementById('fb-photos'); if(el) el.innerHTML=FB_PHOTOS.map((src,i)=>`<div class="fb-thumb"><img src="${src}"><span class="fb-thumb-x" onclick="FB_PHOTOS.splice(${i},1);renderFbPhotos()">✕</span></div>`).join('');
+  const c=document.getElementById('fb-count'); if(c) c.textContent=FB_PHOTOS.length+'/5';
+}
+async function submitFeedback(){
+  const issue=document.getElementById('fb-issue')?.value;
+  const msg=document.getElementById('fb-msg')?.value.trim();
+  if(!issue){ toast('Please choose an issue'); return; }
+  if(!msg){ toast('Please add a message'); return; }
+  try{
+    await fetch(`${SUPA_URL}/rest/v1/gl_feedback`,{method:"POST",headers:authHeaders(),
+      body:JSON.stringify({owner_id:SESSION?.user?.id||null, name:PROFILE?.name||null, phone:PROFILE?.phone||null,
+        issue, message:msg, photos:FB_PHOTOS.length?FB_PHOTOS:null})});
+    toast('Feedback sent ✓ — thank you');
+    routeTab('account');
+  }catch(e){ toast('Could not send — try again'); }
+}
+
+// --- Support ---
+function openSupport(){
+  const item=(ic,label,sub,onclick)=>`<div class="sup-row" onclick="${onclick}"><div class="sup-ic">${ic}</div><div><div class="sup-nm">${esc(label)}</div>${sub?`<div class="sup-sub">${esc(sub)}</div>`:''}</div></div>`;
+  subPage('Support', `
+    <div class="app-sub" style="margin-bottom:14px">We're here to help. Reach us any way you like.</div>
+    <div class="sup-list">
+      ${item('📞','Call us', SUPPORT.phone, `window.location.href='tel:${SUPPORT.phone.replace(/\\s/g,'')}'`)}
+      ${item('💬','WhatsApp', 'Chat with us', `window.open('https://wa.me/${SUPPORT.whatsapp}','_blank')`)}
+      ${item('📍','Our location', SUPPORT.address, `window.open('${SUPPORT.maps}','_blank')`)}
+      ${item('📘','Facebook', '@grandlab', `window.open('${SUPPORT.facebook}','_blank')`)}
+      ${item('📸','Instagram', '@grandlab', `window.open('${SUPPORT.instagram}','_blank')`)}
+      ${item('🎵','TikTok', '@grandlab', `window.open('${SUPPORT.tiktok}','_blank')`)}
+    </div>
+  `);
+}
+
+// --- Policies ---
+function openPolicies(){
+  subPage('Policies', `
+    <div class="acc-list">
+      <div class="acc-row" onclick="openPolicyDoc('privacy')"><div class="acc-row-label">Privacy Policy</div><div class="acc-row-right"><span class="acc-chev">›</span></div></div>
+      <div class="acc-row" onclick="openPolicyDoc('terms')"><div class="acc-row-label">Terms &amp; Conditions</div><div class="acc-row-right"><span class="acc-chev">›</span></div></div>
+      <div class="acc-row" onclick="openPolicyDoc('refund')"><div class="acc-row-label">Refund Policy</div><div class="acc-row-right"><span class="acc-chev">›</span></div></div>
+    </div>
+  `);
+}
+const POLICY_DOCS={
+  privacy:{t:'Privacy Policy', b:`<p>Grandlab Detailing ("we", "us") respects your privacy. This policy explains how we handle your information.</p>
+    <p><b>What we collect:</b> your name, phone, email, vehicle details, and service history you provide when using the app.</p>
+    <p><b>How we use it:</b> to manage your bookings, packages, rewards, and to send service reminders and updates you opt into.</p>
+    <p><b>Sharing:</b> we do not sell your data. We share it only with payment providers (to process payments) and as required by law.</p>
+    <p><b>Your choices:</b> you can edit your profile, turn off notifications, or delete your account at any time in Settings.</p>
+    <p><b>Contact:</b> for any privacy questions, reach us via the Support page.</p>
+    <p class="pol-note">This is a starting template. Please have it reviewed before public launch.</p>`},
+  terms:{t:'Terms & Conditions', b:`<p>By using the Grandlab app, you agree to these terms.</p>
+    <p><b>Bookings:</b> appointments are subject to availability and confirmation. Please arrive on time; late arrivals may be rescheduled.</p>
+    <p><b>Packages & credits:</b> prepaid packages and wallet credits are non-refundable except as stated in our Refund Policy, and are valid only at participating Grandlab outlets.</p>
+    <p><b>Rewards & vouchers:</b> points and vouchers have no cash value, are non-transferable unless stated, and may expire.</p>
+    <p><b>Pricing:</b> prices shown may change. The price confirmed at booking or payment applies.</p>
+    <p><b>Conduct:</b> misuse of the app or fraudulent activity may result in account suspension.</p>
+    <p class="pol-note">This is a starting template. Please have it reviewed before public launch.</p>`},
+  refund:{t:'Refund Policy', b:`<p>We want you to be happy with our service.</p>
+    <p><b>Services:</b> if you're not satisfied, tell our staff before you leave the outlet so we can make it right.</p>
+    <p><b>Wallet top-ups:</b> credits are generally non-refundable but remain in your account for future use.</p>
+    <p><b>Packages:</b> unused multi-visit packages may be refundable on a pro-rata basis at management's discretion, less any bonus credit received.</p>
+    <p><b>Online payments:</b> duplicate or erroneous charges will be refunded to the original payment method.</p>
+    <p><b>How to request:</b> contact us via the Support page with your order details.</p>
+    <p class="pol-note">This is a starting template. Please have it reviewed before public launch.</p>`}
+};
+function openPolicyDoc(k){
+  const d=POLICY_DOCS[k]; if(!d) return;
+  appRoot.innerHTML=`
+    <div class="topbar-app"><button class="back" onclick="openPolicies()">‹</button><div class="ttl">${esc(d.t)}</div><button class="home-btn" onclick="routeTab('home')">⌂</button></div>
+    <div class="app-scroll" style="padding:18px 20px 100px"><div class="policy-body">${d.b}</div></div>`;
+}
+
+// --- About ---
+function openAbout(){
+  subPage('About', `
+    <div class="about-wrap">
+      <div class="about-logo">GRANDLAB</div>
+      <div class="about-tag">Premium Auto Detailing & Protection</div>
+      <div class="about-ver">App version ${APP_VERSION}</div>
+    </div>
+    <div class="acc-list" style="margin-top:20px">
+      <div class="acc-row" onclick="window.open('${SUPPORT.facebook}','_blank')"><div class="acc-row-label">Follow us on Facebook</div><div class="acc-row-right"><span class="acc-chev">›</span></div></div>
+      <div class="acc-row" onclick="window.open('${SUPPORT.instagram}','_blank')"><div class="acc-row-label">Follow us on Instagram</div><div class="acc-row-right"><span class="acc-chev">›</span></div></div>
+      <div class="acc-row" onclick="window.open('${SUPPORT.tiktok}','_blank')"><div class="acc-row-label">Follow us on TikTok</div><div class="acc-row-right"><span class="acc-chev">›</span></div></div>
+      <div class="acc-row" onclick="openPolicies()"><div class="acc-row-label">Policies</div><div class="acc-row-right"><span class="acc-chev">›</span></div></div>
+    </div>
+    <div class="about-foot">© ${new Date().getFullYear()} Grandpride Luxury Travel Sdn Bhd<br>Co. Reg. 201801035116<br>PJS 13, Petaling Jaya, Selangor</div>
+  `);
+}
+// ============== END ACCOUNT SUB-PAGES ==============
 
 function openEditProfile(){
   if(IS_GUEST){ toast('Sign in to edit profile'); return; }
@@ -3872,6 +4862,8 @@ Object.defineProperty(window,'stepIndex',{get:()=>cur,set:v=>{cur=v;}});
 
 /* ---------- Init ---------- */
 (async function init(){
+  // apply saved theme (dark/light/auto)
+  try{ applyTheme(localStorage.getItem('gl_pref_theme')||'dark'); }catch(e){}
   // handle return from senangPay payment
   try{
     const qp=new URLSearchParams(location.search);

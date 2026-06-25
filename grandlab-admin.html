@@ -152,6 +152,9 @@
     border:1px dashed var(--line);border-radius:10px;}
   .keybox{padding:20px 24px;}
   .keybox input{margin-top:8px;}
+  .bk-wd-row{display:flex;gap:6px;flex-wrap:wrap;}
+  .bk-wd{padding:7px 12px;border-radius:9px;border:1px solid var(--line);background:var(--surface,#fff);color:inherit;cursor:pointer;font-size:13px;}
+  .bk-wd.on{background:#E5533C;color:#fff;border-color:#E5533C;}
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
@@ -495,7 +498,22 @@
             <div><label>Action 3</label><input id="wl-a3" oninput="onWallet()"></div>
             <div><label>Action 4</label><input id="wl-a4" oninput="onWallet()"></div>
           </div>
-          <div class="hint">Action 3 opens the Rewards page by default. Top Up / Gift Card / Vouchers show "coming soon" until those features are wired.</div>
+          <div class="hint">Action 3 opens the Rewards page by default. Top Up / Gift Card / Vouchers are now wired to live features.</div>
+        </div>
+        <div class="section-h">Top-up bonus tiers</div>
+        <div class="card">
+          <div class="hint">Customers who top up at or above each amount get that bonus %. Pay-online gets the full %; pay-at-shop gets the shop factor below.</div>
+          <div id="wl-tiers" style="margin-top:10px"></div>
+          <button class="btn btn-ghost btn-sm" onclick="addWalletTier()">+ Add tier</button>
+          <label style="margin-top:12px">Pay-at-shop bonus factor (0.5 = half the online bonus)</label>
+          <input id="wl-shopfactor" type="number" step="0.1" min="0" max="1" oninput="onWalletCfg()">
+        </div>
+        <div class="section-h">Gift card</div>
+        <div class="card">
+          <label>Preset gift amounts (comma-separated, e.g. 25,50,100,150,200)</label>
+          <input id="wl-giftamts" oninput="onWalletCfg()">
+          <label style="margin-top:8px">Minimum gift/top-up amount (RM)</label>
+          <input id="wl-giftmin" type="number" oninput="onWalletCfg()">
         </div>
       </div>
 
@@ -523,6 +541,22 @@
 
       <!-- BOOKINGS -->
       <div class="panel" id="panel-bookings">
+        <div class="section-h">Booking availability</div>
+        <div class="card">
+          <div class="hint">Control the booking calendar customers see. The same slots will sync with your POS later.</div>
+          <label style="margin-top:10px">Time slots (comma-separated, e.g. 9:00 AM,10:00 AM,11:00 AM)</label>
+          <input id="bkTimes" oninput="onBookingCfg()" placeholder="9:00 AM,10:00 AM,11:00 AM,12:00 PM,2:00 PM,3:00 PM,4:00 PM,5:00 PM">
+          <label style="margin-top:8px">Slots per time (how many cars at each time)</label>
+          <input id="bkSlots" type="number" min="1" oninput="onBookingCfg()" placeholder="2">
+          <label style="margin-top:8px">How many days ahead customers can book</label>
+          <input id="bkDays" type="number" min="1" oninput="onBookingCfg()" placeholder="30">
+          <label style="margin-top:8px">Closed weekdays</label>
+          <div id="bkWeekdays" class="bk-wd-row" style="margin-top:6px"></div>
+          <label style="margin-top:10px">Closed dates (public holidays etc., comma-separated YYYY-MM-DD)</label>
+          <input id="bkClosed" oninput="onBookingCfg()" placeholder="2026-12-25,2027-01-01">
+          <div class="hint" style="margin-top:6px">Closed dates and weekdays show greyed-out with an × on the customer's calendar.</div>
+        </div>
+        <div class="section-h">All bookings</div>
         <div class="hint">All bookings from the app (and POS later). Newest first.</div>
         <div id="bookList" style="margin-top:14px"></div>
       </div>
@@ -630,6 +664,26 @@
         <div class="svc-sub">Highlight cards</div>
         <div id="hlList"></div>
         <button class="btn btn-ghost btn-sm" onclick="addHl()">+ Add highlight</button>
+
+        <div class="section-h" style="margin-top:22px">Google reviews (looping)</div>
+        <div class="hint">Pick your best customer reviews to show on home. Copy the text from your real Google reviews. These loop automatically.</div>
+        <label style="margin-top:10px">Section title</label>
+        <input id="rvTitle" oninput="reviewsCfg.title=this.value" placeholder="What our customers say">
+        <div id="rvList" style="margin-top:10px"></div>
+        <button class="btn btn-ghost btn-sm" onclick="addReview()">+ Add review</button>
+
+        <div class="section-h" style="margin-top:22px">Social media</div>
+        <div class="hint">Links to your social pages + an optional reward message for customers who follow/share.</div>
+        <label style="margin-top:10px">Section title</label>
+        <input id="soTitle" oninput="socialCfg.title=this.value" placeholder="Follow us">
+        <label style="margin-top:8px">Facebook URL</label>
+        <input id="soFb" oninput="socialCfg.facebook=this.value" placeholder="https://facebook.com/...">
+        <label style="margin-top:8px">Instagram URL</label>
+        <input id="soIg" oninput="socialCfg.instagram=this.value" placeholder="https://instagram.com/...">
+        <label style="margin-top:8px">TikTok URL</label>
+        <input id="soTt" oninput="socialCfg.tiktok=this.value" placeholder="https://tiktok.com/@...">
+        <label style="margin-top:8px">Share reward message (optional)</label>
+        <input id="soReward" oninput="socialCfg.shareReward=this.value" placeholder="Follow & share to earn rewards!">
       </div>
 
       <!-- MYSTERY BOX -->
@@ -1057,10 +1111,18 @@ async function loadAll(){
     if(r.ok){const rows=await r.json();if(rows[0]&&rows[0].data)warranty=Object.assign(warranty,rows[0].data);}
     r=await sb("gl_settings?select=*&id=eq.highlights",{headers:H()});
     if(r.ok){const rows=await r.json();if(rows[0]&&rows[0].data)hl=Object.assign(hl,rows[0].data);}
+    r=await sb("gl_settings?select=*&id=eq.reviews",{headers:H()});
+    if(r.ok){const rows=await r.json();if(rows[0]&&rows[0].data)reviewsCfg=Object.assign(reviewsCfg,rows[0].data);}
+    r=await sb("gl_settings?select=*&id=eq.social",{headers:H()});
+    if(r.ok){const rows=await r.json();if(rows[0]&&rows[0].data)socialCfg=Object.assign(socialCfg,rows[0].data);}
+    r=await sb("gl_settings?select=*&id=eq.booking",{headers:H()});
+    if(r.ok){const rows=await r.json();if(rows[0]&&rows[0].data)bookingCfg=Object.assign(bookingCfg,rows[0].data);}
     r=await sb("gl_settings?select=*&id=eq.actionbtn",{headers:H()});
     if(r.ok){const rows=await r.json();if(rows[0]&&rows[0].data)actionbtn=Object.assign(actionbtn,rows[0].data);}
     r=await sb("gl_settings?select=*&id=eq.brandinfo",{headers:H()});
     if(r.ok){const rows=await r.json();if(rows[0]&&rows[0].data)brandInfo=Object.assign({},rows[0].data);}
+    r=await sb("gl_settings?select=*&id=eq.wallet",{headers:H()});
+    if(r.ok){const rows=await r.json();if(rows[0]&&rows[0].data)walletCfg=Object.assign(walletCfg,rows[0].data);}
     // car brands + models
     deletedBrandIds2=[]; deletedModelIds=[];
     r=await sb("gl_car_brands?select=*&order=sort_order.asc",{headers:H()});
@@ -2057,6 +2119,39 @@ function renderHl(){
 function addHl(){hl.items=hl.items||[];hl.items.push({text:'New highlight',color:'#7a1f1f',image_url:null});renderHl();}
 function delHl(i){hl.items.splice(i,1);renderHl();}
 function updHl(i,f,v){hl.items[i][f]=v;}
+
+// ---- reviews + social ----
+let reviewsCfg={ title:'What our customers say', items:[], autoslide:true };
+let socialCfg={ title:'Follow us', facebook:'', instagram:'', tiktok:'', shareReward:'' };
+function fillReviewsSocial(){
+  const g=id=>document.getElementById(id);
+  if(g('rvTitle')) g('rvTitle').value=reviewsCfg.title||'';
+  if(g('soTitle')) g('soTitle').value=socialCfg.title||'';
+  if(g('soFb')) g('soFb').value=socialCfg.facebook||'';
+  if(g('soIg')) g('soIg').value=socialCfg.instagram||'';
+  if(g('soTt')) g('soTt').value=socialCfg.tiktok||'';
+  if(g('soReward')) g('soReward').value=socialCfg.shareReward||'';
+  renderReviews();
+}
+function renderReviews(){
+  const el=document.getElementById('rvList'); if(!el) return;
+  reviewsCfg.items=reviewsCfg.items||[];
+  el.innerHTML='';
+  reviewsCfg.items.forEach((r,i)=>{
+    const card=document.createElement('div');card.className='card';
+    card.innerHTML=`
+      <div class="card-head">
+        <div class="card-title">${esc(r.name||'Review')} — ${r.stars||5}★</div>
+        <button class="btn btn-danger btn-sm" onclick="reviewsCfg.items.splice(${i},1);renderReviews()">Delete</button>
+      </div>
+      <label>Customer name</label><input value="${esc(r.name||'')}" oninput="reviewsCfg.items[${i}].name=this.value" placeholder="Ahmad L.">
+      <label style="margin-top:8px">Stars (1-5)</label><input type="number" min="1" max="5" value="${r.stars||5}" oninput="reviewsCfg.items[${i}].stars=Number(this.value)">
+      <label style="margin-top:8px">Review text</label><textarea rows="3" oninput="reviewsCfg.items[${i}].text=this.value" placeholder="Great service, my car looks brand new!">${esc(r.text||'')}</textarea>
+      <label style="margin-top:8px">Meta (optional, e.g. '2 weeks ago')</label><input value="${esc(r.meta||'')}" oninput="reviewsCfg.items[${i}].meta=this.value" placeholder="Google review">`;
+    el.appendChild(card);
+  });
+}
+function addReview(){ reviewsCfg.items=reviewsCfg.items||[]; reviewsCfg.items.push({name:'',stars:5,text:'',meta:'Google review'}); renderReviews(); }
 async function uploadHlPhoto(i,input){
   const f=input.files[0]; if(!f) return; toast("Uploading…");
   const path=`hl-${Date.now()}-${f.name.replace(/[^a-z0-9.]/gi,'_')}`;
@@ -2366,9 +2461,13 @@ async function saveAll(){
     await sb("gl_settings",{method:"POST",headers:H({Prefer:"resolution=merge-duplicates"}),body:JSON.stringify({id:"style",data:theme})});
     await sb("gl_settings",{method:"POST",headers:H({Prefer:"resolution=merge-duplicates"}),body:JSON.stringify({id:"referral",data:refSettings})});
     await sb("gl_settings",{method:"POST",headers:H({Prefer:"resolution=merge-duplicates"}),body:JSON.stringify({id:"brandinfo",data:brandInfo})});
+    await sb("gl_settings",{method:"POST",headers:H({Prefer:"resolution=merge-duplicates"}),body:JSON.stringify({id:"wallet",data:walletCfg})});
     await sb("gl_settings",{method:"POST",headers:H({Prefer:"resolution=merge-duplicates"}),body:JSON.stringify({id:"mysterybox",data:mb})});
     await sb("gl_settings",{method:"POST",headers:H({Prefer:"resolution=merge-duplicates"}),body:JSON.stringify({id:"warranty",data:warranty})});
     await sb("gl_settings",{method:"POST",headers:H({Prefer:"resolution=merge-duplicates"}),body:JSON.stringify({id:"highlights",data:hl})});
+    await sb("gl_settings",{method:"POST",headers:H({Prefer:"resolution=merge-duplicates"}),body:JSON.stringify({id:"reviews",data:reviewsCfg})});
+    await sb("gl_settings",{method:"POST",headers:H({Prefer:"resolution=merge-duplicates"}),body:JSON.stringify({id:"social",data:socialCfg})});
+    await sb("gl_settings",{method:"POST",headers:H({Prefer:"resolution=merge-duplicates"}),body:JSON.stringify({id:"booking",data:bookingCfg})});
     await sb("gl_settings",{method:"POST",headers:H({Prefer:"resolution=merge-duplicates"}),body:JSON.stringify({id:"actionbtn",data:actionbtn})});
     await sb("gl_settings",{method:"POST",headers:H({Prefer:"resolution=merge-duplicates"}),body:JSON.stringify({id:"popup",data:popup})});
     // rewards
@@ -2625,7 +2724,7 @@ function switchTab(t){
   else if(t==='categories')renderCategories();
   else if(t==='stores')renderStores();
   else if(t==='brands')renderBrands();
-  else if(t==='highlights')fillHlControls();
+  else if(t==='highlights'){fillHlControls();fillReviewsSocial();}
   else if(t==='mysterybox')fillMbControls();
   else if(t==='warranty')fillWarrantyControls();
   else if(t==='actionbtn')fillActionBtn();
@@ -2642,7 +2741,7 @@ function switchTab(t){
   else if(t==='rewards'){fillRewardsControls();}
   else if(t==='wallet'){fillWalletControls();}
   else if(t==='customers')loadCustomers();
-  else if(t==='bookings')loadBookings();
+  else if(t==='bookings'){fillBookingCfg();loadBookings();}
   else if(t==='referrals')loadReferrals();
 }
 
@@ -2664,6 +2763,31 @@ function fillWalletControls(){
   document.getElementById('wl-a2').value=theme.walletAction2||'Gift Card';
   document.getElementById('wl-a3').value=theme.walletAction3||'Rewards';
   document.getElementById('wl-a4').value=theme.walletAction4||'Vouchers';
+  fillWalletCfg();
+}
+// ---- wallet bonus tiers + gift config ----
+let walletCfg={ tiers:[{amount:100,pct:1},{amount:200,pct:2},{amount:500,pct:5},{amount:1000,pct:10},{amount:5000,pct:15}],
+  shopBonusFactor:0.5, giftAmounts:[25,50,100,150,200], giftMin:25 };
+function renderWalletTiers(){
+  const el=document.getElementById('wl-tiers'); if(!el) return;
+  el.innerHTML=walletCfg.tiers.map((t,i)=>`
+    <div class="row" style="gap:8px;align-items:end;margin-bottom:8px">
+      <div style="flex:1"><label>Amount (RM)</label><input type="number" value="${t.amount}" oninput="walletCfg.tiers[${i}].amount=Number(this.value)"></div>
+      <div style="flex:1"><label>Bonus %</label><input type="number" step="0.5" value="${t.pct}" oninput="walletCfg.tiers[${i}].pct=Number(this.value)"></div>
+      <button class="btn btn-danger btn-sm" onclick="walletCfg.tiers.splice(${i},1);renderWalletTiers()">✕</button>
+    </div>`).join('');
+}
+function addWalletTier(){ walletCfg.tiers.push({amount:0,pct:0}); renderWalletTiers(); }
+function onWalletCfg(){
+  walletCfg.shopBonusFactor=Number(document.getElementById('wl-shopfactor').value)||0.5;
+  walletCfg.giftAmounts=(document.getElementById('wl-giftamts').value||'').split(',').map(x=>Number(x.trim())).filter(n=>n>0);
+  walletCfg.giftMin=Number(document.getElementById('wl-giftmin').value)||25;
+}
+function fillWalletCfg(){
+  renderWalletTiers();
+  const sf=document.getElementById('wl-shopfactor'); if(sf) sf.value=walletCfg.shopBonusFactor;
+  const ga=document.getElementById('wl-giftamts'); if(ga) ga.value=(walletCfg.giftAmounts||[]).join(',');
+  const gm=document.getElementById('wl-giftmin'); if(gm) gm.value=walletCfg.giftMin;
 }
 
 /* ---------- REWARDS editing ---------- */
@@ -2989,6 +3113,30 @@ async function saveCustCode(i){
 }
 
 /* ---------- BOOKINGS ---------- */
+let bookingCfg={ times:['9:00 AM','10:00 AM','11:00 AM','12:00 PM','2:00 PM','3:00 PM','4:00 PM','5:00 PM'],
+  slotsPerTime:2, daysAhead:30, closedDays:[], closedWeekdays:[] };
+const WD_NAMES=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+function fillBookingCfg(){
+  const g=id=>document.getElementById(id);
+  if(g('bkTimes')) g('bkTimes').value=(bookingCfg.times||[]).join(',');
+  if(g('bkSlots')) g('bkSlots').value=bookingCfg.slotsPerTime||2;
+  if(g('bkDays')) g('bkDays').value=bookingCfg.daysAhead||30;
+  if(g('bkClosed')) g('bkClosed').value=(bookingCfg.closedDays||[]).join(',');
+  const wd=g('bkWeekdays');
+  if(wd){ wd.innerHTML=WD_NAMES.map((n,i)=>`<button type="button" class="bk-wd ${(bookingCfg.closedWeekdays||[]).includes(i)?'on':''}" onclick="toggleClosedWeekday(${i})">${n}</button>`).join(''); }
+}
+function toggleClosedWeekday(i){
+  bookingCfg.closedWeekdays=bookingCfg.closedWeekdays||[];
+  const idx=bookingCfg.closedWeekdays.indexOf(i);
+  if(idx>=0) bookingCfg.closedWeekdays.splice(idx,1); else bookingCfg.closedWeekdays.push(i);
+  fillBookingCfg();
+}
+function onBookingCfg(){
+  bookingCfg.times=(document.getElementById('bkTimes').value||'').split(',').map(x=>x.trim()).filter(Boolean);
+  bookingCfg.slotsPerTime=Number(document.getElementById('bkSlots').value)||2;
+  bookingCfg.daysAhead=Number(document.getElementById('bkDays').value)||30;
+  bookingCfg.closedDays=(document.getElementById('bkClosed').value||'').split(',').map(x=>x.trim()).filter(Boolean);
+}
 async function loadBookings(){
   const el=document.getElementById('bookList');
   el.innerHTML='<div class="empty">Loading…</div>';
