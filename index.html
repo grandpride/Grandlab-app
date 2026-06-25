@@ -26,7 +26,8 @@
     background:#0a0a0a; color:var(--text);
     font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","SF Pro Display","Helvetica Neue","Roboto",sans-serif;
     font-size:14.5px; line-height:1.45; letter-spacing:-0.01em;
-    overflow:hidden; position:fixed; top:0; left:0; right:0; bottom:0; height:auto;
+    overflow:hidden; position:fixed; top:0; left:0; right:0; bottom:0;
+    height:var(--app-h, 100dvh);
     -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;
     display:flex; justify-content:center;
   }
@@ -209,7 +210,7 @@
     background-size:cover;background-position:center;background-repeat:no-repeat;pointer-events:none;}
   #appBgLayer.show{display:block;}
   #appBgLayer::after{content:"";position:absolute;inset:0;background:rgba(0,0,0,var(--app-bg-dark,.55));}
-  #appRoot{position:fixed;top:0;left:0;right:0;bottom:0;height:auto;max-width:440px;margin:0 auto;
+  #appRoot{position:fixed;top:0;left:0;right:0;bottom:0;height:var(--app-h, 100dvh);max-width:440px;margin:0 auto;
     background:radial-gradient(120% 80% at 50% 0%, #161410 0%, #0d0d0c 40%, #080808 100%);
     display:none;flex-direction:column;z-index:20;}
   #appRoot.show{display:flex;}
@@ -1968,6 +1969,15 @@ function startCountdown(el){
    MAIN APP (post-login): home, services, profile, guest
    ============================================================ */
 const appRoot = document.getElementById('appRoot');
+// iOS PWA height fix: standalone mode mis-reports CSS viewport units, leaving a
+// black gap at the bottom. Pin layout to the true window.innerHeight instead.
+function setAppHeight(){
+  document.documentElement.style.setProperty('--app-h', window.innerHeight + 'px');
+}
+setAppHeight();
+window.addEventListener('resize', setAppHeight);
+window.addEventListener('orientationchange', ()=>setTimeout(setAppHeight, 100));
+window.addEventListener('pageshow', setAppHeight);
 let _appBgApplied = null;
 function applyAppBg(){
   const layer=document.getElementById('appBgLayer');
