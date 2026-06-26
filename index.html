@@ -151,7 +151,7 @@
   .wel-name{font-size:34px;font-weight:800;letter-spacing:-.02em;}
   .wel-h{font-size:var(--wel-h-size,32px);font-weight:800;letter-spacing:-.02em;line-height:1.1;}
   .wel-sub{margin-top:14px;color:var(--muted);font-size:var(--wel-sub-size,16px);line-height:1.5;max-width:30ch;}
-  .wel-actions{display:flex;flex-direction:column;gap:12px;padding-bottom:calc(var(--wel-bottom-gap,30px) + env(safe-area-inset-bottom));margin-top:var(--wel-btn-topgap,0px);}
+  .wel-actions{display:flex;flex-direction:column;gap:12px;padding-bottom:calc(var(--wel-bottom-gap,70px) + env(safe-area-inset-bottom));margin-top:var(--wel-btn-topgap,0px);}
 
   /* ---------- Auth ---------- */
   .auth{padding-top:60px;}
@@ -1961,7 +1961,7 @@ function phoneScreen(){
     btn.disabled=true; btn.innerHTML='<div class="spinner"></div>';
     const ok=await sendOtp(authPhone);
     btn.disabled=false; btn.textContent="Next";
-    if(ok){ goTo(stepIndex+1, true); }
+    if(ok){ const oi=screenIndexByKind('otp'); if(oi>=0) showStep(oi); else goTo(stepIndex+1, true); }
     else { helper.classList.add('err'); helper.textContent="Couldn't send the code. Check the number and try again."; }
   };
   el.querySelector('[data-act="back"]').onclick=()=>goTo(SLIDES.length); // back to welcome
