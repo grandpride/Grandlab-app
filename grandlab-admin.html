@@ -552,9 +552,14 @@
           <input id="bkDays" type="number" min="1" oninput="onBookingCfg()" placeholder="30">
           <label style="margin-top:8px">Closed weekdays</label>
           <div id="bkWeekdays" class="bk-wd-row" style="margin-top:6px"></div>
-          <label style="margin-top:10px">Closed dates (public holidays etc., comma-separated YYYY-MM-DD)</label>
-          <input id="bkClosed" oninput="onBookingCfg()" placeholder="2026-12-25,2027-01-01">
-          <div class="hint" style="margin-top:6px">Closed dates and weekdays show greyed-out with an × on the customer's calendar.</div>
+          <label style="margin-top:10px">Public holidays / closed dates</label>
+          <div class="hint" style="margin-bottom:8px">Pick a date, name it (e.g. Hari Raya), and add. These show greyed-out with × on the customer's calendar.</div>
+          <div class="row" style="align-items:flex-end">
+            <div style="flex:1"><label style="margin-top:0">Date</label><input type="date" id="bkHolDate"></div>
+            <div style="flex:1.4"><label style="margin-top:0">Holiday name</label><input id="bkHolName" placeholder="e.g. Hari Raya Aidilfitri"></div>
+            <button class="btn btn-ghost" style="flex:0 0 auto" onclick="addHoliday()">+ Add</button>
+          </div>
+          <div id="bkHolList" style="margin-top:10px"></div>
         </div>
         <div class="section-h">All bookings</div>
         <div class="hint">All bookings from the app (and POS later). Newest first.</div>
@@ -774,6 +779,10 @@
             <button class="btn btn-danger btn-sm" onclick="theme.appBg=null;fillBgControls();renderPreview();toast('Removed')">Remove</button>
             <span id="appBgThumb"></span>
           </div>
+
+          <div class="section-h" style="margin-top:22px">Wallet quick-action icons</div>
+          <div class="hint" style="margin-bottom:10px">Upload your own icons for Top Up, Gift Card, Rewards, Vouchers (transparent PNG, no frame). Leave blank to use the default.</div>
+          <div id="walletIconsRow" style="display:grid;grid-template-columns:1fr 1fr;gap:10px"></div>
           <label style="margin-top:10px">Fit</label>
           <select id="th-appBgFit" onchange="onBg()" style="width:100%;height:42px;background:var(--panel2);border:1px solid var(--line);border-radius:8px;color:var(--text);padding:0 10px">
             <option value="cover">Cover (fill screen)</option>
@@ -1328,6 +1337,10 @@ function renderServices(){
         </div>
       </div>
       <div class="svc-hint">If "Number of uses" is set (e.g. 10), buying this gives the customer a redeemable package with a barcode on that car. Blank = normal single service.</div>
+
+      <label style="margin-top:10px">Maintenance reminder interval (months) <span class="svc-hint">for coatings — auto-reminds customer this many months after purchase / each visit. e.g. Cancoat 2, MOHS 4, Infinite 6. Leave blank for no reminder.</span></label>
+      <input type="number" value="${s.maint_months??''}" oninput="upd('svc',${i},'maint_months',this.value===''?null:Number(this.value))" placeholder="e.g. 2, 3, 4, 6 — blank = off">
+
       ${s.pkg_uses>1?`
       <label style="margin-top:10px">Milestone rewards <span class="svc-hint">free reward at a certain use # (e.g. #5 windscreen, #10 3-step)</span></label>
       <div id="msList${i}">${(s.milestones||[]).map((m,mi)=>`
@@ -1465,6 +1478,7 @@ function importServicesExcel(input){
         s.is_package=yes(r.is_package);
         s.pkg_uses=(r.pkg_uses==null||r.pkg_uses==='')?null:Number(r.pkg_uses);
         s.pkg_type=String(r.pkg_type||'').trim()||null;
+        s.maint_months=(r.maint_months==null||r.maint_months==='')?null:Number(r.maint_months);
         s.hidden=yes(r.hidden);
         if(r.sort_order!=null&&r.sort_order!=='') s.sort_order=num(r.sort_order);
         s.media=s.media||[]; s.variations=s.variations||[]; s.addons=s.addons||[];
@@ -1969,6 +1983,10 @@ function renderFlash(){
       <div style="display:flex;align-items:center;gap:10px;margin-top:4px">
         <div>${d.image_url?`<img src="${d.image_url}" style="height:48px;width:60px;object-fit:cover;border-radius:8px;border:1px solid var(--line)">`:'<span style="color:var(--muted);font-size:12px">No photo</span>'}</div>
         <input type="file" accept="image/*" onchange="uploadFlashPhoto(${i},this)">
+      </div>
+      <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--line)">
+        <button class="btn btn-ghost btn-sm" onclick="notifyFlash(${i})">📢 Notify customers about this deal</button>
+        <div class="svc-hint" style="margin-top:6px">Sends a push to everyone who enabled notifications. Save your changes first.</div>
       </div>`;
     el.appendChild(card);
   });
@@ -1976,6 +1994,25 @@ function renderFlash(){
 function toLocalInput(iso){ if(!iso) return ''; try{ const d=new Date(iso); const off=d.getTimezoneOffset(); const l=new Date(d.getTime()-off*60000); return l.toISOString().slice(0,16); }catch(e){ return ''; } }
 function addFlash(){flashDeals.push({title:"New Deal",deal_price:null,orig_price:null,total_qty:50,grabbed:0,ends_at:null,service_id:'',image_url:null,sort_order:flashDeals.length+1,active:true});renderFlash();}
 function delFlash(i){if(flashDeals[i].id)deletedFlashIds.push(flashDeals[i].id);flashDeals.splice(i,1);renderFlash();}
+const PUSH_FN_URL_GL = "https://eychljpzorzmaveixlnu.supabase.co/functions/v1/push-send";
+async function notifyFlash(i){
+  const d = flashDeals[i];
+  if(!d || !d.title){ toast("Add a title first"); return; }
+  const price = d.deal_price!=null ? ` — only RM${d.deal_price}` : '';
+  const body = `${d.title}${price}. Limited time, grab it now!`;
+  if(!confirm(`Send push to all customers?\n\n🔥 Flash Deal!\n${body}`)) return;
+  if(!SVC_KEY){ toast("Connect with your key first"); return; }
+  try{
+    const r = await fetch(PUSH_FN_URL_GL, {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json', 'Authorization':`Bearer ${SVC_KEY}`, 'apikey':SVC_KEY },
+      body: JSON.stringify({ title:'🔥 Flash Deal!', body, target:'all', url:'https://grandpride.github.io/Grandlab-app/', tag:'flash' })
+    });
+    const j = await r.json();
+    if(r.ok){ toast(`Sent to ${j.sent||0} customer(s) ✅`); }
+    else { toast('Push failed: '+(j.error||r.status)); }
+  }catch(e){ toast('Push failed: '+e.message); }
+}
 function updFlash(i,f,v){
   if(['deal_price','orig_price','total_qty'].includes(f)) v=(v===''?null:Number(v));
   if(f==='ends_at') v=(v?new Date(v).toISOString():null);
@@ -2210,6 +2247,38 @@ async function uploadAppBg(input){
   fillBgControls(); renderPreview(); toast("Background uploaded ✓");
 }
 
+/* ---- Wallet quick-action icons (Top Up / Gift Card / Rewards / Vouchers) ---- */
+const WALLET_ICONS = [
+  { key:'icTopup',   label:'Top Up' },
+  { key:'icGiftcard',label:'Gift Card' },
+  { key:'icRewards', label:'Rewards' },
+  { key:'icVouchers',label:'Vouchers' }
+];
+function renderWalletIcons(){
+  const el=document.getElementById('walletIconsRow'); if(!el) return;
+  el.innerHTML = WALLET_ICONS.map(ic=>{
+    const url = theme[ic.key]||'';
+    return `<div style="background:#0a0908;border:1px solid var(--line);border-radius:10px;padding:10px;text-align:center">
+      <div style="font-size:12px;color:var(--muted);margin-bottom:6px">${ic.label}</div>
+      <div style="height:46px;display:flex;align-items:center;justify-content:center;margin-bottom:6px">
+        ${url?`<img src="${url}" style="height:42px;width:42px;object-fit:contain">`:'<span style="color:var(--muted);font-size:11px">No icon</span>'}
+      </div>
+      <button class="btn btn-ghost btn-sm" onclick="document.getElementById('wf_${ic.key}').click()">Upload</button>
+      ${url?`<button class="btn btn-danger btn-sm" onclick="theme.${ic.key}=null;renderWalletIcons();toast('Removed')">✕</button>`:''}
+      <input id="wf_${ic.key}" type="file" accept="image/png,image/*" style="display:none" onchange="uploadWalletIcon('${ic.key}',this)">
+    </div>`;
+  }).join('');
+}
+async function uploadWalletIcon(key,input){
+  const f=input.files[0]; if(!f) return;
+  toast("Uploading icon…");
+  const path=`walletic-${key}-${Date.now()}-${f.name.replace(/[^a-z0-9.]/gi,'_')}`;
+  const r=await fetch(`${SUPA_URL}/storage/v1/object/${BUCKET}/${path}`,{
+    method:"POST",headers:{apikey:SVC_KEY,Authorization:`Bearer ${SVC_KEY}`},body:f});
+  if(!r.ok){ toast("Upload failed — is gl-images bucket public?"); return; }
+  theme[key]=`${SUPA_URL}/storage/v1/object/public/${BUCKET}/${path}`;
+  renderWalletIcons(); toast("Icon uploaded ✓");
+}
 function onTheme(){
   const g=id=>document.getElementById(id);
   theme.bg=g('th-bg').value; theme.accent=g('th-accent').value; theme.text=g('th-text').value;
@@ -2238,6 +2307,7 @@ function onTheme(){
 function fillThemeControls(){
   const g=id=>document.getElementById(id);
   fillBgControls();
+  renderWalletIcons();
   g('th-bg').value=theme.bg; g('th-accent').value=theme.accent; g('th-text').value=theme.text;
   g('th-logoSize').value=theme.logoSize;
   g('th-eyebrowSize').value=theme.eyebrowSize; g('th-eyebrowColor').value=theme.eyebrowColor;
@@ -2361,6 +2431,7 @@ async function saveAll(){
         item_info:s.item_info||null,est_time:s.est_time||null,is_package:!!s.is_package,subtitle:s.subtitle||null,
         category2:s.category2||null,hidden:!!s.hidden,section:s.section||null,brand:s.brand||null,
         pkg_uses:s.pkg_uses??null,pkg_type:s.pkg_type||null,
+        maint_months:(s.maint_months==null||s.maint_months==='')?null:Number(s.maint_months),
         milestones:(Array.isArray(s.milestones)&&s.milestones.length)?s.milestones:null,
         option_type:s.option_type||null,
         option_label:s.option_type?(s.option_label||'Choose option'):null,
@@ -3121,7 +3192,7 @@ function fillBookingCfg(){
   if(g('bkTimes')) g('bkTimes').value=(bookingCfg.times||[]).join(',');
   if(g('bkSlots')) g('bkSlots').value=bookingCfg.slotsPerTime||2;
   if(g('bkDays')) g('bkDays').value=bookingCfg.daysAhead||30;
-  if(g('bkClosed')) g('bkClosed').value=(bookingCfg.closedDays||[]).join(',');
+  renderHolidays();
   const wd=g('bkWeekdays');
   if(wd){ wd.innerHTML=WD_NAMES.map((n,i)=>`<button type="button" class="bk-wd ${(bookingCfg.closedWeekdays||[]).includes(i)?'on':''}" onclick="toggleClosedWeekday(${i})">${n}</button>`).join(''); }
 }
@@ -3131,11 +3202,43 @@ function toggleClosedWeekday(i){
   if(idx>=0) bookingCfg.closedWeekdays.splice(idx,1); else bookingCfg.closedWeekdays.push(i);
   fillBookingCfg();
 }
+/* ---- Public holidays: stored in bookingCfg.closedDays as ["YYYY-MM-DD",...]
+   plus optional names in bookingCfg.closedNames = { "YYYY-MM-DD": "Hari Raya" } ---- */
+function addHoliday(){
+  const d=(document.getElementById('bkHolDate')||{}).value;
+  const n=((document.getElementById('bkHolName')||{}).value||'').trim();
+  if(!d){ toast('Pick a date first'); return; }
+  bookingCfg.closedDays=bookingCfg.closedDays||[];
+  bookingCfg.closedNames=bookingCfg.closedNames||{};
+  if(!bookingCfg.closedDays.includes(d)) bookingCfg.closedDays.push(d);
+  bookingCfg.closedNames[d]=n||'Closed';
+  bookingCfg.closedDays.sort();
+  document.getElementById('bkHolDate').value='';
+  document.getElementById('bkHolName').value='';
+  renderHolidays();
+  if(typeof markDirty==='function') markDirty();
+}
+function removeHoliday(d){
+  bookingCfg.closedDays=(bookingCfg.closedDays||[]).filter(x=>x!==d);
+  if(bookingCfg.closedNames) delete bookingCfg.closedNames[d];
+  renderHolidays();
+  if(typeof markDirty==='function') markDirty();
+}
+function renderHolidays(){
+  const el=document.getElementById('bkHolList'); if(!el) return;
+  const days=(bookingCfg.closedDays||[]).slice().sort();
+  const names=bookingCfg.closedNames||{};
+  if(!days.length){ el.innerHTML='<div class="empty" style="font-size:12px;color:var(--muted)">No public holidays added yet.</div>'; return; }
+  el.innerHTML=days.map(d=>`
+    <div class="mini-row" style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:#0a0908;border:1px solid var(--line);border-radius:8px;margin-bottom:6px">
+      <div style="flex:1"><b>${esc(d)}</b> — ${esc(names[d]||'Closed')}</div>
+      <button class="btn btn-danger btn-sm" onclick="removeHoliday('${esc(d)}')">✕</button>
+    </div>`).join('');
+}
 function onBookingCfg(){
   bookingCfg.times=(document.getElementById('bkTimes').value||'').split(',').map(x=>x.trim()).filter(Boolean);
   bookingCfg.slotsPerTime=Number(document.getElementById('bkSlots').value)||2;
   bookingCfg.daysAhead=Number(document.getElementById('bkDays').value)||30;
-  bookingCfg.closedDays=(document.getElementById('bkClosed').value||'').split(',').map(x=>x.trim()).filter(Boolean);
 }
 async function loadBookings(){
   const el=document.getElementById('bookList');

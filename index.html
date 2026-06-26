@@ -2101,6 +2101,7 @@ function enterGuest(){
 function navIcon(name){
   const I={
     home:'<path d="M3 11l9-8 9 8"/><path d="M5 10v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V10"/>',
+    package:'<path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/><line x1="12" y1="13" x2="12" y2="21"/>',
     services:'<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>',
     order:'<path d="M9 2h6a2 2 0 0 1 2 2v0H7v0a2 2 0 0 1 2-2z"/><rect x="5" y="4" width="14" height="18" rx="2"/><line x1="9" y1="10" x2="15" y2="10"/><line x1="9" y1="14" x2="15" y2="14"/><line x1="9" y1="18" x2="13" y2="18"/>',
     wallet:'<rect x="2" y="6" width="20" height="14" rx="2.5"/><path d="M2 10h20"/><circle cx="17" cy="14" r="1.4" fill="currentColor" stroke="none"/>',
@@ -2112,7 +2113,7 @@ function navIcon(name){
 function botnav(active){
   const t=(id,label)=>`<button class="${active===id?'on':''}" onclick="routeTab('${id}')"><span class="ic">${navIcon(id)}</span>${label}</button>`;
   return `<div class="botnav">
-    ${t('home','Home')}${t('order','Order')}${t('wallet','Wallet')}${t('rewards','Rewards')}${t('account','Account')}
+    ${t('home','Home')}${t('package','Package')}${t('order','Order')}${t('wallet','Wallet')}${t('rewards','Rewards')}${t('account','Account')}
   </div>`;
 }
 
@@ -2121,6 +2122,7 @@ async function routeTab(tab){
   backTarget=tab;  // sub-pages opened from here will return here
   applyAppBg();
   if(tab==='home') return renderHome();
+  if(tab==='package') return openMyPackages();
   if(tab==='services') return renderServicesScreen();
   if(tab==='order') return renderOrders();
   if(tab==='wallet') return renderWallet();
@@ -2802,7 +2804,8 @@ async function openMyPackages(){
          <div class="add-veh-btn" style="margin-top:14px" onclick="openAddVehicle()">+ Add Vehicle</div>`;
   appRoot.innerHTML=`
     <div class="topbar-app"><button class="back" onclick="goBack()">‹</button><div class="ttl">My Cars</div><button class="home-btn" onclick="routeTab('home')">⌂</button></div>
-    <div class="app-scroll" style="padding-top:18px">${body}</div>`;
+    <div class="app-scroll" style="padding-top:18px">${body}</div>
+    ${botnav('package')}`;
 }
 
 async function openCarDetail(vehId){
@@ -4173,6 +4176,12 @@ async function fetchWalletTxns(){
   return [];
 }
 
+/* wallet quick-action icon: uploaded image if set, else fallback symbol */
+function waIcon(key, fallback){
+  const url = STYLE && STYLE[key];
+  if(url) return `<img src="${url}" style="width:26px;height:26px;object-fit:contain" alt="">`;
+  return fallback;
+}
 async function renderWallet(){
   const p=PROFILE||{};
   const joined = p.created_at ? new Date(p.created_at).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}) : '—';
@@ -4199,10 +4208,10 @@ async function renderWallet(){
       </div>
       <!-- quick actions -->
       <div class="wallet-actions">
-        <div class="wa" onclick="openTopUp()"><div class="wa-ic">＋</div><div class="wa-t">${esc(STYLE.walletAction1||'Top Up')}</div></div>
-        <div class="wa" onclick="openGiftCard()"><div class="wa-ic">▢</div><div class="wa-t">${esc(STYLE.walletAction2||'Gift Card')}</div></div>
-        <div class="wa" onclick="routeTab('rewards')"><div class="wa-ic">◆</div><div class="wa-t">${esc(STYLE.walletAction3||'Rewards')}</div></div>
-        <div class="wa" onclick="openVouchers()"><div class="wa-ic">▣</div><div class="wa-t">${esc(STYLE.walletAction4||'Vouchers')}</div></div>
+        <div class="wa" onclick="openTopUp()"><div class="wa-ic">${waIcon('icTopup','＋')}</div><div class="wa-t">${esc(STYLE.walletAction1||'Top Up')}</div></div>
+        <div class="wa" onclick="openGiftCard()"><div class="wa-ic">${waIcon('icGiftcard','▢')}</div><div class="wa-t">${esc(STYLE.walletAction2||'Gift Card')}</div></div>
+        <div class="wa" onclick="routeTab('rewards')"><div class="wa-ic">${waIcon('icRewards','◆')}</div><div class="wa-t">${esc(STYLE.walletAction3||'Rewards')}</div></div>
+        <div class="wa" onclick="openVouchers()"><div class="wa-ic">${waIcon('icVouchers','▣')}</div><div class="wa-t">${esc(STYLE.walletAction4||'Vouchers')}</div></div>
       </div>
       <div class="sec-title">${esc(STYLE.walletTxnTitle||'Recent Transactions')}</div>
       <div class="txn-list">${txnHtml}</div>
@@ -4560,10 +4569,10 @@ async function renderAccount(){
 
       <!-- quick actions -->
       <div class="wallet-actions" style="margin-top:18px">
-        <div class="wa" onclick="openTopUp()"><div class="wa-ic">＋</div><div class="wa-t">${esc(STYLE.walletAction1||'Top Up')}</div></div>
-        <div class="wa" onclick="openGiftCard()"><div class="wa-ic">▢</div><div class="wa-t">${esc(STYLE.walletAction2||'Gift Card')}</div></div>
-        <div class="wa" onclick="routeTab('rewards')"><div class="wa-ic">◆</div><div class="wa-t">${esc(STYLE.walletAction3||'Rewards')}</div></div>
-        <div class="wa" onclick="openVouchers()"><div class="wa-ic">▣</div><div class="wa-t">${esc(STYLE.walletAction4||'Voucher')}</div></div>
+        <div class="wa" onclick="openTopUp()"><div class="wa-ic">${waIcon('icTopup','＋')}</div><div class="wa-t">${esc(STYLE.walletAction1||'Top Up')}</div></div>
+        <div class="wa" onclick="openGiftCard()"><div class="wa-ic">${waIcon('icGiftcard','▢')}</div><div class="wa-t">${esc(STYLE.walletAction2||'Gift Card')}</div></div>
+        <div class="wa" onclick="routeTab('rewards')"><div class="wa-ic">${waIcon('icRewards','◆')}</div><div class="wa-t">${esc(STYLE.walletAction3||'Rewards')}</div></div>
+        <div class="wa" onclick="openVouchers()"><div class="wa-ic">${waIcon('icVouchers','▣')}</div><div class="wa-t">${esc(STYLE.walletAction4||'Voucher')}</div></div>
       </div>
 
       <div class="sec-title">My Account</div>
@@ -4611,12 +4620,6 @@ function openSettings(){
   const notif=getPref('notif','on');
   const tg=(on)=>`<div class="tg ${on?'on':''}"><div class="tg-dot"></div></div>`;
   subPage('Settings', `
-    <div class="sec-title" style="margin-top:0">Appearance</div>
-    <div class="acc-list">
-      <div class="acc-row" onclick="setTheme('dark')"><div class="acc-row-label">Dark mode</div><div class="acc-row-right">${theme==='dark'?'<span class="acc-check">✓</span>':''}</div></div>
-      <div class="acc-row" onclick="setTheme('light')"><div class="acc-row-label">Light mode</div><div class="acc-row-right">${theme==='light'?'<span class="acc-check">✓</span>':''}</div></div>
-      <div class="acc-row" onclick="setTheme('auto')"><div class="acc-row-label">Auto (follow phone)</div><div class="acc-row-right">${theme==='auto'?'<span class="acc-check">✓</span>':''}</div></div>
-    </div>
     <div class="sec-title">Notifications</div>
     <div class="acc-list">
       <div class="acc-row" onclick="toggleNotif()"><div class="acc-row-label">Push notifications</div><div class="acc-row-right">${tg(notif==='on')}</div></div>
