@@ -476,13 +476,13 @@
           </div>
           <div class="row" style="align-items:center;margin-bottom:6px">
             <div style="flex:1;font-weight:600">Gold</div>
-            <div style="flex:1"><input type="number" id="rb-prod-3" oninput="onRebate()" placeholder="20"></div>
-            <div style="flex:1"><input type="number" id="rb-svc-3" oninput="onRebate()" placeholder="30"></div>
+            <div style="flex:1"><input type="number" id="rb-prod-4" oninput="onRebate()" placeholder="20"></div>
+            <div style="flex:1"><input type="number" id="rb-svc-4" oninput="onRebate()" placeholder="30"></div>
           </div>
           <div class="row" style="align-items:center">
             <div style="flex:1;font-weight:600">Platinum</div>
-            <div style="flex:1"><input type="number" id="rb-prod-4" oninput="onRebate()" placeholder="30"></div>
-            <div style="flex:1"><input type="number" id="rb-svc-4" oninput="onRebate()" placeholder="50"></div>
+            <div style="flex:1"><input type="number" id="rb-prod-5" oninput="onRebate()" placeholder="30"></div>
+            <div style="flex:1"><input type="number" id="rb-svc-5" oninput="onRebate()" placeholder="50"></div>
           </div>
         </div>
 
@@ -493,10 +493,10 @@
           <input type="number" id="pt-rate" oninput="onRebate()" placeholder="4">
           <div class="row" style="margin-top:10px">
             <div><label>Join Bronze — bonus points</label><input type="number" id="pt-join-2" oninput="onRebate()" placeholder="0"></div>
-            <div><label>Join Gold — bonus points</label><input type="number" id="pt-join-3" oninput="onRebate()" placeholder="0"></div>
+            <div><label>Join Gold — bonus points</label><input type="number" id="pt-join-4" oninput="onRebate()" placeholder="0"></div>
           </div>
           <div class="row" style="margin-top:10px">
-            <div><label>Join Platinum — bonus points</label><input type="number" id="pt-join-4" oninput="onRebate()" placeholder="0"></div>
+            <div><label>Join Platinum — bonus points</label><input type="number" id="pt-join-5" oninput="onRebate()" placeholder="0"></div>
             <div><label>Refer a friend — points</label><input type="number" id="pt-referral" oninput="onRebate()" placeholder="0"></div>
           </div>
         </div>
@@ -3075,19 +3075,19 @@ function onMem(){
 }
 function onRebate(){
   const v=id=>{const e=document.getElementById(id);const n=e&&e.value!==''?Number(e.value):null;return (n==null||isNaN(n))?null:n;};
-  // rebate %s per tier (2=Bronze,3=Gold,4=Platinum)
-  theme.rebateProd={2:v('rb-prod-2'),3:v('rb-prod-3'),4:v('rb-prod-4')};
-  theme.rebateSvc ={2:v('rb-svc-2'), 3:v('rb-svc-3'), 4:v('rb-svc-4')};
+  // rebate %s per tier (2=Bronze,4=Gold,5=Platinum; 3=Silver unused)
+  theme.rebateProd={2:v('rb-prod-2'),4:v('rb-prod-4'),5:v('rb-prod-5')};
+  theme.rebateSvc ={2:v('rb-svc-2'), 4:v('rb-svc-4'), 5:v('rb-svc-5')};
   // points
-  theme.pointRmPer=v('pt-rate');             // RM per 1 point
-  theme.joinPoints={2:v('pt-join-2'),3:v('pt-join-3'),4:v('pt-join-4')};
+  theme.pointRmPer=v('pt-rate');
+  theme.joinPoints={2:v('pt-join-2'),4:v('pt-join-4'),5:v('pt-join-5')};
   theme.referralPoints=v('pt-referral');
 }
 function fillMemControls(){
   document.getElementById('mb-title').value=theme.memTitle||'All Membership Plan';
   document.getElementById('mb-subbtn').value=theme.memSubscribeBtn||'Subscribe Now';
   const wrap=document.getElementById('mb-tiers');
-  const tiers=[1,2,3,4,5];
+  const tiers=[1,2,4,5]; // 3=Silver hidden (not used)
   wrap.innerHTML=tiers.map(n=>`
     <div class="card">
       <label>Tier ${n} name</label><input id="mb-name${n}" value="${esc(theme['memTier'+n]||'')}" oninput="theme.memTier${n}=this.value;renderPreview()">
@@ -3111,10 +3111,10 @@ function fillMemControls(){
   // load rebate + points values
   const sv=(id,val)=>{const e=document.getElementById(id); if(e&&val!=null) e.value=val;};
   const rp=theme.rebateProd||{}, rs=theme.rebateSvc||{}, jp=theme.joinPoints||{};
-  sv('rb-prod-2',rp[2]); sv('rb-prod-3',rp[3]); sv('rb-prod-4',rp[4]);
-  sv('rb-svc-2',rs[2]);  sv('rb-svc-3',rs[3]);  sv('rb-svc-4',rs[4]);
+  sv('rb-prod-2',rp[2]); sv('rb-prod-4',rp[4]); sv('rb-prod-5',rp[5]);
+  sv('rb-svc-2',rs[2]);  sv('rb-svc-4',rs[4]);  sv('rb-svc-5',rs[5]);
   sv('pt-rate',theme.pointRmPer);
-  sv('pt-join-2',jp[2]); sv('pt-join-3',jp[3]); sv('pt-join-4',jp[4]);
+  sv('pt-join-2',jp[2]); sv('pt-join-4',jp[4]); sv('pt-join-5',jp[5]);
   sv('pt-referral',theme.referralPoints);
 }
 
