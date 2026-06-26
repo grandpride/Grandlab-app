@@ -837,6 +837,9 @@
           <div class="section-h" style="margin-top:22px">Wallet quick-action icons</div>
           <div class="hint" style="margin-bottom:10px">Upload your own icons for Top Up, Gift Card, Rewards, Vouchers (transparent PNG, no frame). Leave blank to use the default.</div>
           <div id="walletIconsRow" style="display:grid;grid-template-columns:1fr 1fr;gap:10px"></div>
+          <label style="margin-top:14px">Icon size (<span id="lbl-wiSize">54</span>px)</label>
+          <input type="range" id="wiSize" min="32" max="80" value="54" oninput="theme.walletIconSize=Number(this.value);document.getElementById('lbl-wiSize').textContent=this.value" style="width:100%">
+          <div class="hint">Adjust how big the wallet icons appear in the app. Save, then refresh the app to see it.</div>
           <label style="margin-top:10px">Fit</label>
           <select id="th-appBgFit" onchange="onBg()" style="width:100%;height:42px;background:var(--panel2);border:1px solid var(--line);border-radius:8px;color:var(--text);padding:0 10px">
             <option value="cover">Cover (fill screen)</option>
@@ -2386,6 +2389,8 @@ const WALLET_ICONS = [
 ];
 function renderWalletIcons(){
   const el=document.getElementById('walletIconsRow'); if(!el) return;
+  const sz=document.getElementById('wiSize');
+  if(sz){ sz.value=theme.walletIconSize||54; const lbl=document.getElementById('lbl-wiSize'); if(lbl) lbl.textContent=theme.walletIconSize||54; }
   el.innerHTML = WALLET_ICONS.map(ic=>{
     const url = theme[ic.key]||'';
     return `<div style="background:#0a0908;border:1px solid var(--line);border-radius:10px;padding:10px;text-align:center">
