@@ -3045,6 +3045,7 @@ async function openReferralPage(){
       </div>
 
       <div class="ref-earn-t">Earn a free car wash</div>
+      ${Number(STYLE.referralPoints)>0?`<div class="ref-check on"><span class="ref-tick">🪙</span> Get ${STYLE.referralPoints} ${esc(STYLE.coinName||'G Coin')} for each friend who signs up</div>`:''}
       <div class="ref-check ${tierOk?'on':''}"><span class="ref-tick">${tierOk?'✓':'○'}</span> Subscribe to at least Bronze member</div>
       <div class="ref-check ${washOk?'on':''}"><span class="ref-tick">${washOk?'✓':'○'}</span> Complete a car wash at any outlet</div>
 
