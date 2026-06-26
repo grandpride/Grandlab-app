@@ -317,7 +317,7 @@
   .acc-head{display:flex;align-items:center;gap:14px;padding:calc(10px + env(safe-area-inset-top)) 0 4px;cursor:pointer;}
   .acc-avatar{width:58px;height:58px;border-radius:50%;background:var(--card-grad-gold);
     border:1px solid var(--gold-line);display:flex;align-items:center;justify-content:center;
-    font-size:24px;font-weight:800;color:var(--yellow);}
+    font-size:24px;font-weight:800;color:var(--yellow);overflow:hidden;}
   .acc-name{font-size:18px;font-weight:800;display:flex;align-items:center;gap:6px;}
   .acc-phone{font-size:13px;color:var(--muted);margin-top:2px;}
   .acc-upgrade{margin-top:16px;background:var(--card-grad-gold);border:1px solid var(--gold-line);
@@ -4462,6 +4462,7 @@ async function renderRewards(){
         <div class="rewards-balance">${coins.toLocaleString()}</div>
         <div class="rewards-balance-label">${esc(STYLE.rewardsPointsLabel||'Points')}</div>
         <button class="rewards-my" onclick="openVouchers()">🎟️ My Vouchers ›</button>
+        <button class="rewards-my" onclick="openCoinHistory()" style="margin-top:8px">🪙 ${esc(STYLE.coinName||'G Coin')} Activity ›</button>
       </div>
 
       <div class="earn-info">
@@ -4505,6 +4506,40 @@ function openRewardsList(which){
     </div>`;
 }
 
+async function openCoinHistory(){
+  const coinName = esc(STYLE.coinName||'G Coin');
+  appRoot.innerHTML=`
+    <div class="topbar-app"><button class="back" onclick="routeTab('rewards')">‹</button><div class="ttl">${coinName} Activity</div></div>
+    <div class="app-scroll" style="padding-top:14px"><div class="app-sub">Loading…</div></div>`;
+  let rows=[];
+  try{
+    if(SESSION?.user?.id){
+      const r=await fetch(`${SUPA_URL}/rest/v1/gl_point_txns?select=*&owner_id=eq.${SESSION.user.id}&order=created_at.desc&limit=100`,{headers:authHeaders()});
+      if(r.ok) rows=await r.json();
+    }
+  }catch(e){}
+  const bal=(PROFILE?.points||0).toLocaleString();
+  const reasonLabel=(rs)=>({spend:'Earned from purchase',join:'Membership bonus',referral:'Referral bonus',redeem:'Reward redeemed',adjust:'Adjustment'}[rs]||rs||'Activity');
+  const list = rows.length ? rows.map(t=>{
+    const pos=(t.delta||0)>=0;
+    const d=t.created_at?new Date(t.created_at).toLocaleDateString('en-GB'):'';
+    return `<div class="txn-row">
+      <div><div class="txn-note">${esc(reasonLabel(t.reason))}${t.ref?`<span style="color:var(--muted);font-weight:400"> · ${esc(t.ref)}</span>`:''}</div>
+      <div class="txn-date">${d}</div></div>
+      <div class="txn-amt ${pos?'pos':'neg'}">${pos?'+':''}${t.delta||0} ${coinName}</div>
+    </div>`;
+  }).join('') : `<div class="rwd-empty" style="margin-top:30px">🪙<div>No ${coinName} activity yet</div><span>Earn ${coinName} on every service once you're a member.</span></div>`;
+  appRoot.innerHTML=`
+    <div class="topbar-app"><button class="back" onclick="routeTab('rewards')">‹</button><div class="ttl">${coinName} Activity</div></div>
+    <div class="app-scroll" style="padding-top:14px">
+      <div class="coin-bal-card" style="background:var(--card-grad);border:1px solid var(--gold-line-soft);border-radius:16px;padding:18px;text-align:center;margin-bottom:16px">
+        <div style="color:var(--muted);font-size:13px">Current balance</div>
+        <div style="font-size:32px;font-weight:800;color:var(--yellow);margin-top:4px">${bal}</div>
+        <div style="color:var(--muted);font-size:12px">${coinName}</div>
+      </div>
+      ${list}
+    </div>`;
+}
 async function openRedemptionHistory(){
   let rows=[];
   try{
@@ -4613,7 +4648,7 @@ async function renderAccount(){
     <div class="app-scroll">
       <!-- profile header -->
       <div class="acc-head" onclick="openEditProfile()">
-        <div class="acc-avatar">${esc(initial)}</div>
+        <div class="acc-avatar">${STYLE.accAvatar?`<img src="${STYLE.accAvatar}" style="width:100%;height:100%;border-radius:50%;object-fit:cover">`:esc(initial)}</div>
         <div class="acc-head-info">
           <div class="acc-name">${esc(p.name||'Member')} <span class="acc-chev">›</span></div>
           <div class="acc-phone">${esc(p.phone||'—')}</div>

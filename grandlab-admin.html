@@ -840,6 +840,15 @@
           <label style="margin-top:14px">Icon size (<span id="lbl-wiSize">54</span>px)</label>
           <input type="range" id="wiSize" min="32" max="80" value="54" oninput="theme.walletIconSize=Number(this.value);document.getElementById('lbl-wiSize').textContent=this.value" style="width:100%">
           <div class="hint">Adjust how big the wallet icons appear in the app. Save, then refresh the app to see it.</div>
+
+          <div class="section-h" style="margin-top:22px">Account avatar (Grandlab photo)</div>
+          <div class="hint" style="margin-bottom:10px">Shown as the round avatar on the Account page. Upload a Grandlab logo/photo. Leave blank to show the customer's initial.</div>
+          <div class="upl">
+            <button class="btn btn-ghost btn-sm" onclick="document.getElementById('accAvatarFile').click()">Upload avatar</button>
+            <input id="accAvatarFile" type="file" accept="image/*" style="display:none" onchange="uploadAccAvatar(this)">
+            <button class="btn btn-danger btn-sm" onclick="theme.accAvatar=null;renderAccAvatar();toast('Removed')">Remove</button>
+            <span id="accAvatarThumb"></span>
+          </div>
           <label style="margin-top:10px">Fit</label>
           <select id="th-appBgFit" onchange="onBg()" style="width:100%;height:42px;background:var(--panel2);border:1px solid var(--line);border-radius:8px;color:var(--text);padding:0 10px">
             <option value="cover">Cover (fill screen)</option>
@@ -2414,6 +2423,20 @@ async function uploadWalletIcon(key,input){
   theme[key]=`${SUPA_URL}/storage/v1/object/public/${BUCKET}/${path}`;
   renderWalletIcons(); toast("Icon uploaded ✓");
 }
+function renderAccAvatar(){
+  const th=document.getElementById('accAvatarThumb');
+  if(th) th.innerHTML=theme.accAvatar?`<img src="${theme.accAvatar}" style="height:46px;width:46px;border-radius:50%;object-fit:cover;border:1px solid var(--line)">`:'';
+}
+async function uploadAccAvatar(input){
+  const f=input.files[0]; if(!f) return;
+  toast("Uploading avatar…");
+  const path=`accavatar-${Date.now()}-${f.name.replace(/[^a-z0-9.]/gi,'_')}`;
+  const r=await fetch(`${SUPA_URL}/storage/v1/object/${BUCKET}/${path}`,{
+    method:"POST",headers:{apikey:SVC_KEY,Authorization:`Bearer ${SVC_KEY}`},body:f});
+  if(!r.ok){ toast("Upload failed — is gl-images bucket public?"); return; }
+  theme.accAvatar=`${SUPA_URL}/storage/v1/object/public/${BUCKET}/${path}`;
+  renderAccAvatar(); toast("Avatar uploaded ✓");
+}
 function onTheme(){
   const g=id=>document.getElementById(id);
   theme.bg=g('th-bg').value; theme.accent=g('th-accent').value; theme.text=g('th-text').value;
@@ -2443,6 +2466,7 @@ function fillThemeControls(){
   const g=id=>document.getElementById(id);
   fillBgControls();
   renderWalletIcons();
+  renderAccAvatar();
   g('th-bg').value=theme.bg; g('th-accent').value=theme.accent; g('th-text').value=theme.text;
   g('th-logoSize').value=theme.logoSize;
   g('th-eyebrowSize').value=theme.eyebrowSize; g('th-eyebrowColor').value=theme.eyebrowColor;
