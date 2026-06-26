@@ -3530,6 +3530,30 @@ function svcDetailPrice(){
   (s.addons||[]).forEach((a,i)=>{ if(SVC_SEL.addons[i]) total+=resolveAddon(a).price; });
   return total;
 }
+/* ---- Member rebate + points ----
+   Rebate = instant % off at checkout for members only. NOT on flash deals.
+   product vs service uses the service's rebate_kind (default service). */
+function rebatePctFor(service){
+  const tier = PROFILE?.tier_level || 1;
+  if(tier < 2) return 0;                         // non-members: no rebate
+  if(service && service._isFlash) return 0;      // flash deals: no rebate
+  const kind = (service?.rebate_kind)||'service';
+  const tbl = kind==='product' ? (STYLE.rebateProd||{}) : (STYLE.rebateSvc||{});
+  const pct = Number(tbl[tier] ?? tbl[String(tier)] ?? 0);
+  return (isNaN(pct)||pct<0) ? 0 : Math.min(pct,100);
+}
+function applyRebate(amount, service){
+  const pct = rebatePctFor(service);
+  const discount = Math.round(amount * pct) / 100;
+  return { pct, discount, final: Math.max(0, amount - discount) };
+}
+function pointsForSpend(amountAfterRebate){
+  const tier = PROFILE?.tier_level || 1;
+  if(tier < 2) return 0;                          // members only
+  const rm = Number(STYLE.pointRmPer||0);
+  if(!rm || rm<=0) return 0;
+  return Math.round(amountAfterRebate / rm);       // RM4=1pt, round nearest
+}
 function currentOptionChoice(){
   const s=SVC_SEL.service; const choices=optionChoicesFor(s); if(!choices) return null;
   const labels=choices.map(c=>c.label);
@@ -3781,14 +3805,25 @@ async function checkoutService(){
   openPaymentSheet();
 }
 function openPaymentSheet(){
-  const amt = svcDetailPrice();
+  const gross = svcDetailPrice();
+  const s = SVC_SEL.service;
+  const reb = applyRebate(gross, s);
+  const amt = reb.final;
   const online = !!SENANGPAY_FN;
+  const rebateLine = reb.discount>0
+    ? `<div class="pay-sheet-rebate" style="font-size:13px;color:var(--yellow);text-align:center;margin-bottom:4px">Member rebate (${reb.pct}%): −RM${money(reb.discount)}</div>`
+    : '';
+  const grossLine = reb.discount>0
+    ? `<div style="font-size:13px;color:var(--muted);text-align:center;text-decoration:line-through">RM${money(gross)}</div>`
+    : '';
   const sheet=document.createElement('div');
   sheet.className='pay-sheet-overlay';
   sheet.innerHTML=`
     <div class="pay-sheet">
       <div class="pay-sheet-handle"></div>
       <div class="pay-sheet-title">Choose payment</div>
+      ${grossLine}
+      ${rebateLine}
       <div class="pay-sheet-amt">Total: RM${money(amt)}</div>
       ${online?`<button class="pay-opt" onclick="doCheckout('senangpay')">
         <div class="pay-opt-ic">💳</div>
@@ -3816,12 +3851,15 @@ async function doCheckout(method){
   const vari = s.variations?.[SVC_SEL.variIdx]?.label || '';
   const store = STORES[SVC_SEL.storeIdx]?.name || '';
   const addonNames = (s.addons||[]).filter((a,i)=>SVC_SEL.addons[i]).map(a=>resolveAddon(a).label);
-  const amt = svcDetailPrice();
+  const gross = svcDetailPrice();
+  const reb = applyRebate(gross, s);
+  const amt = reb.final;
   const noteBits=[];
   if(vari) noteBits.push('Variation: '+vari);
   if(SVC_SEL.qty>1) noteBits.push('Qty: '+SVC_SEL.qty);
   if(addonNames.length) noteBits.push('Add-ons: '+addonNames.join(', '));
   if(store) noteBits.push('Store: '+store);
+  if(reb.discount>0) noteBits.push(`Member rebate ${reb.pct}%: -RM`+money(reb.discount));
   noteBits.push('Total: RM'+money(amt));
   const note=noteBits.join(' · ');
   const orderRef = 'GL'+Date.now().toString(36).toUpperCase()+Math.random().toString(36).slice(2,5).toUpperCase();
@@ -3838,7 +3876,8 @@ async function doCheckout(method){
       // multi-use package handling (only finalize package on PAID or counter; for online we still create on return)
       if(method==='counter'){
         await afterOrderCreated(s, car, carLabel);
-        toast("Booked ✓ — pay at outlet"); routeTab('order'); return;
+        const earned = await awardPoints(amt, 'Booking: '+s.name);
+        toast(earned>0 ? `Booked ✓ — pay at outlet · +${earned} G Coin` : "Booked ✓ — pay at outlet"); routeTab('order'); return;
       }
       // online → get senangPay URL from the edge function and redirect
       toast("Opening payment…");
@@ -3858,6 +3897,21 @@ async function doCheckout(method){
   }catch(e){ toast("Order error"); }
 }
 // create package + milestone rewards after an order is placed (used by counter + paid online)
+async function awardPoints(amountAfterRebate, reason){
+  try{
+    const pts = pointsForSpend(amountAfterRebate);
+    if(pts<=0) return 0;
+    const newPts = Number(PROFILE?.points||0) + pts;
+    await fetch(`${SUPA_URL}/rest/v1/gl_profiles?id=eq.${SESSION.user.id}`,{
+      method:"PATCH",headers:authHeaders(),body:JSON.stringify({points:newPts})});
+    if(PROFILE) PROFILE.points=newPts;
+    // ledger entry
+    await fetch(`${SUPA_URL}/rest/v1/gl_point_txns`,{
+      method:"POST",headers:authHeaders(),
+      body:JSON.stringify({owner_id:SESSION.user.id, delta:pts, reason:'spend', ref:(reason||'Purchase')})}).catch(()=>{});
+    return pts;
+  }catch(e){ return 0; }
+}
 async function afterOrderCreated(s, car, carLabel){
   const uses = Number(s.pkg_uses||0);
   if(uses>1){
@@ -3913,6 +3967,8 @@ async function handlePayReturn(){
           const svc=(SERVICES||[]).find(x=>String(x.id)===String(ord.service_id));
           const car=(VEHICLES||[]).find(v=>String(v.id)===String(ord.vehicle_id));
           if(svc) await afterOrderCreated(svc, car, ord.vehicle_label||'');
+          const earned = await awardPoints(Number(ord.amount||0), 'Purchase: '+(ord.service_name||''));
+          if(earned>0) toast(`+${earned} G Coin earned ✓`);
         }
       }
     }catch(e){}
@@ -4407,7 +4463,6 @@ async function renderRewards(){
       <div class="earn-info">
         <div class="earn-title">How to earn ${esc(STYLE.coinName||'points')}</div>
         <div class="earn-row"><span class="earn-ic">🎉</span> Join membership</div>
-        <div class="earn-row"><span class="earn-ic">💳</span> Top up your wallet</div>
         <div class="earn-row"><span class="earn-ic">🚗</span> Every service at our outlet</div>
         <div class="earn-row"><span class="earn-ic">👥</span> Refer friends</div>
       </div>

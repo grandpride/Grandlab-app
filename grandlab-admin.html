@@ -210,6 +210,7 @@
         <button class="tab" data-tab="customers" onclick="switchTab('customers')">Customers</button>
         <button class="tab" data-tab="bookings" onclick="switchTab('bookings')">Bookings</button>
         <button class="tab" data-tab="referrals" onclick="switchTab('referrals')">Referrals</button>
+        <button class="tab" data-tab="maintenance" onclick="switchTab('maintenance')">Maintenance</button>
       </div>
 
       <!-- OTP PAGE -->
@@ -461,6 +462,44 @@
         <div class="section-h">Tiers — name, card image, member-card background, benefits</div>
         <div id="mb-tiers"></div>
         <div class="hint">Card image = the virtual membership card shown on the membership page. Background = the photo behind the member card on the home page when a customer is on that tier. Benefits: one per line.</div>
+
+        <div class="section-h" style="margin-top:24px">Member rebate (instant discount at checkout)</div>
+        <div class="card">
+          <div class="hint" style="margin-bottom:10px">Members get this % off automatically at checkout. Products and services can differ. Non-members and flash deals get NO rebate.</div>
+          <div style="display:flex;gap:8px;font-size:11px;color:var(--muted);font-weight:700;padding:0 4px 6px">
+            <div style="flex:1">Tier</div><div style="flex:1">Product %</div><div style="flex:1">Service %</div>
+          </div>
+          <div class="row" style="align-items:center;margin-bottom:6px">
+            <div style="flex:1;font-weight:600">Bronze</div>
+            <div style="flex:1"><input type="number" id="rb-prod-2" oninput="onRebate()" placeholder="15"></div>
+            <div style="flex:1"><input type="number" id="rb-svc-2" oninput="onRebate()" placeholder="20"></div>
+          </div>
+          <div class="row" style="align-items:center;margin-bottom:6px">
+            <div style="flex:1;font-weight:600">Gold</div>
+            <div style="flex:1"><input type="number" id="rb-prod-3" oninput="onRebate()" placeholder="20"></div>
+            <div style="flex:1"><input type="number" id="rb-svc-3" oninput="onRebate()" placeholder="30"></div>
+          </div>
+          <div class="row" style="align-items:center">
+            <div style="flex:1;font-weight:600">Platinum</div>
+            <div style="flex:1"><input type="number" id="rb-prod-4" oninput="onRebate()" placeholder="30"></div>
+            <div style="flex:1"><input type="number" id="rb-svc-4" oninput="onRebate()" placeholder="50"></div>
+          </div>
+        </div>
+
+        <div class="section-h" style="margin-top:20px">G Coin points</div>
+        <div class="card">
+          <div class="hint" style="margin-bottom:10px">Members earn points on spending (after rebate). Not on wallet top-up.</div>
+          <label>RM per 1 point (e.g. 4 = RM4 spent earns 1 point)</label>
+          <input type="number" id="pt-rate" oninput="onRebate()" placeholder="4">
+          <div class="row" style="margin-top:10px">
+            <div><label>Join Bronze — bonus points</label><input type="number" id="pt-join-2" oninput="onRebate()" placeholder="0"></div>
+            <div><label>Join Gold — bonus points</label><input type="number" id="pt-join-3" oninput="onRebate()" placeholder="0"></div>
+          </div>
+          <div class="row" style="margin-top:10px">
+            <div><label>Join Platinum — bonus points</label><input type="number" id="pt-join-4" oninput="onRebate()" placeholder="0"></div>
+            <div><label>Refer a friend — points</label><input type="number" id="pt-referral" oninput="onRebate()" placeholder="0"></div>
+          </div>
+        </div>
       </div>
 
       <!-- CHECK-IN -->
@@ -594,6 +633,21 @@
         <div id="refList" style="margin-top:14px"></div>
       </div>
 
+
+      <!-- MAINTENANCE OVERDUE -->
+      <div class="panel" id="panel-maintenance">
+        <div class="hint">Customers whose coating maintenance is due or overdue. "Remind again" sends them a push notification.</div>
+        <div class="row" style="margin:14px 0;align-items:center">
+          <button class="btn btn-ghost btn-sm" onclick="loadMaintenance()">↻ Refresh</button>
+          <div style="flex:1"></div>
+          <select id="maintFilter" onchange="renderMaintenance()" style="width:auto;background:var(--panel2);border:1px solid var(--line);border-radius:8px;color:var(--text);padding:8px 10px">
+            <option value="overdue">Overdue only</option>
+            <option value="soon">Due soon (within 10 days)</option>
+            <option value="all">All upcoming</option>
+          </select>
+        </div>
+        <div id="maintList"><div class="empty">Click Refresh to load.</div></div>
+      </div>
 
       <!-- ONBOARDING -->
       <div class="panel active" id="panel-onboarding">
@@ -1341,6 +1395,12 @@ function renderServices(){
       <label style="margin-top:10px">Maintenance reminder interval (months) <span class="svc-hint">for coatings — auto-reminds customer this many months after purchase / each visit. e.g. Cancoat 2, MOHS 4, Infinite 6. Leave blank for no reminder.</span></label>
       <input type="number" value="${s.maint_months??''}" oninput="upd('svc',${i},'maint_months',this.value===''?null:Number(this.value))" placeholder="e.g. 2, 3, 4, 6 — blank = off">
 
+      <label style="margin-top:10px">Rebate type <span class="svc-hint">controls which member rebate % applies. Product = retail item, Service = work/labour.</span></label>
+      <select onchange="upd('svc',${i},'rebate_kind',this.value||null)" style="width:100%;height:42px;background:var(--panel2);border:1px solid var(--line);border-radius:8px;color:var(--text);padding:0 10px">
+        <option value="service" ${(s.rebate_kind||'service')==='service'?'selected':''}>Service</option>
+        <option value="product" ${s.rebate_kind==='product'?'selected':''}>Product</option>
+      </select>
+
       ${s.pkg_uses>1?`
       <label style="margin-top:10px">Milestone rewards <span class="svc-hint">free reward at a certain use # (e.g. #5 windscreen, #10 3-step)</span></label>
       <div id="msList${i}">${(s.milestones||[]).map((m,mi)=>`
@@ -1479,6 +1539,7 @@ function importServicesExcel(input){
         s.pkg_uses=(r.pkg_uses==null||r.pkg_uses==='')?null:Number(r.pkg_uses);
         s.pkg_type=String(r.pkg_type||'').trim()||null;
         s.maint_months=(r.maint_months==null||r.maint_months==='')?null:Number(r.maint_months);
+        s.rebate_kind=r.rebate_kind||null;
         s.hidden=yes(r.hidden);
         if(r.sort_order!=null&&r.sort_order!=='') s.sort_order=num(r.sort_order);
         s.media=s.media||[]; s.variations=s.variations||[]; s.addons=s.addons||[];
@@ -2013,6 +2074,75 @@ async function notifyFlash(i){
     else { toast('Push failed: '+(j.error||r.status)); }
   }catch(e){ toast('Push failed: '+e.message); }
 }
+let MAINT_ROWS=[];
+async function loadMaintenance(){
+  const el=document.getElementById('maintList');
+  if(!SVC_KEY){ toast("Connect with your key first"); return; }
+  el.innerHTML='<div class="empty">Loading…</div>';
+  try{
+    // pull service records that have a next_due set, newest per owner matters
+    const r=await sb(`gl_service_records?next_due=not.is.null&select=id,owner_id,service_name,next_due,reminded_at,created_at&order=next_due.asc`,
+      {headers:{apikey:SVC_KEY,Authorization:`Bearer ${SVC_KEY}`}});
+    const rows=await r.json();
+    if(!Array.isArray(rows)){ el.innerHTML='<div class="empty">Could not load.</div>'; return; }
+    // keep only the LATEST next_due per owner (the current cycle)
+    const latest={};
+    rows.forEach(x=>{
+      if(!x.owner_id) return;
+      if(!latest[x.owner_id] || new Date(x.next_due)>new Date(latest[x.owner_id].next_due)) latest[x.owner_id]=x;
+    });
+    let list=Object.values(latest);
+    // fetch customer names
+    const ids=list.map(x=>x.owner_id);
+    if(ids.length){
+      const cr=await sb(`gl_profiles?id=in.(${ids.join(',')})&select=id,name,phone`,{headers:{apikey:SVC_KEY,Authorization:`Bearer ${SVC_KEY}`}});
+      const cust=await cr.json();
+      const cmap={}; (cust||[]).forEach(c=>cmap[c.id]=c);
+      list.forEach(x=>{ x._name=(cmap[x.owner_id]||{}).name||'Customer'; x._phone=(cmap[x.owner_id]||{}).phone||''; });
+    }
+    MAINT_ROWS=list;
+    renderMaintenance();
+  }catch(e){ el.innerHTML='<div class="empty">Error: '+e.message+'</div>'; }
+}
+function renderMaintenance(){
+  const el=document.getElementById('maintList'); if(!el) return;
+  const filter=(document.getElementById('maintFilter')||{}).value||'overdue';
+  const now=new Date();
+  const in10=new Date(now.getTime()+10*86400000);
+  let rows=MAINT_ROWS.slice();
+  if(filter==='overdue') rows=rows.filter(x=>new Date(x.next_due)<now);
+  else if(filter==='soon') rows=rows.filter(x=>{const d=new Date(x.next_due);return d>=now&&d<=in10;});
+  rows.sort((a,b)=>new Date(a.next_due)-new Date(b.next_due));
+  if(!rows.length){ el.innerHTML='<div class="empty">None in this category.</div>'; return; }
+  el.innerHTML=rows.map(x=>{
+    const due=new Date(x.next_due);
+    const overdue=due<now;
+    const days=Math.round((due-now)/86400000);
+    const status=overdue?`<span style="color:#ff6b6b">Overdue ${Math.abs(days)}d</span>`:`<span style="color:var(--yellow)">Due in ${days}d</span>`;
+    const dd=due.toISOString().slice(0,10);
+    return `<div class="mini-row" style="display:flex;align-items:center;gap:10px;padding:11px 12px;background:#0a0908;border:1px solid var(--line);border-radius:9px;margin-bottom:8px">
+      <div style="flex:1">
+        <div style="font-weight:600">${esc(x._name)} ${x._phone?`<span style="color:var(--muted);font-weight:400;font-size:12px">· ${esc(x._phone)}</span>`:''}</div>
+        <div style="font-size:12px;color:var(--muted)">${esc(x.service_name||'')}</div>
+        <div style="font-size:12px;margin-top:3px">${status} · due ${dd}${x.reminded_at?' · reminded ✓':''}</div>
+      </div>
+      <button class="btn btn-ghost btn-sm" onclick="remindMaint('${x.owner_id}','${esc((x._name||'').replace(/'/g,''))}')">🔔 Remind</button>
+    </div>`;
+  }).join('');
+}
+async function remindMaint(ownerId,name){
+  if(!SVC_KEY){ toast("Connect with your key first"); return; }
+  if(!confirm(`Send maintenance reminder to ${name}?`)) return;
+  try{
+    const r=await fetch(PUSH_FN_URL_GL,{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':`Bearer ${SVC_KEY}`,'apikey':SVC_KEY},
+      body:JSON.stringify({title:'🛡️ Coating Maintenance Due',body:"Your car's coating maintenance is due. Book your slot to keep the protection strong!",target:ownerId,url:'https://grandpride.github.io/Grandlab-app/',tag:'maint'})
+    });
+    const j=await r.json();
+    if(r.ok){ toast(`Reminder sent ✅`); } else { toast('Failed: '+(j.error||r.status)); }
+  }catch(e){ toast('Failed: '+e.message); }
+}
 function updFlash(i,f,v){
   if(['deal_price','orig_price','total_qty'].includes(f)) v=(v===''?null:Number(v));
   if(f==='ends_at') v=(v?new Date(v).toISOString():null);
@@ -2432,6 +2562,7 @@ async function saveAll(){
         category2:s.category2||null,hidden:!!s.hidden,section:s.section||null,brand:s.brand||null,
         pkg_uses:s.pkg_uses??null,pkg_type:s.pkg_type||null,
         maint_months:(s.maint_months==null||s.maint_months==='')?null:Number(s.maint_months),
+        rebate_kind:s.rebate_kind||null,
         milestones:(Array.isArray(s.milestones)&&s.milestones.length)?s.milestones:null,
         option_type:s.option_type||null,
         option_label:s.option_type?(s.option_label||'Choose option'):null,
@@ -2814,6 +2945,7 @@ function switchTab(t){
   else if(t==='customers')loadCustomers();
   else if(t==='bookings'){fillBookingCfg();loadBookings();}
   else if(t==='referrals')loadReferrals();
+  else if(t==='maintenance')loadMaintenance();
 }
 
 /* ---------- WALLET editing ---------- */
@@ -2941,6 +3073,16 @@ function onMem(){
   theme.memSubscribeBtn=document.getElementById('mb-subbtn').value;
   renderPreview();
 }
+function onRebate(){
+  const v=id=>{const e=document.getElementById(id);const n=e&&e.value!==''?Number(e.value):null;return (n==null||isNaN(n))?null:n;};
+  // rebate %s per tier (2=Bronze,3=Gold,4=Platinum)
+  theme.rebateProd={2:v('rb-prod-2'),3:v('rb-prod-3'),4:v('rb-prod-4')};
+  theme.rebateSvc ={2:v('rb-svc-2'), 3:v('rb-svc-3'), 4:v('rb-svc-4')};
+  // points
+  theme.pointRmPer=v('pt-rate');             // RM per 1 point
+  theme.joinPoints={2:v('pt-join-2'),3:v('pt-join-3'),4:v('pt-join-4')};
+  theme.referralPoints=v('pt-referral');
+}
 function fillMemControls(){
   document.getElementById('mb-title').value=theme.memTitle||'All Membership Plan';
   document.getElementById('mb-subbtn').value=theme.memSubscribeBtn||'Subscribe Now';
@@ -2966,6 +3108,14 @@ function fillMemControls(){
       <label>Benefits (one per line)</label>
       <textarea id="mb-ben${n}" rows="4" oninput="theme.memBenefits${n}=this.value.split('\\n').join('\\\\n')" style="width:100%;background:var(--panel2);border:1px solid var(--line);border-radius:8px;color:var(--text);padding:8px;font-size:13px">${esc((theme['memBenefits'+n]||'').split('\\n').join('\n'))}</textarea>
     </div>`).join('');
+  // load rebate + points values
+  const sv=(id,val)=>{const e=document.getElementById(id); if(e&&val!=null) e.value=val;};
+  const rp=theme.rebateProd||{}, rs=theme.rebateSvc||{}, jp=theme.joinPoints||{};
+  sv('rb-prod-2',rp[2]); sv('rb-prod-3',rp[3]); sv('rb-prod-4',rp[4]);
+  sv('rb-svc-2',rs[2]);  sv('rb-svc-3',rs[3]);  sv('rb-svc-4',rs[4]);
+  sv('pt-rate',theme.pointRmPer);
+  sv('pt-join-2',jp[2]); sv('pt-join-3',jp[3]); sv('pt-join-4',jp[4]);
+  sv('pt-referral',theme.referralPoints);
 }
 
 /* ---------- CHECK-IN editing ---------- */
