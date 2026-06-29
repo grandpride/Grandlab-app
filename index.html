@@ -507,8 +507,8 @@
     background:rgba(0,0,0,.55);color:#fff;font-size:15px;cursor:pointer;}
   .popup-track{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;align-items:flex-start;transition:height .25s ease;}
   .popup-track::-webkit-scrollbar{display:none;}
-  .popup-slide{flex:0 0 100%;scroll-snap-align:start;cursor:pointer;display:block;align-self:flex-start;}
-  .popup-slide img{width:100%;height:auto;max-height:78vh;object-fit:contain;display:block;}
+  .popup-slide{flex:0 0 100%;width:100%;scroll-snap-align:start;cursor:pointer;display:block;align-self:flex-start;}
+  .popup-slide img{width:100%;height:auto;object-fit:contain;display:block;}
   .popup-dots{display:flex;justify-content:center;gap:6px;padding:10px 0 2px;flex:0 0 auto;}
   .popup-dot{width:7px;height:7px;border-radius:50%;background:var(--line);}
   .popup-dot.on{background:var(--yellow);}
@@ -3219,21 +3219,27 @@ function showPopup(posters){
   document.body.appendChild(ov);
   const track=document.getElementById('popupTrack');
   const slides=ov.querySelectorAll('.popup-slide');
-  // size the track to the CURRENTLY visible poster (kills black gap on shorter posters)
+  // Size the track to the CURRENTLY visible poster's DISPLAYED height.
+  // Use natural aspect ratio × actual track width (reliable before full layout).
   function syncHeight(){
+    if(!track) return;
     const idx = posters.length>1 ? Math.round(track.scrollLeft/track.clientWidth) : 0;
     const img = slides[idx]?.querySelector('img');
-    if(img){
-      const h = img.clientHeight || img.naturalHeight;
-      if(h) track.style.height = h + 'px';
-    }
+    if(!img || !img.naturalWidth) return;           // wait until we know the real ratio
+    const w = track.clientWidth || img.clientWidth; // displayed width
+    const ratio = img.naturalHeight / img.naturalWidth;
+    let h = w * ratio;
+    const cap = window.innerHeight * 0.78;           // never taller than 78vh
+    if(h > cap) h = cap;
+    track.style.height = h + 'px';
   }
-  // run after each poster image loads (and once now in case cached)
   ov.querySelectorAll('.popup-slide img').forEach(img=>{
-    if(img.complete) syncHeight();
+    if(img.complete && img.naturalWidth) syncHeight();
     img.addEventListener('load', syncHeight);
   });
-  setTimeout(syncHeight, 60);
+  // a couple of delayed runs to catch layout settling
+  setTimeout(syncHeight, 80);
+  setTimeout(syncHeight, 300);
   window.addEventListener('resize', syncHeight);
   // dot tracking + height resync on scroll
   if(track && posters.length>1){
