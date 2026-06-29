@@ -22,6 +22,13 @@
   select{background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23F5C518' stroke-width='3'><path d='M6 9l6 6 6-6'/></svg>");background-repeat:no-repeat;background-position:right 14px center;padding-right:40px}
   .row{display:flex;gap:10px}.row .field{flex:1}
   .balwrap{max-height:0;overflow:hidden;transition:.25s;opacity:0}
+  .pkg-chips{margin-bottom:16px}
+  .pkg-chip{display:flex;align-items:center;gap:10px;background:#1a2e1a;border:1px solid #2e7d32;border-radius:12px;padding:12px 14px;margin-bottom:8px;cursor:pointer;transition:.15s}
+  .pkg-chip:active{transform:scale(.98)}
+  .pkg-chip.sel{border-color:var(--gold);background:#2a2810}
+  .pkg-chip .pc-name{flex:1;font-weight:700;font-size:14px}
+  .pkg-chip .pc-left{font-size:13px;font-weight:800;color:var(--gold);white-space:nowrap}
+  .pkg-chip .pc-tag{font-size:10px;color:#7CFC9A;text-transform:uppercase;letter-spacing:.5px;margin-top:2px}
   .balwrap.show{max-height:130px;opacity:1;margin-bottom:14px}
   .lookup{font-size:13px;font-weight:700;padding:8px 12px;border-radius:10px;margin:-6px 0 14px;display:none}
   .lookup.found{display:block;background:#15351f;color:var(--ok);border:1px solid #1d5430}
@@ -74,6 +81,11 @@
     <div class="row" id="carEntry">
       <div class="field"><label>Car Model</label><input id="car" placeholder="e.g. HONDA ACCORD"></div>
       <div class="field"><label>Number Plate</label><input id="plate" placeholder="e.g. CEJ22"></div>
+    </div>
+
+    <div id="pkgChips" class="pkg-chips hidden">
+      <label style="margin-bottom:8px">🎟️ Active packages for this car — tap to use</label>
+      <div id="pkgChipsList"></div>
     </div>
 
     <div class="field"><label>Service Type</label>
@@ -236,7 +248,7 @@ async function doLookup(){
       return `<option value="${c.id}">${esc(label)} · ${esc(c.plate||'')}</option>`;
     }).join('')+'<option value="__new__">+ Add new car</option>';
     onCarSelect();
-  }else{ $('lookup').className='lookup newc'; $('lookup').textContent='🆕 New customer — saved with booking'; }
+  }else{ $('lookup').className='lookup newc'; $('lookup').textContent='🆕 New customer — saved with booking'; CAR_PACKAGES=[]; renderPkgChips(); }
 }
 $('carSelect').addEventListener('change',onCarSelect);
 async function onCarSelect(){
@@ -249,25 +261,62 @@ async function onCarSelect(){
   }
   build();
 }
-/* Auto-pull remaining balance from gl_packages.
-   Packages link by owner_id + vehicle_label (= the PLATE). Sum (total-used)
-   across active packages for this customer's car. */
+/* Load this car's active packages: render tappable chips at top + auto-fill balance.
+   Packages link by owner_id + vehicle_label (= the PLATE). */
+let CAR_PACKAGES=[];
 async function autoBalance(plate){
   $('bal').value='';$('balHint').textContent='';
+  CAR_PACKAGES=[];
+  renderPkgChips();
   if(!connected || !foundProfile || !plate) return;
   try{
     const {data}=await sb.from('gl_packages')
-      .select('total_uses,used_uses,service_name,status,vehicle_label')
+      .select('id,total_uses,used_uses,service_name,status,vehicle_label,pkg_type')
       .eq('owner_id', foundProfile.id)
       .eq('vehicle_label', plate)
       .eq('status','active');
-    if(data && data.length){
-      const remaining=data.reduce((s,p)=>s+((p.total_uses||0)-(p.used_uses||0)),0);
-      $('bal').value=remaining; $('balHint').textContent='(auto from package)';
-    }else{
-      $('balHint').textContent='(no package on file — type manually)';
+    CAR_PACKAGES = (data||[]).map(p=>({...p, remaining:(p.total_uses||0)-(p.used_uses||0)}))
+                              .filter(p=>p.remaining>0);
+    renderPkgChips();
+    // if a coating service is already chosen, fill its balance
+    if(selectedServiceObj && selectedServiceObj.is_coating){
+      const total=CAR_PACKAGES.reduce((s,p)=>s+p.remaining,0);
+      if(total>0){ $('bal').value=total; $('balHint').textContent='(auto from package)'; }
+      else $('balHint').textContent='(no package on file — type manually)';
     }
   }catch(e){ $('balHint').textContent='(type manually)'; }
+}
+function renderPkgChips(){
+  const wrap=$('pkgChips'), list=$('pkgChipsList');
+  if(!CAR_PACKAGES.length){ wrap.classList.add('hidden'); list.innerHTML=''; return; }
+  wrap.classList.remove('hidden');
+  list.innerHTML=CAR_PACKAGES.map((p,i)=>`
+    <div class="pkg-chip" data-i="${i}">
+      <div>
+        <div class="pc-name">${esc(p.service_name||'Package')}</div>
+        <div class="pc-tag">tap to use this package</div>
+      </div>
+      <div style="flex:1"></div>
+      <div class="pc-left">${p.remaining} left</div>
+    </div>`).join('');
+  list.querySelectorAll('.pkg-chip').forEach(ch=>ch.onclick=()=>usePackageChip(parseInt(ch.dataset.i)));
+}
+function usePackageChip(i){
+  const p=CAR_PACKAGES[i]; if(!p) return;
+  // select the matching service in the dropdown by name
+  const opt=[...$('svc').options].find(o=>o.dataset.name===p.service_name || o.value===p.service_name || o.text===p.service_name);
+  if(opt){
+    $('svc').value=opt.value;
+    selectedServiceObj={id:opt.value,name:opt.dataset.name||opt.text,is_coating:opt.dataset.coat==='1'};
+  }else{
+    // service not in catalog dropdown — still set the name + coating
+    selectedServiceObj={id:null,name:p.service_name,is_coating:true};
+  }
+  // highlight chosen chip
+  $('pkgChipsList').querySelectorAll('.pkg-chip').forEach((c,idx)=>c.classList.toggle('sel',idx===i));
+  // fill balance with THIS package's remaining
+  $('bal').value=p.remaining; $('balHint').textContent='(from selected package)';
+  build();
 }
 /* also check balance when staff type a plate manually (new car) */
 let _plateTimer=null;
@@ -302,6 +351,7 @@ async function copyMsg(){const m=build();if(!m.trim()){toast('Fill the form firs
 $('send').onclick=async()=>{const m=await copyMsg();if(!m)return;toast('Copied! Opening WhatsApp…');setTimeout(()=>location.href="whatsapp://send",700);};
 $('clear').onclick=()=>{document.querySelectorAll('input').forEach(i=>i.value="");$('svc').selectedIndex=0;selectedServiceObj=null;
   $('lookup').className='lookup';foundProfile=null;profileCars=[];selectedSlot=null;$('carEntry').style.display='flex';
+  CAR_PACKAGES=[];renderPkgChips();
   $('slots').innerHTML='<div style="grid-column:1/-1;color:var(--muted);font-size:13px">Pick a date to see slots…</div>';build();};
 
 $('save').onclick=async()=>{
