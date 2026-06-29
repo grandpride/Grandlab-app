@@ -370,7 +370,7 @@ $('save').onclick=async()=>{
       service_id:  selectedServiceObj?.id||null,
       service_name: serviceName(),
       scheduled_at: sched,
-      status:'upcoming',
+      status:'pending',
       source:'whatsapp',
       notes: buildNotes(phone,timeLabel)
     };
