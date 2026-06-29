@@ -96,8 +96,8 @@
 /* ============================================================
    ⬇️  PASTE YOUR GRANDLAB SUPABASE KEYS HERE (Settings > API)
    ============================================================ */
-const SUPABASE_URL  = "https://eychljpzorzmaveixlnu.supabase.co";
-const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV5Y2hsanB6b3J6bWF2ZWl4bG51Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2NDk2NjQsImV4cCI6MjA5NzIyNTY2NH0.6dA1zhz5ZIwf8byFB8vhfOzPI-uPPdPihEr1b8GG_oA";
+const SUPABASE_URL  = "PASTE_YOUR_PROJECT_URL_HERE";
+const SUPABASE_ANON = "PASTE_YOUR_ANON_PUBLIC_KEY_HERE";
 /* ---- live slot config (match your app's BOOKING_CFG) ---- */
 const SLOT_TIMES = ["9:00 AM","10:00 AM","11:00 AM","1:30 PM","3:00 PM"];
 const SLOTS_PER_TIME = 2;
@@ -195,23 +195,39 @@ async function onCarSelect(){
   else{
     const c=profileCars.find(x=>x.id===v);
     $('carEntry').style.display='none';
-    if(c){ $('car').value=[c.make,c.model].filter(Boolean).join(' ');$('plate').value=c.plate||''; await autoBalance(c.id); }
+    if(c){ $('car').value=[c.make,c.model].filter(Boolean).join(' ');$('plate').value=c.plate||''; await autoBalance(c.plate); }
   }
   build();
 }
-/* auto-pull coating balance from gl_packages if any exist (empty for now) */
-async function autoBalance(vehicleId){
+/* Auto-pull remaining balance from gl_packages.
+   Packages link by owner_id + vehicle_label (= the PLATE). Sum (total-used)
+   across active packages for this customer's car. */
+async function autoBalance(plate){
   $('bal').value='';$('balHint').textContent='';
-  if(!connected||!vehicleId)return;
+  if(!connected || !foundProfile || !plate) return;
   try{
-    const {data}=await sb.from('gl_packages').select('total_uses,used_uses,service_name,status')
-      .eq('vehicle_id',vehicleId).eq('status','active');
-    if(data&&data.length){
+    const {data}=await sb.from('gl_packages')
+      .select('total_uses,used_uses,service_name,status,vehicle_label')
+      .eq('owner_id', foundProfile.id)
+      .eq('vehicle_label', plate)
+      .eq('status','active');
+    if(data && data.length){
       const remaining=data.reduce((s,p)=>s+((p.total_uses||0)-(p.used_uses||0)),0);
       $('bal').value=remaining; $('balHint').textContent='(auto from package)';
-    }else{ $('balHint').textContent='(no package found — type manually)'; }
-  }catch(e){ /* vehicle_id type mismatch possible until import; manual fallback */ $('balHint').textContent='(type manually)'; }
+    }else{
+      $('balHint').textContent='(no package on file — type manually)';
+    }
+  }catch(e){ $('balHint').textContent='(type manually)'; }
 }
+/* also check balance when staff type a plate manually (new car) */
+let _plateTimer=null;
+$('plate').addEventListener('input',()=>{
+  clearTimeout(_plateTimer);
+  _plateTimer=setTimeout(()=>{
+    const plate=$('plate').value.trim().toUpperCase();
+    if(plate.length>=4) autoBalance(plate);
+  },500);
+});
 
 /* ---------- message ---------- */
 function isCoating(){ return !!(selectedServiceObj&&selectedServiceObj.is_coating); }
