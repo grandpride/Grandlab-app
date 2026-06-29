@@ -1162,7 +1162,7 @@ const STYLE_DEFAULTS = {
   railColor:"#F5C518", railThickness:3, railLength:100,
   welHeading:"Welcome to Grandlab",
   welSub:"Your car deserves the best — wash, coat, tint and PPF, all in one app. Log in or create an account to get started.",
-  welLogin:"Sign up / Sign in", welRegister:"Create account", welGuest:"Welcome", welBottomGap:30,
+  welLogin:"Sign up / Sign in", welRegister:"Create account", welGuest:"Welcome", welBottomGap:70,
   // text styling
   eyebrowBold:true, eyebrowItalic:true, eyebrowUnderline:false, eyebrowAlign:"left",
   titleBold:true, titleItalic:false, titleUnderline:false, titleAlign:"left",
@@ -1400,7 +1400,7 @@ function applyStyle(){
   r.setProperty('--rail-thickness', STYLE.railThickness+'px');
   r.setProperty('--rail-length', STYLE.railLength+'%');
   r.setProperty('--panel-size', STYLE.panelSize+'%');
-  r.setProperty('--wel-bottom-gap', (STYLE.welBottomGap??30)+'px');
+  r.setProperty('--wel-bottom-gap', (STYLE.welBottomGap??70)+'px');
   r.setProperty('--wel-btn-topgap', (STYLE.welBtnTopGap??0)+'px');
   r.setProperty('--wel-h-size', (STYLE.welHeadingSize??32)+'px');
   r.setProperty('--wel-sub-size', (STYLE.welSubSize??16)+'px');
@@ -2084,13 +2084,22 @@ function enterApp(screen){
   // hide onboarding stack, show app
   document.querySelector('.app').style.display='none';
   appRoot.classList.add('show');
-  applyAppBg();
-  initFestival();
-  if(screen==='profile') renderProfileSetup();
-  else routeTab(screen||'home');
-  if((screen||'home')==='home') setTimeout(maybeShowPopup, 500);
-  if(CURRENT_FEST) setTimeout(playFestIntro, 300);
-  setTimeout(maybeShowPushBanner, 2500);
+  // background + festival are decorative — never let them block the screen
+  try{ applyAppBg(); }catch(e){ console.error('applyAppBg failed', e); }
+  try{ initFestival(); }catch(e){ console.error('initFestival failed', e); }
+  // render the actual screen; if it throws, show a fallback instead of freezing
+  try{
+    if(screen==='profile') renderProfileSetup();
+    else routeTab(screen||'home');
+  }catch(e){
+    console.error('screen render failed', e);
+    try{ routeTab('home'); }catch(_){ 
+      appRoot.innerHTML='<div class="app-scroll" style="padding:24px"><div class="app-h1">Welcome to Grandlab</div><div class="app-sub" style="margin-top:8px">Loading…</div></div>';
+    }
+  }
+  if((screen||'home')==='home') setTimeout(()=>{try{maybeShowPopup();}catch(e){}}, 500);
+  if(CURRENT_FEST) setTimeout(()=>{try{playFestIntro();}catch(e){}}, 300);
+  setTimeout(()=>{try{maybeShowPushBanner();}catch(e){}}, 2500);
 }
 function enterGuest(){
   // PREVIEW MODE: no login required for now. Enter the full app at Home.
