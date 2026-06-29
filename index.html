@@ -505,9 +505,9 @@
   .popup-box{position:relative;width:100%;max-width:360px;max-height:88vh;background:var(--surface);border-radius:18px;overflow:hidden;display:flex;flex-direction:column;}
   .popup-x{position:absolute;top:8px;right:8px;z-index:5;width:32px;height:32px;border-radius:50%;border:none;
     background:rgba(0,0,0,.55);color:#fff;font-size:15px;cursor:pointer;}
-  .popup-track{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;align-items:flex-start;}
+  .popup-track{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;align-items:flex-start;transition:height .25s ease;}
   .popup-track::-webkit-scrollbar{display:none;}
-  .popup-slide{flex:0 0 100%;scroll-snap-align:start;cursor:pointer;display:block;}
+  .popup-slide{flex:0 0 100%;scroll-snap-align:start;cursor:pointer;display:block;align-self:flex-start;}
   .popup-slide img{width:100%;height:auto;max-height:78vh;object-fit:contain;display:block;}
   .popup-dots{display:flex;justify-content:center;gap:6px;padding:10px 0 2px;flex:0 0 auto;}
   .popup-dot{width:7px;height:7px;border-radius:50%;background:var(--line);}
@@ -3217,12 +3217,30 @@ function showPopup(posters){
       <label class="popup-dismiss"><input type="checkbox" onchange="popupDismissToday(this.checked)"> Don't show again today</label>
     </div>`;
   document.body.appendChild(ov);
-  // dot tracking on scroll
   const track=document.getElementById('popupTrack');
+  const slides=ov.querySelectorAll('.popup-slide');
+  // size the track to the CURRENTLY visible poster (kills black gap on shorter posters)
+  function syncHeight(){
+    const idx = posters.length>1 ? Math.round(track.scrollLeft/track.clientWidth) : 0;
+    const img = slides[idx]?.querySelector('img');
+    if(img){
+      const h = img.clientHeight || img.naturalHeight;
+      if(h) track.style.height = h + 'px';
+    }
+  }
+  // run after each poster image loads (and once now in case cached)
+  ov.querySelectorAll('.popup-slide img').forEach(img=>{
+    if(img.complete) syncHeight();
+    img.addEventListener('load', syncHeight);
+  });
+  setTimeout(syncHeight, 60);
+  window.addEventListener('resize', syncHeight);
+  // dot tracking + height resync on scroll
   if(track && posters.length>1){
     track.addEventListener('scroll',()=>{
       const idx=Math.round(track.scrollLeft/track.clientWidth);
       ov.querySelectorAll('.popup-dot').forEach((d,i)=>d.classList.toggle('on',i===idx));
+      syncHeight();
     },{passive:true});
   }
 }
