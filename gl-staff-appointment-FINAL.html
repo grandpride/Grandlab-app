@@ -103,15 +103,8 @@
     <div class="row">
       <div class="field"><label>Deposit (RM) <span style="text-transform:none;color:var(--muted);font-weight:400">optional</span></label>
         <input id="deposit" type="number" inputmode="decimal" placeholder="e.g. 50"></div>
-      <div class="field"><label>Deposit Pay Method</label>
-        <select id="depMethod">
-          <option value="">—</option>
-          <option>Cash</option>
-          <option>TNG</option>
-          <option>Card</option>
-          <option>Online Transfer</option>
-          <option>DuitNow</option>
-        </select></div>
+      <div class="field"><label>Deposit Date</label>
+        <input id="depDate" type="date"></div>
     </div>
 
     <div class="plabel">WhatsApp Preview</div>
@@ -356,7 +349,7 @@ function build(){
   m+=`Full Name: ${name||"(name)"}\nContact no: ${contact||"(contact)"}\nCar model: ${car||"(car)"}\nNumber plate: ${plate||"(plate)"}\n`;
   if(isCoating())m+=`\ncoating maintenance balance : ${bal||"(balance)"}\n`;
   const dep=parseFloat($('deposit').value);
-  if(!isNaN(dep)&&dep>0){ m+=`\nDeposit paid : RM${dep}${$('depMethod').value?(' ('+$('depMethod').value+')'):''}\n`; }
+  if(!isNaN(dep)&&dep>0){ m+=`\nDeposit paid : RM${dep}${$('depDate').value?(' on '+fmtDate($('depDate').value)):''}\n`; }
   $('preview').textContent=m;return m;
 }
 ['change','input'].forEach(ev=>document.querySelectorAll('input').forEach(el=>el.addEventListener(ev,build)));
@@ -394,7 +387,6 @@ $('save').onclick=async()=>{
     const dep=parseFloat($('deposit').value);
     if(!isNaN(dep) && dep>0){
       booking.amount_paid=dep;
-      booking.payment_type=$('depMethod').value||null;
       booking.paid_in_full=false;
     }
     const {error}=await sb.from('gl_bookings').insert(booking);
@@ -416,7 +408,7 @@ function buildNotes(phone,timeLabel){
   parts.push(`Plate: ${$('plate').value.trim()}`);
   if(isCoating()) parts.push(`CoatingBalance: ${$('bal').value.trim()}`);
   const dep=parseFloat($('deposit').value);
-  if(!isNaN(dep)&&dep>0){ parts.push(`Deposit: ${dep}`); if($('depMethod').value) parts.push(`DepMethod: ${$('depMethod').value}`); }
+  if(!isNaN(dep)&&dep>0){ parts.push(`Deposit: ${dep}`); if($('depDate').value) parts.push(`DepDate: ${fmtDate($('depDate').value)}`); }
   if(timeLabel) parts.push(`[slot:${timeLabel}]`);
   return parts.join(' | ');
 }
