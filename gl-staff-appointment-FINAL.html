@@ -175,6 +175,11 @@ $('svc').addEventListener('change',()=>{
   const o=$('svc').options[$('svc').selectedIndex];
   selectedServiceObj = o ? {id:o.value, name:o.dataset.name, is_coating:o.dataset.coat==='1'} : null;
   build();
+  // when a coating service is picked, (re)pull the balance for the current plate
+  if(selectedServiceObj && selectedServiceObj.is_coating){
+    const plate=($('plate').value||'').trim().toUpperCase();
+    if(plate) autoBalance(plate);
+  }
 });
 
 /* ---------- live slots from gl_bookings ---------- */
