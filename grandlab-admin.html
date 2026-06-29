@@ -211,6 +211,7 @@
         <button class="tab" data-tab="bookings" onclick="switchTab('bookings')">Bookings</button>
         <button class="tab" data-tab="referrals" onclick="switchTab('referrals')">Referrals</button>
         <button class="tab" data-tab="maintenance" onclick="switchTab('maintenance')">Maintenance</button>
+        <button class="tab" data-tab="packages" onclick="switchTab('packages')">Packages / Balance</button>
       </div>
 
       <!-- OTP PAGE -->
@@ -647,6 +648,40 @@
           </select>
         </div>
         <div id="maintList"><div class="empty">Click Refresh to load.</div></div>
+      </div>
+
+      <!-- PACKAGES / BALANCE -->
+      <div class="panel" id="panel-packages">
+        <div class="hint">Set a customer's remaining coating-maintenance or bathe-essence balance. Works for app-registered customers (saved to their packages) <b>and</b> walk-ins with no app yet (held by phone, auto-transfers when they sign up). No price needed.</div>
+
+        <div class="card" style="margin-top:14px">
+          <div class="card-title" style="margin-bottom:10px">Add / Update Balance</div>
+
+          <label>Customer phone</label>
+          <input id="bal-phone" placeholder="e.g. 60169618299" oninput="balLookup()">
+          <div id="bal-status" style="font-size:13px;margin:6px 0 4px"></div>
+
+          <label style="margin-top:8px">Customer name</label>
+          <input id="bal-name" placeholder="Customer name">
+
+          <label style="margin-top:8px">Car number plate</label>
+          <input id="bal-plate" placeholder="e.g. BQM6833" style="text-transform:uppercase">
+
+          <label style="margin-top:8px">Service (coating / bathe essence)</label>
+          <select id="bal-service"></select>
+
+          <label style="margin-top:8px">Remaining balance (visits left)</label>
+          <input id="bal-remaining" type="number" min="0" placeholder="e.g. 3">
+
+          <button class="btn btn-primary" style="margin-top:14px" onclick="saveBalance()">💾 Save balance</button>
+        </div>
+
+        <div class="row" style="margin:18px 0 10px;align-items:center">
+          <div class="card-title">Existing Balances</div>
+          <div style="flex:1"></div>
+          <button class="btn btn-ghost btn-sm" onclick="loadBalances()">↻ Refresh</button>
+        </div>
+        <div id="bal-list"><div class="empty">Click Refresh to load.</div></div>
       </div>
 
       <!-- ONBOARDING -->
@@ -2944,6 +2979,125 @@ document.addEventListener('click',e=>{
   if(jump && !jump.contains(e.target)){ const l=document.getElementById('tabJumpList'); if(l) l.style.display='none'; }
 });
 
+/* ---------- PACKAGES / BALANCE ---------- */
+let BAL_PROFILE=null;  // matched gl_profiles row (or null = walk-in)
+function fillPackagesTab(){
+  // populate service dropdown: coating + bathe essence only
+  const sel=document.getElementById('bal-service'); if(!sel) return;
+  const eligible=(services||[]).filter(s=>s.is_coating || /bathe essence/i.test(s.name||''));
+  sel.innerHTML='<option value="">— Select service —</option>'+
+    eligible.map(s=>`<option value="${esc(s.name)}" data-coat="${s.is_coating?1:0}">${esc(s.name)}</option>`).join('');
+  // reset
+  BAL_PROFILE=null;
+  document.getElementById('bal-status').textContent='';
+}
+let _balTimer=null;
+function balLookup(){
+  clearTimeout(_balTimer); _balTimer=setTimeout(_doBalLookup,450);
+}
+async function _doBalLookup(){
+  BAL_PROFILE=null;
+  const phone=(document.getElementById('bal-phone').value||'').replace(/[^0-9]/g,'');
+  const st=document.getElementById('bal-status');
+  if(phone.length<7){ st.textContent=''; return; }
+  if(!SVC_KEY){ st.textContent='Connect with your key first'; return; }
+  try{
+    const r=await sb(`gl_profiles?phone=eq.${phone}&select=id,name,phone`,{headers:H()});
+    const rows=r.ok?await r.json():[];
+    if(rows.length){
+      BAL_PROFILE=rows[0];
+      st.innerHTML=`<span style="color:#7CFC9A">✓ App customer: ${esc(rows[0].name||'(no name)')}</span> — balance saves to their account`;
+      if(rows[0].name && !document.getElementById('bal-name').value) document.getElementById('bal-name').value=rows[0].name;
+    }else{
+      st.innerHTML=`<span style="color:var(--yellow)">🆕 Walk-in (no app yet)</span> — balance held by phone, transfers when they sign up`;
+    }
+  }catch(e){ st.textContent='Lookup error: '+e.message; }
+}
+async function saveBalance(){
+  if(!SVC_KEY){ toast('Connect with your key first'); return; }
+  const phone=(document.getElementById('bal-phone').value||'').replace(/[^0-9]/g,'');
+  const name=document.getElementById('bal-name').value.trim();
+  const plate=document.getElementById('bal-plate').value.trim().toUpperCase();
+  const service=document.getElementById('bal-service').value;
+  const remaining=parseInt(document.getElementById('bal-remaining').value);
+  const o=document.getElementById('bal-service').selectedOptions[0];
+  const isCoat=o?o.dataset.coat==='1':false;
+  if(!phone){ toast('Phone required'); return; }
+  if(!plate){ toast('Plate required'); return; }
+  if(!service){ toast('Select a service'); return; }
+  if(isNaN(remaining)||remaining<0){ toast('Enter remaining balance'); return; }
+  try{
+    if(BAL_PROFILE){
+      // app customer -> write to gl_packages (remaining = total_uses, used 0)
+      const body={
+        owner_id:BAL_PROFILE.id, vehicle_id:null, vehicle_label:plate,
+        service_name:service, pkg_type: isCoat?'coating_maintenance':'package',
+        total_uses:remaining, used_uses:0, status:'active', source:'admin_manual'
+      };
+      const r=await sb('gl_packages',{method:'POST',headers:H({Prefer:'return=representation'}),body:JSON.stringify(body)});
+      if(!r.ok){ const e=await r.text(); toast('Save failed: '+e); return; }
+      toast('Balance saved to app account ✓');
+    }else{
+      // walk-in -> write to gl_pending
+      const body={ phone, name, plate, service_name:service, remaining, is_coating:isCoat, source:'admin_manual', claimed:false };
+      const r=await sb('gl_pending',{method:'POST',headers:H({Prefer:'return=representation'}),body:JSON.stringify(body)});
+      if(!r.ok){ const e=await r.text(); toast('Save failed: '+e); return; }
+      toast('Balance saved (pending — transfers at signup) ✓');
+    }
+    // clear inputs (keep phone for quick multi-add)
+    document.getElementById('bal-plate').value='';
+    document.getElementById('bal-service').selectedIndex=0;
+    document.getElementById('bal-remaining').value='';
+    loadBalances();
+  }catch(e){ toast('Save failed: '+e.message); }
+}
+async function loadBalances(){
+  const el=document.getElementById('bal-list');
+  if(!SVC_KEY){ toast('Connect with your key first'); return; }
+  el.innerHTML='<div class="empty">Loading…</div>';
+  try{
+    const [rp,rpend]=await Promise.all([
+      sb('gl_packages?source=eq.admin_manual&select=id,owner_id,vehicle_label,service_name,total_uses,used_uses,status&order=id.desc',{headers:H()}),
+      sb('gl_pending?claimed=eq.false&select=id,phone,name,plate,service_name,remaining&order=id.desc',{headers:H()})
+    ]);
+    const pkgs=rp.ok?await rp.json():[];
+    const pend=rpend.ok?await rpend.json():[];
+    let html='';
+    if(pkgs.length){
+      html+='<div class="svc-sub">App customers</div>';
+      html+=pkgs.map(p=>{
+        const left=(p.total_uses||0)-(p.used_uses||0);
+        return `<div class="mini-row" style="display:flex;align-items:center;gap:10px;padding:11px 12px;background:#0a0908;border:1px solid var(--line);border-radius:9px;margin-bottom:8px">
+          <div style="flex:1">
+            <div style="font-weight:600">${esc(p.vehicle_label||'(no plate)')} <span style="color:var(--muted);font-weight:400;font-size:12px">· ${esc(p.service_name||'')}</span></div>
+            <div style="font-size:12px;margin-top:3px;color:var(--yellow)">${left} left</div>
+          </div>
+          <button class="btn btn-danger btn-sm" onclick="delBalance('gl_packages','${p.id}')">Delete</button>
+        </div>`;
+      }).join('');
+    }
+    if(pend.length){
+      html+='<div class="svc-sub" style="margin-top:14px">Walk-ins (pending signup)</div>';
+      html+=pend.map(p=>`<div class="mini-row" style="display:flex;align-items:center;gap:10px;padding:11px 12px;background:#0a0908;border:1px solid var(--line);border-radius:9px;margin-bottom:8px">
+          <div style="flex:1">
+            <div style="font-weight:600">${esc(p.plate||'(no plate)')} <span style="color:var(--muted);font-weight:400;font-size:12px">· ${esc(p.name||p.phone||'')}</span></div>
+            <div style="font-size:12px;color:var(--muted)">${esc(p.service_name||'')}</div>
+            <div style="font-size:12px;margin-top:3px;color:var(--yellow)">${p.remaining} left · ⏳ pending</div>
+          </div>
+          <button class="btn btn-danger btn-sm" onclick="delBalance('gl_pending','${p.id}')">Delete</button>
+        </div>`).join('');
+    }
+    el.innerHTML=html||'<div class="empty">No manual balances yet.</div>';
+  }catch(e){ el.innerHTML='<div class="empty">Error: '+e.message+'</div>'; }
+}
+async function delBalance(table,id){
+  if(!confirm('Delete this balance?')) return;
+  try{
+    const r=await sb(`${table}?id=eq.${id}`,{method:'DELETE',headers:H()});
+    if(r.ok){ toast('Deleted'); loadBalances(); } else { toast('Delete failed'); }
+  }catch(e){ toast('Delete failed: '+e.message); }
+}
+
 function switchTab(t){
   document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active',x.dataset.tab===t));
   document.querySelectorAll('.panel').forEach(p=>p.classList.toggle('active',p.id==='panel-'+t));
@@ -2975,6 +3129,7 @@ function switchTab(t){
   else if(t==='bookings'){fillBookingCfg();loadBookings();}
   else if(t==='referrals')loadReferrals();
   else if(t==='maintenance')loadMaintenance();
+  else if(t==='packages')fillPackagesTab();
 }
 
 /* ---------- WALLET editing ---------- */
