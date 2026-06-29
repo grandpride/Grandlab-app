@@ -47,6 +47,15 @@
 </style>
 </head>
 <body>
+<div id="keyGate" class="hidden" style="position:fixed;inset:0;background:#080808;z-index:100;display:flex;align-items:center;justify-content:center;padding:24px">
+  <div style="max-width:380px;width:100%">
+    <div style="font-weight:900;font-size:22px;letter-spacing:1px;margin-bottom:6px">GRAND<span style="color:#F5C518">LAB</span></div>
+    <div style="color:#8a8a80;font-size:13px;margin-bottom:18px">Staff Booking — paste your Supabase <b>service_role</b> key to unlock. Stays only in this browser on this device. Never commit this device's storage publicly.</div>
+    <input id="keyInput" type="password" placeholder="service_role key (eyJ...)" style="width:100%;background:#1e1e1a;border:1px solid #2a2a26;border-radius:12px;color:#fff;padding:13px 14px;font-size:15px;font-family:inherit">
+    <div id="keyErr" style="color:#e0533d;font-size:12px;margin-top:8px;min-height:16px"></div>
+    <button onclick="submitKey()" style="width:100%;margin-top:10px;background:#F5C518;color:#080808;border:none;border-radius:12px;padding:14px;font-weight:800;font-size:15px;font-family:inherit">Unlock</button>
+  </div>
+</div>
 <div class="wrap">
   <div class="head">
     <div class="brand"><span>GRAND<b>LAB</b></span><small>STAFF BOOKING</small></div>
@@ -94,10 +103,11 @@
 
 <script>
 /* ============================================================
-   ⬇️  PASTE YOUR GRANDLAB SUPABASE KEYS HERE (Settings > API)
+   GRANDLAB STAFF BOOKING — uses your service_role key (entered
+   once, stored only in THIS browser, like the admin page).
+   Keep this file/device private. Do NOT hardcode the key here.
    ============================================================ */
 const SUPABASE_URL  = "https://eychljpzorzmaveixlnu.supabase.co";
-const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV5Y2hsanB6b3J6bWF2ZWl4bG51Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2NDk2NjQsImV4cCI6MjA5NzIyNTY2NH0.6dA1zhz5ZIwf8byFB8vhfOzPI-uPPdPihEr1b8GG_oA";
 /* ---- live slot config (match your app's BOOKING_CFG) ---- */
 const SLOT_TIMES = ["9:00 AM","10:00 AM","11:00 AM","1:30 PM","3:00 PM"];
 const SLOTS_PER_TIME = 2;
@@ -106,8 +116,39 @@ const SLOTS_PER_TIME = 2;
 const $=id=>document.getElementById(id);
 let sb=null, SERVICES=[], foundProfile=null, profileCars=[], selectedSlot=null, takenCounts={};
 let selectedServiceObj=null;
-const connected=!SUPABASE_URL.startsWith("PASTE")&&!SUPABASE_ANON.startsWith("PASTE");
-if(connected){ sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON);} else { $('noKeys').classList.remove('hidden'); }
+let SVC_KEY = localStorage.getItem("gl_svc_key") || "";
+let connected = false;
+
+async function connectWithKey(k){
+  k=(k||'').trim(); if(!k){ return false; }
+  // verify the key works
+  try{
+    const r=await fetch(`${SUPABASE_URL}/rest/v1/gl_services?select=id&limit=1`,{
+      headers:{apikey:k,Authorization:`Bearer ${k}`}});
+    if(!r.ok){ return false; }
+  }catch(e){ return false; }
+  SVC_KEY=k; localStorage.setItem("gl_svc_key",k);
+  sb=supabase.createClient(SUPABASE_URL,k);   // service_role bypasses RLS
+  connected=true;
+  return true;
+}
+
+// show the key gate or boot the app
+async function boot(){
+  if(SVC_KEY && await connectWithKey(SVC_KEY)){
+    document.getElementById('keyGate')?.classList.add('hidden');
+    document.getElementById('noKeys')?.classList.add('hidden');
+    loadServices();
+  }else{
+    document.getElementById('keyGate')?.classList.remove('hidden');
+  }
+}
+async function submitKey(){
+  const k=document.getElementById('keyInput').value;
+  const ok=await connectWithKey(k);
+  if(ok){ document.getElementById('keyGate').classList.add('hidden'); loadServices(); }
+  else{ document.getElementById('keyErr').textContent='Key rejected — paste the service_role key.'; }
+}
 
 const esc=s=>(s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const normPhone=p=>(p||'').replace(/[^0-9]/g,'');
@@ -300,7 +341,7 @@ function buildNotes(phone,timeLabel){
   return parts.join(' | ');
 }
 
-loadServices();
+boot();
 </script>
 </body>
 </html>
