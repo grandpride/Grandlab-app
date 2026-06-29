@@ -100,6 +100,20 @@
     <div class="balwrap" id="balwrap"><label>Coating Maintenance Balance <span id="balHint" style="text-transform:none;color:var(--muted);font-weight:400"></span></label>
       <input id="bal" type="number" inputmode="numeric" placeholder="e.g. 5"></div>
 
+    <div class="row">
+      <div class="field"><label>Deposit (RM) <span style="text-transform:none;color:var(--muted);font-weight:400">optional</span></label>
+        <input id="deposit" type="number" inputmode="decimal" placeholder="e.g. 50"></div>
+      <div class="field"><label>Deposit Pay Method</label>
+        <select id="depMethod">
+          <option value="">—</option>
+          <option>Cash</option>
+          <option>TNG</option>
+          <option>Card</option>
+          <option>Online Transfer</option>
+          <option>DuitNow</option>
+        </select></div>
+    </div>
+
     <div class="plabel">WhatsApp Preview</div>
     <div class="preview" id="preview"><span class="ph">Fill the form to see the message…</span></div>
 
@@ -341,6 +355,8 @@ function build(){
   let m=`${s||"(service)"} ✅\nDate : ${date||"(date)"}\nTime : ${time||"(time)"}\n\n`;
   m+=`Full Name: ${name||"(name)"}\nContact no: ${contact||"(contact)"}\nCar model: ${car||"(car)"}\nNumber plate: ${plate||"(plate)"}\n`;
   if(isCoating())m+=`\ncoating maintenance balance : ${bal||"(balance)"}\n`;
+  const dep=parseFloat($('deposit').value);
+  if(!isNaN(dep)&&dep>0){ m+=`\nDeposit paid : RM${dep}${$('depMethod').value?(' ('+$('depMethod').value+')'):''}\n`; }
   $('preview').textContent=m;return m;
 }
 ['change','input'].forEach(ev=>document.querySelectorAll('input').forEach(el=>el.addEventListener(ev,build)));
@@ -374,6 +390,13 @@ $('save').onclick=async()=>{
       source:'whatsapp',
       notes: buildNotes(phone,timeLabel)
     };
+    // deposit at booking (optional) -> amount_paid + payment_type
+    const dep=parseFloat($('deposit').value);
+    if(!isNaN(dep) && dep>0){
+      booking.amount_paid=dep;
+      booking.payment_type=$('depMethod').value||null;
+      booking.paid_in_full=false;
+    }
     const {error}=await sb.from('gl_bookings').insert(booking);
     if(error)throw error;
     toast('Booking saved ✓'); loadSlots();
@@ -392,6 +415,8 @@ function buildNotes(phone,timeLabel){
   parts.push(`Car: ${$('car').value.trim()}`);
   parts.push(`Plate: ${$('plate').value.trim()}`);
   if(isCoating()) parts.push(`CoatingBalance: ${$('bal').value.trim()}`);
+  const dep=parseFloat($('deposit').value);
+  if(!isNaN(dep)&&dep>0){ parts.push(`Deposit: ${dep}`); if($('depMethod').value) parts.push(`DepMethod: ${$('depMethod').value}`); }
   if(timeLabel) parts.push(`[slot:${timeLabel}]`);
   return parts.join(' | ');
 }
