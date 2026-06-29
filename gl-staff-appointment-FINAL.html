@@ -174,8 +174,12 @@ async function doLookup(){
   const phone=normPhone($('contact').value);
   $('carSelect').innerHTML='<option value="__new__">+ Add new car</option>';
   if(phone.length<7||!connected){$('lookup').className='lookup';return;}
-  // match by phone (try exact + with/without leading 6/0 variants)
-  const {data}=await sb.from('gl_profiles').select('id,name,phone, gl_vehicles(id,make,model,plate,car_type)').eq('phone',phone).maybeSingle();
+  // gl_profiles stores phone WITH a + prefix (e.g. +60169618299); the input is
+  // digits only. Match both "+<digits>" and "<digits>".
+  const {data}=await sb.from('gl_profiles')
+    .select('id,name,phone, gl_vehicles(id,make,model,plate,car_type)')
+    .or(`phone.eq.+${phone},phone.eq.${phone}`)
+    .limit(1).maybeSingle();
   if(data){
     foundProfile=data; profileCars=data.gl_vehicles||[];
     $('name').value=data.name||'';

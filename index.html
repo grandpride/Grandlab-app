@@ -1581,11 +1581,49 @@ async function saveProfile(fields){
       headers:Object.assign(authHeaders(),{Prefer:"resolution=merge-duplicates,return=representation"}),
       body:JSON.stringify(body)
     });
-    if(r.ok){ const rows=await r.json(); PROFILE=rows[0]||Object.assign(PROFILE||{},body); return true; }
+    if(r.ok){ const rows=await r.json(); PROFILE=rows[0]||Object.assign(PROFILE||{},body);
+      // transfer any pre-loaded (walk-in) package balances waiting on this phone
+      try{ await claimPendingBalances(); }catch(e){ console.error('claimPendingBalances', e); }
+      return true; }
     // log the real reason for debugging
     const txt=await r.text(); console.error('saveProfile failed', r.status, txt);
   }catch(e){ console.error('saveProfile error', e); }
   return false;
+}
+/* When a customer signs up, move any pre-loaded (walk-in) balances from
+   gl_pending into real gl_packages for this account, then mark them claimed.
+   Matched by phone. Plate is carried into vehicle_label (the package link key). */
+async function claimPendingBalances(){
+  if(!SESSION?.user?.id) return;
+  const phone = (SESSION.user.phone || (PROFILE&&PROFILE.phone) || '').replace(/[^0-9]/g,'');
+  if(!phone || phone.length<7) return;
+  // find unclaimed pending balances for this phone
+  const r=await fetch(`${SUPA_URL}/rest/v1/gl_pending?phone=eq.${phone}&claimed=eq.false&select=*`,{headers:authHeaders()});
+  if(!r.ok) return;
+  const pend=await r.json();
+  if(!Array.isArray(pend)||!pend.length) return;
+  // create a gl_packages row for each pending balance
+  for(const p of pend){
+    const body={
+      owner_id: SESSION.user.id,
+      vehicle_id: null,
+      vehicle_label: (p.plate||'').toUpperCase(),
+      service_name: p.service_name,
+      pkg_type: p.is_coating ? 'coating_maintenance' : 'package',
+      total_uses: p.remaining||0,
+      used_uses: 0,
+      status: 'active',
+      source: 'claimed_pending'
+    };
+    try{
+      await fetch(`${SUPA_URL}/rest/v1/gl_packages`,{method:'POST',headers:authHeaders(),body:JSON.stringify(body)});
+      // mark this pending row claimed so it can't double-transfer
+      await fetch(`${SUPA_URL}/rest/v1/gl_pending?id=eq.${p.id}`,{method:'PATCH',
+        headers:Object.assign(authHeaders(),{Prefer:'return=minimal'}),body:JSON.stringify({claimed:true})});
+    }catch(e){ console.error('claim one pending failed', e); }
+  }
+  // refresh packages so the app home/package tab shows them immediately
+  try{ await fetchPackages(); }catch(e){}
 }
 async function fetchServices(){
   try{

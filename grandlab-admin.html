@@ -2997,12 +2997,14 @@ function balLookup(){
 }
 async function _doBalLookup(){
   BAL_PROFILE=null;
-  const phone=(document.getElementById('bal-phone').value||'').replace(/[^0-9]/g,'');
+  const digits=(document.getElementById('bal-phone').value||'').replace(/[^0-9]/g,'');
   const st=document.getElementById('bal-status');
-  if(phone.length<7){ st.textContent=''; return; }
+  if(digits.length<7){ st.textContent=''; return; }
   if(!SVC_KEY){ st.textContent='Connect with your key first'; return; }
   try{
-    const r=await sb(`gl_profiles?phone=eq.${phone}&select=id,name,phone`,{headers:H()});
+    // gl_profiles stores phone as "+60169618299" (with +), but lookups come in
+    // as digits only. Match both "+<digits>" and "<digits>" to be safe.
+    const r=await sb(`gl_profiles?or=(phone.eq.%2B${digits},phone.eq.${digits})&select=id,name,phone`,{headers:H()});
     const rows=r.ok?await r.json():[];
     if(rows.length){
       BAL_PROFILE=rows[0];
