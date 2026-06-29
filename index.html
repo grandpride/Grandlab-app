@@ -505,10 +505,10 @@
   .popup-box{position:relative;width:100%;max-width:360px;max-height:88vh;background:var(--surface);border-radius:18px;overflow:hidden;display:flex;flex-direction:column;}
   .popup-x{position:absolute;top:8px;right:8px;z-index:5;width:32px;height:32px;border-radius:50%;border:none;
     background:rgba(0,0,0,.55);color:#fff;font-size:15px;cursor:pointer;}
-  .popup-track{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;flex:1;min-height:0;}
+  .popup-track{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;align-items:flex-start;}
   .popup-track::-webkit-scrollbar{display:none;}
-  .popup-slide{flex:0 0 100%;scroll-snap-align:start;cursor:pointer;display:flex;align-items:center;justify-content:center;}
-  .popup-slide img{width:100%;height:100%;object-fit:contain;display:block;}
+  .popup-slide{flex:0 0 100%;scroll-snap-align:start;cursor:pointer;display:block;}
+  .popup-slide img{width:100%;height:auto;max-height:78vh;object-fit:contain;display:block;}
   .popup-dots{display:flex;justify-content:center;gap:6px;padding:10px 0 2px;flex:0 0 auto;}
   .popup-dot{width:7px;height:7px;border-radius:50%;background:var(--line);}
   .popup-dot.on{background:var(--yellow);}
