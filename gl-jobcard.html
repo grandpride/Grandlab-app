@@ -558,8 +558,23 @@ async function _doLookup(){
     if(CUST_CARS.length){ onCarSel(); } // auto-pick first car
     loadCustPackages();
   }else{
-    $('custFound').innerHTML='<span style="color:var(--warn-text)">New customer</span>';
+    // not in profiles — check gl_walkin (shop/Mochi customers)
+    const digits2=($('f_hp').value||'').replace(/[^0-9]/g,'');
+    const {data:wk}=await sb.from('gl_walkin').select('*').or(`phone.eq.+${digits2},phone.eq.${digits2}`).limit(1).maybeSingle();
+    if(wk){ fillFromWalkin_(wk); }
+    else $('custFound').innerHTML='<span style="color:var(--warn-text)">New customer</span>';
   }
+}
+
+/* Fill the walk-in form from a gl_walkin record (no profile yet). */
+function fillFromWalkin_(wk){
+  foundProfile=null; // walk-in has no profile id; job saves details in fields
+  $('custFound').innerHTML=`<span style="color:#16A34A">✓ ${esc(wk.name||'')}</span> <span style="color:var(--text3)">(walk-in)</span>`;
+  if(wk.name && !$('f_name').value) $('f_name').value=wk.name;
+  if(wk.phone){ const ph=wk.phone.replace(/^\+/,''); if(!$('f_hp').value)$('f_hp').value=ph; $('f_hp2').value=ph; }
+  if(wk.plate && !$('f_plate').value) $('f_plate').value=wk.plate;
+  if(wk.model && !$('f_model').value) $('f_model').value=wk.model;
+  $('pkgChips').innerHTML='';
 }
 
 /* Look up customer by PLATE (when phone unknown). Debounced from plate field. */
@@ -583,6 +598,10 @@ async function _doPlateLookup(){
     $('f_carsel').innerHTML=CUST_CARS.map(c=>`<option value="${c.id}"${c.plate===plate?' selected':''}>${esc([c.make,c.model].filter(Boolean).join(' '))} · ${esc(c.plate||'')}</option>`).join('')+'<option value="__new__">+ Add new car</option>';
     if(data.model && !$('f_model').value) $('f_model').value=[data.make,data.model].filter(Boolean).join(' ');
     await loadCustPackages();
+  }else{
+    // not in profiles — check gl_walkin by plate
+    const {data:wk}=await sb.from('gl_walkin').select('*').ilike('plate',plate).limit(1).maybeSingle();
+    if(wk) fillFromWalkin_(wk);
   }
 }
 function onCarSel(){

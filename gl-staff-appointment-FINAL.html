@@ -249,7 +249,24 @@ async function doLookup(){
       return `<option value="${c.id}">${esc(label)} · ${esc(c.plate||'')}</option>`;
     }).join('')+'<option value="__new__">+ Add new car</option>';
     onCarSelect();
-  }else{ $('lookup').className='lookup newc'; $('lookup').textContent='🆕 New customer — saved with booking'; CAR_PACKAGES=[]; renderPkgChips(); }
+  }else{
+    // not in profiles — check gl_walkin
+    const {data:wk}=await sb.from('gl_walkin').select('*').or(`phone.eq.+${phone},phone.eq.${phone}`).limit(1).maybeSingle();
+    if(wk){ fillFromWalkin_(wk); }
+    else { $('lookup').className='lookup newc'; $('lookup').textContent='🆕 New customer — saved with booking'; CAR_PACKAGES=[]; renderPkgChips(); }
+  }
+}
+
+/* Fill the booking form from a gl_walkin record. */
+function fillFromWalkin_(wk){
+  foundProfile=null; profileCars=[];
+  $('lookup').className='lookup found';
+  $('lookup').textContent=`✓ ${wk.name||'(no name)'} (walk-in)`;
+  if(wk.name) $('name').value=wk.name;
+  if(wk.phone && !$('contact').value) $('contact').value=wk.phone.replace(/^\+/,'');
+  if(wk.plate) $('plate').value=wk.plate;
+  if(wk.model) $('car').value=wk.model;
+  CAR_PACKAGES=[]; renderPkgChips();
 }
 $('carSelect').addEventListener('change',onCarSelect);
 async function onCarSelect(){
@@ -347,7 +364,10 @@ $('plate').addEventListener('input',()=>{
       if(data.model && !$('car').value) $('car').value=[data.make,data.model].filter(Boolean).join(' ');
       autoBalance(plate);
     }else{
-      autoBalance(plate); // no customer match — still try balance
+      // not in profiles — check gl_walkin by plate
+      const {data:wk}=await sb.from('gl_walkin').select('*').ilike('plate',plate).limit(1).maybeSingle();
+      if(wk){ fillFromWalkin_(wk); }
+      else autoBalance(plate); // no customer match — still try balance
     }
   },500);
 });
