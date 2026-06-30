@@ -256,7 +256,7 @@ const STAGES=[
 const stageOf=k=>STAGES.find(s=>s.key===k)||STAGES[0];
 
 const $=id=>document.getElementById(id);
-let sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON,{auth:{persistSession:true,storageKey:'gl_auth'}});
+let sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON,{auth:{persistSession:true,autoRefreshToken:true,storageKey:'gl_auth'}});
 let JOBS=[], EDITING=null, CUR_TYPE='walkin', foundProfile=null, CAR_PACKAGES=[];
 let CFG={staff_list:[],technicians:[],workshops:[],showrooms:[],bosses:[],imgbb_key:''};
 let SERVICES_CAT=[];   // gl_services catalog for the picker
