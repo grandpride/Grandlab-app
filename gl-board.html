@@ -20,7 +20,7 @@ html,body{height:100%;width:100%;overflow:hidden;background:#fff;color:#111;font
 .clock{font-family:'JetBrains Mono',monospace;font-weight:700;font-size:2.4vh;letter-spacing:.05em}
 .body{flex:1;display:flex;overflow:hidden}
 .board{flex:0 0 80%;display:flex;flex-direction:column;overflow:hidden;border-right:2px solid #FACC15}
-.headRow,.row{display:grid;grid-template-columns:1.2fr 1.2fr 1fr 1.3fr 1fr .9fr;gap:10px}
+.headRow,.row{display:grid;grid-template-columns:1.1fr 1fr .9fr 1.15fr .65fr .6fr .65fr .65fr .75fr;gap:8px}
 .headRow{font-weight:700;color:#9CA3AF;text-transform:uppercase;letter-spacing:.06em;border-bottom:2px solid #FACC15;padding:10px 16px;font-size:13px;flex-shrink:0}
 .scaleWrap{flex:1;overflow:hidden;position:relative}
 .scaleInner{position:absolute;top:0;left:0;transform-origin:top left;padding:10px 16px;display:flex;flex-direction:column;gap:10px}
@@ -64,7 +64,7 @@ html,body{height:100%;width:100%;overflow:hidden;background:#fff;color:#111;font
   <div class="body">
     <div class="board">
       <div class="headRow">
-        <div>Customer</div><div>Car / Plate</div><div>Service</div><div>Status</div><div>Elapsed</div><div>Staff</div>
+        <div>Customer</div><div>Car / Plate</div><div>Service</div><div>Status</div><div>Appt</div><div>Start</div><div>Elapsed</div><div>Completed</div><div>Staff</div>
       </div>
       <div class="scaleWrap" id="scaleWrap">
         <div class="scaleInner" id="rows"></div>
@@ -146,6 +146,14 @@ function sortJobs(jobs){
 function svcText(j){ const s=(j.services||[]); return s.length?(s[0].desc||""):""; }
 function custName(j){ return j.name||j.workshop_name||"-"; }
 function techList(j){ return Array.isArray(j.techs)&&j.techs.length?j.techs:(j.staff?j.staff.split(',').map(s=>s.trim()).filter(Boolean):[]); }
+function apptDisplay(j){
+  if(!j.appt) return '<span style="color:#D1D5DB">-</span>';
+  // appt stored as "HH:MM" 24h -> show 12h
+  const m=j.appt.match(/^(\d{1,2}):(\d{2})/);
+  if(!m) return esc(j.appt);
+  let h=parseInt(m[1]); const ap=h>=12?'PM':'AM'; h=h%12||12;
+  return `${h}:${m[2]} ${ap}`;
+}
 
 /* ---------- load + realtime ---------- */
 async function load(){
@@ -207,7 +215,10 @@ function render(){
         </div>
         <div class="svc">${esc(svcText(j)||'-')}</div>
         <div style="min-width:0;overflow:hidden;padding-right:8px"><span class="status" style="color:${st.color}"><span class="dot" style="background:${st.color}"></span><span style="overflow-wrap:anywhere">${st.label}</span></span></div>
-        <div class="elapsed" style="color:${ready?'#16A34A':waiting?'#D1D5DB':'#111'}">${waiting?'-':elapsedStr(j.started_at)}${ready&&j.ready_at?`<div style="font-size:11px;color:#16A34A;font-weight:600;margin-top:2px">✓ ${new Date(j.ready_at).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</div>`:''}</div>
+        <div class="elapsed" style="color:#6B7280;font-size:13px">${apptDisplay(j)}</div>
+        <div class="elapsed" style="color:#111;font-size:13px">${j.started_at?new Date(j.started_at).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}):'<span style="color:#D1D5DB">-</span>'}</div>
+        <div class="elapsed" style="color:${ready?'#16A34A':waiting?'#D1D5DB':'#111'}">${waiting?'-':elapsedStr(j.started_at)}</div>
+        <div class="elapsed" style="color:#16A34A;font-size:13px">${j.ready_at?new Date(j.ready_at).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}):'<span style="color:#D1D5DB">-</span>'}</div>
         <div style="min-width:0;display:flex;flex-wrap:wrap;gap:4px;overflow:hidden">${techs.length?techs.map(t=>`<span class="badge" style="background:#F3F4F6;color:#374151">${esc(t)}</span>`).join(''):'<span style="color:#9CA3AF;font-size:12px">-</span>'}</div>
       </div>`;
     }).join('');

@@ -388,6 +388,7 @@ function noteField(notes,key){ if(!notes)return''; const m=notes.match(new RegEx
 function convertAppt(a){
   newJob();
   EDITING={booking_id:a.id, cust_type:'appointment'};
+  if(a.scheduled_at){ const d=new Date(a.scheduled_at); EDITING.appt=`${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`; }
   $('f_name').value=noteField(a.notes,'Name')||'';
   $('f_plate').value=noteField(a.notes,'Plate')||'';
   $('f_model').value=noteField(a.notes,'Car')||'';
@@ -623,6 +624,7 @@ function collectJob(){
     workshop_name:(CUR_TYPE==='workshop'||CUR_TYPE==='showroom')?$('f_org').value:(CUR_TYPE==='boss'?($('f_boss')?$('f_boss').value:''):''),
     sent_by:(CUR_TYPE==='workshop'||CUR_TYPE==='showroom')?$('f_sentby').value:'',
     stage:EDITING&&EDITING.stage?EDITING.stage:'upcoming',
+    appt:EDITING&&EDITING.appt?EDITING.appt:null,
     started_at:EDITING&&EDITING.started_at?EDITING.started_at:null,
     created_at:EDITING&&EDITING.created_at?EDITING.created_at:Date.now(),
     total:CUR_TYPE==='boss'?0:total, deposit:$('f_deposit').value==='yes',
