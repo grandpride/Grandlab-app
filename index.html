@@ -1582,6 +1582,17 @@ async function saveProfile(fields){
       body:JSON.stringify(body)
     });
     if(r.ok){ const rows=await r.json(); PROFILE=rows[0]||Object.assign(PROFILE||{},body);
+      // claim any walk-in record (shop/Mochi) with the same phone (auto-merge)
+      try{
+        const ph=(fields.phone||PROFILE.phone||'');
+        if(ph){
+          await fetch(`${SUPA_URL}/rest/v1/rpc/claim_walkin_by_phone`,{
+            method:"POST", headers:authHeaders(),
+            body:JSON.stringify({p_new_id:SESSION.user.id, p_phone:ph})
+          });
+          await fetchProfile(); // reload with the merged data
+        }
+      }catch(e){ console.error('claim_walkin_by_phone', e); }
       // transfer any pre-loaded (walk-in) package balances waiting on this phone
       try{ await claimPendingBalances(); }catch(e){ console.error('claimPendingBalances', e); }
       return true; }

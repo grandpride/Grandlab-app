@@ -160,6 +160,26 @@ async function doSearch(raw){
     .ilike('plate',plate).limit(1).maybeSingle();
 
   if(!veh || !veh.gl_profiles){
+    // fallback: look in gl_walkin (shop/Mochi customers not yet registered)
+    const {data:wk}=await sb.from('gl_walkin').select('*').ilike('plate',plate).limit(1).maybeSingle();
+    if(wk){
+      $('status').textContent='';
+      $('cPlate').textContent=wk.plate||plate;
+      $('cModel').textContent=wk.model||'—';
+      $('cName').textContent=(wk.name||'—');
+      $('cPhone').textContent=wk.phone||'—';
+      $('cTier').textContent='Non-Member (walk-in)';
+      $('bookBtn').href=JOBCARD_URL+'?plate='+encodeURIComponent(wk.plate||plate)+'&phone='+encodeURIComponent((wk.phone||'').replace(/^\+/,''));
+      // walk-in package balance if any
+      if(wk.pkg_name && wk.pkg_total>0){
+        const bal=(wk.pkg_total||0)-(wk.pkg_used||0);
+        $('pkgWrap').innerHTML='<div class="pkg"><div style="font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Package</div><div class="pkg-line"><span>'+esc(wk.pkg_name)+'</span><span class="pkg-bal'+(bal<=0?' zero':'')+'">'+bal+' left</span></div></div>';
+      } else { $('pkgWrap').innerHTML=''; }
+      $('histList').innerHTML='<div style="color:var(--text2);font-size:13px;padding:6px 0">Walk-in customer — no app history yet.</div>';
+      $('moreBtn').style.display='none';
+      $('cust').classList.add('show');
+      return;
+    }
     $('status').textContent='';
     $('nfText').textContent='No customer found for plate '+plate+'.';
     $('nfBook').href=JOBCARD_URL+'?plate='+encodeURIComponent(plate);

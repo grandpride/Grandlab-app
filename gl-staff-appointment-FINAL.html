@@ -389,8 +389,8 @@ $('save').onclick=async()=>{
   // build scheduled_at from date + selected slot (default 09:00 if custom text)
   const sched=$('date').value+"T"+slotToTime(timeLabel)+":00+08:00";
   try{
-    // If this is a NEW customer (no profile found), create a pre-profile + vehicle
-    // so it can be auto-claimed when they register in the app (matched by phone).
+    // If existing app customer, link directly. Otherwise save to gl_walkin
+    // (shop customers can't go in gl_profiles — that id is FK to auth.users).
     let custId = foundProfile ? foundProfile.id : null;
     let vehId  = (foundProfile && $('carSelect').value!=='__new__') ? $('carSelect').value : null;
 
@@ -398,7 +398,7 @@ $('save').onclick=async()=>{
       const nm=$('name').value.trim();
       const plate=($('plate').value||'').trim().toUpperCase();
       const carModel=$('car').value.trim();
-      // double-check no profile already exists for this phone (avoid duplicates)
+      // check if they already registered in the app (profile by phone)
       const {data:exist}=await sb.from('gl_profiles')
         .select('id, gl_vehicles(id,plate)')
         .or(`phone.eq.+${phone},phone.eq.${phone}`).limit(1).maybeSingle();
@@ -406,20 +406,22 @@ $('save').onclick=async()=>{
         custId=exist.id;
         const match=(exist.gl_vehicles||[]).find(v=>(v.plate||'').toUpperCase()===plate);
         vehId=match?match.id:null;
+        if(plate && !vehId){
+          const {data:nv}=await sb.from('gl_vehicles')
+            .insert({owner_id:custId, plate:plate, model:carModel||null})
+            .select('id').maybeSingle();
+          if(nv) vehId=nv.id;
+        }
       }else{
-        // create the pre-profile (random id; app will claim by phone on signup)
-        const {data:np, error:pe}=await sb.from('gl_profiles')
-          .insert({name:nm||null, phone:'+'+phone, tier:'Bronze'})
-          .select('id').single();
-        if(pe) throw pe;
-        custId=np.id;
-      }
-      // create the vehicle if a plate was given and not already linked
-      if(plate && !vehId){
-        const {data:nv}=await sb.from('gl_vehicles')
-          .insert({owner_id:custId, plate:plate, model:carModel||null})
-          .select('id').maybeSingle();
-        if(nv) vehId=nv.id;
+        // save as a walk-in record (claimed into a real profile when they register)
+        const {data:ex2}=await sb.from('gl_walkin').select('id')
+          .or(`phone.eq.+${phone},phone.eq.${phone}`).limit(1).maybeSingle();
+        if(!ex2){
+          await sb.from('gl_walkin').insert({
+            name:nm||null, phone:'+'+phone, plate:plate||null, model:carModel||null
+          });
+        }
+        // bookings for walk-ins keep customer_id null (details are in notes)
       }
     }
 
