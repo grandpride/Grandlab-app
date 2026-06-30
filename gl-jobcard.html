@@ -122,7 +122,7 @@ html,body{height:100%;background:var(--bg);font-family:-apple-system,BlinkMacSys
       <div class="card">
         <div class="card-t"><i class="ti ti-user"></i> Customer &amp; Car</div>
         <div id="custBlock">
-          <div class="ff"><label>Contact No (type to find customer)</label><input id="f_hp" inputmode="numeric" placeholder="e.g. 60123456789" oninput="lookupCust()"></div>
+          <div class="ff"><label>Contact No (or search by plate below)</label><input id="f_hp" inputmode="numeric" placeholder="e.g. 60123456789" oninput="lookupCust()"></div>
           <div id="custFound" class="bal-line"></div>
           <div id="pkgChips" style="margin:6px 0"></div>
           <div class="ff" id="bossNameWrap" style="display:none"><label>Boss / Company name</label><select id="f_boss"></select></div>
@@ -132,7 +132,7 @@ html,body{height:100%;background:var(--bg);font-family:-apple-system,BlinkMacSys
           <select id="f_carsel" onchange="onCarSel()"><option value="__new__">+ Add new car</option></select></div>
         <div class="row2">
           <div class="ff"><label>Car Model</label><input id="f_model" placeholder="e.g. Toyota Harrier"></div>
-          <div class="ff"><label>Car Plate</label><input id="f_plate" placeholder="e.g. BQM6833" style="text-transform:uppercase" oninput="loadCustPackages()"></div>
+          <div class="ff"><label>Car Plate</label><input id="f_plate" placeholder="e.g. BQM6833" style="text-transform:uppercase" oninput="loadCustPackages();lookupByPlate()"></div>
         </div>
         <div class="row2" id="hpEmailRow">
           <div class="ff"><label>H/P Number</label><input id="f_hp2" inputmode="numeric" placeholder="phone"></div>
@@ -403,6 +403,9 @@ function convertAppt(a){
   if(a.amount_paid){ $('f_deposit').value='yes'; toggleDep(); $('f_depamt').value=a.amount_paid; const dd=noteField(a.notes,'DepDate'); if(dd&&$('f_depdate'))$('f_depdate').value=isoDate(dd); }
   setType('appointment'); renderSvcs();
   const coat=noteField(a.notes,'CoatingBalance'); if(coat) toast('Coating balance: '+coat+' left');
+  // resolve the customer so customer_id gets saved (needed for package deduct)
+  if(a.customer_id){ foundProfile={id:a.customer_id}; }
+  _doLookup(); // phone lookup fills foundProfile + cars + package chips
 }
 
 /* ---------- NEW JOB FORM ---------- */
@@ -541,6 +544,31 @@ async function _doLookup(){
     loadCustPackages();
   }else{
     $('custFound').innerHTML='<span style="color:var(--warn-text)">New customer</span>';
+  }
+}
+
+/* Look up customer by PLATE (when phone unknown). Debounced from plate field. */
+let _pt=null;
+function lookupByPlate(){ clearTimeout(_pt); _pt=setTimeout(_doPlateLookup,500); }
+async function _doPlateLookup(){
+  // only auto-search if no customer found yet and phone is empty
+  if(foundProfile) return;
+  const plate=($('f_plate').value||'').trim().toUpperCase();
+  if(plate.length<3) return;
+  const {data}=await sb.from('gl_vehicles').select('id,make,model,plate,owner_id, gl_profiles(id,name,phone,email,tier)').ilike('plate',plate).limit(1).maybeSingle();
+  if(data && data.gl_profiles){
+    const prof=data.gl_profiles;
+    foundProfile=prof;
+    $('custFound').innerHTML=`<span style="color:#16A34A">✓ ${esc(prof.name||'')}</span>${prof.tier?' · '+esc(prof.tier):''} <span style="color:var(--text3)">(by plate)</span>`;
+    if(prof.name&&!$('f_name').value)$('f_name').value=prof.name;
+    if(prof.email&&!$('f_email').value)$('f_email').value=prof.email;
+    if(prof.phone){ $('f_hp').value=prof.phone.replace(/^\+/,''); $('f_hp2').value=prof.phone.replace(/^\+/,''); }
+    // load this owner's cars
+    const {data:cars}=await sb.from('gl_vehicles').select('id,make,model,plate').eq('owner_id',prof.id);
+    CUST_CARS=cars||[];
+    $('f_carsel').innerHTML=CUST_CARS.map(c=>`<option value="${c.id}"${c.plate===plate?' selected':''}>${esc([c.make,c.model].filter(Boolean).join(' '))} · ${esc(c.plate||'')}</option>`).join('')+'<option value="__new__">+ Add new car</option>';
+    if(data.model && !$('f_model').value) $('f_model').value=[data.make,data.model].filter(Boolean).join(' ');
+    loadCustPackages();
   }
 }
 function onCarSel(){
