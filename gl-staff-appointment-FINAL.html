@@ -319,13 +319,36 @@ function usePackageChip(i){
   $('bal').value=p.remaining; $('balHint').textContent='(from selected package)';
   build();
 }
-/* also check balance when staff type a plate manually (new car) */
+/* type a plate -> find the customer by plate (fills name, phone, cars, balance) */
 let _plateTimer=null;
 $('plate').addEventListener('input',()=>{
   clearTimeout(_plateTimer);
-  _plateTimer=setTimeout(()=>{
+  _plateTimer=setTimeout(async()=>{
     const plate=$('plate').value.trim().toUpperCase();
-    if(plate.length>=4) autoBalance(plate);
+    if(plate.length<3) return;
+    if(foundProfile && $('contact').value) { autoBalance(plate); return; } // already have customer
+    if(!connected) return;
+    const {data}=await sb.from('gl_vehicles')
+      .select('id,make,model,plate,owner_id, gl_profiles(id,name,phone)')
+      .ilike('plate',plate).limit(1).maybeSingle();
+    if(data && data.gl_profiles){
+      const prof=data.gl_profiles;
+      foundProfile=prof;
+      const {data:cars}=await sb.from('gl_vehicles').select('id,make,model,plate,car_type').eq('owner_id',prof.id);
+      profileCars=cars||[];
+      $('name').value=prof.name||'';
+      if(prof.phone) $('contact').value=prof.phone.replace(/^\+/,'');
+      $('lookup').className='lookup found';
+      $('lookup').textContent=`✓ ${prof.name||'(no name)'} (by plate) · ${profileCars.length} car(s)`;
+      $('carSelect').innerHTML=profileCars.map(c=>{
+        const label=[c.make,c.model].filter(Boolean).join(' ')||'(car)';
+        return `<option value="${c.id}"${c.plate===plate?' selected':''}>${esc(label)} · ${esc(c.plate||'')}</option>`;
+      }).join('')+'<option value="__new__">+ Add new car</option>';
+      if(data.model && !$('car').value) $('car').value=[data.make,data.model].filter(Boolean).join(' ');
+      autoBalance(plate);
+    }else{
+      autoBalance(plate); // no customer match — still try balance
+    }
   },500);
 });
 
