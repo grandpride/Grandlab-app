@@ -694,22 +694,33 @@ async function setStage(id,key){
   await loadJobs(); openJob(id);
 }
 
-/* Increment used_uses on each package this job used (services with pkg_id). Returns true if any deducted. */
+/* Deduct package balance for this job. Uses pkg_id if present, else finds the
+   customer's active package matching the service name. Deducts each once. */
 async function deductPackages_(j){
   const svcs=Array.isArray(j.services)?j.services:[];
-  const pkgIds=svcs.map(s=>s.pkg_id).filter(Boolean);
-  if(!pkgIds.length) return false;
+  if(!svcs.length || !j.customer_id) return false;
   let any=false;
-  for(const pid of pkgIds){
-    try{
-      // read current, then write used_uses+1 (guarded)
-      const {data}=await sb.from('gl_packages').select('id,total_uses,used_uses,service_name').eq('id',pid).maybeSingle();
-      if(!data) continue;
-      const used=(data.used_uses||0)+1;
-      if(used>(data.total_uses||0)){ toast('⚠️ '+data.service_name+' has no balance left'); continue; }
-      const {error}=await sb.from('gl_packages').update({used_uses:used}).eq('id',pid);
-      if(!error){ any=true; toast(data.service_name+' deducted · '+((data.total_uses||0)-used)+' left'); }
-    }catch(e){ console.error('deduct err',e); }
+  // gather candidate package uses: explicit pkg_id OR a coating/maintenance service
+  for(const s of svcs){
+    let pkg=null;
+    if(s.pkg_id){
+      const {data}=await sb.from('gl_packages').select('id,total_uses,used_uses,service_name').eq('id',s.pkg_id).maybeSingle();
+      pkg=data;
+    }else if(/coating maintenance|bathe essence|package/i.test(s.desc||'')){
+      // match by customer + service name (clean the count prefix to compare)
+      const clean=(s.desc||'').replace(/^\s*\d+\s*x?\s*(times?\s*)?/i,'').replace(/\(package use\)/i,'').trim();
+      const {data}=await sb.from('gl_packages').select('id,total_uses,used_uses,service_name,status')
+        .eq('owner_id',j.customer_id).eq('status','active');
+      pkg=(data||[]).find(p=>{
+        const pc=(p.service_name||'').replace(/^\s*\d+\s*x?\s*(times?\s*)?/i,'').trim();
+        return pc.toLowerCase()===clean.toLowerCase() && (p.total_uses-p.used_uses)>0;
+      });
+    }
+    if(!pkg) continue;
+    const used=(pkg.used_uses||0)+1;
+    if(used>(pkg.total_uses||0)){ toast('⚠️ '+pkg.service_name+' no balance left'); continue; }
+    const {error}=await sb.from('gl_packages').update({used_uses:used}).eq('id',pkg.id);
+    if(!error){ any=true; toast(pkg.service_name+' deducted · '+((pkg.total_uses||0)-used)+' left'); }
   }
   return any;
 }
