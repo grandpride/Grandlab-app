@@ -358,12 +358,17 @@ function renderList(){
 
 /* ---------- APPOINTMENTS waiting to convert ---------- */
 async function loadAppointments(){
-  const s=new Date(); s.setHours(0,0,0,0);
-  const e=new Date(); e.setHours(23,59,59,999);
+  // widen the query window by a day each side, then filter to "today" by local date
+  const s=new Date(); s.setHours(0,0,0,0); s.setDate(s.getDate()-1);
+  const e=new Date(); e.setHours(23,59,59,999); e.setDate(e.getDate()+1);
   const {data}=await sb.from('gl_bookings').select('*')
     .gte('scheduled_at',s.toISOString()).lte('scheduled_at',e.toISOString())
     .in('status',['pending','confirmed']).order('scheduled_at');
-  const appts=data||[];
+  const todayStr=new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD local
+  const appts=(data||[]).filter(a=>{
+    if(!a.scheduled_at) return false;
+    return new Date(a.scheduled_at).toLocaleDateString('en-CA')===todayStr;
+  });
   const converted=new Set(JOBS.map(j=>j.booking_id).filter(Boolean));
   const waiting=appts.filter(a=>!converted.has(a.id));
   const el=$('apptWaiting');
