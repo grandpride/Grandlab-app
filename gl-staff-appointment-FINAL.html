@@ -389,10 +389,43 @@ $('save').onclick=async()=>{
   // build scheduled_at from date + selected slot (default 09:00 if custom text)
   const sched=$('date').value+"T"+slotToTime(timeLabel)+":00+08:00";
   try{
-    // Option A: store details directly in booking; link customer_id/vehicle_id if existing
+    // If this is a NEW customer (no profile found), create a pre-profile + vehicle
+    // so it can be auto-claimed when they register in the app (matched by phone).
+    let custId = foundProfile ? foundProfile.id : null;
+    let vehId  = (foundProfile && $('carSelect').value!=='__new__') ? $('carSelect').value : null;
+
+    if(!custId){
+      const nm=$('name').value.trim();
+      const plate=($('plate').value||'').trim().toUpperCase();
+      const carModel=$('car').value.trim();
+      // double-check no profile already exists for this phone (avoid duplicates)
+      const {data:exist}=await sb.from('gl_profiles')
+        .select('id, gl_vehicles(id,plate)')
+        .or(`phone.eq.+${phone},phone.eq.${phone}`).limit(1).maybeSingle();
+      if(exist){
+        custId=exist.id;
+        const match=(exist.gl_vehicles||[]).find(v=>(v.plate||'').toUpperCase()===plate);
+        vehId=match?match.id:null;
+      }else{
+        // create the pre-profile (random id; app will claim by phone on signup)
+        const {data:np, error:pe}=await sb.from('gl_profiles')
+          .insert({name:nm||null, phone:'+'+phone, tier:'Bronze'})
+          .select('id').single();
+        if(pe) throw pe;
+        custId=np.id;
+      }
+      // create the vehicle if a plate was given and not already linked
+      if(plate && !vehId){
+        const {data:nv}=await sb.from('gl_vehicles')
+          .insert({owner_id:custId, plate:plate, model:carModel||null})
+          .select('id').maybeSingle();
+        if(nv) vehId=nv.id;
+      }
+    }
+
     const booking={
-      customer_id: foundProfile?foundProfile.id:null,
-      vehicle_id:  (foundProfile && $('carSelect').value!=='__new__')?$('carSelect').value:null,
+      customer_id: custId,
+      vehicle_id:  vehId,
       service_id:  selectedServiceObj?.id||null,
       service_name: serviceName(),
       scheduled_at: sched,
