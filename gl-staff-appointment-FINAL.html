@@ -387,7 +387,6 @@ $('save').onclick=async()=>{
     const dep=parseFloat($('deposit').value);
     if(!isNaN(dep) && dep>0){
       booking.amount_paid=dep;
-      booking.paid_in_full=false;
     }
     const {error}=await sb.from('gl_bookings').insert(booking);
     if(error)throw error;
