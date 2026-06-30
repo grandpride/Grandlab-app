@@ -194,9 +194,14 @@ html,body{height:100%;background:var(--bg);font-family:-apple-system,BlinkMacSys
     <!-- SETTINGS VIEW -->
     <div class="view" id="view-settings">
       <div class="card">
-        <div class="card-t"><i class="ti ti-users"></i> Staff (Attended By)</div>
+        <div class="card-t"><i class="ti ti-users"></i> Staff (office / reception)</div>
         <div id="set-staff"></div>
         <div style="display:flex;gap:6px;margin-top:6px"><input id="add-staff" placeholder="Add staff name" style="flex:1;padding:8px;border:1px solid var(--border);border-radius:7px;background:var(--bg);color:var(--text)"><button class="btn btn-pri btn-sm" onclick="addSetting('staff_list','add-staff')">Add</button></div>
+      </div>
+      <div class="card">
+        <div class="card-t"><i class="ti ti-tools"></i> Technicians (do the car work)</div>
+        <div id="set-technicians"></div>
+        <div style="display:flex;gap:6px;margin-top:6px"><input id="add-technician" placeholder="Add technician name" style="flex:1;padding:8px;border:1px solid var(--border);border-radius:7px;background:var(--bg);color:var(--text)"><button class="btn btn-pri btn-sm" onclick="addSetting('technicians','add-technician')">Add</button></div>
       </div>
       <div class="card">
         <div class="card-t"><i class="ti ti-building-warehouse"></i> Workshops</div>
@@ -252,7 +257,7 @@ const stageOf=k=>STAGES.find(s=>s.key===k)||STAGES[0];
 const $=id=>document.getElementById(id);
 let sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON,{auth:{persistSession:true,storageKey:'gl_jobcard_auth'}});
 let JOBS=[], EDITING=null, CUR_TYPE='walkin', foundProfile=null, CAR_PACKAGES=[];
-let CFG={staff_list:[],workshops:[],showrooms:[],bosses:[],imgbb_key:''};
+let CFG={staff_list:[],technicians:[],workshops:[],showrooms:[],bosses:[],imgbb_key:''};
 let SERVICES_CAT=[];   // gl_services catalog for the picker
 let CUST_CARS=[];      // current customer's vehicles
 let PHOTOS=[];         // uploaded photo URLs for current job
@@ -288,6 +293,7 @@ async function loadConfig(){
   if(error){ console.error('loadConfig error',error); }
   if(data){
     CFG.staff_list = Array.isArray(data.staff_list)?data.staff_list:(data.staff_list?JSON.parse(data.staff_list):[]);
+    CFG.technicians= Array.isArray(data.technicians)?data.technicians:(data.technicians?JSON.parse(data.technicians):[]);
     CFG.workshops  = Array.isArray(data.workshops)?data.workshops:(data.workshops?JSON.parse(data.workshops):[]);
     CFG.showrooms  = Array.isArray(data.showrooms)?data.showrooms:(data.showrooms?JSON.parse(data.showrooms):[]);
     CFG.bosses     = Array.isArray(data.bosses)?data.bosses:(data.bosses?JSON.parse(data.bosses):[]);
@@ -459,8 +465,8 @@ let SEL_TECHS=[];
 function populateStaffDropdown(){ renderTechChips(); }
 function renderTechChips(){
   const el=$('techChips'); if(!el)return;
-  if(!(CFG.staff_list||[]).length){ el.innerHTML='<span style="font-size:12px;color:var(--text3)">Add staff in Settings first</span>'; return; }
-  el.innerHTML=(CFG.staff_list||[]).map(n=>{
+  if(!(CFG.technicians||[]).length){ el.innerHTML='<span style="font-size:12px;color:var(--text3)">Add technicians in Settings first</span>'; return; }
+  el.innerHTML=(CFG.technicians||[]).map(n=>{
     const on=SEL_TECHS.includes(n);
     return `<span onclick="toggleTech('${esc(n).replace(/'/g,"&#39;")}')" style="cursor:pointer;font-size:13px;font-weight:700;padding:7px 12px;border-radius:20px;border:1.5px solid ${on?'var(--gold)':'var(--border)'};background:${on?'var(--gold)':'var(--bg)'};color:${on?'#111':'var(--text2)'}">${esc(n)}</span>`;
   }).join('');
@@ -572,6 +578,7 @@ async function uploadPhotos(files){
 function renderSettings(){
   const chip=(arr,key)=>(arr||[]).map((n,i)=>`<span class="pill" style="background:var(--bg3);color:var(--text);margin:0 6px 6px 0">${esc(n)} <span style="cursor:pointer;color:var(--danger-text)" onclick="delSetting('${key}',${i})">&times;</span></span>`).join('')||'<span style="font-size:12px;color:var(--text3)">none yet</span>';
   if($('set-staff')) $('set-staff').innerHTML=chip(CFG.staff_list,'staff_list');
+  if($('set-technicians')) $('set-technicians').innerHTML=chip(CFG.technicians,'technicians');
   if($('set-workshops')) $('set-workshops').innerHTML=chip(CFG.workshops,'workshops');
   if($('set-showrooms')) $('set-showrooms').innerHTML=chip(CFG.showrooms,'showrooms');
   if($('set-bosses')) $('set-bosses').innerHTML=chip(CFG.bosses,'bosses');
