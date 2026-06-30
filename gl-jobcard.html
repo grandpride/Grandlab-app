@@ -132,7 +132,7 @@ html,body{height:100%;background:var(--bg);font-family:-apple-system,BlinkMacSys
           <select id="f_carsel" onchange="onCarSel()"><option value="__new__">+ Add new car</option></select></div>
         <div class="row2">
           <div class="ff"><label>Car Model</label><input id="f_model" placeholder="e.g. Toyota Harrier"></div>
-          <div class="ff"><label>Car Plate</label><input id="f_plate" placeholder="e.g. BQM6833" style="text-transform:uppercase" oninput="loadCustPackages();lookupByPlate()"></div>
+          <div class="ff"><label>Car Plate</label><input id="f_plate" placeholder="e.g. BQM6833" style="text-transform:uppercase" oninput="lookupByPlate()"></div>
         </div>
         <div class="row2" id="hpEmailRow">
           <div class="ff"><label>H/P Number</label><input id="f_hp2" inputmode="numeric" placeholder="phone"></div>
@@ -557,24 +557,23 @@ async function _doLookup(){
 let _pt=null;
 function lookupByPlate(){ clearTimeout(_pt); _pt=setTimeout(_doPlateLookup,500); }
 async function _doPlateLookup(){
-  // only auto-search if no customer found yet and phone is empty
-  if(foundProfile) return;
   const plate=($('f_plate').value||'').trim().toUpperCase();
   if(plate.length<3) return;
+  // if a customer was already found by PHONE, don't override
+  if(foundProfile && $('f_hp').value) return;
   const {data}=await sb.from('gl_vehicles').select('id,make,model,plate,owner_id, gl_profiles(id,name,phone,email,tier)').ilike('plate',plate).limit(1).maybeSingle();
   if(data && data.gl_profiles){
     const prof=data.gl_profiles;
     foundProfile=prof;
     $('custFound').innerHTML=`<span style="color:#16A34A">✓ ${esc(prof.name||'')}</span>${prof.tier?' · '+esc(prof.tier):''} <span style="color:var(--text3)">(by plate)</span>`;
-    if(prof.name&&!$('f_name').value)$('f_name').value=prof.name;
-    if(prof.email&&!$('f_email').value)$('f_email').value=prof.email;
-    if(prof.phone){ $('f_hp').value=prof.phone.replace(/^\+/,''); $('f_hp2').value=prof.phone.replace(/^\+/,''); }
-    // load this owner's cars
+    if(prof.name)$('f_name').value=prof.name;
+    if(prof.email)$('f_email').value=prof.email;
+    if(prof.phone){ const ph=prof.phone.replace(/^\+/,''); $('f_hp').value=ph; $('f_hp2').value=ph; }
     const {data:cars}=await sb.from('gl_vehicles').select('id,make,model,plate').eq('owner_id',prof.id);
     CUST_CARS=cars||[];
     $('f_carsel').innerHTML=CUST_CARS.map(c=>`<option value="${c.id}"${c.plate===plate?' selected':''}>${esc([c.make,c.model].filter(Boolean).join(' '))} · ${esc(c.plate||'')}</option>`).join('')+'<option value="__new__">+ Add new car</option>';
     if(data.model && !$('f_model').value) $('f_model').value=[data.make,data.model].filter(Boolean).join(' ');
-    loadCustPackages();
+    await loadCustPackages();
   }
 }
 function onCarSel(){
