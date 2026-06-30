@@ -516,7 +516,7 @@ function renderDefs(){
     </div>`).join('');
 }
 function addDef(){ DEFS.push({note:'',status:'noted'}); renderDefs(); }
-function usePkg(i){ const p=CAR_PACKAGES[i]; if(!p)return; SVCS.unshift({staff:'',desc:p.service_name+' (package use)',price:'0'}); renderSvcs(); toast('Added from package · '+p.remaining+' left'); }
+function usePkg(i){ const p=CAR_PACKAGES[i]; if(!p)return; SVCS.unshift({staff:'',desc:p.service_name+' (package use)',price:'0',pkg_id:p.id}); renderSvcs(); toast('Added from package · '+p.remaining+' left'); }
 function toggleDep(){ const yes=$('f_deposit').value==='yes'; $('f_depamt').disabled=!yes; if(!yes){$('f_depamt').value='';} if($('depDateWrap'))$('depDateWrap').style.display=yes?'block':'none'; }
 
 /* ---------- CUSTOMER LOOKUP (+package chips) ---------- */
@@ -684,9 +684,34 @@ async function setStage(id,key){
   if(key!=='upcoming' && j && !j.started_at) patch.started_at=Date.now(); // start elapsed
   if(key==='done' && j && !j.ready_at) patch.ready_at=Date.now();          // record completed time
   if(key!=='done') patch.ready_at=null;                                    // moved back from ready
+  // deduct package balance once, when job first reaches Ready
+  if(key==='done' && j && !j.pkg_deducted){
+    const did=await deductPackages_(j);
+    if(did) patch.pkg_deducted=true;
+  }
   await sb.from('gl_jobs').update(patch).eq('id',id);
   toast('Status: '+stageOf(key).label);
   await loadJobs(); openJob(id);
+}
+
+/* Increment used_uses on each package this job used (services with pkg_id). Returns true if any deducted. */
+async function deductPackages_(j){
+  const svcs=Array.isArray(j.services)?j.services:[];
+  const pkgIds=svcs.map(s=>s.pkg_id).filter(Boolean);
+  if(!pkgIds.length) return false;
+  let any=false;
+  for(const pid of pkgIds){
+    try{
+      // read current, then write used_uses+1 (guarded)
+      const {data}=await sb.from('gl_packages').select('id,total_uses,used_uses,service_name').eq('id',pid).maybeSingle();
+      if(!data) continue;
+      const used=(data.used_uses||0)+1;
+      if(used>(data.total_uses||0)){ toast('⚠️ '+data.service_name+' has no balance left'); continue; }
+      const {error}=await sb.from('gl_packages').update({used_uses:used}).eq('id',pid);
+      if(!error){ any=true; toast(data.service_name+' deducted · '+((data.total_uses||0)-used)+' left'); }
+    }catch(e){ console.error('deduct err',e); }
+  }
+  return any;
 }
 function editJob(id){
   const j=JOBS.find(x=>x.id===id); if(!j)return;
