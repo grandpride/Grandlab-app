@@ -519,7 +519,13 @@ function renderDefs(){
     </div>`).join('');
 }
 function addDef(){ DEFS.push({note:'',status:'noted'}); renderDefs(); }
-function usePkg(i){ const p=CAR_PACKAGES[i]; if(!p)return; SVCS.unshift({staff:'',desc:p.service_name+' (package use)',price:'0',pkg_id:p.id}); renderSvcs(); toast('Added from package · '+p.remaining+' left'); }
+function usePkg(pid){
+  const p=CAR_PACKAGES.find(x=>String(x.id)===String(pid)); if(!p)return;
+  const line={staff:'',desc:p.service_name+' (package use)',price:'0',pkg_id:p.id};
+  // if the only row is an empty placeholder, replace it; else add on top
+  if(SVCS.length===1 && !SVCS[0].desc){ SVCS[0]=line; } else { SVCS.unshift(line); }
+  renderSvcs(); toast('Added from package · '+p.remaining+' left');
+}
 function toggleDep(){ const yes=$('f_deposit').value==='yes'; $('f_depamt').disabled=!yes; if(!yes){$('f_depamt').value='';} if($('depDateWrap'))$('depDateWrap').style.display=yes?'block':'none'; }
 
 /* ---------- CUSTOMER LOOKUP (+package chips) ---------- */
@@ -585,7 +591,7 @@ async function loadCustPackages(){
   if(plate) pk=pk.filter(p=>!p.vehicle_label || p.vehicle_label===plate); // match this car if labelled
   CAR_PACKAGES=pk;
   if(!CAR_PACKAGES.length){ $('pkgChips').innerHTML=''; return; }
-  $('pkgChips').innerHTML=CAR_PACKAGES.map((p,i)=>`<div class="chip" onclick="usePkg(${i})">🎟️ ${esc(p.service_name)} · ${p.remaining} left</div>`).join('');
+  $('pkgChips').innerHTML=CAR_PACKAGES.map((p,i)=>`<div class="chip" onclick="usePkg('${p.id}')">🎟️ ${esc(p.service_name)} · ${p.remaining} left</div>`).join('');
 }
 
 /* ---------- PHOTOS (ImgBB -> Supabase urls) ---------- */
