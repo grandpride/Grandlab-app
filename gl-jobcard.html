@@ -92,6 +92,7 @@ html,body{height:100%;background:var(--bg);font-family:-apple-system,BlinkMacSys
     <button class="nav-btn a" data-view="list" onclick="showView('list')"><i class="ti ti-list"></i>Jobs</button>
     <button class="nav-btn" data-view="new" onclick="newJob()"><i class="ti ti-plus"></i>New</button>
     <button class="nav-btn" data-view="report" onclick="showView('report')"><i class="ti ti-chart-bar"></i>Report</button>
+    <button class="nav-btn" data-view="settings" onclick="showView('settings')"><i class="ti ti-settings"></i>Settings</button>
   </div>
 
   <div class="content">
@@ -110,46 +111,66 @@ html,body{height:100%;background:var(--bg);font-family:-apple-system,BlinkMacSys
         <div class="type-tab" data-type="boss" onclick="setType('boss')">Boss/Co.</div>
       </div>
 
+      <!-- WORKSHOP/SHOWROOM/BOSS selector -->
+      <div class="card" id="orgCard" style="display:none">
+        <div class="card-t"><i class="ti ti-building"></i> <span id="orgLabel">Workshop</span></div>
+        <div class="ff"><label id="orgSelLabel">Which workshop</label>
+          <select id="f_org"></select></div>
+        <div class="ff" id="sentByWrap"><label>Sent in by (workshop staff)</label><input id="f_sentby" placeholder="staff who sent the car"></div>
+      </div>
+
       <div class="card">
         <div class="card-t"><i class="ti ti-user"></i> Customer &amp; Car</div>
-        <div class="ff"><label>Contact No (type to find customer)</label><input id="f_hp" inputmode="numeric" placeholder="e.g. 60123456789" oninput="lookupCust()"></div>
-        <div id="custFound" class="bal-line"></div>
-        <div id="pkgChips" style="margin:6px 0"></div>
-        <div class="ff"><label>Customer Name</label><input id="f_name" placeholder="Name"></div>
+        <div id="custBlock">
+          <div class="ff"><label>Contact No (type to find customer)</label><input id="f_hp" inputmode="numeric" placeholder="e.g. 60123456789" oninput="lookupCust()"></div>
+          <div id="custFound" class="bal-line"></div>
+          <div id="pkgChips" style="margin:6px 0"></div>
+          <div class="ff" id="bossNameWrap" style="display:none"><label>Boss / Company name</label><select id="f_boss"></select></div>
+          <div class="ff"><label>Customer Name</label><input id="f_name" placeholder="Name"></div>
+        </div>
+        <div class="ff" id="carSearchWrap"><label>Car (pick existing or add new)</label>
+          <select id="f_carsel" onchange="onCarSel()"><option value="__new__">+ Add new car</option></select></div>
         <div class="row2">
           <div class="ff"><label>Car Model</label><input id="f_model" placeholder="e.g. Toyota Harrier"></div>
-          <div class="ff"><label>Car Plate</label><input id="f_plate" placeholder="e.g. BQM6833" style="text-transform:uppercase"></div>
+          <div class="ff"><label>Car Plate</label><input id="f_plate" placeholder="e.g. BQM6833" style="text-transform:uppercase" oninput="loadCustPackages()"></div>
         </div>
-        <div class="row2">
+        <div class="row2" id="hpEmailRow">
           <div class="ff"><label>H/P Number</label><input id="f_hp2" inputmode="numeric" placeholder="phone"></div>
           <div class="ff"><label>Email</label><input id="f_email" type="email" placeholder="optional"></div>
         </div>
-        <div class="row2">
-          <div class="ff"><label>Attended By</label><input id="f_staff" placeholder="staff name"></div>
-          <div class="ff"><label>Introducer</label><input id="f_intro" placeholder="optional"></div>
-        </div>
+        <div class="ff" id="staffWrap"><label>Attended By</label>
+          <select id="f_staff"><option value="">— select staff —</option></select></div>
       </div>
 
       <div class="card">
-        <div class="card-t"><i class="ti ti-list-check"></i> Services</div>
+        <div class="card-t"><i class="ti ti-list-check"></i> Services <span id="svcPriceNote" style="font-size:11px;color:var(--text3);font-weight:400"></span></div>
         <div id="svcList"></div>
         <button class="btn btn-ghost btn-sm" onclick="addSvc()"><i class="ti ti-plus"></i> Add service</button>
-        <div style="margin-top:8px;text-align:right;font-weight:800;font-size:15px">Total: RM <span id="svcTotal">0.00</span></div>
+        <div style="margin-top:8px;text-align:right;font-weight:800;font-size:15px" id="totalWrap">Total: RM <span id="svcTotal">0.00</span></div>
       </div>
 
-      <div class="card">
+      <div class="card" id="defCard">
         <div class="card-t"><i class="ti ti-alert-triangle"></i> Defects / Car Issues</div>
         <div id="defList"></div>
         <button class="btn btn-ghost btn-sm" onclick="addDef()"><i class="ti ti-plus"></i> Add defect</button>
       </div>
 
-      <div class="card">
+      <div class="card" id="photoCard">
+        <div class="card-t"><i class="ti ti-camera"></i> Photos <span style="font-size:11px;color:var(--text3);font-weight:400">(up to 20)</span></div>
+        <div id="photoGrid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:8px"></div>
+        <input type="file" id="photoInput" accept="image/*" multiple capture="environment" style="display:none" onchange="uploadPhotos(this.files)">
+        <button class="btn btn-ghost btn-sm" onclick="document.getElementById('photoInput').click()"><i class="ti ti-camera-plus"></i> Add photos</button>
+        <span id="photoStatus" style="font-size:11px;color:var(--text3);margin-left:8px"></span>
+      </div>
+
+      <div class="card" id="depCard">
         <div class="card-t"><i class="ti ti-cash"></i> Deposit (optional)</div>
         <div class="row2">
           <div class="ff"><label>Deposit Paid?</label>
             <select id="f_deposit" onchange="toggleDep()"><option value="no">No</option><option value="yes">Yes</option></select></div>
           <div class="ff"><label>Deposit Amount (RM)</label><input id="f_depamt" type="number" inputmode="decimal" placeholder="e.g. 50" disabled></div>
         </div>
+        <div class="ff" id="depDateWrap" style="display:none"><label>Deposit Date</label><input id="f_depdate" type="date"></div>
       </div>
 
       <div style="display:flex;gap:8px;margin-bottom:14px">
@@ -159,7 +180,7 @@ html,body{height:100%;background:var(--bg);font-family:-apple-system,BlinkMacSys
       <button class="btn btn-ghost btn-block" onclick="showView('list')" style="margin-bottom:30px">Cancel</button>
     </div>
 
-    <!-- DETAIL VIEW (existing job) -->
+    <!-- DETAIL VIEW -->
     <div class="view" id="view-detail"></div>
 
     <!-- REPORT VIEW -->
@@ -168,6 +189,36 @@ html,body{height:100%;background:var(--bg);font-family:-apple-system,BlinkMacSys
         <div class="card-t"><i class="ti ti-chart-bar"></i> Today's Jobs</div>
         <div id="reportBody"><div class="empty">Loading…</div></div>
       </div>
+    </div>
+
+    <!-- SETTINGS VIEW -->
+    <div class="view" id="view-settings">
+      <div class="card">
+        <div class="card-t"><i class="ti ti-users"></i> Staff (Attended By)</div>
+        <div id="set-staff"></div>
+        <div style="display:flex;gap:6px;margin-top:6px"><input id="add-staff" placeholder="Add staff name" style="flex:1;padding:8px;border:1px solid var(--border);border-radius:7px;background:var(--bg);color:var(--text)"><button class="btn btn-pri btn-sm" onclick="addSetting('staff_list','add-staff')">Add</button></div>
+      </div>
+      <div class="card">
+        <div class="card-t"><i class="ti ti-building-warehouse"></i> Workshops</div>
+        <div id="set-workshops"></div>
+        <div style="display:flex;gap:6px;margin-top:6px"><input id="add-workshop" placeholder="Add workshop company" style="flex:1;padding:8px;border:1px solid var(--border);border-radius:7px;background:var(--bg);color:var(--text)"><button class="btn btn-pri btn-sm" onclick="addSetting('workshops','add-workshop')">Add</button></div>
+      </div>
+      <div class="card">
+        <div class="card-t"><i class="ti ti-building-store"></i> Showrooms</div>
+        <div id="set-showrooms"></div>
+        <div style="display:flex;gap:6px;margin-top:6px"><input id="add-showroom" placeholder="Add showroom company" style="flex:1;padding:8px;border:1px solid var(--border);border-radius:7px;background:var(--bg);color:var(--text)"><button class="btn btn-pri btn-sm" onclick="addSetting('showrooms','add-showroom')">Add</button></div>
+      </div>
+      <div class="card">
+        <div class="card-t"><i class="ti ti-crown"></i> Boss / Company</div>
+        <div id="set-bosses"></div>
+        <div style="display:flex;gap:6px;margin-top:6px"><input id="add-boss" placeholder="Add boss / company name" style="flex:1;padding:8px;border:1px solid var(--border);border-radius:7px;background:var(--bg);color:var(--text)"><button class="btn btn-pri btn-sm" onclick="addSetting('bosses','add-boss')">Add</button></div>
+      </div>
+      <div class="card">
+        <div class="card-t"><i class="ti ti-photo"></i> ImgBB API Key (for photos)</div>
+        <div class="hint">Get a free key at api.imgbb.com. Stored in Supabase config.</div>
+        <div style="display:flex;gap:6px"><input id="set-imgbb" placeholder="ImgBB API key" style="flex:1;padding:8px;border:1px solid var(--border);border-radius:7px;background:var(--bg);color:var(--text)"><button class="btn btn-pri btn-sm" onclick="saveImgbb()">Save</button></div>
+      </div>
+      <div style="height:40px"></div>
     </div>
   </div>
 </div>
@@ -201,6 +252,10 @@ const stageOf=k=>STAGES.find(s=>s.key===k)||STAGES[0];
 const $=id=>document.getElementById(id);
 let sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON,{auth:{persistSession:true,storageKey:'gl_jobcard_auth'}});
 let JOBS=[], EDITING=null, CUR_TYPE='walkin', foundProfile=null, CAR_PACKAGES=[];
+let CFG={staff_list:[],workshops:[],showrooms:[],bosses:[],imgbb_key:''};
+let SERVICES_CAT=[];   // gl_services catalog for the picker
+let CUST_CARS=[];      // current customer's vehicles
+let PHOTOS=[];         // uploaded photo URLs for current job
 
 function toast(m){const t=$('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2200);}
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6);}
@@ -222,11 +277,23 @@ async function doLogin(){
 /* ---------- START / REALTIME ---------- */
 async function start(){
   setSync(true);
+  await loadConfig();
+  await loadServicesCat();
   await loadJobs();
-  // realtime: refresh list on any gl_jobs change
   sb.channel('jobs-rt').on('postgres_changes',{event:'*',schema:'public',table:'gl_jobs'},()=>loadJobs()).subscribe();
-  // also pull today's appointments waiting to convert
   loadAppointments();
+}
+async function loadConfig(){
+  const {data}=await sb.from('gl_board_config').select('*').eq('id',1).maybeSingle();
+  if(data){ CFG=Object.assign(CFG,{staff_list:data.staff_list||[],workshops:data.workshops||[],showrooms:data.showrooms||[],bosses:data.bosses||[],imgbb_key:data.imgbb_key||''}); }
+  renderSettings();
+}
+async function loadServicesCat(){
+  const {data}=await sb.from('gl_services').select('name,category,base_price').order('category');
+  SERVICES_CAT=data||[];
+  // build a datalist for the service picker
+  let dl=$('svcDatalist'); if(!dl){ dl=document.createElement('datalist'); dl.id='svcDatalist'; document.body.appendChild(dl); }
+  dl.innerHTML=SERVICES_CAT.map(s=>`<option value="${esc(s.name)}">`).join('');
 }
 function setSync(on){ $('sdot').classList.toggle('on',on); $('syncTxt').textContent=on?'Live':'Offline'; }
 
@@ -240,9 +307,11 @@ async function loadJobs(){
 
 function showView(v){
   document.querySelectorAll('.view').forEach(x=>x.classList.remove('a'));
-  $('view-'+ (v==='detail'?'detail':(v==='new'?'form':v))).classList.add('a');
+  const vid = v==='detail'?'detail':(v==='new'?'form':v);
+  $('view-'+vid).classList.add('a');
   document.querySelectorAll('.nav-btn').forEach(b=>b.classList.toggle('a',b.dataset.view===v));
-  $('hdrSub').textContent={list:'All jobs',new:'New job card',report:'Daily report',detail:'Job details'}[v]||'';
+  $('hdrSub').textContent={list:'All jobs',new:'New job card',report:'Daily report',detail:'Job details',settings:'Manage lists'}[v]||'';
+  if(v==='settings') renderSettings();
 }
 
 /* ---------- LIST ---------- */
@@ -302,7 +371,7 @@ function convertAppt(a){
   $('f_hp').value=noteField(a.notes,'Phone')||'';
   $('f_hp2').value=noteField(a.notes,'Phone')||'';
   SVCS=[{staff:'',desc:a.service_name||'',price:''}];
-  if(a.amount_paid){ $('f_deposit').value='yes'; toggleDep(); $('f_depamt').value=a.amount_paid; }
+  if(a.amount_paid){ $('f_deposit').value='yes'; toggleDep(); $('f_depamt').value=a.amount_paid; const dd=noteField(a.notes,'DepDate'); if(dd&&$('f_depdate'))$('f_depdate').value=isoDate(dd); }
   setType('appointment'); renderSvcs();
   const coat=noteField(a.notes,'CoatingBalance'); if(coat) toast('Coating balance: '+coat+' left');
 }
@@ -310,24 +379,69 @@ function convertAppt(a){
 /* ---------- NEW JOB FORM ---------- */
 let SVCS=[], DEFS=[];
 function newJob(){
-  EDITING=null; CUR_TYPE='walkin'; foundProfile=null; CAR_PACKAGES=[];
-  ['f_name','f_model','f_plate','f_hp','f_hp2','f_email','f_staff','f_intro','f_depamt'].forEach(i=>$(i).value='');
+  EDITING=null; CUR_TYPE='walkin'; foundProfile=null; CAR_PACKAGES=[]; CUST_CARS=[]; PHOTOS=[];
+  ['f_name','f_model','f_plate','f_hp','f_hp2','f_email','f_sentby','f_depamt','f_depdate'].forEach(i=>{if($(i))$(i).value='';});
   $('f_deposit').value='no'; toggleDep(); $('custFound').textContent=''; $('pkgChips').innerHTML='';
+  $('f_carsel').innerHTML='<option value="__new__">+ Add new car</option>';
   SVCS=[{staff:'',desc:'',price:''}]; DEFS=[];
-  setType('walkin'); renderSvcs(); renderDefs();
+  populateStaffDropdown();
+  setType('walkin'); renderSvcs(); renderDefs(); renderPhotos();
   showView('new');
 }
-function setType(t){ CUR_TYPE=t; document.querySelectorAll('.type-tab').forEach(x=>x.classList.toggle('a',x.dataset.type===t)); }
+function setType(t){
+  CUR_TYPE=t;
+  document.querySelectorAll('.type-tab').forEach(x=>x.classList.toggle('a',x.dataset.type===t));
+  const isWalk=(t==='walkin'||t==='appointment'), isWork=t==='workshop', isShow=t==='showroom', isBoss=t==='boss';
+  // org card (workshop/showroom/boss name)
+  $('orgCard').style.display=(isWork||isShow||isBoss)?'block':'none';
+  if(isWork){ $('orgLabel').textContent='Workshop'; $('orgSelLabel').textContent='Which workshop'; $('sentByWrap').style.display='block'; fillOrg(CFG.workshops); }
+  if(isShow){ $('orgLabel').textContent='Showroom'; $('orgSelLabel').textContent='Which showroom'; $('sentByWrap').style.display='block'; fillOrg(CFG.showrooms); }
+  if(isBoss){ $('orgCard').style.display='none'; } // boss uses a name dropdown in cust block instead
+  // customer phone block: only walk-in needs phone lookup; boss uses boss dropdown
+  $('custBlock').querySelector('.ff').style.display=isWalk?'block':'none'; // phone field
+  $('bossNameWrap').style.display=isBoss?'block':'none';
+  if(isBoss) fillBoss();
+  // hp/email row: walk-in only
+  $('hpEmailRow').style.display=isWalk?'grid':'none';
+  // car search (existing cars) only when we have a customer (walk-in/boss)
+  $('carSearchWrap').style.display=(isWalk||isBoss)?'block':'none';
+  // photos + defects: walk-in (and showroom) — workshop is just a record
+  $('photoCard').style.display=isWalk?'block':'none';
+  $('defCard').style.display=isWalk?'block':'none';
+  // deposit: walk-in only
+  $('depCard').style.display=isWalk?'block':'none';
+  // price note + total: boss has no price
+  const noPrice=isBoss;
+  $('totalWrap').style.display=noPrice?'none':'block';
+  $('svcPriceNote').textContent=noPrice?'(no price for boss/company)':'';
+  renderSvcs();
+}
+function fillOrg(list){
+  $('f_org').innerHTML='<option value="">— select —</option>'+(list||[]).map(n=>`<option>${esc(n)}</option>`).join('');
+}
+function fillBoss(){
+  $('f_boss').innerHTML='<option value="">— select boss —</option>'+(CFG.bosses||[]).map(n=>`<option>${esc(n)}</option>`).join('');
+}
+function populateStaffDropdown(){
+  $('f_staff').innerHTML='<option value="">— select staff —</option>'+(CFG.staff_list||[]).map(n=>`<option>${esc(n)}</option>`).join('');
+}
 
 function renderSvcs(){
+  const noPrice=CUR_TYPE==='boss';
   $('svcList').innerHTML=SVCS.map((s,i)=>`
     <div class="svc-row">
       <input class="svc-code" placeholder="#" value="${esc(s.staff||'')}" oninput="SVCS[${i}].staff=this.value">
-      <input class="svc-desc" placeholder="Service description" value="${esc(s.desc||'')}" oninput="SVCS[${i}].desc=this.value">
-      <input class="svc-price" type="number" inputmode="decimal" placeholder="0.00" value="${s.price||''}" oninput="SVCS[${i}].price=this.value;svcTotal()">
+      <input class="svc-desc" list="svcDatalist" placeholder="Type to search service…" value="${esc(s.desc||'')}" oninput="SVCS[${i}].desc=this.value;svcAutoPrice(${i})">
+      ${noPrice?'':`<input class="svc-price" type="number" inputmode="decimal" placeholder="0.00" value="${s.price||''}" oninput="SVCS[${i}].price=this.value;svcTotal()">`}
       <button class="x-btn" onclick="SVCS.splice(${i},1);renderSvcs();svcTotal()">&times;</button>
     </div>`).join('');
   svcTotal();
+}
+function svcAutoPrice(i){
+  // when a catalog service is picked, prefill its base_price (editable)
+  const s=SVCS[i]; if(!s)return;
+  const match=SERVICES_CAT.find(x=>x.name===s.desc);
+  if(match && (!s.price||s.price==='') && match.base_price){ s.price=match.base_price; renderSvcs(); }
 }
 function addSvc(){ SVCS.push({staff:'',desc:'',price:''}); renderSvcs(); }
 function svcTotal(){ const t=SVCS.reduce((a,s)=>a+(parseFloat(s.price)||0),0); $('svcTotal').textContent=t.toFixed(2); return t; }
@@ -345,51 +459,118 @@ function renderDefs(){
     </div>`).join('');
 }
 function addDef(){ DEFS.push({note:'',status:'noted'}); renderDefs(); }
-function toggleDep(){ const yes=$('f_deposit').value==='yes'; $('f_depamt').disabled=!yes; if(!yes)$('f_depamt').value=''; }
+function usePkg(i){ const p=CAR_PACKAGES[i]; if(!p)return; SVCS.unshift({staff:'',desc:p.service_name+' (package use)',price:'0'}); renderSvcs(); toast('Added from package · '+p.remaining+' left'); }
+function toggleDep(){ const yes=$('f_deposit').value==='yes'; $('f_depamt').disabled=!yes; if(!yes){$('f_depamt').value='';} if($('depDateWrap'))$('depDateWrap').style.display=yes?'block':'none'; }
 
 /* ---------- CUSTOMER LOOKUP (+package chips) ---------- */
 let _lt=null;
 function lookupCust(){ clearTimeout(_lt); _lt=setTimeout(_doLookup,450); }
 async function _doLookup(){
-  foundProfile=null; CAR_PACKAGES=[]; $('pkgChips').innerHTML='';
+  foundProfile=null; CAR_PACKAGES=[]; CUST_CARS=[]; $('pkgChips').innerHTML='';
   const digits=($('f_hp').value||'').replace(/[^0-9]/g,'');
+  $('f_carsel').innerHTML='<option value="__new__">+ Add new car</option>';
   if(digits.length<7){ $('custFound').textContent=''; return; }
-  const {data}=await sb.from('gl_profiles').select('id,name,phone,tier').or(`phone.eq.+${digits},phone.eq.${digits}`).limit(1);
-  if(data&&data.length){
-    foundProfile=data[0];
-    $('custFound').innerHTML=`<span style="color:#16A34A">✓ ${esc(data[0].name||'')}</span>${data[0].tier?' · '+esc(data[0].tier):''}`;
-    if(data[0].name&&!$('f_name').value)$('f_name').value=data[0].name;
+  const {data}=await sb.from('gl_profiles').select('id,name,phone,email,tier, gl_vehicles(id,make,model,plate)').or(`phone.eq.+${digits},phone.eq.${digits}`).limit(1).maybeSingle();
+  if(data){
+    foundProfile=data;
+    $('custFound').innerHTML=`<span style="color:#16A34A">✓ ${esc(data.name||'')}</span>${data.tier?' · '+esc(data.tier):''}`;
+    if(data.name&&!$('f_name').value)$('f_name').value=data.name;
+    if(data.email&&!$('f_email').value)$('f_email').value=data.email;  // email auto-fill
     $('f_hp2').value=digits;
+    // populate car dropdown
+    CUST_CARS=data.gl_vehicles||[];
+    $('f_carsel').innerHTML=CUST_CARS.map(c=>`<option value="${c.id}">${esc([c.make,c.model].filter(Boolean).join(' '))} · ${esc(c.plate||'')}</option>`).join('')+'<option value="__new__">+ Add new car</option>';
+    if(CUST_CARS.length){ onCarSel(); } // auto-pick first car
     loadCustPackages();
   }else{
     $('custFound').innerHTML='<span style="color:var(--warn-text)">New customer</span>';
   }
 }
+function onCarSel(){
+  const v=$('f_carsel').value;
+  if(v==='__new__'){ $('f_model').value=''; $('f_plate').value=''; return; }
+  const c=CUST_CARS.find(x=>x.id===v);
+  if(c){ $('f_model').value=[c.make,c.model].filter(Boolean).join(' '); $('f_plate').value=c.plate||''; loadCustPackages(); }
+}
 async function loadCustPackages(){
-  if(!foundProfile)return;
+  if(!foundProfile){ $('pkgChips').innerHTML=''; return; }
+  const plate=($('f_plate').value||'').trim().toUpperCase();
   const {data}=await sb.from('gl_packages').select('*').eq('owner_id',foundProfile.id).eq('status','active');
-  CAR_PACKAGES=(data||[]).map(p=>({...p,remaining:(p.total_uses||0)-(p.used_uses||0)})).filter(p=>p.remaining>0);
+  let pk=(data||[]).map(p=>({...p,remaining:(p.total_uses||0)-(p.used_uses||0)})).filter(p=>p.remaining>0);
+  if(plate) pk=pk.filter(p=>!p.vehicle_label || p.vehicle_label===plate); // match this car if labelled
+  CAR_PACKAGES=pk;
   if(!CAR_PACKAGES.length){ $('pkgChips').innerHTML=''; return; }
   $('pkgChips').innerHTML=CAR_PACKAGES.map((p,i)=>`<div class="chip" onclick="usePkg(${i})">🎟️ ${esc(p.service_name)} · ${p.remaining} left</div>`).join('');
 }
-function usePkg(i){ const p=CAR_PACKAGES[i]; if(!p)return; SVCS.unshift({staff:'',desc:p.service_name+' (package use)',price:'0'}); renderSvcs(); toast('Added from package · '+p.remaining+' left'); }
+
+/* ---------- PHOTOS (ImgBB -> Supabase urls) ---------- */
+function renderPhotos(){
+  $('photoGrid').innerHTML=PHOTOS.map((u,i)=>`<div style="position:relative"><img src="${u}" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:7px"><button onclick="PHOTOS.splice(${i},1);renderPhotos()" style="position:absolute;top:2px;right:2px;background:rgba(0,0,0,.6);color:#fff;border:none;border-radius:50%;width:18px;height:18px;font-size:11px;cursor:pointer">&times;</button></div>`).join('');
+}
+async function uploadPhotos(files){
+  if(!CFG.imgbb_key){ toast('Set ImgBB key in Settings first'); return; }
+  if(PHOTOS.length+files.length>20){ toast('Max 20 photos'); return; }
+  $('photoStatus').textContent='Uploading…';
+  for(const f of files){
+    try{
+      const b64=await new Promise(r=>{const rd=new FileReader();rd.onload=()=>r(rd.result.split(',')[1]);rd.readAsDataURL(f);});
+      const fd=new FormData(); fd.append('image',b64);
+      const res=await fetch('https://api.imgbb.com/1/upload?key='+CFG.imgbb_key,{method:'POST',body:fd});
+      const j=await res.json();
+      if(j&&j.data&&j.data.url){ PHOTOS.push(j.data.url); renderPhotos(); }
+    }catch(e){ console.error(e); }
+  }
+  $('photoStatus').textContent=PHOTOS.length+' photo(s)';
+}
+
+/* ---------- SETTINGS ---------- */
+function renderSettings(){
+  const chip=(arr,key)=>(arr||[]).map((n,i)=>`<span class="pill" style="background:var(--bg3);color:var(--text);margin:0 6px 6px 0">${esc(n)} <span style="cursor:pointer;color:var(--danger-text)" onclick="delSetting('${key}',${i})">&times;</span></span>`).join('')||'<span style="font-size:12px;color:var(--text3)">none yet</span>';
+  if($('set-staff')) $('set-staff').innerHTML=chip(CFG.staff_list,'staff_list');
+  if($('set-workshops')) $('set-workshops').innerHTML=chip(CFG.workshops,'workshops');
+  if($('set-showrooms')) $('set-showrooms').innerHTML=chip(CFG.showrooms,'showrooms');
+  if($('set-bosses')) $('set-bosses').innerHTML=chip(CFG.bosses,'bosses');
+  if($('set-imgbb')) $('set-imgbb').value=CFG.imgbb_key||'';
+}
+async function addSetting(key,inputId){
+  const val=$(inputId).value.trim(); if(!val)return;
+  CFG[key]=CFG[key]||[]; CFG[key].push(val); $(inputId).value='';
+  await sb.from('gl_board_config').update({[key]:CFG[key]}).eq('id',1);
+  renderSettings(); toast('Added');
+}
+async function delSetting(key,i){
+  CFG[key].splice(i,1);
+  await sb.from('gl_board_config').update({[key]:CFG[key]}).eq('id',1);
+  renderSettings();
+}
+async function saveImgbb(){
+  CFG.imgbb_key=$('set-imgbb').value.trim();
+  await sb.from('gl_board_config').update({imgbb_key:CFG.imgbb_key}).eq('id',1);
+  toast('ImgBB key saved');
+}
 
 /* ---------- SAVE ---------- */
 function collectJob(){
   const total=svcTotal();
   return {
     id: EDITING&&EDITING.id ? EDITING.id : uid(),
-    name:$('f_name').value.trim(), hp:$('f_hp2').value.trim()||$('f_hp').value.trim(),
+    name:$('f_name').value.trim() || ($('f_boss')?$('f_boss').value:''),
+    hp:$('f_hp2').value.trim()||$('f_hp').value.trim(),
     email:$('f_email').value.trim(), plate:$('f_plate').value.trim().toUpperCase(), model:$('f_model').value.trim(),
     customer_id:foundProfile?foundProfile.id:null,
+    vehicle_id:($('f_carsel').value!=='__new__'&&$('f_carsel').value)?$('f_carsel').value:null,
     booking_id:EDITING&&EDITING.booking_id?EDITING.booking_id:null,
     cust_type:CUR_TYPE, tier:foundProfile?foundProfile.tier:null, is_new:!foundProfile,
     services:SVCS.filter(s=>s.desc), defects:DEFS.filter(d=>d.note),
-    intro:$('f_intro').value.trim(), staff:$('f_staff').value.trim(),
+    intro:CUR_TYPE==='walkin'?'walk-in':'', staff:$('f_staff').value,
+    workshop_name:(CUR_TYPE==='workshop'||CUR_TYPE==='showroom')?$('f_org').value:(CUR_TYPE==='boss'?($('f_boss')?$('f_boss').value:''):''),
+    sent_by:(CUR_TYPE==='workshop'||CUR_TYPE==='showroom')?$('f_sentby').value:'',
     stage:EDITING&&EDITING.stage?EDITING.stage:'upcoming',
     started_at:EDITING&&EDITING.started_at?EDITING.started_at:null,
     created_at:EDITING&&EDITING.created_at?EDITING.created_at:Date.now(),
-    total:total, deposit:$('f_deposit').value==='yes', dep_amt:parseFloat($('f_depamt').value)||null,
+    total:CUR_TYPE==='boss'?0:total, deposit:$('f_deposit').value==='yes',
+    dep_amt:parseFloat($('f_depamt').value)||null, dep_date:$('f_depdate')?$('f_depdate').value:null,
+    photos:PHOTOS,
     status:EDITING&&EDITING.status?EDITING.status:'open'
   };
 }
@@ -443,11 +624,19 @@ function editJob(id){
   newJob(); EDITING=j; CUR_TYPE=j.cust_type||'walkin';
   $('f_name').value=j.name||''; $('f_model').value=j.model||''; $('f_plate').value=j.plate||'';
   $('f_hp').value=j.hp||''; $('f_hp2').value=j.hp||''; $('f_email').value=j.email||'';
-  $('f_staff').value=j.staff||''; $('f_intro').value=j.intro||'';
-  if(j.deposit){ $('f_deposit').value='yes'; toggleDep(); $('f_depamt').value=j.dep_amt||''; }
+  populateStaffDropdown(); if($('f_staff'))$('f_staff').value=j.staff||'';
+  if(j.deposit){ $('f_deposit').value='yes'; toggleDep(); $('f_depamt').value=j.dep_amt||''; if($('f_depdate'))$('f_depdate').value=j.dep_date||''; }
   SVCS=(j.services&&j.services.length)?JSON.parse(JSON.stringify(j.services)):[{staff:'',desc:'',price:''}];
   DEFS=j.defects?JSON.parse(JSON.stringify(j.defects)):[];
-  setType(CUR_TYPE); renderSvcs(); renderDefs(); showView('new');
+  PHOTOS=j.photos?JSON.parse(JSON.stringify(j.photos)):[];
+  setType(CUR_TYPE);
+  if((CUR_TYPE==='workshop'||CUR_TYPE==='showroom')){ if($('f_org'))$('f_org').value=j.workshop_name||''; if($('f_sentby'))$('f_sentby').value=j.sent_by||''; }
+  if(CUR_TYPE==='boss'&&$('f_boss'))$('f_boss').value=j.workshop_name||j.name||'';
+  renderSvcs(); renderDefs(); renderPhotos(); showView('new');
+}
+function isoDate(s){ // convert "30/6/2026" -> "2026-06-30"
+  if(!s)return''; const m=s.match(/(\d{1,2})\/(\d{1,2})\/(\d{2,4})/); if(!m)return'';
+  let[_,d,mo,y]=m; if(y.length===2)y='20'+y; return `${y}-${String(mo).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
 }
 async function markPaid(id){ await sb.from('gl_jobs').update({status:'paid'}).eq('id',id); toast('Marked collected'); loadJobs(); showView('list'); }
 async function delJob(id){ if(!confirm('Delete this job?'))return; await sb.from('gl_jobs').delete().eq('id',id); toast('Deleted'); loadJobs(); showView('list'); }
