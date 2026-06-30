@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="mobile-web-app-capable" content="yes">
+<title>Grandlab Plate Scanner</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.x/dist/tabler-icons.min.css">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+:root{--bg:#080808;--card:#141414;--card2:#1c1c1c;--gold:#F5C518;--text:#fff;--text2:#9a9a9a;--border:#2a2a2a;--green:#16A34A}
+html,body{height:100%;background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:var(--text)}
+.app{max-width:560px;margin:0 auto;min-height:100dvh;padding:54px 16px 40px}
+.back{position:fixed;top:8px;left:8px;z-index:300;background:rgba(0,0,0,.65);color:var(--gold);text-decoration:none;font-size:12px;font-weight:700;padding:6px 11px;border-radius:20px;backdrop-filter:blur(4px)}
+.hdr{text-align:center;margin-bottom:18px}
+.logo{font-weight:900;font-size:24px;letter-spacing:1px}
+.logo span{color:var(--gold)}
+.tag{font-size:11px;color:var(--text2);letter-spacing:.2em;text-transform:uppercase;margin-top:4px}
+/* scan area */
+.scanwrap{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:16px;margin-bottom:14px}
+#video{width:100%;border-radius:12px;background:#000;display:none}
+.cambtns{display:flex;gap:10px;margin-top:12px}
+.btn{flex:1;background:var(--gold);color:#080808;border:none;border-radius:12px;padding:13px;font-weight:800;font-size:14px;font-family:inherit;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px}
+.btn.sec{background:var(--card2);color:var(--text)}
+.btn:active{transform:scale(.98)}
+.typed{display:flex;gap:10px;margin-top:12px}
+.typed input{flex:1;background:#1e1e1a;border:1px solid var(--border);border-radius:12px;color:#fff;padding:13px 14px;font-size:17px;font-family:inherit;text-transform:uppercase;letter-spacing:1px;outline:none}
+.typed input:focus{border-color:var(--gold)}
+.status{text-align:center;font-size:12px;color:var(--text2);margin-top:10px;min-height:16px}
+/* customer card */
+.cust{background:var(--card);border:1px solid var(--border);border-radius:18px;overflow:hidden;margin-top:14px;display:none}
+.cust.show{display:block;animation:fade .25s}
+@keyframes fade{from{opacity:0;transform:translateY(8px)}to{opacity:1}}
+.cust-top{background:linear-gradient(135deg,#1c1c1c,#141414);padding:18px;border-bottom:1px solid var(--border)}
+.plate-badge{display:inline-block;background:#fff;color:#000;font-weight:800;font-size:20px;letter-spacing:2px;padding:6px 16px;border-radius:8px;border:2px solid #000;font-family:'Arial Narrow',sans-serif}
+.car-model{font-size:14px;color:var(--text2);margin-top:8px}
+.cust-body{padding:18px}
+.row{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border);font-size:14px}
+.row:last-child{border-bottom:none}
+.row .ic{width:30px;color:var(--gold);font-size:17px;text-align:center}
+.row .lbl{color:var(--text2);width:80px;flex-shrink:0;font-size:12px}
+.row .val{font-weight:600}
+.pkg{background:var(--card2);border-radius:12px;padding:12px 14px;margin-top:12px}
+.pkg-line{display:flex;justify-content:space-between;align-items:center;font-size:13px;padding:4px 0}
+.pkg-bal{font-weight:800;color:var(--green)}
+.pkg-bal.zero{color:#e0533d}
+.hist{margin-top:14px}
+.hist-h{font-size:12px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px}
+.hist-item{background:var(--card2);border-radius:10px;padding:10px 12px;margin-bottom:7px;font-size:13px}
+.hist-date{color:var(--gold);font-weight:700;font-size:12px}
+.hist-svc{color:var(--text);margin-top:2px}
+.more{text-align:center;color:var(--gold);font-size:12px;font-weight:600;cursor:pointer;padding:8px;text-decoration:underline}
+.cta{margin:16px;display:block;background:var(--gold);color:#080808;text-align:center;text-decoration:none;border-radius:12px;padding:15px;font-weight:800;font-size:15px}
+.notfound{display:none;text-align:center;padding:26px 18px;color:var(--text2)}
+.notfound.show{display:block}
+.notfound .big{font-size:40px;margin-bottom:8px}
+/* login gate */
+.gate{position:fixed;inset:0;background:var(--bg);z-index:50;display:flex;align-items:center;justify-content:center;padding:24px}
+.gate.hidden{display:none}
+.gate-box{width:100%;max-width:340px}
+.gate label{display:block;font-size:11px;color:var(--text2);margin-bottom:4px;font-weight:600}
+.gate input{width:100%;background:#1e1e1a;border:1px solid var(--border);border-radius:12px;color:#fff;padding:13px 14px;font-size:15px;font-family:inherit;margin-bottom:12px;outline:none}
+.gate input:focus{border-color:var(--gold)}
+.gate button{width:100%;background:var(--gold);color:#080808;border:none;border-radius:12px;padding:14px;font-weight:800;font-size:15px;font-family:inherit;cursor:pointer}
+.err{color:#e0533d;font-size:12px;min-height:16px;margin-bottom:6px}
+</style>
+</head>
+<body>
+
+<a class="back" href="https://grandpride.github.io/Grandlab-app/gl-hub.html">← Hub</a>
+
+<div id="gate" class="gate">
+  <div class="gate-box">
+    <div class="logo" style="text-align:center;margin-bottom:6px">GRAND<span>LAB</span></div>
+    <div class="tag" style="text-align:center;margin-bottom:24px">Plate Scanner</div>
+    <label>Email</label>
+    <input id="email" type="email" autocomplete="username" placeholder="admin@grandpride.com">
+    <label>Password</label>
+    <input id="pass" type="password" autocomplete="current-password" placeholder="Password">
+    <div class="err" id="loginErr"></div>
+    <button onclick="doLogin()">Sign in</button>
+  </div>
+</div>
+
+<div class="app">
+  <div class="hdr">
+    <div class="logo">GRAND<span>LAB</span></div>
+    <div class="tag">Plate Scanner</div>
+  </div>
+
+  <div class="scanwrap">
+    <video id="video" playsinline></video>
+    <canvas id="canvas" style="display:none"></canvas>
+    <div class="cambtns">
+      <button class="btn" id="scanBtn" onclick="startCam()"><i class="ti ti-camera"></i> Scan Plate</button>
+      <button class="btn sec" id="capBtn" onclick="capture()" style="display:none"><i class="ti ti-focus-2"></i> Capture</button>
+      <button class="btn sec" id="stopBtn" onclick="stopCam()" style="display:none"><i class="ti ti-x"></i> Stop</button>
+    </div>
+    <div class="typed">
+      <input id="plateInput" placeholder="OR type plate e.g. BQM6833" onkeydown="if(event.key==='Enter')doSearch(this.value)">
+      <button class="btn" style="flex:0 0 auto;padding:13px 18px" onclick="doSearch(document.getElementById('plateInput').value)"><i class="ti ti-search"></i></button>
+    </div>
+    <div class="status" id="status"></div>
+  </div>
+
+  <!-- Customer card -->
+  <div class="cust" id="cust">
+    <div class="cust-top">
+      <span class="plate-badge" id="cPlate">—</span>
+      <div class="car-model" id="cModel">—</div>
+    </div>
+    <div class="cust-body">
+      <div class="row"><span class="ic"><i class="ti ti-user"></i></span><span class="lbl">Customer</span><span class="val" id="cName">—</span></div>
+      <div class="row"><span class="ic"><i class="ti ti-phone"></i></span><span class="lbl">Contact</span><span class="val" id="cPhone">—</span></div>
+      <div class="row"><span class="ic"><i class="ti ti-award"></i></span><span class="lbl">Tier</span><span class="val" id="cTier">—</span></div>
+
+      <div id="pkgWrap"></div>
+
+      <div class="hist">
+        <div class="hist-h"><i class="ti ti-history"></i> Service History</div>
+        <div id="histList"></div>
+        <div class="more" id="moreBtn" style="display:none" onclick="showAllHistory()">▾ More records</div>
+      </div>
+    </div>
+    <a class="cta" id="bookBtn" href="#"><i class="ti ti-plus"></i> Create Job (Walk-in)</a>
+  </div>
+
+  <div class="notfound" id="notfound">
+    <div class="big">🔍</div>
+    <div id="nfText">No customer found for this plate.</div>
+    <a class="cta" id="nfBook" href="https://grandpride.github.io/Grandlab-app/gl-jobcard.html" style="margin-top:14px">+ New Walk-in Job</a>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+<script>
+const SUPABASE_URL="https://eychljpzorzmaveixlnu.supabase.co";
+const SUPABASE_ANON="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV5Y2hsanB6b3J6bWF2ZWl4bG51Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2NDk2NjQsImV4cCI6MjA5NzIyNTY2NH0.6dA1zhz5ZIwf8byFB8vhfOzPI-uPPdPihEr1b8GG_oA";
+const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON,{auth:{persistSession:true,storageKey:'gl_scan_auth'}});
+const $=id=>document.getElementById(id);
+const JOBCARD_URL="https://grandpride.github.io/Grandlab-app/gl-jobcard.html";
+let stream=null, ALL_HISTORY=[];
+
+/* ---------- login ---------- */
+async function boot(){
+  const {data}=await sb.auth.getSession();
+  if(data&&data.session){ $('gate').classList.add('hidden'); }
+  else $('gate').classList.remove('hidden');
+}
+async function doLogin(){
+  const email=$('email').value.trim(), pass=$('pass').value;
+  $('loginErr').textContent='Signing in…';
+  const {error}=await sb.auth.signInWithPassword({email,password:pass});
+  if(error){ $('loginErr').textContent='Login failed: '+error.message; return; }
+  $('loginErr').textContent=''; $('gate').classList.add('hidden');
+}
+
+/* ---------- camera + OCR ---------- */
+async function startCam(){
+  try{
+    stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}});
+    const v=$('video'); v.srcObject=stream; v.style.display='block'; await v.play();
+    $('scanBtn').style.display='none'; $('capBtn').style.display='flex'; $('stopBtn').style.display='flex';
+    $('status').textContent='Point at the plate, then tap Capture.';
+  }catch(e){ $('status').textContent='Camera not available — type the plate instead.'; }
+}
+function stopCam(){
+  if(stream){ stream.getTracks().forEach(t=>t.stop()); stream=null; }
+  $('video').style.display='none';
+  $('scanBtn').style.display='flex'; $('capBtn').style.display='none'; $('stopBtn').style.display='none';
+  $('status').textContent='';
+}
+async function capture(){
+  const v=$('video'), c=$('canvas');
+  c.width=v.videoWidth; c.height=v.videoHeight;
+  c.getContext('2d').drawImage(v,0,0);
+  $('status').textContent='Reading plate…';
+  try{
+    const {data}=await Tesseract.recognize(c,'eng',{tessedit_char_whitelist:'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'});
+    let txt=(data.text||'').replace(/[^A-Z0-9]/gi,'').toUpperCase();
+    if(txt.length>=3){
+      stopCam();
+      $('plateInput').value=txt;
+      $('status').textContent='Read: '+txt+' — searching…';
+      doSearch(txt);
+    }else{
+      $('status').textContent='Could not read clearly — try again or type it.';
+    }
+  }catch(e){ $('status').textContent='OCR failed — type the plate instead.'; }
+}
+
+/* ---------- search by plate ---------- */
+async function doSearch(raw){
+  const plate=(raw||'').trim().toUpperCase().replace(/\s+/g,'');
+  if(plate.length<3){ $('status').textContent='Enter at least 3 characters.'; return; }
+  $('status').textContent='Searching '+plate+'…';
+  $('cust').classList.remove('show'); $('notfound').classList.remove('show');
+
+  const {data:veh}=await sb.from('gl_vehicles')
+    .select('id,make,model,plate,owner_id, gl_profiles(id,name,phone,email,tier)')
+    .ilike('plate',plate).limit(1).maybeSingle();
+
+  if(!veh || !veh.gl_profiles){
+    $('status').textContent='';
+    $('nfText').textContent='No customer found for plate '+plate+'.';
+    $('nfBook').href=JOBCARD_URL+'?plate='+encodeURIComponent(plate);
+    $('notfound').classList.add('show');
+    return;
+  }
+
+  const prof=veh.gl_profiles;
+  $('status').textContent='';
+  $('cPlate').textContent=veh.plate||plate;
+  $('cModel').textContent=[veh.make,veh.model].filter(Boolean).join(' ')||'—';
+  $('cName').textContent=prof.name||'—';
+  $('cPhone').textContent=prof.phone||'—';
+  $('cTier').textContent=prof.tier||'Standard';
+  $('bookBtn').href=JOBCARD_URL+'?plate='+encodeURIComponent(veh.plate||plate)+'&phone='+encodeURIComponent((prof.phone||'').replace(/^\+/,''));
+
+  await loadPackages(prof.id, veh.plate||plate);
+  await loadHistory(prof.id, veh.plate||plate);
+  $('cust').classList.add('show');
+}
+
+async function loadPackages(ownerId, plate){
+  const {data}=await sb.from('gl_packages').select('service_name,total_uses,used_uses,vehicle_label,status').eq('owner_id',ownerId).eq('status','active');
+  const pk=(data||[]).filter(p=>!p.vehicle_label || p.vehicle_label.toUpperCase()===plate);
+  if(!pk.length){ $('pkgWrap').innerHTML=''; return; }
+  $('pkgWrap').innerHTML='<div class="pkg"><div style="font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Packages</div>'+
+    pk.map(p=>{
+      const bal=(p.total_uses||0)-(p.used_uses||0);
+      const name=(p.service_name||'').replace(/^\s*\d+\s*x?\s*(times?\s*)?/i,'').trim();
+      return `<div class="pkg-line"><span>${esc(name)}</span><span class="pkg-bal${bal<=0?' zero':''}">${bal} left</span></div>`;
+    }).join('')+'</div>';
+}
+
+async function loadHistory(ownerId, plate){
+  // jobs (completed/all) for this customer or plate
+  const {data:jobs}=await sb.from('gl_jobs').select('created_at,services,plate,stage,status').or(`customer_id.eq.${ownerId},plate.ilike.${plate}`).order('created_at',{ascending:false}).limit(50);
+  // bookings for this customer
+  const {data:bk}=await sb.from('gl_bookings').select('scheduled_at,service_name,plate,notes').eq('customer_id',ownerId).order('scheduled_at',{ascending:false}).limit(50);
+
+  const items=[];
+  (jobs||[]).forEach(j=>{
+    const svcs=Array.isArray(j.services)?j.services.map(s=>s.desc).filter(Boolean).join(', '):'';
+    items.push({ts:Number(j.created_at)||0, date:fmtDate(Number(j.created_at)), svc:svcs||'Job', src:'job'});
+  });
+  (bk||[]).forEach(b=>{
+    const t=b.scheduled_at?new Date(b.scheduled_at).getTime():0;
+    items.push({ts:t, date:fmtDate(t), svc:b.service_name||'Booking', src:'booking'});
+  });
+  items.sort((a,b)=>b.ts-a.ts);
+  ALL_HISTORY=items;
+
+  renderHistory(items.slice(0,3));
+  $('moreBtn').style.display = items.length>3 ? 'block' : 'none';
+}
+function renderHistory(list){
+  if(!list.length){ $('histList').innerHTML='<div style="color:var(--text2);font-size:13px;padding:6px 0">No past records.</div>'; return; }
+  $('histList').innerHTML=list.map(h=>`<div class="hist-item"><div class="hist-date">${h.date} · ${h.src}</div><div class="hist-svc">${esc(h.svc)}</div></div>`).join('');
+}
+function showAllHistory(){ renderHistory(ALL_HISTORY); $('moreBtn').style.display='none'; }
+
+function fmtDate(ts){ if(!ts) return '—'; const d=new Date(ts); return d.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}); }
+function esc(s){ return (s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+boot();
+</script>
+</body>
+</html>

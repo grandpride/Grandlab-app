@@ -288,6 +288,14 @@ async function start(){
   await loadJobs();
   sb.channel('jobs-rt').on('postgres_changes',{event:'*',schema:'public',table:'gl_jobs'},()=>loadJobs()).subscribe();
   loadAppointments();
+  // prefill from plate scanner (?plate=...&phone=...)
+  const qs=new URLSearchParams(location.search);
+  const qp=qs.get('plate'), qph=qs.get('phone');
+  if(qp||qph){
+    showView('form'); newJob(); setType('walkin');
+    if(qph){ $('f_hp').value=qph; if(typeof _doLookup==='function') await _doLookup(); }
+    if(qp){ $('f_plate').value=qp.toUpperCase(); if(!foundProfile && typeof _doPlateLookup==='function') await _doPlateLookup(); }
+  }
 }
 async function loadConfig(){
   const {data,error}=await sb.from('gl_board_config').select('*').eq('id',1).maybeSingle();
