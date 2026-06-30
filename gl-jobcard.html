@@ -924,6 +924,17 @@ function buildSlip(job){
 
 
 boot();
+
+/* Auto-uppercase all text inputs as you type (skip email/password/number/phone) */
+document.addEventListener('input',function(e){
+  const el=e.target;
+  if(el.tagName!=='INPUT') return;
+  const t=(el.type||'text').toLowerCase();
+  if(t==='email'||t==='password'||t==='number'||t==='tel'||el.inputMode==='numeric') return;
+  if(el.id==='email'||el.id==='pass'||el.id==='f_hp'||el.id==='f_hp2'||el.id==='f_email') return;
+  const s=el.selectionStart, en=el.selectionEnd, up=el.value.toUpperCase();
+  if(el.value!==up){ el.value=up; try{el.setSelectionRange(s,en);}catch(_){} }
+},true);
 </script>
 </body>
 </html>
