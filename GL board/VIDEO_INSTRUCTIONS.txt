@@ -1,0 +1,20 @@
+PROMO VIDEOS FOR THE TV SIDE PANEL
+
+You can put MULTIPLE videos that play one after another, then loop.
+
+1. Name your videos:  promo1.mp4, promo2.mp4, promo3.mp4 ... up to promo11.mp4
+2. Put them in this "public" folder (same place as logo.png and chime.mp3).
+3. Redeploy:  npm run build   then   firebase deploy
+
+They play in order (promo1 -> promo2 -> ... -> promo11 -> back to promo1).
+If a number is missing it is skipped automatically.
+
+IMPORTANT:
+- Format must be MP4 with H.264 video codec (or it shows sound but no picture).
+  Convert at cloudconvert.com/mp4-converter -> set Video Codec: H.264.
+- Videos play MUTED (so they never clash with the car-ready announcements).
+- Keep each file small (under ~30MB) so they load fast on the TV.
+- Vertical or square videos fit the narrow panel best.
+
+TO USE MORE OR FEWER THAN 11 VIDEOS:
+Open src/TV.jsx, find VIDEO_PLAYLIST near the top, and edit the list.

@@ -1,0 +1,49 @@
+ANNOUNCEMENT AUDIO FILES (works in any kiosk browser)
+
+Put all these MP3 files in THIS folder (public/audio/).
+Make them at a free TTS site (ttsmaker.com, naturalreaders.com): type the
+letter/number/sentence, choose the language voice, download MP3, rename.
+
+NAMING MUST BE EXACT: all lowercase, .mp3 extension.
+
+============================================================
+PLATE LETTERS (English voice) — 26 files  [used for all languages]
+============================================================
+  a.mp3 b.mp3 c.mp3 d.mp3 e.mp3 f.mp3 g.mp3 h.mp3 i.mp3 j.mp3
+  k.mp3 l.mp3 m.mp3 n.mp3 o.mp3 p.mp3 q.mp3 r.mp3 s.mp3 t.mp3
+  u.mp3 v.mp3 w.mp3 x.mp3 y.mp3 z.mp3
+  (each = just the letter spoken, English)
+
+============================================================
+PLATE DIGITS — 30 files (10 per language)
+============================================================
+English (say "zero".."nine"):
+  0.mp3 1.mp3 2.mp3 3.mp3 4.mp3 5.mp3 6.mp3 7.mp3 8.mp3 9.mp3
+Malay (say "kosong, satu, dua, tiga, empat, lima, enam, tujuh, lapan, sembilan"):
+  ms-0.mp3 ms-1.mp3 ms-2.mp3 ms-3.mp3 ms-4.mp3
+  ms-5.mp3 ms-6.mp3 ms-7.mp3 ms-8.mp3 ms-9.mp3
+Chinese (say 零 一 二 三 四 五 六 七 八 九):
+  zh-0.mp3 zh-1.mp3 zh-2.mp3 zh-3.mp3 zh-4.mp3
+  zh-5.mp3 zh-6.mp3 zh-7.mp3 zh-8.mp3 zh-9.mp3
+
+============================================================
+MESSAGE CLIPS — 3 files
+============================================================
+  msg-en.mp3 -> "The car is ready to collect. Please head to reception
+                 to collect your key. Thank you."
+  msg-ms.mp3 -> "Kereta anda sudah siap. Sila ke kaunter penerimaan
+                 untuk mengambil kunci. Terima kasih."
+  msg-zh.mp3 -> "您的爱车已经准备好了，请到前台领取钥匙。谢谢。"
+
+TOTAL: 26 + 30 + 3 = 59 files.
+
+============================================================
+PLAY ORDER when a car is Ready:
+  chime
+  -> plate in ENGLISH  + msg-en
+  -> plate in MALAY    + msg-ms   (letters english, digits ms-#)
+  -> plate in CHINESE  + msg-zh   (letters english, digits zh-#)
+============================================================
+
+Missing files are skipped automatically (no error), so you can add
+languages in stages. After adding files: npm run build then firebase deploy.
