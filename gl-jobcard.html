@@ -138,8 +138,8 @@ html,body{height:100%;background:var(--bg);font-family:-apple-system,BlinkMacSys
           <div class="ff"><label>H/P Number</label><input id="f_hp2" inputmode="numeric" placeholder="phone"></div>
           <div class="ff"><label>Email</label><input id="f_email" type="email" placeholder="optional"></div>
         </div>
-        <div class="ff" id="staffWrap"><label>Attended By</label>
-          <select id="f_staff"><option value="">— select staff —</option></select></div>
+        <div class="ff" id="staffWrap"><label>Technician(s) — tap to assign</label>
+          <div id="techChips" style="display:flex;flex-wrap:wrap;gap:6px"></div></div>
       </div>
 
       <div class="card">
@@ -396,7 +396,7 @@ function convertAppt(a){
 /* ---------- NEW JOB FORM ---------- */
 let SVCS=[], DEFS=[];
 function newJob(){
-  EDITING=null; CUR_TYPE='walkin'; foundProfile=null; CAR_PACKAGES=[]; CUST_CARS=[]; PHOTOS=[];
+  EDITING=null; CUR_TYPE='walkin'; foundProfile=null; CAR_PACKAGES=[]; CUST_CARS=[]; PHOTOS=[]; SEL_TECHS=[];
   ['f_name','f_model','f_plate','f_hp','f_hp2','f_email','f_sentby','f_depamt','f_depdate'].forEach(i=>{if($(i))$(i).value='';});
   $('f_deposit').value='no'; toggleDep(); $('custFound').textContent=''; $('pkgChips').innerHTML='';
   $('f_carsel').innerHTML='<option value="__new__">+ Add new car</option>';
@@ -455,8 +455,20 @@ function onBossSel(){
   $('f_carsel').innerHTML=cars.map(c=>`<option value="${c.id}">${esc(c.model||'')} · ${esc(c.plate||'')}</option>`).join('')+'<option value="__new__">+ Add new car</option>';
   if(cars.length){ onCarSel(); } else { $('f_model').value=''; $('f_plate').value=''; }
 }
-function populateStaffDropdown(){
-  $('f_staff').innerHTML='<option value="">— select staff —</option>'+(CFG.staff_list||[]).map(n=>`<option>${esc(n)}</option>`).join('');
+let SEL_TECHS=[];
+function populateStaffDropdown(){ renderTechChips(); }
+function renderTechChips(){
+  const el=$('techChips'); if(!el)return;
+  if(!(CFG.staff_list||[]).length){ el.innerHTML='<span style="font-size:12px;color:var(--text3)">Add staff in Settings first</span>'; return; }
+  el.innerHTML=(CFG.staff_list||[]).map(n=>{
+    const on=SEL_TECHS.includes(n);
+    return `<span onclick="toggleTech('${esc(n).replace(/'/g,"&#39;")}')" style="cursor:pointer;font-size:13px;font-weight:700;padding:7px 12px;border-radius:20px;border:1.5px solid ${on?'var(--gold)':'var(--border)'};background:${on?'var(--gold)':'var(--bg)'};color:${on?'#111':'var(--text2)'}">${esc(n)}</span>`;
+  }).join('');
+}
+function toggleTech(n){
+  const i=SEL_TECHS.indexOf(n);
+  if(i>=0)SEL_TECHS.splice(i,1); else SEL_TECHS.push(n);
+  renderTechChips();
 }
 
 function renderSvcs(){
@@ -598,7 +610,9 @@ function collectJob(){
     booking_id:EDITING&&EDITING.booking_id?EDITING.booking_id:null,
     cust_type:CUR_TYPE, tier:foundProfile?foundProfile.tier:null, is_new:!foundProfile,
     services:SVCS.filter(s=>s.desc), defects:DEFS.filter(d=>d.note),
-    intro:CUR_TYPE==='walkin'?'walk-in':'', staff:$('f_staff').value,
+    intro:CUR_TYPE==='walkin'?'walk-in':'', staff:SEL_TECHS.join(', '), techs:SEL_TECHS,
+    ready_at:EDITING&&EDITING.ready_at?EDITING.ready_at:null,
+    collected:EDITING&&EDITING.collected?EDITING.collected:false,
     workshop_name:(CUR_TYPE==='workshop'||CUR_TYPE==='showroom')?$('f_org').value:(CUR_TYPE==='boss'?($('f_boss')?$('f_boss').value:''):''),
     sent_by:(CUR_TYPE==='workshop'||CUR_TYPE==='showroom')?$('f_sentby').value:'',
     stage:EDITING&&EDITING.stage?EDITING.stage:'upcoming',
@@ -637,12 +651,15 @@ function openJob(id){
     <div class="card">
       <div class="card-t"><i class="ti ti-progress"></i> Status — tap to change</div>
       <div class="stage-btns">${STAGES.map(s=>`<button class="stage-btn ${j.stage===s.key?'a':''}" style="${j.stage===s.key?'background:'+s.color:''}" onclick="setStage('${j.id}','${s.key}')">${s.short}</button>`).join('')}</div>
+      ${j.ready_at?`<div style="margin-top:10px;font-size:12px;color:#16A34A;font-weight:700"><i class="ti ti-circle-check"></i> Completed at ${new Date(j.ready_at).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</div>`:''}
     </div>
     <div style="display:flex;gap:8px;margin-bottom:10px">
       <button class="btn btn-dark" style="flex:1" onclick="printSlip(JOBS.find(x=>x.id==='${j.id}'))"><i class="ti ti-printer"></i> Print</button>
       <button class="btn btn-ghost" style="flex:1" onclick="editJob('${j.id}')"><i class="ti ti-edit"></i> Edit</button>
     </div>
-    <button class="btn btn-ghost btn-block" style="margin-bottom:8px" onclick="markPaid('${j.id}')"><i class="ti ti-check"></i> Mark collected/paid</button>
+    ${(j.cust_type==='workshop'||j.cust_type==='showroom')
+      ? `<button class="btn btn-pri btn-block" style="margin-bottom:8px" onclick="markCollected('${j.id}')"><i class="ti ti-circle-check"></i> Collected (remove from board)</button>`
+      : `<button class="btn btn-pri btn-block" style="margin-bottom:8px" onclick="markPaid('${j.id}')"><i class="ti ti-cash"></i> Paid &amp; collected (remove from board)</button>`}
     <button class="btn btn-ghost btn-block" style="color:var(--danger-text);margin-bottom:14px" onclick="delJob('${j.id}')">Delete job</button>
     <button class="btn btn-ghost btn-block" onclick="showView('list')" style="margin-bottom:30px">← Back</button>`;
   showView('detail');
@@ -650,7 +667,9 @@ function openJob(id){
 async function setStage(id,key){
   const patch={stage:key};
   const j=JOBS.find(x=>x.id===id);
-  if(key!=='upcoming' && j && !j.started_at) patch.started_at=Date.now();
+  if(key!=='upcoming' && j && !j.started_at) patch.started_at=Date.now(); // start elapsed
+  if(key==='done' && j && !j.ready_at) patch.ready_at=Date.now();          // record completed time
+  if(key!=='done') patch.ready_at=null;                                    // moved back from ready
   await sb.from('gl_jobs').update(patch).eq('id',id);
   toast('Status: '+stageOf(key).label);
   await loadJobs(); openJob(id);
@@ -660,7 +679,7 @@ function editJob(id){
   newJob(); EDITING=j; CUR_TYPE=j.cust_type||'walkin';
   $('f_name').value=j.name||''; $('f_model').value=j.model||''; $('f_plate').value=j.plate||'';
   $('f_hp').value=j.hp||''; $('f_hp2').value=j.hp||''; $('f_email').value=j.email||'';
-  populateStaffDropdown(); if($('f_staff'))$('f_staff').value=j.staff||'';
+  populateStaffDropdown(); SEL_TECHS=Array.isArray(j.techs)?j.techs.slice():(j.staff?j.staff.split(',').map(s=>s.trim()).filter(Boolean):[]); renderTechChips();
   if(j.deposit){ $('f_deposit').value='yes'; toggleDep(); $('f_depamt').value=j.dep_amt||''; if($('f_depdate'))$('f_depdate').value=j.dep_date||''; }
   SVCS=(j.services&&j.services.length)?JSON.parse(JSON.stringify(j.services)):[{staff:'',desc:'',price:''}];
   DEFS=j.defects?JSON.parse(JSON.stringify(j.defects)):[];
@@ -674,7 +693,8 @@ function isoDate(s){ // convert "30/6/2026" -> "2026-06-30"
   if(!s)return''; const m=s.match(/(\d{1,2})\/(\d{1,2})\/(\d{2,4})/); if(!m)return'';
   let[_,d,mo,y]=m; if(y.length===2)y='20'+y; return `${y}-${String(mo).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
 }
-async function markPaid(id){ await sb.from('gl_jobs').update({status:'paid'}).eq('id',id); toast('Marked collected'); loadJobs(); showView('list'); }
+async function markPaid(id){ await sb.from('gl_jobs').update({status:'paid',collected:true}).eq('id',id); toast('Paid & collected'); loadJobs(); showView('list'); }
+async function markCollected(id){ await sb.from('gl_jobs').update({status:'paid',collected:true}).eq('id',id); toast('Collected — removed from board'); loadJobs(); showView('list'); }
 async function delJob(id){ if(!confirm('Delete this job?'))return; await sb.from('gl_jobs').delete().eq('id',id); toast('Deleted'); loadJobs(); showView('list'); }
 
 /* ---------- REPORT ---------- */
