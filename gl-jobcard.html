@@ -116,7 +116,7 @@ html,body{height:100%;background:var(--bg);font-family:-apple-system,BlinkMacSys
         <div class="card-t"><i class="ti ti-building"></i> <span id="orgLabel">Workshop</span></div>
         <div class="ff"><label id="orgSelLabel">Which workshop</label>
           <select id="f_org"></select></div>
-        <div class="ff" id="sentByWrap"><label>Sent in by (workshop staff)</label><input id="f_sentby" placeholder="staff who sent the car"></div>
+        <div class="ff" id="sentByWrap"><label>Sent in by <span style="text-transform:none;color:var(--text3);font-weight:400">(optional)</span></label><input id="f_sentby" placeholder="staff who sent the car"></div>
       </div>
 
       <div class="card">
@@ -126,7 +126,7 @@ html,body{height:100%;background:var(--bg);font-family:-apple-system,BlinkMacSys
           <div id="custFound" class="bal-line"></div>
           <div id="pkgChips" style="margin:6px 0"></div>
           <div class="ff" id="bossNameWrap" style="display:none"><label>Boss / Company name</label><select id="f_boss"></select></div>
-          <div class="ff"><label>Customer Name</label><input id="f_name" placeholder="Name"></div>
+          <div class="ff" id="custNameWrap"><label>Customer Name</label><input id="f_name" placeholder="Name"></div>
         </div>
         <div class="ff" id="carSearchWrap"><label>Car (pick existing or add new)</label>
           <select id="f_carsel" onchange="onCarSel()"><option value="__new__">+ Add new car</option></select></div>
@@ -401,9 +401,11 @@ function setType(t){
   $('custBlock').querySelector('.ff').style.display=isWalk?'block':'none'; // phone field
   $('bossNameWrap').style.display=isBoss?'block':'none';
   if(isBoss) fillBoss();
+  // hide "Customer Name" for boss/workshop/showroom (they don't give it)
+  const nameFf=$('custNameWrap'); if(nameFf) nameFf.style.display=isWalk?'block':'none';
   // hp/email row: walk-in only
   $('hpEmailRow').style.display=isWalk?'grid':'none';
-  // car search (existing cars) only when we have a customer (walk-in/boss)
+  // car-pick dropdown: walk-in (customer's cars) or boss (boss's saved cars)
   $('carSearchWrap').style.display=(isWalk||isBoss)?'block':'none';
   // photos + defects: walk-in (and showroom) — workshop is just a record
   $('photoCard').style.display=isWalk?'block':'none';
@@ -421,6 +423,20 @@ function fillOrg(list){
 }
 function fillBoss(){
   $('f_boss').innerHTML='<option value="">— select boss —</option>'+(CFG.bosses||[]).map(n=>`<option>${esc(n)}</option>`).join('');
+  $('f_boss').onchange=onBossSel;
+}
+function onBossSel(){
+  // load this boss's previously-used cars so staff can pick instead of retyping
+  const boss=$('f_boss').value;
+  const cars=[];
+  const seen=new Set();
+  JOBS.filter(j=>j.cust_type==='boss' && (j.workshop_name===boss||j.name===boss)).forEach(j=>{
+    const key=(j.plate||'')+'|'+(j.model||'');
+    if(j.plate && !seen.has(key)){ seen.add(key); cars.push({id:'b_'+key,make:'',model:j.model,plate:j.plate}); }
+  });
+  CUST_CARS=cars;
+  $('f_carsel').innerHTML=cars.map(c=>`<option value="${c.id}">${esc(c.model||'')} · ${esc(c.plate||'')}</option>`).join('')+'<option value="__new__">+ Add new car</option>';
+  if(cars.length){ onCarSel(); } else { $('f_model').value=''; $('f_plate').value=''; }
 }
 function populateStaffDropdown(){
   $('f_staff').innerHTML='<option value="">— select staff —</option>'+(CFG.staff_list||[]).map(n=>`<option>${esc(n)}</option>`).join('');
