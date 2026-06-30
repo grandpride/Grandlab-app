@@ -370,7 +370,7 @@ $('save').onclick=async()=>{
   const phone=normPhone($('contact').value);
   const timeLabel=$('time').value.trim();
   // build scheduled_at from date + selected slot (default 09:00 if custom text)
-  const sched=$('date').value+"T"+slotToTime(timeLabel)+":00";
+  const sched=$('date').value+"T"+slotToTime(timeLabel)+":00+08:00";
   try{
     // Option A: store details directly in booking; link customer_id/vehicle_id if existing
     const booking={
