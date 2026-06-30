@@ -135,7 +135,7 @@ const SLOTS_PER_TIME = 2;
 /* ============================================================ */
 
 const $=id=>document.getElementById(id);
-let sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON,{auth:{persistSession:true,storageKey:'gl_appt_auth'}});
+let sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON,{auth:{persistSession:true,storageKey:'gl_auth'}});
 let SERVICES=[], foundProfile=null, profileCars=[], selectedSlot=null, takenCounts={};
 let selectedServiceObj=null;
 let connected = false;
