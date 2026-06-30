@@ -551,18 +551,21 @@ function renderSettings(){
 async function addSetting(key,inputId){
   const val=$(inputId).value.trim(); if(!val)return;
   CFG[key]=CFG[key]||[]; CFG[key].push(val); $(inputId).value='';
-  await sb.from('gl_board_config').update({[key]:CFG[key]}).eq('id',1);
-  renderSettings(); toast('Added');
+  const {error}=await sb.from('gl_board_config').upsert({id:1,[key]:CFG[key]});
+  if(error){ toast('Save failed: '+error.message); console.error(error); }
+  else toast('Added');
+  renderSettings();
 }
 async function delSetting(key,i){
   CFG[key].splice(i,1);
-  await sb.from('gl_board_config').update({[key]:CFG[key]}).eq('id',1);
+  const {error}=await sb.from('gl_board_config').upsert({id:1,[key]:CFG[key]});
+  if(error){ toast('Delete failed: '+error.message); }
   renderSettings();
 }
 async function saveImgbb(){
   CFG.imgbb_key=$('set-imgbb').value.trim();
-  await sb.from('gl_board_config').update({imgbb_key:CFG.imgbb_key}).eq('id',1);
-  toast('ImgBB key saved');
+  const {error}=await sb.from('gl_board_config').upsert({id:1,imgbb_key:CFG.imgbb_key});
+  if(error){ toast('Save failed: '+error.message); } else toast('ImgBB key saved');
 }
 
 /* ---------- SAVE ---------- */
