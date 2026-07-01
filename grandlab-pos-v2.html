@@ -220,18 +220,20 @@ button,input{font-family:inherit}
 .rc-totbox{display:flex;gap:14px;align-items:center;font-size:14px}
 .rc-totbox b{border:1px solid #111;padding:4px 14px;font-size:15px}
 .rc-adj{font-size:11px;color:#333;margin-top:8px;text-align:right}
-.rc-spacer{flex:1 1 auto;min-height:20px}
+.rc-spacer{flex:0 0 auto;min-height:16px}
 .rc-notes{margin-top:16px;font-size:10.5px;color:#222;line-height:1.5;border-top:1px solid #ccc;padding-top:10px}
 .rc-notes .ind{padding-left:18px}
 .rc-actions{display:flex;gap:10px;margin-top:20px}
 .rc-actions .btn{margin-top:0}
 
 @media print{
+  html,body{height:auto!important}
   body *{visibility:hidden!important}
   #rcptModal,#rcptModal *{visibility:visible!important}
-  #rcptModal{position:absolute;inset:0;background:#fff;padding:0;display:block}
-  #rcptModal .dialog{box-shadow:none;max-width:100%;border-radius:0}
-  .rcpt{max-height:none;overflow:visible;padding:0;min-height:277mm;display:flex;flex-direction:column}
+  #rcptModal{position:absolute;inset:0;background:#fff;padding:0;display:block;height:auto}
+  #rcptModal .dialog{box-shadow:none;max-width:100%;border-radius:0;padding:0;margin:0}
+  .rcpt{max-height:none;overflow:visible;padding:0;display:block}
+  .rc-spacer{display:none}
   .no-print{display:none!important}
   @page{size:A4;margin:12mm}
 }
