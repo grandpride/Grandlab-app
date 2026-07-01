@@ -165,6 +165,8 @@ html,body{height:100%;background:var(--bg);font-family:-apple-system,BlinkMacSys
         </div>
         <div class="ff" id="staffWrap"><label>Technician(s) — tap to assign</label>
           <div id="techChips" style="display:flex;flex-wrap:wrap;gap:6px"></div></div>
+        <div class="ff" id="attendeeWrap"><label>Attendee <span style="text-transform:none;color:var(--text3);font-weight:400">(reception who served)</span></label>
+          <select id="f_attendee"><option value="">— select attendee —</option></select></div>
       </div>
 
       <div class="card">
@@ -577,7 +579,17 @@ function onBossSel(){
   if(cars.length){ onCarSel(); } else { $('f_model').value=''; $('f_plate').value=''; }
 }
 let SEL_TECHS=[];
-function populateStaffDropdown(){ renderTechChips(); }
+function populateStaffDropdown(){
+  renderTechChips();
+  // fill the attendee dropdown from the staff list
+  const sel=document.getElementById('f_attendee');
+  if(sel){
+    const cur=sel.value;
+    sel.innerHTML='<option value="">— select attendee —</option>'+
+      (CFG.staff_list||[]).map(n=>`<option value="${esc(n)}">${esc(n)}</option>`).join('');
+    if(cur) sel.value=cur;
+  }
+}
 function renderTechChips(){
   const el=$('techChips'); if(!el)return;
   if(!(CFG.technicians||[]).length){ el.innerHTML='<span style="font-size:12px;color:var(--text3)">Add technicians in Settings first</span>'; return; }
@@ -839,6 +851,7 @@ function collectJob(){
     cust_type:CUR_TYPE, tier:foundProfile?foundProfile.tier:null, is_new:!foundProfile,
     services:SVCS.filter(s=>s.desc), defects:DEFS.filter(d=>d.note),
     intro:CUR_TYPE==='walkin'?'walk-in':'', staff:SEL_TECHS.join(', '), techs:SEL_TECHS,
+    attendee:($('f_attendee')?$('f_attendee').value:'')||'',
     ready_at:EDITING&&EDITING.ready_at?EDITING.ready_at:null,
     collected:EDITING&&EDITING.collected?EDITING.collected:false,
     workshop_name:(CUR_TYPE==='workshop'||CUR_TYPE==='showroom')?$('f_org').value:(CUR_TYPE==='boss'?($('f_boss')?$('f_boss').value:''):''),
@@ -945,6 +958,7 @@ function editJob(id){
   $('f_name').value=j.name||''; $('f_model').value=j.model||''; $('f_plate').value=j.plate||'';
   $('f_hp').value=j.hp||''; $('f_hp2').value=j.hp||''; $('f_email').value=j.email||'';
   populateStaffDropdown(); SEL_TECHS=Array.isArray(j.techs)?j.techs.slice():(j.staff?j.staff.split(',').map(s=>s.trim()).filter(Boolean):[]); renderTechChips();
+  if($('f_attendee')) $('f_attendee').value=j.attendee||'';
   if(j.deposit){ $('f_deposit').value='yes'; toggleDep(); $('f_depamt').value=j.dep_amt||''; if($('f_depdate'))$('f_depdate').value=j.dep_date||''; }
   SVCS=(j.services&&j.services.length)?JSON.parse(JSON.stringify(j.services)):[{staff:'',desc:'',price:''}];
   DEFS=j.defects?JSON.parse(JSON.stringify(j.defects)):[];

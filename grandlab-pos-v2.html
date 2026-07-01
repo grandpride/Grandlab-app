@@ -136,6 +136,14 @@ button,input{font-family:inherit}
 .size-chip.match{border-color:var(--gold);background:rgba(245,197,24,.08)}
 .size-chip .st{font-weight:700;font-size:14px;color:var(--ink)}
 .size-chip .sp{font-weight:800;font-size:16px;color:var(--gold-deep)}
+.sqlrow{background:var(--surface);border:1px solid var(--line2);border-radius:12px;padding:12px;margin-bottom:9px}
+.sqlrow.done{opacity:.6}
+.sqlrow-h{display:flex;justify-content:space-between;align-items:center}
+.sqlrow-amt{font-weight:800;color:var(--gold-deep)}
+.sqlrow-meta{font-size:11.5px;color:var(--ink3);margin:3px 0 9px}
+.sqlrow-in{display:flex;gap:7px}
+.sqlrow-in input{flex:1;min-width:0;background:#fff;border:1px solid var(--line2);border-radius:8px;padding:9px;font-family:inherit;font-size:13px;outline:none}
+.sqlrow-in input:focus{border-color:var(--gold)}
 
 .totals{background:var(--surface2);border:1px solid var(--line);border-radius:13px;padding:14px;margin-top:14px}
 .totals .row{display:flex;justify-content:space-between;font-size:14px;padding:4px 0}
@@ -306,8 +314,9 @@ button,input{font-family:inherit}
     <div>
       <div class="panel">
         <div class="tabs">
-          <div class="tab on" id="tabReady" onclick="switchTab('ready')"><i class="ti ti-receipt"></i> Ready to bill <span class="cnt" id="cntReady">0</span></div>
+          <div class="tab on" id="tabReady" onclick="switchTab('ready')"><i class="ti ti-receipt"></i> Ready <span class="cnt" id="cntReady">0</span></div>
           <div class="tab" id="tabHold" onclick="switchTab('hold')"><i class="ti ti-player-pause"></i> On-hold <span class="cnt" id="cntHold">0</span></div>
+          <div class="tab" id="tabSql" onclick="switchTab('sql')"><i class="ti ti-file-invoice"></i> SQL keying <span class="cnt" id="cntSql">0</span></div>
         </div>
         <div class="panel-h">
           <span class="ttl"><i class="ti ti-list-check"></i> <span id="listTitle">Ready to bill</span></span>
@@ -316,6 +325,7 @@ button,input{font-family:inherit}
         <div class="panel-b">
           <div class="status" id="status"></div>
           <div id="jobs"></div>
+          <div id="sqlList" style="display:none"></div>
           <div class="empty" id="empty" style="display:none">
             <div class="big">✅</div>
             <div id="emptyMsg">No jobs waiting to be paid.</div>
@@ -556,16 +566,32 @@ async function loadJobs(){
   $('cntReady').textContent=JOBS.length;
   $('cntHold').textContent=HOLD.length;
   renderJobs();
+  refreshSqlCount();
+}
+async function refreshSqlCount(){
+  try{
+    const {count}=await sb.from('gl_payments').select('id',{count:'exact',head:true})
+      .or('sql_invoice_no.is.null,sql_payment_no.is.null');
+    if(count!=null && $('cntSql')) $('cntSql').textContent=count;
+  }catch(e){}
 }
 function switchTab(t){
   TAB=t;
   $('tabReady').classList.toggle('on',t==='ready');
   $('tabHold').classList.toggle('on',t==='hold');
-  $('listTitle').textContent=t==='hold'?'On-hold orders':'Ready to bill';
+  $('tabSql').classList.toggle('on',t==='sql');
+  $('listTitle').textContent=t==='hold'?'On-hold orders':(t==='sql'?'SQL Account keying':'Ready to bill');
   $('emptyMsg').textContent=t==='hold'?'No orders on hold.':'No jobs waiting to be paid.';
   $('walkinBtn').style.display=t==='hold'?'none':'inline-flex';
-  $('takings').style.display=t==='hold'?'none':'flex';
-  renderJobs();
+  $('takings').style.display=(t==='ready')?'flex':'none';
+  // toggle the two list containers
+  const sqlMode=(t==='sql');
+  $('jobs').style.display=sqlMode?'none':'block';
+  $('empty').style.display='none';
+  $('sqlList').style.display=sqlMode?'block':'none';
+  if(document.getElementById('exportRow')) $('exportRow').style.display=(t==='ready')?'block':'none';
+  if(sqlMode){ loadSqlQueue(); }
+  else renderJobs();
 }
 function currentList(){ return TAB==='hold'?HOLD:JOBS; }
 function renderJobs(){
@@ -591,6 +617,46 @@ function renderJobs(){
 function openFromList(i){
   const j=currentList()[i];
   CUR=j; startCheckout(CUR, jobTotal(CUR)); renderJobs();
+}
+
+/* ---------- SQL Account keying queue ---------- */
+let SQLQ=[];
+async function loadSqlQueue(){
+  $('sqlList').innerHTML='<div class="status">Loading paid orders…</div>';
+  // every paid order; reception keys the SQL invoice (S) + payment number (T)
+  const {data,error}=await sb.from('gl_payments')
+    .select('id,invoice_no,customer_name,plate,net_paid,method,paid_at,sql_invoice_no,sql_payment_no,attendee')
+    .order('paid_at',{ascending:false}).limit(120);
+  if(error){ $('sqlList').innerHTML='<div class="status">Error: '+esc(error.message)+'</div>'; return; }
+  SQLQ=data||[];
+  const pending=SQLQ.filter(r=>!(r.sql_invoice_no&&r.sql_payment_no)).length;
+  $('cntSql').textContent=pending;
+  if(!SQLQ.length){ $('sqlList').innerHTML='<div class="empty" style="display:block"><div class="big">📄</div><div>No paid orders yet.</div></div>'; return; }
+  $('sqlList').innerHTML=SQLQ.map((r,i)=>{
+    const done=!!(r.sql_invoice_no&&r.sql_payment_no);
+    return `<div class="sqlrow ${done?'done':''}">
+      <div class="sqlrow-h">
+        <div><b>${esc(titleCase(r.customer_name||'Customer'))}</b> <span style="color:var(--ink3)">· ${esc(r.plate||'—')}</span></div>
+        <div class="sqlrow-amt">${RM(r.net_paid)}</div>
+      </div>
+      <div class="sqlrow-meta">GLIV <b>${esc(r.invoice_no||'—')}</b> · ${esc(r.method||'')} · ${new Date(r.paid_at).toLocaleDateString('en-MY')}${done?' · <span style="color:#0a0">keyed ✓</span>':''}</div>
+      <div class="sqlrow-in">
+        <input id="sqli_${i}" placeholder="SQL invoice no" value="${esc(r.sql_invoice_no||'')}">
+        <input id="sqlp_${i}" placeholder="SQL payment no" value="${esc(r.sql_payment_no||'')}">
+        <button class="btn-mini" onclick="saveSqlRow(${i})"><i class="ti ti-device-floppy"></i> Save</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+async function saveSqlRow(i){
+  const r=SQLQ[i]; if(!r) return;
+  const inv=$('sqli_'+i).value.trim(), pay=$('sqlp_'+i).value.trim();
+  const {error}=await sb.from('gl_payments').update({
+    sql_invoice_no:inv||null, sql_payment_no:pay||null,
+    sql_keyed_at:(inv&&pay)?new Date().toISOString():null
+  }).eq('id',r.id);
+  if(error){ alert('Save failed: '+error.message); return; }
+  toast('Saved ✓'); loadSqlQueue();
 }
 
 /* ---------- takings ---------- */
@@ -1208,6 +1274,7 @@ async function confirmPay(){
       wallet_used:PAY.walletUsed, points_used:PAY.pointsUsed, points_value:PAY.pointsUsed*POINTS_RATE,
       voucher_code:PAY.voucher?PAY.voucher.barcode:null, voucher_value:PAY.voucher?Number(PAY.voucher.value||0):0,
       net_paid:net, method:methodLabel, taken_by:ME,
+      attendee:CUR.attendee||null,
       sqlacc_code:CUR.sqlacc_code||null,
       items:JSON.stringify(jobServices(CUR).map(s=>({desc:svcDesc(s),price:svcPrice(s),qty:s.qty||1,code:s.code||''})))
     });
