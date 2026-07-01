@@ -944,10 +944,11 @@ function searchCust(){
       let name=g.app?g.app.name:'';
       if(!name){ name=g.rows.reduce((best,r)=>((r.name||'').length>(best||'').length?r.name:best),''); }
       const badges=[]; if(g.apps) badges.push('app'); if(g.walkins) badges.push('walk-in');
+      const bestModel=g.rows.reduce((m,r)=>m||(r.model||''),'');
       return {
         id:base.id, profile:!!g.app, name:name||base.name,
         phone:g.phone||base.phone,
-        plate:(g.plates[0]||base.plate||''), model:base.model||'',
+        plate:(g.plates[0]||base.plate||''), model:bestModel||base.model||'',
         sqlacc_code:(g.walk&&g.walk.sqlacc_code)||base.sqlacc_code||'',
         _plates:g.plates, _badges:badges
       };
@@ -981,8 +982,8 @@ async function pickCust(r){
   }
   // if we still have no model but do have a plate, try to pull car details from gl_walkin
   if((!CUR.model||CUR.model==='') && CUR.plate){
-    const {data:wd}=await sb.from('gl_walkin').select('model,car_type').ilike('plate',CUR.plate).limit(1).maybeSingle();
-    if(wd){ CUR.model=wd.model||CUR.model; }
+    const {data:wd}=await sb.from('gl_walkin').select('model,car_type').ilike('plate',CUR.plate).not('model','is',null).limit(1);
+    if(wd&&wd[0]){ CUR.model=wd[0].model||CUR.model; }
   }
   // load this customer's packages (by plate/owner) so 'use package visit' shows
   await loadCheckoutPackages({plate:CUR.plate, customer_id:CUR.customer_id});
