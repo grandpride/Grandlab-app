@@ -63,6 +63,28 @@ html,body{height:100%;background:var(--bg);font-family:-apple-system,BlinkMacSys
 .gate input:focus{border-color:var(--gold)}
 .gate button{width:100%;background:var(--gold);color:#080808;border:none;border-radius:12px;padding:14px;font-weight:800;font-size:15px;font-family:inherit;cursor:pointer}
 .err{color:#e0533d;font-size:12px;min-height:16px;margin-bottom:6px}
+/* edit profile button + modal */
+.editbtn{width:100%;margin-top:14px;background:var(--card2);color:var(--text);border:1px solid var(--border);border-radius:12px;padding:12px;font-weight:700;font-size:14px;font-family:inherit;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px}
+.editbtn:active{transform:scale(.98)}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:200;display:none;align-items:flex-end;justify-content:center}
+.modal.show{display:flex}
+.sheet{background:var(--card);width:100%;max-width:560px;max-height:92dvh;overflow-y:auto;border-radius:20px 20px 0 0;padding:20px 18px 30px;animation:up .25s}
+@keyframes up{from{transform:translateY(30px);opacity:.5}to{transform:translateY(0);opacity:1}}
+.sheet h3{font-size:17px;font-weight:800;margin-bottom:4px}
+.sheet .msub{font-size:12px;color:var(--text2);margin-bottom:14px}
+.fld{margin-bottom:12px}
+.fld label{display:block;font-size:11px;color:var(--text2);margin-bottom:4px;font-weight:600;text-transform:uppercase;letter-spacing:.04em}
+.fld input,.fld select{width:100%;background:#1e1e1a;border:1px solid var(--border);border-radius:11px;color:#fff;padding:12px 13px;font-size:15px;font-family:inherit;outline:none}
+.fld input:focus,.fld select:focus{border-color:var(--gold)}
+.frow{display:flex;gap:10px}
+.frow .fld{flex:1}
+.sec-h{font-size:12px;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.05em;margin:16px 0 10px;border-top:1px solid var(--border);padding-top:13px}
+.hrow{background:var(--card2);border-radius:10px;padding:10px;margin-bottom:8px}
+.hrow .del{color:#e0533d;font-size:12px;cursor:pointer;text-align:right;margin-top:4px}
+.addrec{color:var(--gold);font-size:13px;font-weight:600;cursor:pointer;padding:6px 0;display:inline-flex;align-items:center;gap:5px}
+.savebar{display:flex;gap:10px;margin-top:18px}
+.savebar .btn{margin-top:0}
+.savemsg{text-align:center;font-size:12px;color:var(--text2);min-height:16px;margin-top:8px}
 </style>
 </head>
 <body>
@@ -114,6 +136,8 @@ html,body{height:100%;background:var(--bg);font-family:-apple-system,BlinkMacSys
         <div id="histList"></div>
         <div class="more" id="moreBtn" style="display:none" onclick="showAllHistory()">▾ More records</div>
       </div>
+
+      <button class="editbtn" onclick="openEdit()"><i class="ti ti-edit"></i> Edit / Complete Profile</button>
     </div>
     <a class="cta" id="bookBtn" href="#"><i class="ti ti-plus"></i> Create Job (Walk-in)</a>
   </div>
@@ -122,6 +146,45 @@ html,body{height:100%;background:var(--bg);font-family:-apple-system,BlinkMacSys
     <div class="big">🔍</div>
     <div id="nfText">No customer found for this plate.</div>
     <a class="cta" id="nfBook" href="https://grandpride.github.io/Grandlab-app/gl-jobcard.html" style="margin-top:14px">+ New Walk-in Job</a>
+    <button class="editbtn" style="margin-top:12px" onclick="openEdit(true)"><i class="ti ti-user-plus"></i> Add this customer</button>
+  </div>
+</div>
+
+<!-- Edit / Complete Profile modal -->
+<div class="modal" id="editModal">
+  <div class="sheet">
+    <h3 id="editTitle">Edit / Complete Profile</h3>
+    <div class="msub">Saved to walk-in records. Links to the customer by phone when they sign up in the app.</div>
+
+    <div class="sec-h">Customer</div>
+    <div class="fld"><label>Name</label><input id="eName" placeholder="Customer name"></div>
+    <div class="fld"><label>Phone</label><input id="ePhone" type="tel" placeholder="0123456789"></div>
+
+    <div class="sec-h">Vehicle</div>
+    <div class="frow">
+      <div class="fld"><label>Plate</label><input id="ePlate" style="text-transform:uppercase" placeholder="ABC1234"></div>
+      <div class="fld"><label>Car type</label>
+        <select id="eType"><option value="">—</option><option>Sedan</option><option>SUV/MPV</option><option>Hatchback</option><option>Pickup</option><option>Luxury</option><option>Motorbike</option><option>Other</option></select>
+      </div>
+    </div>
+    <div class="fld"><label>Model</label><input id="eModel" placeholder="e.g. Honda Civic"></div>
+
+    <div class="sec-h">Package / Maintenance Balance</div>
+    <div class="fld"><label>Package name</label><input id="ePkgName" placeholder="e.g. Coating Maintenance"></div>
+    <div class="frow">
+      <div class="fld"><label>Total uses</label><input id="ePkgTotal" type="number" min="0" placeholder="0"></div>
+      <div class="fld"><label>Used</label><input id="ePkgUsed" type="number" min="0" placeholder="0"></div>
+    </div>
+
+    <div class="sec-h">Service History <span style="color:var(--text2);font-weight:400;text-transform:none">— add past visits</span></div>
+    <div id="histRows"></div>
+    <div class="addrec" onclick="addHistRow()"><i class="ti ti-plus"></i> Add a service record</div>
+
+    <div class="savemsg" id="saveMsg"></div>
+    <div class="savebar">
+      <button class="btn sec" onclick="closeEdit()">Cancel</button>
+      <button class="btn" onclick="saveProfile()"><i class="ti ti-device-floppy"></i> Save Profile</button>
+    </div>
   </div>
 </div>
 
@@ -133,6 +196,8 @@ const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON,{auth:{persistSession:
 const $=id=>document.getElementById(id);
 const JOBCARD_URL="https://grandpride.github.io/Grandlab-app/gl-jobcard.html";
 let ALL_HISTORY=[];
+let CUR=null;           // current customer context {src, walkinId, name, phone, plate, model, car_type, pkg_name, pkg_total, pkg_used}
+let HIST_ROWS=[];       // service-history rows being edited
 
 /* ---------- login ---------- */
 async function boot(){
@@ -164,6 +229,7 @@ async function doSearch(raw){
     const {data:wk}=await sb.from('gl_walkin').select('*').ilike('plate',plate).limit(1).maybeSingle();
     if(wk){
       $('status').textContent='';
+      CUR={src:'walkin', walkinId:wk.id, name:wk.name||'', phone:wk.phone||'', plate:wk.plate||plate, model:wk.model||'', car_type:wk.car_type||'', pkg_name:wk.pkg_name||'', pkg_total:wk.pkg_total||0, pkg_used:wk.pkg_used||0};
       $('cPlate').textContent=wk.plate||plate;
       $('cModel').textContent=wk.model||'—';
       $('cName').textContent=(wk.name||'—');
@@ -181,6 +247,7 @@ async function doSearch(raw){
       return;
     }
     $('status').textContent='';
+    CUR={src:'new', walkinId:null, name:'', phone:'', plate:plate, model:'', car_type:'', pkg_name:'', pkg_total:0, pkg_used:0};
     $('nfText').textContent='No customer found for plate '+plate+'.';
     $('nfBook').href=JOBCARD_URL+'?plate='+encodeURIComponent(plate);
     $('notfound').classList.add('show');
@@ -189,6 +256,7 @@ async function doSearch(raw){
 
   const prof=veh.gl_profiles;
   $('status').textContent='';
+  CUR={src:'member', walkinId:null, ownerId:prof.id, name:prof.name||'', phone:prof.phone||'', plate:veh.plate||plate, model:[veh.make,veh.model].filter(Boolean).join(' ')||'', car_type:'', pkg_name:'', pkg_total:0, pkg_used:0};
   $('cPlate').textContent=veh.plate||plate;
   $('cModel').textContent=[veh.make,veh.model].filter(Boolean).join(' ')||'—';
   $('cName').textContent=prof.name||'—';
@@ -242,6 +310,104 @@ function showAllHistory(){ renderHistory(ALL_HISTORY); $('moreBtn').style.displa
 
 function fmtDate(ts){ if(!ts) return '—'; const d=new Date(ts); return d.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}); }
 function esc(s){ return (s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+/* ---------- Edit / Complete Profile ---------- */
+function openEdit(isNew){
+  if(!CUR){ CUR={src:'new',walkinId:null,name:'',phone:'',plate:'',model:'',car_type:'',pkg_name:'',pkg_total:0,pkg_used:0}; }
+  $('editTitle').textContent = (CUR.src==='new'||isNew) ? 'Add Customer' : 'Edit / Complete Profile';
+  $('eName').value=CUR.name||'';
+  $('ePhone').value=CUR.phone||'';
+  $('ePlate').value=CUR.plate||'';
+  $('eModel').value=CUR.model||'';
+  $('eType').value=CUR.car_type||'';
+  $('ePkgName').value=CUR.pkg_name||'';
+  $('ePkgTotal').value=CUR.pkg_total||'';
+  $('ePkgUsed').value=CUR.pkg_used||'';
+  HIST_ROWS=[]; renderHistRows();
+  $('saveMsg').textContent='';
+  $('editModal').classList.add('show');
+}
+function closeEdit(){ $('editModal').classList.remove('show'); }
+
+function addHistRow(){
+  HIST_ROWS.push({service_name:'', service_date:new Date().toISOString().slice(0,10), remark:'', next_due:''});
+  renderHistRows();
+}
+function rmHistRow(i){ HIST_ROWS.splice(i,1); renderHistRows(); }
+function renderHistRows(){
+  const box=$('histRows');
+  if(!HIST_ROWS.length){ box.innerHTML=''; return; }
+  box.innerHTML=HIST_ROWS.map((h,i)=>`
+    <div class="hrow">
+      <div class="fld" style="margin-bottom:8px"><label>Service</label><input value="${esc(h.service_name)}" oninput="HIST_ROWS[${i}].service_name=this.value" placeholder="e.g. Coating Maintenance Wash"></div>
+      <div class="frow">
+        <div class="fld"><label>Date done</label><input type="date" value="${esc(h.service_date)}" oninput="HIST_ROWS[${i}].service_date=this.value"></div>
+        <div class="fld"><label>Next due</label><input type="date" value="${esc(h.next_due)}" oninput="HIST_ROWS[${i}].next_due=this.value"></div>
+      </div>
+      <div class="fld" style="margin-bottom:4px"><label>Remark</label><input value="${esc(h.remark)}" oninput="HIST_ROWS[${i}].remark=this.value" placeholder="optional note"></div>
+      <div class="del" onclick="rmHistRow(${i})"><i class="ti ti-trash"></i> remove</div>
+    </div>`).join('');
+}
+
+async function saveProfile(){
+  const name=$('eName').value.trim();
+  const phone=$('ePhone').value.trim();
+  const plate=$('ePlate').value.trim().toUpperCase().replace(/\s+/g,'');
+  const model=$('eModel').value.trim();
+  const car_type=$('eType').value;
+  const pkg_name=$('ePkgName').value.trim();
+  const pkg_total=parseInt($('ePkgTotal').value)||0;
+  const pkg_used=parseInt($('ePkgUsed').value)||0;
+
+  if(!name && !phone && !plate){ $('saveMsg').textContent='Enter at least a name, phone or plate.'; return; }
+  $('saveMsg').textContent='Saving…';
+
+  // 1) upsert gl_walkin by phone+plate
+  const row={name,phone,plate,model,car_type,pkg_name,pkg_total,pkg_used};
+  let walkinId=CUR&&CUR.walkinId;
+  try{
+    if(walkinId){
+      const {error}=await sb.from('gl_walkin').update(row).eq('id',walkinId);
+      if(error) throw error;
+    } else {
+      // try find existing by phone+plate first (avoid dup) — only if both present-ish
+      let existing=null;
+      if(phone && plate){
+        const {data}=await sb.from('gl_walkin').select('id').eq('phone',phone).eq('plate',plate).limit(1).maybeSingle();
+        existing=data;
+      }
+      if(existing){
+        walkinId=existing.id;
+        const {error}=await sb.from('gl_walkin').update(row).eq('id',walkinId);
+        if(error) throw error;
+      } else {
+        const {data,error}=await sb.from('gl_walkin').insert(row).select('id').maybeSingle();
+        if(error) throw error;
+        walkinId=data&&data.id;
+      }
+    }
+  }catch(e){ $('saveMsg').textContent='Save failed: '+(e.message||e); return; }
+
+  // 2) insert any service-history rows into gl_service_records
+  const recs=HIST_ROWS.filter(h=>h.service_name.trim()||h.next_due).map(h=>({
+    owner_id: (CUR&&CUR.ownerId)||walkinId||null,
+    vehicle_label: plate||null,
+    service_name: h.service_name.trim()||'Service',
+    service_date: h.service_date||null,
+    remark: h.remark||null,
+    next_due: h.next_due||null,
+    staff: 'platescan'
+  }));
+  if(recs.length){
+    const {error}=await sb.from('gl_service_records').insert(recs);
+    if(error){ $('saveMsg').textContent='Profile saved, but history failed: '+error.message; return; }
+  }
+
+  $('saveMsg').textContent='✓ Saved.';
+  // update CUR + card display
+  if(CUR){ CUR.walkinId=walkinId; CUR.name=name; CUR.phone=phone; CUR.plate=plate; CUR.model=model; CUR.car_type=car_type; CUR.pkg_name=pkg_name; CUR.pkg_total=pkg_total; CUR.pkg_used=pkg_used; }
+  setTimeout(()=>{ closeEdit(); if(plate) doSearch(plate); }, 700);
+}
 
 boot();
 </script>
