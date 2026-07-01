@@ -514,7 +514,14 @@ function build(){
 /* ---------- copy / save to gl_bookings ---------- */
 async function copyMsg(){const m=build();if(!m.trim()){toast('Fill the form first',true);return null;}
   try{await navigator.clipboard.writeText(m);}catch(e){const t=document.createElement('textarea');t.value=m;document.body.appendChild(t);t.select();document.execCommand('copy');t.remove();}return m;}
-$('send').onclick=async()=>{const m=await copyMsg();if(!m)return;toast('Copied! Opening WhatsApp…');setTimeout(()=>location.href="whatsapp://send",700);};
+$('send').onclick=async()=>{const m=await copyMsg();if(!m)return;
+  const phone=normPhone($('contact').value);
+  toast('Copied! Opening WhatsApp…');
+  const url=phone
+    ? 'https://web.whatsapp.com/send?phone='+phone+'&text='+encodeURIComponent(m)
+    : 'https://web.whatsapp.com/';
+  setTimeout(()=>window.open(url,'_blank'),400);
+};
 $('clear').onclick=()=>{document.querySelectorAll('input').forEach(i=>i.value="");$('svc').selectedIndex=0;selectedServiceObj=null;
   $('lookup').className='lookup';foundProfile=null;profileCars=[];selectedSlot=null;$('carEntry').style.display='flex';
   CAR_PACKAGES=[];renderPkgChips();

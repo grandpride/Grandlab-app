@@ -1389,7 +1389,7 @@ function showDone(invoice, net){
       <div class="inv-big">${esc(invoice)}</div>
       <div class="co-sub" style="text-align:center;margin-bottom:14px">${RM(net)} · ${esc(methodDisplay())}</div>
       <button class="btn btn-blue" onclick="openReceipt('${esc(invoice)}',${net})"><i class="ti ti-file-invoice"></i> View / print receipt</button>
-      ${phone?`<a class="btn btn-wa" style="margin-top:10px" href="https://wa.me/${phone}?text=${encodeURIComponent(waText)}" target="_blank" rel="noopener"><i class="ti ti-brand-whatsapp"></i> Send receipt on WhatsApp</a>`:''}
+      ${phone?`<a class="btn btn-wa" style="margin-top:10px" href="https://web.whatsapp.com/send?phone=${phone}&text=${encodeURIComponent(waText)}" target="_blank" rel="noopener"><i class="ti ti-brand-whatsapp"></i> Send receipt on WhatsApp</a>`:''}
       <button class="btn" style="margin-top:10px" onclick="clearCheckout()"><i class="ti ti-check"></i> Done</button>
     </div>`;
 }
