@@ -93,7 +93,15 @@
     <div class="field"><label>Car (pick or add new)</label>
       <select id="carSelect"><option value="__new__">+ Add new car</option></select></div>
     <div class="row" id="carEntry">
-      <div class="field"><label>Car Model</label><input id="car" placeholder="e.g. HONDA ACCORD"></div>
+      <div class="field"><label>Brand</label>
+        <select id="bkBrand" onchange="bkBrandChange()"><option value="">— select brand —</option></select></div>
+      <div class="field"><label>Model</label>
+        <select id="bkModelSel" onchange="bkModelChange()" style="display:none"><option value="">— select model —</option></select>
+        <input id="car" placeholder="e.g. HONDA ACCORD"></div>
+    </div>
+    <div class="row">
+      <div class="field"><label>Car Type</label>
+        <select id="bkType"><option value="">—</option></select></div>
       <div class="field"><label>Number Plate</label><input id="plate" placeholder="e.g. CEJ22"></div>
     </div>
 
@@ -185,7 +193,69 @@ async function submitKey(){
   if(error){ document.getElementById('keyErr').textContent='Login failed: '+error.message; return; }
   document.getElementById('keyErr').textContent='';
   document.getElementById('keyGate').classList.add('hidden');
-  connected=true; loadServices();
+  connected=true; loadServices(); bkLoadBrands();
+}
+
+/* ---------- car brand/model/type picker (same as plate scanner) ---------- */
+let BK_BRANDS=[], BK_MODELS={}, BK_TYPES=[], BK_PENDING_TYPE=null;
+async function bkLoadBrands(){
+  if(!connected) return;
+  const {data}=await sb.from('gl_car_brands').select('id,name,active,sort_order').eq('active',true).order('sort_order',{ascending:true});
+  BK_BRANDS=data||[];
+  const sel=$('bkBrand');
+  if(sel) sel.innerHTML='<option value="">— select brand —</option>'+BK_BRANDS.map(b=>`<option value="${b.id}">${esc(b.name)}</option>`).join('')+'<option value="__other">Other / not listed</option>';
+  bkLoadTypes();
+}
+async function bkLoadTypes(){
+  if(BK_TYPES.length){ bkFillType(); return; }
+  const {data}=await sb.from('gl_car_models').select('type').eq('active',true);
+  const set=new Set((data||[]).map(r=>(r.type||'').trim()).filter(Boolean));
+  BK_TYPES=[...set].sort();
+  bkFillType();
+}
+function bkFillType(){
+  const sel=$('bkType'); if(!sel) return;
+  const cur=BK_PENDING_TYPE!=null?BK_PENDING_TYPE:sel.value;
+  if(BK_TYPES.length){ sel.innerHTML='<option value="">—</option>'+BK_TYPES.map(t=>`<option>${esc(t)}</option>`).join(''); }
+  if(cur){
+    if(![...sel.options].some(o=>o.value===cur||o.textContent===cur)){ const o=document.createElement('option'); o.value=cur;o.textContent=cur; sel.appendChild(o); }
+    sel.value=cur;
+  }
+  BK_PENDING_TYPE=null;
+}
+async function bkBrandChange(){
+  const bid=$('bkBrand').value;
+  const modelSel=$('bkModelSel'), modelInput=$('car');
+  if(!bid||bid==='__other'){ modelSel.style.display='none'; modelInput.style.display='block'; modelInput.value=''; return; }
+  modelSel.style.display='block'; modelInput.style.display='none';
+  modelSel.innerHTML='<option>Loading…</option>';
+  let models=BK_MODELS[bid];
+  if(!models){
+    const {data}=await sb.from('gl_car_models').select('name,type').eq('brand_id',bid).eq('active',true).order('sort_order',{ascending:true});
+    models=data||[]; BK_MODELS[bid]=models;
+  }
+  const brandName=(BK_BRANDS.find(b=>String(b.id)===String(bid))||{}).name||'';
+  modelSel.innerHTML='<option value="">— select model —</option>'+
+    models.map(m=>`<option value="${esc(m.name)}" data-type="${esc(m.type||'')}">${esc(m.name)}</option>`).join('')+
+    '<option value="__other">Other / not listed</option>';
+  modelSel.dataset.brand=brandName;
+}
+function bkModelChange(){
+  const sel=$('bkModelSel'), modelInput=$('car');
+  const val=sel.value;
+  if(val==='__other'){ sel.style.display='none'; modelInput.style.display='block'; modelInput.value=''; modelInput.focus(); return; }
+  if(!val){ modelInput.value=''; return; }
+  const brand=sel.dataset.brand||'';
+  modelInput.value=(brand?brand+' ':'')+val;
+  const opt=sel.options[sel.selectedIndex];
+  bkSetType(opt?opt.getAttribute('data-type'):'');
+}
+function bkSetType(t){
+  const sel=$('bkType'); if(!sel) return;
+  t=(t||'').trim(); if(!t) return;
+  if(!BK_TYPES.length){ BK_PENDING_TYPE=t; }
+  if(![...sel.options].some(o=>o.value===t||o.textContent===t)){ const o=document.createElement('option'); o.value=t;o.textContent=t; sel.appendChild(o); }
+  sel.value=t;
 }
 
 const esc=s=>(s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
