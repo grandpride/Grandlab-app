@@ -699,7 +699,29 @@ function fillFromWalkin_(wk){
   if(wk.phone){ const ph=wk.phone.replace(/^\+/,''); if(!$('f_hp').value)$('f_hp').value=ph; $('f_hp2').value=ph; }
   if(wk.plate && !$('f_plate').value) $('f_plate').value=wk.plate;
   if(wk.model && !$('f_model').value) $('f_model').value=wk.model;
-  $('pkgChips').innerHTML='';
+  if(wk.car_type) jcSetType(wk.car_type);           // use stored type if present
+  else jcTypeFromModel(wk.model);                    // else infer from model name
+  // load packages for this car by plate (they live in gl_packages now)
+  loadCustPackages();
+}
+/* infer car type by matching the model name against gl_car_models */
+async function jcTypeFromModel(model){
+  if(!model || $('f_cartype').value) return;
+  const m=String(model).trim().toLowerCase();
+  if(!m) return;
+  const {data}=await sb.from('gl_car_models').select('name,type').eq('active',true);
+  const rows=(data||[]).filter(r=>r.name && r.type);
+  // 1) exact match on full model text
+  let hit=rows.find(r=>m===String(r.name).toLowerCase());
+  // 2) model text contains the DB model name (prefer the longest such name)
+  if(!hit){
+    const contains=rows.filter(r=>m.includes(String(r.name).toLowerCase()));
+    contains.sort((a,b)=>String(b.name).length-String(a.name).length);
+    hit=contains[0];
+  }
+  // 3) DB model name contains the model text (e.g. user typed just "civic")
+  if(!hit){ hit=rows.find(r=>String(r.name).toLowerCase().includes(m)); }
+  if(hit && hit.type) jcSetType(hit.type);
 }
 
 /* Look up customer by PLATE (when phone unknown). Debounced from plate field. */
@@ -722,6 +744,7 @@ async function _doPlateLookup(){
     CUST_CARS=cars||[];
     $('f_carsel').innerHTML=CUST_CARS.map(c=>`<option value="${c.id}"${c.plate===plate?' selected':''}>${esc([c.make,c.model].filter(Boolean).join(' '))} · ${esc(c.plate||'')}</option>`).join('')+'<option value="__new__">+ Add new car</option>';
     if(data.model && !$('f_model').value) $('f_model').value=[data.make,data.model].filter(Boolean).join(' ');
+    jcTypeFromModel($('f_model').value);
     await loadCustPackages();
   }else{
     // not in profiles — check gl_walkin by plate
