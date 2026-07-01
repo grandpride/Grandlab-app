@@ -148,6 +148,21 @@ button,input{font-family:inherit}
 .dialog-h h3{font-size:16px;font-weight:800}
 .dialog-b{padding:16px 18px 20px}
 .closex{font-size:24px;color:var(--ink3);cursor:pointer;background:none;border:none;line-height:1}
+/* catalogue picker grid */
+.cat-search{width:100%;padding:11px 12px;border:1px solid var(--line2);border-radius:10px;font-family:inherit;font-size:14px;outline:none;margin-bottom:12px}
+.cat-search:focus{border-color:var(--gold)}
+.cat-sec{font-size:12px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--gold-deep);margin:14px 0 8px}
+.cat-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:9px}
+.cat-card{background:var(--surface);border:1px solid var(--line2);border-radius:12px;overflow:hidden;cursor:pointer;display:flex;flex-direction:column;transition:.12s}
+.cat-card:active{transform:scale(.96)}
+.cat-card:hover{border-color:var(--gold)}
+.cat-card .ph{width:100%;aspect-ratio:1;object-fit:cover;background:var(--bg);display:flex;align-items:center;justify-content:center;color:var(--ink3);font-size:24px}
+.cat-card .bd{padding:7px 8px;flex:1;display:flex;flex-direction:column;gap:2px}
+.cat-card .nm{font-weight:700;font-size:12px;line-height:1.2}
+.cat-card .pr{color:var(--gold-deep);font-weight:800;font-size:13px}
+.cat-card .oos{color:var(--danger);font-size:10px;font-weight:700}
+.cat-empty{color:var(--ink3);font-size:12px;padding:6px 0 2px}
+.cat-custom{margin-top:16px;padding-top:14px;border-top:1px solid var(--line2)}
 
 /* customer search results */
 .cust{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:11px 12px;border:1px solid var(--line);border-radius:11px;margin-bottom:8px;cursor:pointer}
@@ -329,6 +344,20 @@ button,input{font-family:inherit}
   <div class="dialog">
     <div class="dialog-h"><h3>Redeem voucher / package</h3><button class="closex" onclick="closeModal('vchModal')">×</button></div>
     <div class="dialog-b" id="vchBody"></div>
+  </div>
+</div>
+
+<div class="modal" id="catModal">
+  <div class="dialog">
+    <div class="dialog-h"><h3>Add service / product</h3><button class="closex" onclick="closeModal('catModal')">×</button></div>
+    <div class="dialog-b">
+      <input class="cat-search" id="catSearch" placeholder="Search…" oninput="renderCat()" autocomplete="off">
+      <div id="catContent"></div>
+      <div class="cat-custom">
+        <div class="cat-sec" style="margin-top:0">Custom item</div>
+        <button class="btn-mini" onclick="addCustomItem()"><i class="ti ti-pencil"></i> Enter name + price manually</button>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -740,20 +769,80 @@ function pickMethod(k){
 }
 
 /* ---------- walk-in: add item ---------- */
-function addItem(){
+/* ---------- catalogue picker (services + products from gl_services) ---------- */
+let CATALOG=[];
+async function loadCatalog(){
+  if(CATALOG.length) return;
+  const {data}=await sb.from('gl_services')
+    .select('id,name,category,base_price,price_by_type,media,rebate_kind,stock,track_stock,is_package,subtitle,active,sort_order,hidden')
+    .eq('active',true).order('sort_order',{ascending:true});
+  CATALOG=(data||[]).filter(s=>!s.hidden);
+}
+async function addItem(){
+  await loadCatalog();
+  $('catSearch').value='';
+  renderCat();
+  $('catModal').classList.add('show');
+  setTimeout(()=>$('catSearch').focus(),50);
+}
+function catImg(s){ const m=Array.isArray(s.media)?s.media.find(x=>typeof x==='string'||x&&x.url):null; return typeof m==='string'?m:(m&&m.url)||''; }
+function catPrice(s){ return Number(s.base_price)||0; }
+function renderCat(){
+  const q=($('catSearch').value||'').toLowerCase().trim();
+  const match=s=>!q||(s.name||'').toLowerCase().includes(q)||(s.category||'').toLowerCase().includes(q);
+  const products=CATALOG.filter(s=>s.rebate_kind==='product'&&match(s));
+  const services=CATALOG.filter(s=>s.rebate_kind!=='product'&&match(s));
+  window._catMap=[...services,...products];
+  const card=(s)=>{
+    const idx=window._catMap.indexOf(s);
+    const img=catImg(s); const price=catPrice(s);
+    const oos=s.rebate_kind==='product'&&s.track_stock&&(s.stock||0)<=0;
+    return `<div class="cat-card" onclick="${oos?'':`pickCat(${idx})`}" style="${oos?'opacity:.5':''}">
+      ${img?`<img class="ph" src="${esc(img)}" alt="">`:`<div class="ph"><i class="ti ti-${s.rebate_kind==='product'?'box':'sparkles'}"></i></div>`}
+      <div class="bd">
+        <div class="nm">${esc(s.name)}</div>
+        ${price?`<div class="pr">${RM(price)}</div>`:`<div class="pr" style="font-size:11px;color:var(--ink3)">by type</div>`}
+        ${oos?`<div class="oos">Out of stock</div>`:(s.rebate_kind==='product'&&s.track_stock?`<div class="oos" style="color:var(--ink3);font-weight:600">${s.stock} left</div>`:'')}
+      </div>
+    </div>`;
+  };
+  let html='';
+  html+=`<div class="cat-sec">Services</div>`;
+  html+= services.length?`<div class="cat-grid">${services.map(card).join('')}</div>`:`<div class="cat-empty">No matching services.</div>`;
+  html+=`<div class="cat-sec">Products</div>`;
+  html+= products.length?`<div class="cat-grid">${products.map(card).join('')}</div>`:`<div class="cat-empty">No products yet — add them in the admin (Services tab → Rebate type: Product).</div>`;
+  $('catContent').innerHTML=html;
+}
+function pickCat(idx){
+  const s=(window._catMap||[])[idx]; if(!s) return;
+  const price=catPrice(s);
+  if(!price){
+    // price-by-type service: ask for the price
+    const p=parseFloat(prompt(s.name+' — enter price (RM):'))||0;
+    if(p<=0) return;
+    _addLine(s.name,p,s);
+  } else {
+    _addLine(s.name,price,s);
+  }
+  closeModal('catModal');
+}
+function addCustomItem(){
   const desc=prompt('Service / product name:'); if(!desc) return;
   const price=parseFloat(prompt('Price (RM):'))||0;
   if(price<=0){ alert('Enter a price greater than 0.'); return; }
+  _addLine(desc,price,null);
+  closeModal('catModal');
+}
+function _addLine(desc,price,svc){
   let arr=jobServices(CUR);
-  // If this is a job order whose line items don't sum to the job total,
-  // seed a base line so the original total is preserved before adding.
+  // preserve original job total if line items don't already sum to it
   const sumSvc=arr.reduce((s,x)=>s+svcPrice(x),0);
-  if(arr.length===0 && PAY.gross>0){
-    arr=[{desc:'Job services', price:PAY.gross}];
-  } else if(Math.abs(sumSvc-PAY.gross)>0.01 && PAY.gross>0){
-    arr=[{desc:'Job services', price:PAY.gross}];
-  }
-  arr.push({desc,price,_added:true});
+  if(arr.length===0 && PAY.gross>0){ arr=[{desc:'Job services', price:PAY.gross}]; }
+  else if(Math.abs(sumSvc-PAY.gross)>0.01 && PAY.gross>0){ arr=[{desc:'Job services', price:PAY.gross}]; }
+  const line={desc,price,_added:true};
+  // tag product line so we can decrement stock on payment
+  if(svc && svc.rebate_kind==='product' && svc.track_stock){ line._prodId=svc.id; }
+  arr.push(line);
   CUR.services=arr;
   PAY.gross=arr.reduce((s,x)=>s+svcPrice(x),0);
   renderCheckout();
@@ -900,6 +989,11 @@ async function confirmPay(){
         await sb.from('gl_packages').update({used_uses:(pk.used_uses||0)+1}).eq('id',pk.id);
       }
     }
+    // decrement stock for any tracked products in this order
+    try{
+      const prodLines=jobServices(CUR).filter(x=>x._prodId);
+      for(const pl of prodLines){ await sb.rpc('gl_dec_service_stock',{p_id:pl._prodId,p_qty:1}); }
+    }catch(e){ /* non-fatal */ }
     const {data:invData,error:invErr}=await sb.rpc('gl_next_invoice_no');
     if(invErr) throw new Error('Invoice: '+invErr.message);
     const invoice=invData;
