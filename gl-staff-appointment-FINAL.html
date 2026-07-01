@@ -51,6 +51,18 @@
   .toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom));transform:translateX(-50%) translateY(20px);background:var(--ok);color:#fff;padding:12px 22px;border-radius:30px;font-weight:700;opacity:0;transition:.3s;pointer-events:none;z-index:30;max-width:90%}
   .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}.toast.err{background:var(--danger)}
   .banner{background:#3a3410;border:1px solid var(--gold);color:var(--gold);border-radius:12px;padding:12px 14px;font-size:13px;line-height:1.5;margin-bottom:16px}
+.picker-ov{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:400;display:none;align-items:flex-end;justify-content:center}
+.picker-ov.show{display:flex}
+.picker{background:var(--surface2);width:100%;max-width:560px;max-height:80dvh;border-radius:16px 16px 0 0;display:flex;flex-direction:column;overflow:hidden}
+.picker-head{padding:12px 14px;border-bottom:1px solid var(--line)}
+.picker-head input{width:100%;background:var(--field);border:1px solid var(--line);border-radius:10px;color:#f3f3ee;padding:11px 12px;font-size:15px;font-family:inherit;outline:none}
+.picker-head input:focus{border-color:var(--gold)}
+.picker-list{overflow-y:auto;flex:1;padding:6px 0}
+.picker-cat{font-size:11px;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.05em;padding:8px 14px 4px;position:sticky;top:0;background:var(--surface2)}
+.picker-item{padding:12px 14px;font-size:14px;cursor:pointer;border-bottom:1px solid var(--line);color:#f3f3ee}
+.picker-item:active{background:var(--field)}
+.picker-empty{padding:20px;text-align:center;color:var(--muted);font-size:13px}
+.picker-close{padding:12px;text-align:center;color:var(--muted);font-size:13px;cursor:pointer;border-top:1px solid var(--line)}
 </style>
 </head>
 <body>
@@ -91,7 +103,11 @@
     </div>
 
     <div class="field"><label>Service Type</label>
-      <select id="svc"><option value="">— Loading… —</option></select></div>
+      <div style="display:flex;gap:8px">
+        <select id="svc" style="flex:1"><option value="">— Loading… —</option></select>
+        <button type="button" id="svcBrowseBtn" onclick="openSvcPicker()" style="flex:0 0 auto;background:#1e1e1a;border:1px solid var(--border);border-radius:10px;color:var(--gold);padding:0 14px;cursor:pointer;font-size:13px;font-weight:600">Search</button>
+      </div>
+    </div>
 
     <div class="field"><label>Date</label><input id="date" type="date"></div>
 
@@ -121,6 +137,15 @@
 </div>
 
 <div class="toast" id="toast">Done</div>
+
+<!-- Searchable service picker -->
+<div class="picker-ov" id="svcPickerOv">
+  <div class="picker">
+    <div class="picker-head"><input id="svcPickerSearch" placeholder="Search service…" oninput="renderSvcPicker()" autocomplete="off"></div>
+    <div class="picker-list" id="svcPickerList"></div>
+    <div class="picker-close" onclick="closeSvcPicker()">Cancel</div>
+  </div>
+</div>
 
 <script>
 /* ============================================================
@@ -183,6 +208,29 @@ function renderDropdown(){
     h+=`<optgroup label="${esc(c)}">`+cats[c].map(s=>`<option value="${s.id||''}" data-coat="${s.is_coating?1:0}" data-name="${esc(s.name)}">${esc(s.name)}</option>`).join('')+'</optgroup>';
   });
   $('svc').innerHTML=h; build();
+}
+
+/* ---------- searchable service picker (same style as job card) ---------- */
+function openSvcPicker(){ $('svcPickerSearch').value=''; renderSvcPicker(); $('svcPickerOv').classList.add('show'); setTimeout(()=>$('svcPickerSearch').focus(),50); }
+function closeSvcPicker(){ $('svcPickerOv').classList.remove('show'); }
+function renderSvcPicker(){
+  const q=($('svcPickerSearch').value||'').toLowerCase().trim();
+  const list=SERVICES.filter(s=>s.id && (!q || (s.name||'').toLowerCase().includes(q) || (s.category||'').toLowerCase().includes(q)));
+  if(!list.length){ $('svcPickerList').innerHTML='<div class="picker-empty">No matching service.</div>'; return; }
+  const groups={}, order=[];
+  list.forEach(s=>{ const c=s.category||'Services'; if(!groups[c]){groups[c]=[];order.push(c);} groups[c].push(s); });
+  window._pickMap=list;
+  $('svcPickerList').innerHTML=order.map(c=>`
+    <div class="picker-cat">${esc(c)}</div>
+    ${groups[c].map(s=>{ const idx=list.indexOf(s); return `<div class="picker-item" onclick="pickSvc(${idx})">${esc(s.name)}</div>`;}).join('')}
+  `).join('');
+}
+function pickSvc(idx){
+  const s=(window._pickMap||[])[idx]; if(!s) return;
+  // set the native select to this service + fire its change handler
+  $('svc').value=s.id||'';
+  $('svc').dispatchEvent(new Event('change'));
+  closeSvcPicker();
 }
 $('svc').addEventListener('change',()=>{
   const o=$('svc').options[$('svc').selectedIndex];
