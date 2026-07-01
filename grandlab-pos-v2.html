@@ -279,6 +279,9 @@ button,input{font-family:inherit}
             <div class="t"><div class="num" id="tkCount">0</div><div class="lbl">Paid today</div></div>
             <div class="t"><div class="num g" id="tkTotal">RM0</div><div class="lbl">Collected today</div></div>
           </div>
+          <div id="exportRow" style="display:none;margin-top:10px">
+            <button class="btn-mini" style="width:100%;justify-content:center" onclick="openExport()"><i class="ti ti-file-spreadsheet"></i> Export to SQL Account</button>
+          </div>
         </div>
       </div>
     </div>
@@ -343,6 +346,35 @@ const CO={
     "This is a computer generated receipt. No signature is required."
   ]
 };
+
+/* ===== SQL Account export config (edit codes here) ===== */
+const SQLACC={
+  cashCustomer:"GL0001",          // customer CODE in SQL Account for counter sales
+  cashCustomerName:"GRANDLAB CASH SALES",
+  terms:"CASH",
+  uom:"UNIT",
+  // service keyword -> GL sales account (checked in order; first match wins)
+  salesMap:[
+    [/ppf/i,                       "500-307"], // PPF
+    [/tint/i,                      "500-301"], // Tinted
+    [/wrap/i,                      "500-305"], // Wrap
+    [/voucher/i,                   "500-304"], // Voucher sales
+    [/coating|care|maintenance/i,  "500-308"], // Grandlab Care
+    [/accessor/i,                  "500-302"], // Accessories
+    [/wash|polish|detail|vacuum|interior|wax|groom/i, "500-303"], // Detailing
+  ],
+  salesDefault:"500-306",         // OTHERS
+  // payment method -> bank/cash GL account (for the payment CSV)
+  bankMap:{
+    cash:"320-200", credit_card:"311-100", debit_card:"311-100", cc_installment:"311-100",
+    tng:"310-300", mae:"310-100", grabpay:"310-100", shopeepay:"310-100",
+    atome:"310-100", app_credit:"310-100", app_points:"310-100"
+  }
+};
+function glAccountFor(desc){
+  for(const [re,acc] of SQLACC.salesMap){ if(re.test(desc||'')) return acc; }
+  return SQLACC.salesDefault;
+}
 let POINTS_RATE=0.01;
 let JOBS=[], CUR=null, PAY=null, ME='';
 let BRANDS=[], MODELS_CACHE={};
@@ -461,6 +493,7 @@ async function loadTakings(){
   $('takings').style.display='flex';
   $('tkCount').textContent=rows.length;
   $('tkTotal').textContent=RM(rows.reduce((s,r)=>s+(Number(r.net_paid)||0),0));
+  $('exportRow').style.display=rows.length?'block':'none';
 }
 
 /* ---------- brands (for add-customer car picker) ---------- */
@@ -785,7 +818,8 @@ async function confirmPay(){
       deposit_used:PAY.depositUsed, package_used:PAY.packageUsed,
       wallet_used:PAY.walletUsed, points_used:PAY.pointsUsed, points_value:PAY.pointsUsed*POINTS_RATE,
       voucher_code:PAY.voucher?PAY.voucher.barcode:null, voucher_value:PAY.voucher?Number(PAY.voucher.value||0):0,
-      net_paid:net, method:PAY.method, taken_by:ME
+      net_paid:net, method:PAY.method, taken_by:ME,
+      items:JSON.stringify(jobServices(CUR).map(s=>({desc:svcDesc(s),price:svcPrice(s),qty:s.qty||1,code:s.code||''})))
     });
     if(payErr) throw new Error('Payment: '+payErr.message);
     if(!CUR._walkin){
@@ -1015,6 +1049,126 @@ function openReceipt(invoice, net){
 }
 function closeReceipt(){ const m=$('rcptModal'); if(m) m.remove(); }
 function printReceipt(){ window.print(); }
+
+/* ---------- SQL Account export (Phase 1: Sales Invoice CSV) ---------- */
+function openExport(){
+  const today=new Date(); const d=today.toISOString().slice(0,10);
+  $('vchBody').innerHTML=`
+    <div class="fld"><label>Date range</label>
+      <div style="display:flex;gap:8px">
+        <input id="expFrom" type="date" value="${d}" style="flex:1">
+        <input id="expTo" type="date" value="${d}" style="flex:1">
+      </div>
+    </div>
+    <div class="co-sub" style="margin-bottom:12px">Exports paid POS sales as a SQL Account <b>Sales Invoice</b> import CSV. DOCNO is left as &lt;&lt;New&gt;&gt; so SQL Account assigns the official invoice number. Customer code: <b>${esc(SQLACC.cashCustomer)}</b>.</div>
+    <button class="btn btn-blue" onclick="runExport('invoice')"><i class="ti ti-download"></i> Download Sales Invoice CSV</button>
+    <button class="btn btn-ghost" style="margin-top:9px" onclick="runExport('payment')"><i class="ti ti-download"></i> Download Customer Payment CSV</button>
+    <div class="status" id="expStatus"></div>`;
+  $('vchModal').querySelector('h3').textContent='Export to SQL Account';
+  $('vchModal').classList.add('show');
+}
+
+async function runExport(kind){
+  const from=$('expFrom').value, to=$('expTo').value;
+  if(!from||!to){ $('expStatus').textContent='Pick a date range.'; return; }
+  $('expStatus').textContent='Loading sales…';
+  const start=new Date(from+'T00:00:00'), end=new Date(to+'T23:59:59');
+  const {data,error}=await sb.from('gl_payments').select('*')
+    .gte('paid_at',start.toISOString()).lte('paid_at',end.toISOString())
+    .order('paid_at',{ascending:true});
+  if(error){ $('expStatus').textContent='Error: '+error.message; return; }
+  const rows=data||[];
+  if(!rows.length){ $('expStatus').textContent='No sales in that range.'; return; }
+  const csv = kind==='payment' ? buildPaymentCSV(rows) : buildInvoiceCSV(rows);
+  const fname = `SQLAcc_${kind}_${from}_to_${to}.csv`;
+  downloadCSV(csv, fname);
+  $('expStatus').textContent=`Exported ${rows.length} sale(s). Import in SQL Account → File → Import → ${kind==='payment'?'Customer Payment':'Sales Invoice'}.`;
+}
+
+function csvCell(v){
+  v=(v==null?'':String(v));
+  return /[",\n\r]/.test(v) ? '"'+v.replace(/"/g,'""')+'"' : v;
+}
+function fmtDate(iso){ const d=new Date(iso); return String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+d.getFullYear(); }
+
+// Sales Invoice — 60-column layout matching SQL Account import (header row = DOCNO..._FROMSEQNO)
+function buildInvoiceCSV(rows){
+  const H=['DOCNO','DOCNOEX','DOCDATE','CODE','EIV_UTC','IRBM_UUID','IRBM_LONGID','IRBM_STATUS','COMPANYNAME','ADDRESS1','ADDRESS2','ADDRESS3','ADDRESS4','POSTCODE','CITY','STATE','COUNTRY','PHONE1','AGENT','TERMS','DESCRIPTION','PROJECT','CC','DOCREF1','DOCREF2','DOCREF3','DOCREF4','SALESTAXNO','SERVICETAXNO','TIN','IDTYPE','IDNO','TOURISMNO','SIC','INCOTERMS','SUBMISSIONTYPE','_SEQ','_ACCOUNT','_ITEMCODE','_DESCRIPTION','_DESCRIPTION2','_DESCRIPTION3','_QTY','_UOM','_UNITPRICE','_DISC','_TAX','_TAXAMT','_TAXINCLUSIVE','_AMOUNT','_IRBM_CLASSIFICATION','_TAXEXEMPTIONREASON','_LOCATION','_BATCH','_PROJECT','_REMARK1','_REMARK2','_FROMDOCTYPE','_FROMDOCNO','_FROMSEQNO'];
+  const lines=[H.join(',')];
+  rows.forEach(p=>{
+    // reconstruct items: prefer stored line items if present, else single line
+    let items=[];
+    try{ items = p.items ? (Array.isArray(p.items)?p.items:JSON.parse(p.items)) : []; }catch(e){ items=[]; }
+    if(!items.length) items=[{desc:'POS Sale', price:Number(p.net_paid)||0, qty:1}];
+    items.forEach((it,idx)=>{
+      const desc=it.desc||it.name||'Service';
+      const qty=Number(it.qty)||1;
+      const price=Number(it.price)||Number(it.amount)||0;
+      const amt=Math.round(price*qty*100)/100;
+      const row=new Array(60).fill('');
+      if(idx===0){
+        row[0]='<<New>>';
+        row[2]=fmtDate(p.paid_at||new Date().toISOString());
+        row[3]=SQLACC.cashCustomer;
+        row[8]=p.customer_name||SQLACC.cashCustomerName;
+        row[17]=p.phone||'';
+        row[19]=SQLACC.terms;
+        row[20]='POS '+(p.invoice_no||'');           // DESCRIPTION (our GLIV ref)
+        row[23]=p.invoice_no||'';                     // DOCREF1 = our POS receipt no
+        row[35]='0';                                  // SUBMISSIONTYPE none
+      }
+      row[36]=String(idx+1);                          // _SEQ
+      row[37]=glAccountFor(desc);                     // _ACCOUNT (500-3xx)
+      row[38]=it.code||'';                            // _ITEMCODE
+      row[39]=desc;                                   // _DESCRIPTION
+      row[42]=String(qty);                            // _QTY
+      row[43]=SQLACC.uom;                             // _UOM
+      row[44]=price.toFixed(2);                       // _UNITPRICE
+      row[45]=(Number(it.disc)||0).toFixed(2);        // _DISC
+      row[48]='F';                                    // _TAXINCLUSIVE
+      row[49]=amt.toFixed(2);                         // _AMOUNT
+      lines.push(row.map(csvCell).join(','));
+    });
+    // add discount/redemption as a negative line if the invoice total < sum of items
+    const gross=Number(p.gross)||0, net=Number(p.net_paid)||0, ded=Math.round((gross-net)*100)/100;
+    if(ded>0.009){
+      const row=new Array(60).fill('');
+      row[36]=String(items.length+1);
+      row[37]=SQLACC.salesDefault;
+      row[39]='Discount / Redemption';
+      row[42]='1'; row[43]=SQLACC.uom; row[44]=(-ded).toFixed(2); row[45]='0.00'; row[48]='F'; row[49]=(-ded).toFixed(2);
+      lines.push(row.map(csvCell).join(','));
+    }
+  });
+  return lines.join('\r\n');
+}
+
+// Customer Payment — 19-column layout (knocks off nothing by default; records receipt)
+function buildPaymentCSV(rows){
+  const H=['DOCNO','CODE','DOCDATE','AREA','AGENT','DESCRIPTION','PAYMENTMETHOD','CHEQUENUMBER','PROJECT','PAYMENTPROJECT','CURRENCYRATE','BANKCHARGE','DOCAMT','CANCELLED','NONREFUNDABLE','BOUNCEDDATE','_DOCTYPE','_DOCNO','_KOAMT'];
+  const lines=[H.join(',')];
+  rows.forEach(p=>{
+    const row=new Array(19).fill('');
+    row[0]='<<New>>';
+    row[1]=SQLACC.cashCustomer;
+    row[2]=fmtDate(p.paid_at||new Date().toISOString());
+    row[5]='POS payment '+(p.invoice_no||'');
+    row[6]=SQLACC.bankMap[p.method]||'320-200';    // bank/cash GL account
+    row[10]='1';   // currency rate
+    row[11]='0';   // bank charge
+    row[12]=(Number(p.net_paid)||0).toFixed(2);    // DOCAMT
+    row[13]='F'; row[14]='F';
+    lines.push(row.map(csvCell).join(','));
+  });
+  return lines.join('\r\n');
+}
+
+function downloadCSV(text, filename){
+  const blob=new Blob(['\ufeff'+text],{type:'text/csv;charset=utf-8'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a'); a.href=url; a.download=filename; a.click();
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
 
 boot();
 </script>
