@@ -49,6 +49,8 @@ html,body{height:100%;background:var(--bg);font-family:-apple-system,BlinkMacSys
 .hist-item{background:var(--card2);border-radius:10px;padding:10px 12px;margin-bottom:7px;font-size:13px}
 .hist-date{color:var(--gold);font-weight:700;font-size:12px}
 .hist-svc{color:var(--text);margin-top:2px}
+.pdf-ic{color:#e0533d;font-size:19px;text-decoration:none;flex-shrink:0;padding:2px 4px}
+.pdf-ic:active{opacity:.6}
 .more{text-align:center;color:var(--gold);font-size:12px;font-weight:600;cursor:pointer;padding:8px;text-decoration:underline}
 .cta{margin:16px;display:block;background:var(--gold);color:#080808;text-align:center;text-decoration:none;border-radius:12px;padding:15px;font-weight:800;font-size:15px}
 .notfound{display:none;text-align:center;padding:26px 18px;color:var(--text2)}
@@ -161,13 +163,17 @@ html,body{height:100%;background:var(--bg);font-family:-apple-system,BlinkMacSys
     <div class="fld"><label>Phone</label><input id="ePhone" type="tel" placeholder="0123456789"></div>
 
     <div class="sec-h">Vehicle</div>
-    <div class="frow">
-      <div class="fld"><label>Plate</label><input id="ePlate" style="text-transform:uppercase" placeholder="ABC1234"></div>
-      <div class="fld"><label>Car type</label>
-        <select id="eType"><option value="">—</option><option>Sedan</option><option>SUV/MPV</option><option>Hatchback</option><option>Pickup</option><option>Luxury</option><option>Motorbike</option><option>Other</option></select>
-      </div>
+    <div class="fld"><label>Plate</label><input id="ePlate" style="text-transform:uppercase" placeholder="ABC1234"></div>
+    <div class="fld"><label>Brand</label>
+      <select id="eBrand" onchange="onBrandChange()"><option value="">— select brand —</option></select>
     </div>
-    <div class="fld"><label>Model</label><input id="eModel" placeholder="e.g. Honda Civic"></div>
+    <div class="fld"><label>Model</label>
+      <select id="eModelSel" onchange="onModelChange()" style="display:none"><option value="">— select model —</option></select>
+      <input id="eModel" placeholder="e.g. Honda Civic">
+    </div>
+    <div class="fld"><label>Car type</label>
+      <select id="eType"><option value="">—</option><option>Sedan</option><option>SUV/MPV</option><option>Hatchback</option><option>Pickup</option><option>Luxury</option><option>Supercar</option><option>Motorbike</option><option>Other</option></select>
+    </div>
 
     <div class="sec-h">Package / Maintenance Balance</div>
     <div class="fld"><label>Package name</label><input id="ePkgName" placeholder="e.g. Coating Maintenance"></div>
@@ -241,8 +247,7 @@ async function doSearch(raw){
         const bal=(wk.pkg_total||0)-(wk.pkg_used||0);
         $('pkgWrap').innerHTML='<div class="pkg"><div style="font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Package</div><div class="pkg-line"><span>'+esc(wk.pkg_name)+'</span><span class="pkg-bal'+(bal<=0?' zero':'')+'">'+bal+' left</span></div></div>';
       } else { $('pkgWrap').innerHTML=''; }
-      $('histList').innerHTML='<div style="color:var(--text2);font-size:13px;padding:6px 0">Walk-in customer — no app history yet.</div>';
-      $('moreBtn').style.display='none';
+      await loadWalkinHistory(wk.id, wk.plate||plate);
       $('cust').classList.add('show');
       return;
     }
@@ -281,20 +286,46 @@ async function loadPackages(ownerId, plate){
     }).join('')+'</div>';
 }
 
+async function loadWalkinHistory(walkinId, plate){
+  // service records (by walkin id as owner_id, or by plate) + any jobs by plate
+  const {data:recs}=await sb.from('gl_service_records').select('service_date,service_name,remark,invoice_url,owner_id,vehicle_label').or(`owner_id.eq.${walkinId},vehicle_label.ilike.${plate}`).order('service_date',{ascending:false}).limit(50);
+  const {data:jobs}=await sb.from('gl_jobs').select('created_at,services,plate').ilike('plate',plate).order('created_at',{ascending:false}).limit(50);
+  const items=[];
+  (recs||[]).forEach(r=>{
+    const t=r.service_date?new Date(r.service_date).getTime():0;
+    items.push({ts:t, date:r.service_date?fmtDate(t):'—', svc:(r.service_name||'Service')+(r.remark?' · '+r.remark:''), src:'record', pdf:r.invoice_url||''});
+  });
+  (jobs||[]).forEach(j=>{
+    const svcs=Array.isArray(j.services)?j.services.map(s=>s.desc).filter(Boolean).join(', '):'';
+    items.push({ts:Number(j.created_at)||0, date:fmtDate(Number(j.created_at)), svc:svcs||'Job', src:'job', pdf:''});
+  });
+  items.sort((a,b)=>b.ts-a.ts);
+  ALL_HISTORY=items;
+  if(!items.length){ $('histList').innerHTML='<div style="color:var(--text2);font-size:13px;padding:6px 0">No records yet — add one via Edit / Complete Profile.</div>'; $('moreBtn').style.display='none'; return; }
+  renderHistory(items.slice(0,3));
+  $('moreBtn').style.display = items.length>3 ? 'block' : 'none';
+}
+
 async function loadHistory(ownerId, plate){
   // jobs (completed/all) for this customer or plate
   const {data:jobs}=await sb.from('gl_jobs').select('created_at,services,plate,stage,status').or(`customer_id.eq.${ownerId},plate.ilike.${plate}`).order('created_at',{ascending:false}).limit(50);
   // bookings for this customer
   const {data:bk}=await sb.from('gl_bookings').select('scheduled_at,service_name,plate,notes').eq('customer_id',ownerId).order('scheduled_at',{ascending:false}).limit(50);
+  // service records (manually added / with receipt PDFs)
+  const {data:recs}=await sb.from('gl_service_records').select('service_date,service_name,remark,invoice_url,vehicle_label,owner_id').or(`owner_id.eq.${ownerId},vehicle_label.ilike.${plate}`).order('service_date',{ascending:false}).limit(50);
 
   const items=[];
   (jobs||[]).forEach(j=>{
     const svcs=Array.isArray(j.services)?j.services.map(s=>s.desc).filter(Boolean).join(', '):'';
-    items.push({ts:Number(j.created_at)||0, date:fmtDate(Number(j.created_at)), svc:svcs||'Job', src:'job'});
+    items.push({ts:Number(j.created_at)||0, date:fmtDate(Number(j.created_at)), svc:svcs||'Job', src:'job', pdf:''});
   });
   (bk||[]).forEach(b=>{
     const t=b.scheduled_at?new Date(b.scheduled_at).getTime():0;
-    items.push({ts:t, date:fmtDate(t), svc:b.service_name||'Booking', src:'booking'});
+    items.push({ts:t, date:fmtDate(t), svc:b.service_name||'Booking', src:'booking', pdf:''});
+  });
+  (recs||[]).forEach(r=>{
+    const t=r.service_date?new Date(r.service_date).getTime():0;
+    items.push({ts:t, date:r.service_date?fmtDate(t):'—', svc:(r.service_name||'Service')+(r.remark?' · '+r.remark:''), src:'record', pdf:r.invoice_url||''});
   });
   items.sort((a,b)=>b.ts-a.ts);
   ALL_HISTORY=items;
@@ -304,7 +335,10 @@ async function loadHistory(ownerId, plate){
 }
 function renderHistory(list){
   if(!list.length){ $('histList').innerHTML='<div style="color:var(--text2);font-size:13px;padding:6px 0">No past records.</div>'; return; }
-  $('histList').innerHTML=list.map(h=>`<div class="hist-item"><div class="hist-date">${h.date} · ${h.src}</div><div class="hist-svc">${esc(h.svc)}</div></div>`).join('');
+  $('histList').innerHTML=list.map(h=>{
+    const pdf=h.pdf?`<a href="${esc(h.pdf)}" target="_blank" rel="noopener" class="pdf-ic" title="View receipt PDF" onclick="event.stopPropagation()"><i class="ti ti-file-type-pdf"></i></a>`:'';
+    return `<div class="hist-item"><div style="display:flex;justify-content:space-between;align-items:center"><div class="hist-date">${h.date} · ${h.src}</div>${pdf}</div><div class="hist-svc">${esc(h.svc)}</div></div>`;
+  }).join('');
 }
 function showAllHistory(){ renderHistory(ALL_HISTORY); $('moreBtn').style.display='none'; }
 
@@ -323,6 +357,12 @@ function openEdit(isNew){
   $('ePkgName').value=CUR.pkg_name||'';
   $('ePkgTotal').value=CUR.pkg_total||'';
   $('ePkgUsed').value=CUR.pkg_used||'';
+  // car picker: show manual model field with existing value; brand resets to prompt
+  if(!BRANDS.length) loadBrands();
+  else { const sel=$('eBrand'); if(sel) sel.innerHTML='<option value="">— select brand —</option>'+BRANDS.map(b=>`<option value="${b.id}">${esc(b.name)}</option>`).join('')+'<option value="__other">Other / not listed</option>'; }
+  $('eBrand').value='';
+  $('eModelSel').style.display='none';
+  $('eModel').style.display='block';
   HIST_ROWS=[]; renderHistRows();
   $('saveMsg').textContent='';
   $('editModal').classList.add('show');
@@ -407,6 +447,66 @@ async function saveProfile(){
   // update CUR + card display
   if(CUR){ CUR.walkinId=walkinId; CUR.name=name; CUR.phone=phone; CUR.plate=plate; CUR.model=model; CUR.car_type=car_type; CUR.pkg_name=pkg_name; CUR.pkg_total=pkg_total; CUR.pkg_used=pkg_used; }
   setTimeout(()=>{ closeEdit(); if(plate) doSearch(plate); }, 700);
+}
+
+/* ---------- car brand/model picker ---------- */
+let BRANDS=[], MODELS_CACHE={};
+async function loadBrands(){
+  const {data}=await sb.from('gl_car_brands').select('id,name,active,sort_order').eq('active',true).order('sort_order',{ascending:true});
+  BRANDS=data||[];
+  const sel=$('eBrand');
+  if(sel) sel.innerHTML='<option value="">— select brand —</option>'+BRANDS.map(b=>`<option value="${b.id}">${esc(b.name)}</option>`).join('')+'<option value="__other">Other / not listed</option>';
+}
+async function onBrandChange(){
+  const bid=$('eBrand').value;
+  const modelSel=$('eModelSel'), modelInput=$('eModel');
+  if(!bid || bid==='__other'){
+    modelSel.style.display='none'; modelInput.style.display='block'; modelInput.value='';
+    return;
+  }
+  modelSel.style.display='block'; modelInput.style.display='none';
+  modelSel.innerHTML='<option>Loading…</option>';
+  let models=MODELS_CACHE[bid];
+  if(!models){
+    const {data}=await sb.from('gl_car_models').select('name,type').eq('brand_id',bid).eq('active',true).order('sort_order',{ascending:true});
+    models=data||[]; MODELS_CACHE[bid]=models;
+  }
+  const brandName=(BRANDS.find(b=>String(b.id)===String(bid))||{}).name||'';
+  modelSel.innerHTML='<option value="">— select model —</option>'+
+    models.map(m=>`<option value="${esc(m.name)}" data-type="${esc(m.type||'')}">${esc(m.name)}</option>`).join('')+
+    '<option value="__other">Other / not listed</option>';
+  modelSel.dataset.brand=brandName;
+}
+function onModelChange(){
+  const sel=$('eModelSel'), modelInput=$('eModel');
+  const val=sel.value;
+  if(val==='__other'){
+    sel.style.display='none'; modelInput.style.display='block'; modelInput.value=''; modelInput.focus();
+    return;
+  }
+  if(!val){ modelInput.value=''; return; }
+  const brand=sel.dataset.brand||'';
+  modelInput.value=(brand?brand+' ':'')+val;   // full model name into hidden field
+  // auto-fill car type from the picked model
+  const opt=sel.options[sel.selectedIndex];
+  const t=opt&&opt.getAttribute('data-type');
+  if(t){ mapTypeToSelect(t); }
+}
+function mapTypeToSelect(t){
+  const sel=$('eType'); if(!sel) return;
+  const norm=(t||'').toLowerCase();
+  let target='';
+  if(/suv|mpv/.test(norm)) target='SUV/MPV';
+  else if(/sedan/.test(norm)) target='Sedan';
+  else if(/hatch/.test(norm)) target='Hatchback';
+  else if(/pickup|truck/.test(norm)) target='Pickup';
+  else if(/super|exotic/.test(norm)) target='Supercar';
+  else if(/luxury/.test(norm)) target='Luxury';
+  else if(/bike|motor/.test(norm)) target='Motorbike';
+  else target='Other';
+  // add the exact type as an option if not present, then select
+  if(![...sel.options].some(o=>o.value===target)) { const o=document.createElement('option'); o.textContent=target; sel.appendChild(o); }
+  sel.value=target;
 }
 
 boot();
