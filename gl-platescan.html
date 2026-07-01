@@ -176,6 +176,7 @@ html,body{height:100%;background:var(--bg);font-family:-apple-system,BlinkMacSys
     </div>
 
     <div class="sec-h">Package / Maintenance Balance</div>
+    <div id="ePkgHint" style="display:none;font-size:12px;background:#2a2a1a;border:1px solid #4a4020;border-radius:8px;padding:8px 10px;margin-bottom:8px;color:#e8d98a"></div>
     <div class="fld"><label>Package (from services)</label>
       <select id="ePkgName" onchange="onPkgChange()"><option value="">— none —</option></select>
     </div>
@@ -356,13 +357,14 @@ async function openEdit(isNew){
   $('ePlate').value=CUR.plate||'';
   $('eModel').value=CUR.model||'';
   await loadPkgServices();
-  // ensure existing pkg name shows even if not in the active list
-  if(CUR.pkg_name && ![...$('ePkgName').options].some(o=>o.value===CUR.pkg_name)){
-    const o=document.createElement('option'); o.value=CUR.pkg_name; o.textContent=CUR.pkg_name; $('ePkgName').appendChild(o);
-  }
-  $('ePkgName').value=CUR.pkg_name||'';
-  $('ePkgTotal').value=CUR.pkg_total||'';
-  $('ePkgUsed').value=CUR.pkg_used||'';
+  loadAllServices();
+  // dropdown shows ONLY clean gl_services packages — start unselected.
+  // (old imported balances like "X (5 left) + Y (20 left)" are shown separately below, not force-picked here)
+  $('ePkgName').value='';
+  $('ePkgTotal').value='';
+  $('ePkgUsed').value='';
+  // if this car already has an imported/free-text balance, show it as a read-only hint
+  showExistingPkgHint(CUR.pkg_name, CUR.pkg_total, CUR.pkg_used);
   // car picker: show manual model field with existing value; brand resets to prompt
   if(!BRANDS.length) loadBrands();
   else { const sel=$('eBrand'); if(sel) sel.innerHTML='<option value="">— select brand —</option>'+BRANDS.map(b=>`<option value="${b.id}">${esc(b.name)}</option>`).join('')+'<option value="__other">Other / not listed</option>'; loadCarTypes(); }
@@ -387,7 +389,7 @@ function renderHistRows(){
   if(!HIST_ROWS.length){ box.innerHTML=''; return; }
   box.innerHTML=HIST_ROWS.map((h,i)=>`
     <div class="hrow">
-      <div class="fld" style="margin-bottom:8px"><label>Service</label><input value="${esc(h.service_name)}" oninput="HIST_ROWS[${i}].service_name=this.value" placeholder="e.g. Coating Maintenance Wash"></div>
+      <div class="fld" style="margin-bottom:8px"><label>Service</label><input list="histSvcList" value="${esc(h.service_name)}" oninput="HIST_ROWS[${i}].service_name=this.value" placeholder="Type or pick a service…"></div>
       <div class="frow">
         <div class="fld"><label>Date done</label><input type="date" value="${esc(h.service_date)}" oninput="HIST_ROWS[${i}].service_date=this.value"></div>
         <div class="fld"><label>Next due</label><input type="date" value="${esc(h.next_due)}" oninput="HIST_ROWS[${i}].next_due=this.value"></div>
@@ -483,6 +485,18 @@ async function loadBrands(){
 }
 let CAR_TYPES=[], PENDING_TYPE=null;
 let PKG_SERVICES=[];
+let ALL_SERVICES=[];
+async function loadAllServices(){
+  if(ALL_SERVICES.length){ fillHistServiceList(); return; }
+  const {data}=await sb.from('gl_services').select('name,category').eq('active',true).order('category');
+  ALL_SERVICES=data||[];
+  fillHistServiceList();
+}
+function fillHistServiceList(){
+  let dl=$('histSvcList');
+  if(!dl){ dl=document.createElement('datalist'); dl.id='histSvcList'; document.body.appendChild(dl); }
+  dl.innerHTML=ALL_SERVICES.map(s=>`<option value="${esc(s.name)}">`).join('');
+}
 async function loadPkgServices(){
   if(PKG_SERVICES.length){ fillPkgSelect(); return; }
   const {data}=await sb.from('gl_services').select('name,pkg_uses,pkg_type,maint_months,is_package').eq('is_package',true).eq('active',true).order('sort_order',{ascending:true});
@@ -501,6 +515,14 @@ function fillPkgSelect(){
 function onPkgChange(){
   const sel=$('ePkgName'); const o=sel.selectedOptions[0];
   if(o && o.dataset.uses && !$('ePkgTotal').value){ $('ePkgTotal').value=o.dataset.uses; }
+}
+function showExistingPkgHint(name,total,used){
+  const el=$('ePkgHint'); if(!el) return;
+  if(name && String(name).trim()){
+    const bal=(parseInt(total)||0)-(parseInt(used)||0);
+    el.innerHTML='📦 Existing balance on this car: <b>'+esc(name)+(total?` — ${bal} left`:'')+'</b><br><span style="opacity:.8">Pick a clean package below to update, or leave as-is.</span>';
+    el.style.display='block';
+  } else { el.style.display='none'; }
 }
 async function loadCarTypes(){
   if(CAR_TYPES.length){ fillTypeSelect(); return; }
