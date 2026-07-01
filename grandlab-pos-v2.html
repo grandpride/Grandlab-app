@@ -220,20 +220,18 @@ button,input{font-family:inherit}
 .rc-totbox{display:flex;gap:14px;align-items:center;font-size:14px}
 .rc-totbox b{border:1px solid #111;padding:4px 14px;font-size:15px}
 .rc-adj{font-size:11px;color:#333;margin-top:8px;text-align:right}
-.rc-spacer{flex:0 0 auto;min-height:16px}
+.rc-spacer{flex:1 1 auto;min-height:20px}
 .rc-notes{margin-top:16px;font-size:10.5px;color:#222;line-height:1.5;border-top:1px solid #ccc;padding-top:10px}
 .rc-notes .ind{padding-left:18px}
 .rc-actions{display:flex;gap:10px;margin-top:20px}
 .rc-actions .btn{margin-top:0}
 
 @media print{
-  html,body{height:auto!important}
   body *{visibility:hidden!important}
   #rcptModal,#rcptModal *{visibility:visible!important}
-  #rcptModal{position:absolute;inset:0;background:#fff;padding:0;display:block;height:auto}
-  #rcptModal .dialog{box-shadow:none;max-width:100%;border-radius:0;padding:0;margin:0}
-  .rcpt{max-height:none;overflow:visible;padding:0;display:block}
-  .rc-spacer{display:none}
+  #rcptModal{position:absolute;inset:0;background:#fff;padding:0;display:block}
+  #rcptModal .dialog{box-shadow:none;max-width:100%;border-radius:0}
+  .rcpt{max-height:none;overflow:visible;padding:0;min-height:277mm;display:flex;flex-direction:column}
   .no-print{display:none!important}
   @page{size:A4;margin:12mm}
 }
@@ -259,6 +257,7 @@ button,input{font-family:inherit}
 <div class="topbar">
   <span class="brand">GRAND<span>LAB</span><span class="pos">POS</span></span>
   <span class="grow"></span>
+  <a class="linktile" onclick="openUnpaid()" style="cursor:pointer"><i class="ti ti-clock-dollar"></i><span class="hide-sm">Unpaid</span></a>
   <a class="linktile" href="https://grandpride.github.io/Grandlab-app/gl-staff-appointment-FINAL.html"><i class="ti ti-calendar-plus"></i><span class="hide-sm">Booking</span></a>
   <a class="linktile" href="https://grandpride.github.io/Grandlab-app/gl-jobcard.html"><i class="ti ti-clipboard-list"></i><span class="hide-sm">Job Card</span></a>
   <a class="linktile hub" href="https://grandpride.github.io/Grandlab-app/gl-hub.html"><i class="ti ti-home"></i></a>
@@ -330,6 +329,27 @@ button,input{font-family:inherit}
   <div class="dialog">
     <div class="dialog-h"><h3>Redeem voucher / package</h3><button class="closex" onclick="closeModal('vchModal')">×</button></div>
     <div class="dialog-b" id="vchBody"></div>
+  </div>
+</div>
+
+<div class="modal" id="editCustModal">
+  <div class="dialog">
+    <div class="dialog-h"><h3>Edit customer</h3><button class="closex" onclick="closeModal('editCustModal')">×</button></div>
+    <div class="dialog-b">
+      <div class="fld"><label>Name</label><input id="ecName"></div>
+      <div class="fld"><label>Phone</label><input id="ecPhone" type="tel"></div>
+      <div class="fld"><label>Plate</label><input id="ecPlate" style="text-transform:uppercase"></div>
+      <div class="fld"><label>Model</label><input id="ecModel"></div>
+      <div class="status" id="ecMsg"></div>
+      <button class="btn btn-blue" onclick="saveEditCust()"><i class="ti ti-device-floppy"></i> Save</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="unpaidModal">
+  <div class="dialog" style="max-width:640px">
+    <div class="dialog-h"><h3>Unpaid / Workshop credit</h3><button class="closex" onclick="closeModal('unpaidModal')">×</button></div>
+    <div class="dialog-b" id="unpaidBody"></div>
   </div>
 </div>
 
@@ -564,7 +584,7 @@ function renderCheckout(){
   $('coBody').innerHTML=`
     <div class="co-head">
       <div>
-        <div class="co-name">${esc(titleCase(CUR.name||'Walk-in customer'))}</div>
+        <div class="co-name">${esc(titleCase(CUR.name||'Walk-in customer'))} <i class="ti ti-edit" style="font-size:14px;color:var(--gold-deep);cursor:pointer;margin-left:4px" onclick="openEditCust()" title="Edit customer details"></i></div>
         <div class="co-sub">${esc(titleCase(CUR.model||'—'))} · ${esc(CUR.plate||'—')}${CUR.hasProfile||PAY.hasProfile?' · app member':''}</div>
       </div>
       <button class="btn-mini" onclick="clearCheckout()"><i class="ti ti-x"></i></button>
@@ -1215,6 +1235,90 @@ function downloadCSV(text, filename){
   const url=URL.createObjectURL(blob);
   const a=document.createElement('a'); a.href=url; a.download=filename; a.click();
   setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+
+/* ---------- quick edit customer (from checkout header) ---------- */
+function openEditCust(){
+  if(!CUR){ return; }
+  $('ecName').value=CUR.name||'';
+  $('ecPhone').value=CUR.hp||CUR.phone||'';
+  $('ecPlate').value=CUR.plate||'';
+  $('ecModel').value=CUR.model||'';
+  $('ecMsg').textContent='';
+  $('editCustModal').classList.add('show');
+}
+async function saveEditCust(){
+  const name=$('ecName').value.trim();
+  const phone=$('ecPhone').value.trim();
+  const plate=$('ecPlate').value.trim().toUpperCase().replace(/\s+/g,'');
+  const model=$('ecModel').value.trim();
+  $('ecMsg').textContent='Saving…';
+  // update CUR (used for this checkout + receipt immediately)
+  CUR.name=name; CUR.hp=phone; CUR.phone=phone; CUR.plate=plate; CUR.model=model;
+  // persist to gl_walkin (upsert by phone+plate) if we have enough to identify
+  try{
+    if(phone && plate){
+      const {data:ex}=await sb.from('gl_walkin').select('id').eq('phone',phone).eq('plate',plate).limit(1).maybeSingle();
+      if(ex){ await sb.from('gl_walkin').update({name,phone,plate,model}).eq('id',ex.id); }
+      else { await sb.from('gl_walkin').insert({name,phone,plate,model}); }
+    }
+  }catch(e){ /* non-fatal: still updates this checkout */ }
+  closeModal('editCustModal');
+  renderCheckout();
+  toast('Customer updated');
+}
+
+/* ---------- Unpaid / workshop-credit statement ---------- */
+async function openUnpaid(){
+  $('unpaidModal').classList.add('show');
+  $('unpaidBody').innerHTML='<div class="status">Loading…</div>';
+  const {data,error}=await sb.from('gl_unpaid').select('*').eq('settled',false).order('created_at',{ascending:false});
+  if(error){ $('unpaidBody').innerHTML='<div class="status">Error: '+esc(error.message)+'</div>'; return; }
+  const rows=data||[];
+  if(!rows.length){ $('unpaidBody').innerHTML='<div class="status">No outstanding unpaid records. 🎉</div>'; return; }
+  const total=rows.reduce((s,r)=>s+(Number(r.amount_owed)||0),0);
+  // group by workshop_name (or "Walk-in / other")
+  const groups={}; rows.forEach(r=>{ const k=r.workshop_name||'Other'; (groups[k]=groups[k]||[]).push(r); });
+  let html=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <div class="co-sub">${rows.length} unpaid · <b style="color:var(--gold-deep)">${RM(total)}</b> outstanding</div>
+    </div>`;
+  Object.keys(groups).forEach(g=>{
+    const gr=groups[g]; const gt=gr.reduce((s,r)=>s+(Number(r.amount_owed)||0),0);
+    html+=`<div style="margin-bottom:14px">
+      <div style="font-weight:800;font-size:13px;margin-bottom:6px;display:flex;justify-content:space-between">
+        <span>${esc(g)}</span><span style="color:var(--gold-deep)">${RM(gt)}</span>
+      </div>`;
+    gr.forEach(r=>{
+      html+=`<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:9px 11px;margin-bottom:6px">
+        <div style="min-width:0">
+          <div style="font-weight:700;font-size:13px">${esc(r.customer_name||r.plate||'—')} ${r.plate?'· '+esc(r.plate):''}</div>
+          <div class="co-sub" style="font-size:11px">${esc(r.invoice_no||'')} · ${new Date(r.created_at).toLocaleDateString('en-GB')}</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
+          <b>${RM(r.amount_owed)}</b>
+          <button class="btn-mini" onclick="settleUnpaid('${esc(r.id)}','${esc(r.invoice_no||'')}',${Number(r.amount_owed)||0})"><i class="ti ti-check"></i> Settle</button>
+        </div>
+      </div>`;
+    });
+    html+='</div>';
+  });
+  $('unpaidBody').innerHTML=html;
+}
+async function settleUnpaid(id, invoice, amount){
+  if(!confirm('Mark this as PAID now?\nAmount: '+RM(amount)+'\nThis records the payment and clears the unpaid balance.')) return;
+  try{
+    // 1) mark the unpaid row settled
+    const {error:e1}=await sb.from('gl_unpaid').update({settled:true, settled_at:new Date().toISOString(), settled_by:ME}).eq('id',id);
+    if(e1) throw e1;
+    // 2) record a payment (so it counts in takings / exports)
+    const {error:e2}=await sb.from('gl_payments').insert({
+      invoice_no:invoice||null, gross:amount, net_paid:amount, method:'cash',
+      taken_by:ME, customer_name:'(settled unpaid)'
+    });
+    if(e2) throw e2;
+    toast('Settled ✓');
+    openUnpaid(); loadTakings();
+  }catch(e){ alert('Settle failed: '+(e.message||e)); }
 }
 
 boot();
