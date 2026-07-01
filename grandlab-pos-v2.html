@@ -520,6 +520,16 @@ async function startCheckout(job, gross){
     const {data}=await sb.from('gl_profiles').select('wallet,points').eq('id',job.customer_id).maybeSingle();
     if(data){ PAY.hasProfile=true; PAY.custWallet=Number(data.wallet)||0; PAY.custPoints=Number(data.points)||0; }
   }
+  // find SQL Account code from gl_walkin by phone or plate (for export)
+  if(!CUR.sqlacc_code){
+    const ph=(job.hp||job.phone||'').trim(), pl=(job.plate||'').trim();
+    if(ph||pl){
+      let q=sb.from('gl_walkin').select('sqlacc_code').not('sqlacc_code','is',null).limit(1);
+      if(ph) q=q.eq('phone',ph); else q=q.eq('plate',pl);
+      const {data}=await q.maybeSingle();
+      if(data&&data.sqlacc_code) CUR.sqlacc_code=data.sqlacc_code;
+    }
+  }
   $('coEmpty').style.display='none';
   $('coBody').style.display='block';
   $('addCustBtn').style.display=job._walkin?'inline-flex':'none';
@@ -720,12 +730,12 @@ function searchCust(){
     const q=$('custQ').value.trim(); if(q.length<2){ $('custResults').innerHTML=''; return; }
     const like='%'+q+'%';
     const [w,p]=await Promise.all([
-      sb.from('gl_walkin').select('id,name,phone,plate,model').or(`name.ilike.${like},phone.ilike.${like},plate.ilike.${like}`).limit(6),
+      sb.from('gl_walkin').select('id,name,phone,plate,model,sqlacc_code').or(`name.ilike.${like},phone.ilike.${like},plate.ilike.${like}`).limit(6),
       sb.from('gl_profiles').select('id,name,phone').or(`name.ilike.${like},phone.ilike.${like}`).limit(4),
     ]);
     const rows=[];
     (p.data||[]).forEach(r=>rows.push({src:'app',id:r.id,name:r.name,phone:r.phone,plate:'',model:'',profile:true}));
-    (w.data||[]).forEach(r=>rows.push({src:'walk-in',id:r.id,name:r.name,phone:r.phone,plate:r.plate,model:r.model}));
+    (w.data||[]).forEach(r=>rows.push({src:'walk-in',id:r.id,name:r.name,phone:r.phone,plate:r.plate,model:r.model,sqlacc_code:r.sqlacc_code||''}));
     $('custResults').innerHTML=rows.length?rows.map((r,i)=>{
       window['_c'+i]=r;
       return `<div class="cust" onclick="pickCust(_c${i})">
@@ -737,6 +747,7 @@ function searchCust(){
 async function pickCust(r){
   CUR.name=r.name||''; CUR.phone=r.phone||''; CUR.plate=r.plate||CUR.plate; CUR.model=r.model||CUR.model;
   CUR.customer_id=r.profile?r.id:null;
+  CUR.sqlacc_code=r.sqlacc_code||'';
   if(r.profile){
     const {data}=await sb.from('gl_profiles').select('wallet,points').eq('id',r.id).maybeSingle();
     if(data){ PAY.hasProfile=true; PAY.custWallet=Number(data.wallet)||0; PAY.custPoints=Number(data.points)||0; }
@@ -819,6 +830,7 @@ async function confirmPay(){
       wallet_used:PAY.walletUsed, points_used:PAY.pointsUsed, points_value:PAY.pointsUsed*POINTS_RATE,
       voucher_code:PAY.voucher?PAY.voucher.barcode:null, voucher_value:PAY.voucher?Number(PAY.voucher.value||0):0,
       net_paid:net, method:PAY.method, taken_by:ME,
+      sqlacc_code:CUR.sqlacc_code||null,
       items:JSON.stringify(jobServices(CUR).map(s=>({desc:svcDesc(s),price:svcPrice(s),qty:s.qty||1,code:s.code||''})))
     });
     if(payErr) throw new Error('Payment: '+payErr.message);
@@ -1109,7 +1121,7 @@ function buildInvoiceCSV(rows){
       if(idx===0){
         row[0]='<<New>>';
         row[2]=fmtDate(p.paid_at||new Date().toISOString());
-        row[3]=SQLACC.cashCustomer;
+        row[3]=p.sqlacc_code||SQLACC.cashCustomer;      // real code if matched, else GL0001
         row[8]=p.customer_name||SQLACC.cashCustomerName;
         row[17]=p.phone||'';
         row[19]=SQLACC.terms;
@@ -1150,7 +1162,7 @@ function buildPaymentCSV(rows){
   rows.forEach(p=>{
     const row=new Array(19).fill('');
     row[0]='<<New>>';
-    row[1]=SQLACC.cashCustomer;
+    row[1]=p.sqlacc_code||SQLACC.cashCustomer;
     row[2]=fmtDate(p.paid_at||new Date().toISOString());
     row[5]='POS payment '+(p.invoice_no||'');
     row[6]=SQLACC.bankMap[p.method]||'320-200';    // bank/cash GL account
