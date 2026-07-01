@@ -1,0 +1,833 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="mobile-web-app-capable" content="yes">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<title>Grandlab POS</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.x/dist/tabler-icons.min.css">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+:root{
+  --bg:#f4f5f7;--surface:#ffffff;--surface2:#f8f9fb;--line:#e6e8ec;--line2:#eef0f3;
+  --ink:#15171c;--ink2:#646b76;--ink3:#9aa1ab;
+  --gold:#F5C518;--gold-deep:#d9ab06;--ink-on-gold:#1a1600;
+  --green:#16A34A;--red:#e0533d;--blue:#2563eb;--wa:#25D366;
+  --shadow:0 1px 2px rgba(16,20,30,.04),0 2px 8px rgba(16,20,30,.06);
+  --shadow-lg:0 8px 30px rgba(16,20,30,.12);
+}
+html,body{height:100%;background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:var(--ink);font-size:15px;line-height:1.4}
+button,input{font-family:inherit}
+
+/* ---------- top bar ---------- */
+.topbar{position:sticky;top:0;z-index:40;background:var(--surface);border-bottom:1px solid var(--line);display:flex;align-items:center;gap:12px;padding:10px 16px}
+.brand{font-weight:900;font-size:18px;letter-spacing:.4px}
+.brand span{color:var(--gold-deep)}
+.brand .pos{font-size:10px;color:var(--ink3);letter-spacing:.22em;text-transform:uppercase;font-weight:700;margin-left:7px}
+.topbar .grow{flex:1}
+.linktile{display:inline-flex;align-items:center;gap:6px;background:var(--surface2);border:1px solid var(--line);color:var(--ink);text-decoration:none;font-size:12.5px;font-weight:700;padding:8px 12px;border-radius:10px;cursor:pointer}
+.linktile i{font-size:16px;color:var(--gold-deep)}
+.linktile:active{transform:scale(.97)}
+.linktile.hub{color:var(--ink2)}
+
+/* ---------- layout ---------- */
+.wrap{max-width:1240px;margin:0 auto;padding:16px}
+.cols{display:grid;grid-template-columns:1fr;gap:16px}
+@media(min-width:880px){ .cols{grid-template-columns:minmax(360px,1fr) minmax(420px,560px)} }
+
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow)}
+.panel-h{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--line2)}
+.panel-h .ttl{font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--ink2);display:flex;align-items:center;gap:7px}
+.panel-h .ttl i{color:var(--gold-deep);font-size:17px}
+.panel-b{padding:14px 16px}
+
+.btn-mini{background:var(--surface2);color:var(--ink);border:1px solid var(--line);border-radius:9px;padding:7px 11px;font-size:12px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:5px}
+.btn-mini:active{transform:scale(.97)}
+.btn-mini i{font-size:15px}
+
+/* tabs */
+.tabs{display:flex;gap:6px;padding:10px 16px 0}
+.tab{flex:1;background:var(--surface2);border:1px solid var(--line);border-radius:10px 10px 0 0;padding:9px 8px;font-size:12.5px;font-weight:800;color:var(--ink2);cursor:pointer;text-align:center;border-bottom:none;display:flex;align-items:center;justify-content:center;gap:6px}
+.tab.on{background:var(--surface);color:var(--ink);box-shadow:0 -2px 6px rgba(16,20,30,.04)}
+.tab .cnt{background:var(--gold);color:var(--ink-on-gold);font-size:10px;font-weight:800;border-radius:20px;padding:1px 6px;min-width:16px}
+.tab.on .cnt{}
+
+/* ---------- job list ---------- */
+.job{background:var(--surface);border:1px solid var(--line);border-radius:13px;padding:13px 14px;margin-bottom:10px;cursor:pointer;transition:.12s;box-shadow:var(--shadow)}
+.job:active{transform:scale(.995)}
+.job:hover{border-color:var(--gold);box-shadow:0 4px 14px rgba(245,197,24,.18)}
+.job.sel{border-color:var(--gold);background:#fffdf2}
+.job-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.job-name{font-weight:800;font-size:15.5px}
+.job-meta{font-size:12.5px;color:var(--ink2);margin-top:3px}
+.job-total{font-weight:900;font-size:18px;color:var(--ink);white-space:nowrap}
+.chip{display:inline-block;font-size:9px;font-weight:800;padding:2px 7px;border-radius:20px;text-transform:uppercase;letter-spacing:.03em;background:var(--surface2);color:var(--ink2);margin-left:6px;border:1px solid var(--line)}
+.chip.dep{background:#eafaf0;color:var(--green);border-color:#c9eed5}
+
+.empty{text-align:center;padding:40px 18px;color:var(--ink3)}
+.empty .big{font-size:40px;margin-bottom:10px}
+.status{text-align:center;font-size:12.5px;color:var(--ink3);margin:8px 0;min-height:16px}
+
+/* takings */
+.takings{display:flex;gap:10px;margin-top:4px}
+.takings .t{flex:1;background:var(--surface2);border:1px solid var(--line);border-radius:12px;padding:12px;text-align:center}
+.takings .num{font-size:20px;font-weight:900}
+.takings .num.g{color:var(--gold-deep)}
+.takings .lbl{font-size:10px;color:var(--ink3);text-transform:uppercase;letter-spacing:.05em;margin-top:3px}
+
+/* ---------- checkout (right panel) ---------- */
+.co-empty{text-align:center;padding:60px 20px;color:var(--ink3)}
+.co-empty .big{font-size:46px;margin-bottom:12px}
+.co-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:6px}
+.co-name{font-size:18px;font-weight:900}
+.co-sub{font-size:13px;color:var(--ink2);margin-top:2px}
+
+.lineitem{display:flex;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px solid var(--line2);font-size:14px}
+.lineitem .d{color:var(--ink)}
+.lineitem .p{color:var(--ink2);white-space:nowrap}
+.section-h{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink3);font-weight:800;margin:16px 0 9px}
+
+.adj{display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--surface2);border:1px solid var(--line);border-radius:11px;padding:10px 12px;margin-bottom:8px}
+.adj .lab{font-size:13px;display:flex;align-items:center;gap:8px}
+.adj .lab i{color:var(--gold-deep);font-size:17px}
+.adj .ctrl{display:flex;align-items:center;gap:8px}
+.adj input{width:96px;background:#fff;border:1px solid var(--line);border-radius:8px;color:var(--ink);padding:8px 9px;font-size:14px;text-align:right;outline:none}
+.adj input:focus{border-color:var(--gold)}
+.adj .val{font-size:13px;font-weight:700;color:var(--red)}
+.toggle{width:44px;height:26px;border-radius:20px;background:#d6d9df;border:none;position:relative;cursor:pointer;flex-shrink:0;transition:.15s}
+.toggle.on{background:var(--green)}
+.toggle .dot{position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;transition:.15s;box-shadow:0 1px 3px rgba(0,0,0,.2)}
+.toggle.on .dot{left:21px}
+.muted{opacity:.45;pointer-events:none}
+.pinwrap{display:none;margin:6px 0 8px}
+.pinwrap.show{display:block}
+
+/* balance + quick amounts */
+.balance{text-align:center;padding:14px;background:var(--surface2);border:1px solid var(--line);border-radius:14px;margin:14px 0}
+.balance .lbl{font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--ink3);font-weight:700}
+.balance .amt{font-size:34px;font-weight:900;margin-top:2px;letter-spacing:-.5px}
+.quick{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px}
+.quick .q{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:11px 4px;font-size:13px;font-weight:800;cursor:pointer;text-align:center}
+.quick .q:active{transform:scale(.96)}
+.quick .q.sel{background:var(--gold);border-color:var(--gold);color:var(--ink-on-gold)}
+.quick .q.exact{border-color:var(--gold-deep);color:var(--gold-deep)}
+
+/* methods */
+.methods{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+.method{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 6px;text-align:center;cursor:pointer;font-size:12px;font-weight:700;transition:.1s}
+.method.sel{background:var(--gold);color:var(--ink-on-gold);border-color:var(--gold);box-shadow:0 4px 12px rgba(245,197,24,.3)}
+.method:active{transform:scale(.97)}
+.method.dis{opacity:.34;pointer-events:none}
+.method .mi{font-size:19px;display:block;margin-bottom:4px}
+
+.totals{background:var(--surface2);border:1px solid var(--line);border-radius:13px;padding:14px;margin-top:14px}
+.totals .row{display:flex;justify-content:space-between;font-size:14px;padding:4px 0}
+.totals .row .rd{color:var(--red)}
+.totals .row.big{font-size:21px;font-weight:900;border-top:1px solid var(--line);margin-top:7px;padding-top:11px}
+.totals .row.big .g{color:var(--gold-deep)}
+
+.btn{background:var(--gold);color:var(--ink-on-gold);border:none;border-radius:13px;padding:16px;font-weight:800;font-size:15px;cursor:pointer;width:100%;display:flex;align-items:center;justify-content:center;gap:8px;margin-top:14px}
+.btn:active{transform:scale(.99)}
+.btn:disabled{opacity:.4;cursor:default}
+.btn-ghost{background:var(--surface);color:var(--ink);border:1px solid var(--line)}
+.btn-wa{background:var(--wa);color:#062b16}
+.btn-blue{background:var(--blue);color:#fff}
+
+/* fields */
+.fld{margin-bottom:11px}
+.fld label{display:block;font-size:11px;color:var(--ink2);margin-bottom:4px;font-weight:700}
+.fld input,.fld select{width:100%;background:#fff;border:1px solid var(--line);border-radius:10px;color:var(--ink);padding:11px 13px;font-size:14px;outline:none}
+.fld input:focus,.fld select:focus{border-color:var(--gold)}
+
+/* ---------- modal ---------- */
+.modal{position:fixed;inset:0;background:rgba(16,20,30,.5);z-index:100;display:none;align-items:center;justify-content:center;padding:16px}
+.modal.show{display:flex}
+.dialog{background:var(--surface);border-radius:18px;width:100%;max-width:480px;max-height:92dvh;overflow-y:auto;box-shadow:var(--shadow-lg);position:relative}
+.dialog-h{position:sticky;top:0;background:var(--surface);border-bottom:1px solid var(--line2);padding:15px 18px;display:flex;align-items:center;justify-content:space-between;border-radius:18px 18px 0 0}
+.dialog-h h3{font-size:16px;font-weight:800}
+.dialog-b{padding:16px 18px 20px}
+.closex{font-size:24px;color:var(--ink3);cursor:pointer;background:none;border:none;line-height:1}
+
+/* customer search results */
+.cust{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:11px 12px;border:1px solid var(--line);border-radius:11px;margin-bottom:8px;cursor:pointer}
+.cust:hover{border-color:var(--gold);background:#fffdf2}
+.cust .nm{font-weight:700;font-size:14px}
+.cust .mt{font-size:12px;color:var(--ink2);margin-top:1px}
+.cust .src{font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--ink3);border:1px solid var(--line);border-radius:6px;padding:2px 6px}
+
+/* brand grid */
+.bgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;max-height:300px;overflow-y:auto;padding:2px}
+@media(min-width:880px){ .bgrid{grid-template-columns:repeat(4,1fr)} }
+.bcell{border:1px solid var(--line);border-radius:12px;padding:10px 6px;text-align:center;cursor:pointer;background:var(--surface);display:flex;flex-direction:column;align-items:center;gap:6px;min-height:74px;justify-content:center}
+.bcell:hover{border-color:var(--gold);background:#fffdf2}
+.bcell.sel{border-color:var(--gold);background:#fffdf2}
+.bcell img{height:30px;width:auto;max-width:54px;object-fit:contain}
+.bcell .bn{font-size:11px;font-weight:700;color:var(--ink2)}
+
+/* done screen */
+.done{text-align:center;padding:8px 6px 4px}
+.done .tick{font-size:54px;margin-bottom:6px}
+.done .inv-big{font-family:ui-monospace,monospace;font-size:19px;font-weight:800;color:var(--gold-deep);margin:4px 0 12px}
+
+/* login gate */
+.gate{position:fixed;inset:0;background:var(--bg);z-index:200;display:flex;align-items:center;justify-content:center;padding:24px}
+.gate.hidden{display:none}
+.gate-box{width:100%;max-width:340px}
+.gate .brand{font-size:26px;text-align:center;display:block;margin-bottom:4px}
+.gate .pos{display:block;text-align:center;margin:0 0 22px}
+.gate label{display:block;font-size:11px;color:var(--ink2);margin-bottom:4px;font-weight:700}
+.gate input{width:100%;background:#fff;border:1px solid var(--line);border-radius:12px;color:var(--ink);padding:13px 14px;font-size:15px;margin-bottom:12px;outline:none}
+.gate input:focus{border-color:var(--gold)}
+.gate button{width:100%;background:var(--gold);color:var(--ink-on-gold);border:none;border-radius:12px;padding:14px;font-weight:800;font-size:15px;cursor:pointer}
+.err{color:var(--red);font-size:12px;min-height:16px;margin-bottom:6px}
+.toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:11px 18px;border-radius:30px;font-size:13px;font-weight:600;z-index:500;opacity:0;transition:.2s;pointer-events:none;box-shadow:var(--shadow-lg)}
+.toast.show{opacity:1}
+</style>
+</head>
+<body>
+
+<!-- login -->
+<div id="gate" class="gate">
+  <div class="gate-box">
+    <span class="brand">GRAND<span>LAB</span></span>
+    <span class="pos brand"><span class="pos">Point of Sale</span></span>
+    <label>Email</label>
+    <input id="email" type="email" autocomplete="username" placeholder="reception@grandpride.com">
+    <label>Password</label>
+    <input id="pass" type="password" autocomplete="current-password" placeholder="Password">
+    <div class="err" id="loginErr"></div>
+    <button onclick="doLogin()">Sign in</button>
+  </div>
+</div>
+
+<!-- top bar -->
+<div class="topbar">
+  <span class="brand">GRAND<span>LAB</span><span class="pos">POS</span></span>
+  <span class="grow"></span>
+  <a class="linktile" href="https://grandpride.github.io/Grandlab-app/gl-staff-appointment-FINAL.html"><i class="ti ti-calendar-plus"></i><span class="hide-sm">Booking</span></a>
+  <a class="linktile" href="https://grandpride.github.io/Grandlab-app/gl-jobcard.html"><i class="ti ti-clipboard-list"></i><span class="hide-sm">Job Card</span></a>
+  <a class="linktile hub" href="https://grandpride.github.io/Grandlab-app/gl-hub.html"><i class="ti ti-home"></i></a>
+</div>
+
+<div class="wrap">
+  <div class="cols">
+
+    <!-- LEFT: ready jobs -->
+    <div>
+      <div class="panel">
+        <div class="tabs">
+          <div class="tab on" id="tabReady" onclick="switchTab('ready')"><i class="ti ti-receipt"></i> Ready to bill <span class="cnt" id="cntReady">0</span></div>
+          <div class="tab" id="tabHold" onclick="switchTab('hold')"><i class="ti ti-player-pause"></i> On-hold <span class="cnt" id="cntHold">0</span></div>
+        </div>
+        <div class="panel-h">
+          <span class="ttl"><i class="ti ti-list-check"></i> <span id="listTitle">Ready to bill</span></span>
+          <button class="btn-mini" onclick="loadJobs()"><i class="ti ti-refresh"></i> Refresh</button>
+        </div>
+        <div class="panel-b">
+          <div class="status" id="status"></div>
+          <div id="jobs"></div>
+          <div class="empty" id="empty" style="display:none">
+            <div class="big">✅</div>
+            <div id="emptyMsg">No jobs waiting to be paid.</div>
+            <button class="btn-mini" id="walkinBtn" style="margin-top:14px" onclick="openWalkin()"><i class="ti ti-plus"></i> New walk-in sale</button>
+          </div>
+          <div class="takings" id="takings" style="display:none">
+            <div class="t"><div class="num" id="tkCount">0</div><div class="lbl">Paid today</div></div>
+            <div class="t"><div class="num g" id="tkTotal">RM0</div><div class="lbl">Collected today</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: checkout -->
+    <div>
+      <div class="panel">
+        <div class="panel-h">
+          <span class="ttl"><i class="ti ti-cash-register"></i> Checkout</span>
+          <button class="btn-mini" id="addCustBtn" onclick="openCustomer()" style="display:none"><i class="ti ti-user-plus"></i> Customer</button>
+        </div>
+        <div class="panel-b" id="checkout">
+          <div class="co-empty" id="coEmpty">
+            <div class="big">🧾</div>
+            <div>Pick a job on the left to take payment.</div>
+          </div>
+          <div id="coBody" style="display:none"></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- customer modal -->
+<div class="modal" id="custModal">
+  <div class="dialog">
+    <div class="dialog-h"><h3 id="custTitle">Add customer</h3><button class="closex" onclick="closeModal('custModal')">×</button></div>
+    <div class="dialog-b" id="custBody"></div>
+  </div>
+</div>
+
+<!-- voucher modal -->
+<div class="modal" id="vchModal">
+  <div class="dialog">
+    <div class="dialog-h"><h3>Redeem voucher / package</h3><button class="closex" onclick="closeModal('vchModal')">×</button></div>
+    <div class="dialog-b" id="vchBody"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SUPABASE_URL="https://eychljpzorzmaveixlnu.supabase.co";
+const SUPABASE_ANON="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV5Y2hsanB6b3J6bWF2ZWl4bG51Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2NDk2NjQsImV4cCI6MjA5NzIyNTY2NH0.6dA1zhz5ZIwf8byFB8vhfOzPI-uPPdPihEr1b8GG_oA";
+const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON,{auth:{persistSession:true,autoRefreshToken:true,storageKey:'gl_auth'}});
+const $=id=>document.getElementById(id);
+const MANAGER_PIN="065437";
+let POINTS_RATE=0.01;
+let JOBS=[], CUR=null, PAY=null, ME='';
+let BRANDS=[], MODELS_CACHE={};
+
+const METHODS=[
+  {k:'cash',label:'Cash',icon:'cash'},
+  {k:'credit_card',label:'Credit',icon:'credit-card'},
+  {k:'debit_card',label:'Debit',icon:'credit-card'},
+  {k:'cc_installment',label:'CC Install',icon:'calendar-repeat'},
+  {k:'tng',label:'TnG',icon:'wallet'},
+  {k:'mae',label:'MAE',icon:'wallet'},
+  {k:'grabpay',label:'GrabPay',icon:'brand-grab'},
+  {k:'shopeepay',label:'ShopeePay',icon:'shopping-bag'},
+  {k:'atome',label:'Atome',icon:'calendar-repeat'},
+  {k:'app_credit',label:'App Credit',icon:'wallet'},
+  {k:'app_points',label:'App Points',icon:'star'},
+];
+
+/* ---------- helpers ---------- */
+const RM=n=>'RM'+(Math.round((Number(n)||0)*100)/100).toLocaleString('en-MY',{minimumFractionDigits:2,maximumFractionDigits:2});
+function esc(s){ return (s||'').toString().replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function titleCase(s){ return (s||'').toString().toLowerCase().replace(/\b\w/g,c=>c.toUpperCase()); }
+function jobServices(j){ try{ return Array.isArray(j.services)?j.services:JSON.parse(j.services||'[]'); }catch(e){ return []; } }
+function svcDesc(s){ return s.desc||s.name||s.service||'Service'; }
+function svcPrice(s){ return Number(s.price)||Number(s.amount)||0; }
+function jobTotal(j){
+  if(j.total!=null && !isNaN(j.total) && Number(j.total)>0) return Number(j.total);
+  return jobServices(j).reduce((s,x)=>s+svcPrice(x),0);
+}
+function toast(m){ const t=$('toast'); t.textContent=m; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),1900); }
+function closeModal(id){ $(id).classList.remove('show'); }
+
+/* ---------- login ---------- */
+async function boot(){
+  const {data}=await sb.auth.getSession();
+  if(data&&data.session){ $('gate').classList.add('hidden'); ME=data.session.user.email||''; init(); }
+  else $('gate').classList.remove('hidden');
+}
+async function doLogin(){
+  const email=$('email').value.trim(), pass=$('pass').value;
+  $('loginErr').textContent='Signing in…';
+  const {error}=await sb.auth.signInWithPassword({email,password:pass});
+  if(error){ $('loginErr').textContent='Login failed: '+error.message; return; }
+  $('loginErr').textContent=''; $('gate').classList.add('hidden');
+  const {data}=await sb.auth.getSession(); ME=data.session.user.email||''; init();
+}
+async function init(){
+  try{
+    const {data}=await sb.from('gl_board_config').select('points_redeem_rate').eq('id',1).maybeSingle();
+    if(data&&data.points_redeem_rate) POINTS_RATE=Number(data.points_redeem_rate)||0.01;
+  }catch(e){}
+  loadJobs(); loadTakings(); loadBrands();
+}
+
+/* ---------- jobs (ready + on-hold) ---------- */
+let TAB='ready', HOLD=[];
+async function loadJobs(){
+  $('status').textContent='Loading…';
+  const {data,error}=await sb.from('gl_jobs').select('*')
+    .eq('status','open')
+    .order('ready_at',{ascending:true});
+  if(error){ $('status').textContent='Error: '+error.message; return; }
+  const open=data||[];
+  // on-hold = open jobs flagged on_hold (stay on board)
+  HOLD=open.filter(j=>j.on_hold===true);
+  // ready = done/finaltouch and NOT on hold
+  JOBS=open.filter(j=>{
+    const st=(j.stage||'').toLowerCase();
+    return (st==='done'||st==='finaltouch') && j.on_hold!==true;
+  });
+  $('cntReady').textContent=JOBS.length;
+  $('cntHold').textContent=HOLD.length;
+  renderJobs();
+}
+function switchTab(t){
+  TAB=t;
+  $('tabReady').classList.toggle('on',t==='ready');
+  $('tabHold').classList.toggle('on',t==='hold');
+  $('listTitle').textContent=t==='hold'?'On-hold orders':'Ready to bill';
+  $('emptyMsg').textContent=t==='hold'?'No orders on hold.':'No jobs waiting to be paid.';
+  $('walkinBtn').style.display=t==='hold'?'none':'inline-flex';
+  $('takings').style.display=t==='hold'?'none':'flex';
+  renderJobs();
+}
+function currentList(){ return TAB==='hold'?HOLD:JOBS; }
+function renderJobs(){
+  $('status').textContent='';
+  const list=currentList();
+  if(!list.length){ $('jobs').innerHTML=''; $('empty').style.display='block'; return; }
+  $('empty').style.display='none';
+  $('jobs').innerHTML=list.map((j,i)=>{
+    const svc=jobServices(j).map(svcDesc).filter(Boolean).join(', ');
+    const dep=Number(j.dep_amt)||0;
+    return `<div class="job ${CUR&&CUR.id===j.id?'sel':''}" onclick="openFromList(${i})">
+      <div class="job-top">
+        <div>
+          <div class="job-name">${esc(titleCase(j.name||'Customer'))}<span class="chip">${esc(j.cust_type||'retail')}</span>${dep>0?`<span class="chip dep">dep ${RM(dep)}</span>`:''}${TAB==='hold'?'<span class="chip">on-hold</span>':''}</div>
+          <div class="job-meta">${esc(titleCase(j.model||'—'))} · ${esc(j.plate||'—')}</div>
+          <div class="job-meta">${esc(svc||'—')}</div>
+        </div>
+        <div class="job-total">${RM(jobTotal(j))}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+function openFromList(i){
+  const j=currentList()[i];
+  CUR=j; startCheckout(CUR, jobTotal(CUR)); renderJobs();
+}
+
+/* ---------- takings ---------- */
+async function loadTakings(){
+  const start=new Date(); start.setHours(0,0,0,0);
+  const {data}=await sb.from('gl_payments').select('net_paid,paid_at').gte('paid_at',start.toISOString());
+  const rows=data||[];
+  $('takings').style.display='flex';
+  $('tkCount').textContent=rows.length;
+  $('tkTotal').textContent=RM(rows.reduce((s,r)=>s+(Number(r.net_paid)||0),0));
+}
+
+/* ---------- brands (for add-customer car picker) ---------- */
+async function loadBrands(){
+  try{
+    const {data}=await sb.from('gl_car_brands').select('id,name,image_url,sort_order,active').eq('active',true).order('sort_order',{ascending:true});
+    BRANDS=data||[];
+  }catch(e){ BRANDS=[]; }
+}
+
+/* ---------- open walk-in ---------- */
+function openWalkin(){
+  CUR={ id:'WALKIN-'+Date.now(), name:'', plate:'', model:'', cust_type:'walkin',
+        services:[], total:0, dep_amt:0, customer_id:null, _walkin:true };
+  startCheckout(CUR, 0);
+}
+
+async function startCheckout(job, gross){
+  PAY={ gross, discount:0, discountOk:false, discountBy:null, _pendingDisc:0,
+        depositUsed:Number(job.dep_amt)||0, packageUsed:false,
+        walletUsed:0, pointsUsed:0, voucher:null, method:null, quick:null,
+        custWallet:0, custPoints:0, hasProfile:false };
+  if(job.customer_id){
+    const {data}=await sb.from('gl_profiles').select('wallet,points').eq('id',job.customer_id).maybeSingle();
+    if(data){ PAY.hasProfile=true; PAY.custWallet=Number(data.wallet)||0; PAY.custPoints=Number(data.points)||0; }
+  }
+  $('coEmpty').style.display='none';
+  $('coBody').style.display='block';
+  $('addCustBtn').style.display=job._walkin?'inline-flex':'none';
+  renderCheckout();
+}
+
+function netDue(){
+  let n=PAY.gross - PAY.discount - PAY.depositUsed - PAY.walletUsed - (PAY.pointsUsed*POINTS_RATE) - (PAY.voucher?Number(PAY.voucher.value||0):0);
+  return Math.max(0, Math.round(n*100)/100);
+}
+
+function renderCheckout(){
+  const svc=jobServices(CUR);
+  const due=netDue();
+  const exact=due;
+  const ups=[exact];
+  [Math.ceil(due), Math.ceil(due/5)*5, Math.ceil(due/10)*10, Math.ceil(due/50)*50, 50,100,150,200]
+    .forEach(v=>{ if(v>exact && !ups.includes(v) && ups.length<8) ups.push(v); });
+  const quicks=ups.slice(0,8);
+
+  $('coBody').innerHTML=`
+    <div class="co-head">
+      <div>
+        <div class="co-name">${esc(titleCase(CUR.name||'Walk-in customer'))}</div>
+        <div class="co-sub">${esc(titleCase(CUR.model||'—'))} · ${esc(CUR.plate||'—')}${CUR.hasProfile||PAY.hasProfile?' · app member':''}</div>
+      </div>
+      <button class="btn-mini" onclick="clearCheckout()"><i class="ti ti-x"></i></button>
+    </div>
+
+    <div class="section-h">Order</div>
+    ${svc.length?svc.map(s=>`<div class="lineitem"><span class="d">${esc(svcDesc(s))}</span><span class="p">${RM(svcPrice(s))}</span></div>`).join('')
+      :`<div class="lineitem"><span class="d">${CUR._walkin?'Add an item below':'Total'}</span><span class="p">${RM(PAY.gross)}</span></div>`}
+    ${CUR._walkin?`<button class="btn-mini" style="margin-top:10px" onclick="addItem()"><i class="ti ti-plus"></i> Add service / item</button>`:''}
+
+    <div class="section-h">Adjustments</div>
+    ${PAY.depositUsed>0?`<div class="adj"><span class="lab"><i class="ti ti-cash"></i> Deposit already paid</span><span class="val">−${RM(PAY.depositUsed)}</span></div>`:''}
+
+    <div class="adj">
+      <span class="lab"><i class="ti ti-package"></i> Use 1 package visit</span>
+      <button class="toggle ${PAY.packageUsed?'on':''}" onclick="togglePkg()"><span class="dot"></span></button>
+    </div>
+
+    <div class="adj">
+      <span class="lab"><i class="ti ti-ticket"></i> Voucher / package barcode</span>
+      ${PAY.voucher?`<span class="val">${esc(PAY.voucher.label||'Applied')}${PAY.voucher.value?` −${RM(PAY.voucher.value)}`:''} <a onclick="removeVoucher()" style="cursor:pointer;color:var(--ink3)">✕</a></span>`
+        :`<button class="btn-mini" onclick="openVoucher()"><i class="ti ti-scan"></i> Scan</button>`}
+    </div>
+
+    <div class="adj">
+      <span class="lab"><i class="ti ti-discount-2"></i> Discount (RM)</span>
+      <div class="ctrl"><input id="discInp" type="number" inputmode="decimal" value="${PAY.discount||''}" placeholder="0.00" onchange="onDiscount()"></div>
+    </div>
+    <div class="pinwrap" id="pinwrap">
+      <div class="fld" style="margin-bottom:0"><label>Manager PIN to apply discount</label>
+      <input id="pinInp" type="password" inputmode="numeric" placeholder="••••••" oninput="checkPin()"></div>
+    </div>
+
+    ${PAY.hasProfile?`
+    <div class="adj">
+      <span class="lab"><i class="ti ti-wallet"></i> App credit (${RM(PAY.custWallet)})</span>
+      <div class="ctrl"><input id="walInp" type="number" inputmode="decimal" value="${PAY.walletUsed||''}" placeholder="0.00" onchange="onWallet()" ${PAY.custWallet<=0?'disabled':''}></div>
+    </div>
+    <div class="adj">
+      <span class="lab"><i class="ti ti-star"></i> Points (${PAY.custPoints} = ${RM(PAY.custPoints*POINTS_RATE)})</span>
+      <div class="ctrl"><input id="ptsInp" type="number" inputmode="numeric" value="${PAY.pointsUsed||''}" placeholder="0" onchange="onPoints()" ${PAY.custPoints<=0?'disabled':''}></div>
+    </div>`:''}
+
+    <div class="balance">
+      <div class="lbl">Balance to pay</div>
+      <div class="amt">${RM(due)}</div>
+    </div>
+
+    <div class="quick">
+      ${quicks.map((v,idx)=>`<div class="q ${PAY.quick===v?'sel':''} ${idx===0?'exact':''}" onclick="pickQuick(${v})">${idx===0?'Exact':RM(v).replace('RM','')}</div>`).join('')}
+    </div>
+
+    <div class="section-h">Payment method</div>
+    <div class="methods">
+      ${METHODS.map(m=>{
+        const dis=(m.k==='app_credit'&&(!PAY.hasProfile||PAY.custWallet<=0))||(m.k==='app_points'&&(!PAY.hasProfile||PAY.custPoints<=0));
+        return `<div class="method ${PAY.method===m.k?'sel':''} ${dis?'dis':''}" onclick="pickMethod('${m.k}')"><span class="mi"><i class="ti ti-${m.icon}"></i></span>${m.label}</div>`;
+      }).join('')}
+    </div>
+
+    <div class="totals">
+      <div class="row"><span>Subtotal</span><span>${RM(PAY.gross)}</span></div>
+      ${PAY.discount>0?`<div class="row"><span>Discount</span><span class="rd">−${RM(PAY.discount)}</span></div>`:''}
+      ${PAY.voucher&&PAY.voucher.value?`<div class="row"><span>Voucher</span><span class="rd">−${RM(PAY.voucher.value)}</span></div>`:''}
+      ${PAY.depositUsed>0?`<div class="row"><span>Deposit</span><span class="rd">−${RM(PAY.depositUsed)}</span></div>`:''}
+      ${PAY.walletUsed>0?`<div class="row"><span>App credit</span><span class="rd">−${RM(PAY.walletUsed)}</span></div>`:''}
+      ${PAY.pointsUsed>0?`<div class="row"><span>Points (${PAY.pointsUsed})</span><span class="rd">−${RM(PAY.pointsUsed*POINTS_RATE)}</span></div>`:''}
+      <div class="row big"><span>To collect</span><span class="g">${RM(due)}</span></div>
+    </div>
+
+    <div style="display:flex;gap:9px;margin-top:14px">
+      <button class="btn btn-ghost" id="unpaidBtn" style="flex:1;margin-top:0" onclick="markUnpaid()">
+        <i class="ti ti-clock-dollar"></i> Mark unpaid
+      </button>
+      <button class="btn" id="payBtn" style="flex:1.3;margin-top:0" onclick="confirmPay()" ${PAY.method?'':'disabled'}>
+        <i class="ti ti-check"></i> Confirm payment
+      </button>
+    </div>
+    ${!CUR._walkin?`<button class="btn btn-ghost" style="margin-top:9px" onclick="${CUR.on_hold?'resumeHold':'holdOrder'}()">
+      <i class="ti ti-player-${CUR.on_hold?'play':'pause'}"></i> ${CUR.on_hold?'Resume (remove hold)':'Put on hold (finish later)'}
+    </button>`:''}
+  `;
+}
+
+function clearCheckout(){
+  CUR=null; PAY=null;
+  $('coBody').style.display='none'; $('coEmpty').style.display='block';
+  $('addCustBtn').style.display='none';
+  renderJobs();
+}
+
+/* ---------- adjustments ---------- */
+function togglePkg(){ PAY.packageUsed=!PAY.packageUsed; renderCheckout(); }
+function onDiscount(){
+  const v=parseFloat($('discInp').value)||0;
+  if(v>0){ PAY._pendingDisc=v; $('pinwrap').classList.add('show'); }
+  else { PAY.discount=0; PAY.discountOk=false; renderCheckout(); }
+}
+function checkPin(){
+  if($('pinInp').value===MANAGER_PIN){
+    PAY.discount=PAY._pendingDisc||0; PAY.discountOk=true; PAY.discountBy=ME;
+    toast('Discount approved'); renderCheckout();
+  }
+}
+function onWallet(){
+  let v=parseFloat($('walInp').value)||0;
+  v=Math.min(v, PAY.custWallet, PAY.gross);
+  PAY.walletUsed=Math.max(0,Math.round(v*100)/100); renderCheckout();
+}
+function onPoints(){
+  let v=parseInt($('ptsInp').value)||0;
+  v=Math.min(v, PAY.custPoints);
+  const maxByDue=Math.ceil((PAY.gross-PAY.discount-PAY.depositUsed-PAY.walletUsed)/POINTS_RATE);
+  v=Math.max(0,Math.min(v,maxByDue));
+  PAY.pointsUsed=v; renderCheckout();
+}
+function pickQuick(v){ PAY.quick=v; renderCheckout(); }
+function pickMethod(k){
+  const m=METHODS.find(x=>x.k===k);
+  if(m.k==='app_credit'&&(!PAY.hasProfile||PAY.custWallet<=0))return;
+  if(m.k==='app_points'&&(!PAY.hasProfile||PAY.custPoints<=0))return;
+  PAY.method=k; renderCheckout();
+}
+
+/* ---------- walk-in: add item ---------- */
+function addItem(){
+  const desc=prompt('Item / service name:'); if(!desc) return;
+  const price=parseFloat(prompt('Price (RM):'))||0;
+  const arr=jobServices(CUR); arr.push({desc,price}); CUR.services=arr;
+  PAY.gross=arr.reduce((s,x)=>s+svcPrice(x),0);
+  renderCheckout();
+}
+
+/* ---------- voucher / package redeem (by barcode) ---------- */
+function openVoucher(){
+  $('vchBody').innerHTML=`
+    <div class="fld"><label>Barcode / voucher code</label>
+      <input id="vchCode" placeholder="Scan or type barcode" autofocus></div>
+    <button class="btn" onclick="redeemVoucher()"><i class="ti ti-check"></i> Look up & apply</button>
+    <div class="status" id="vchStatus"></div>`;
+  $('vchModal').classList.add('show');
+  setTimeout(()=>{ const el=$('vchCode'); if(el) el.focus(); },100);
+}
+async function redeemVoucher(){
+  const code=$('vchCode').value.trim(); if(!code) return;
+  $('vchStatus').textContent='Looking up…';
+  // try claim (voucher) → package → reward, mirroring existing redeem RPCs
+  try{
+    let r=await sb.rpc('gl_redeem_claim',{p_barcode:code});
+    if(r.data&&r.data.ok){ PAY.voucher={label:'Voucher',value:Number(r.data.value)||0,barcode:code,kind:'claim'}; toast('Voucher applied'); closeModal('vchModal'); renderCheckout(); return; }
+    r=await sb.rpc('gl_redeem_package',{p_barcode:code});
+    if(r.data&&r.data.ok){ PAY.packageUsed=true; toast('Package visit redeemed ('+(r.data.used||'')+'/'+(r.data.total||'')+')'); closeModal('vchModal'); renderCheckout(); return; }
+    r=await sb.rpc('gl_redeem_reward',{p_barcode:code});
+    if(r.data&&r.data.ok){ PAY.voucher={label:'Reward',value:0,barcode:code,kind:'reward'}; toast('Reward redeemed'); closeModal('vchModal'); renderCheckout(); return; }
+    $('vchStatus').textContent=(r.data&&r.data.error)?r.data.error:'Not found or already used.';
+  }catch(e){ $('vchStatus').textContent='Error: '+e.message; }
+}
+function removeVoucher(){ PAY.voucher=null; renderCheckout(); }
+
+/* ---------- add / search customer (walk-in) ---------- */
+function openCustomer(){
+  $('custTitle').textContent='Find or add customer';
+  $('custBody').innerHTML=`
+    <div class="fld"><label>Search name / phone / plate</label>
+      <input id="custQ" placeholder="Type to search…" oninput="searchCust()" autofocus></div>
+    <div id="custResults"></div>
+    <button class="btn btn-ghost" onclick="newCustomerForm()"><i class="ti ti-user-plus"></i> Add new customer</button>`;
+  $('custModal').classList.add('show');
+}
+let custTimer=null;
+function searchCust(){
+  clearTimeout(custTimer);
+  custTimer=setTimeout(async()=>{
+    const q=$('custQ').value.trim(); if(q.length<2){ $('custResults').innerHTML=''; return; }
+    const like='%'+q+'%';
+    const [w,p]=await Promise.all([
+      sb.from('gl_walkin').select('id,name,phone,plate,model').or(`name.ilike.${like},phone.ilike.${like},plate.ilike.${like}`).limit(6),
+      sb.from('gl_profiles').select('id,name,phone').or(`name.ilike.${like},phone.ilike.${like}`).limit(4),
+    ]);
+    const rows=[];
+    (p.data||[]).forEach(r=>rows.push({src:'app',id:r.id,name:r.name,phone:r.phone,plate:'',model:'',profile:true}));
+    (w.data||[]).forEach(r=>rows.push({src:'walk-in',id:r.id,name:r.name,phone:r.phone,plate:r.plate,model:r.model}));
+    $('custResults').innerHTML=rows.length?rows.map((r,i)=>{
+      window['_c'+i]=r;
+      return `<div class="cust" onclick="pickCust(_c${i})">
+        <div><div class="nm">${esc(titleCase(r.name||'—'))}</div><div class="mt">${esc(r.phone||'')} ${r.plate?'· '+esc(r.plate):''}</div></div>
+        <span class="src">${r.src}</span></div>`;
+    }).join(''):'<div class="status">No match.</div>';
+  },250);
+}
+async function pickCust(r){
+  CUR.name=r.name||''; CUR.phone=r.phone||''; CUR.plate=r.plate||CUR.plate; CUR.model=r.model||CUR.model;
+  CUR.customer_id=r.profile?r.id:null;
+  if(r.profile){
+    const {data}=await sb.from('gl_profiles').select('wallet,points').eq('id',r.id).maybeSingle();
+    if(data){ PAY.hasProfile=true; PAY.custWallet=Number(data.wallet)||0; PAY.custPoints=Number(data.points)||0; }
+  }
+  closeModal('custModal'); renderCheckout();
+}
+function newCustomerForm(){
+  $('custTitle').textContent='Add new customer';
+  $('custBody').innerHTML=`
+    <div class="fld"><label>Name</label><input id="ncName" placeholder="Customer name"></div>
+    <div class="fld"><label>Phone</label><input id="ncPhone" inputmode="tel" placeholder="012-3456789"></div>
+    <div class="fld"><label>Car brand</label>
+      <div class="bgrid" id="ncBrands">${BRANDS.length?BRANDS.map((b,i)=>`
+        <div class="bcell" id="bc${i}" onclick="pickBrand(${i})">
+          ${b.image_url?`<img src="${esc(b.image_url)}" alt="${esc(b.name)}" onerror="this.style.display='none'">`:''}
+          <span class="bn">${esc(b.name)}</span>
+        </div>`).join(''):'<div class="status">No brands loaded.</div>'}</div>
+    </div>
+    <div class="fld" id="ncModelWrap" style="display:none"><label>Model</label><select id="ncModel"></select></div>
+    <div class="fld"><label>Plate</label><input id="ncPlate" placeholder="ABC1234" style="text-transform:uppercase"></div>
+    <button class="btn" onclick="saveNewCustomer()"><i class="ti ti-check"></i> Save customer</button>
+    <div class="status" id="ncStatus"></div>`;
+}
+let NC_BRAND=null;
+async function pickBrand(i){
+  BRANDS.forEach((b,idx)=>{ const el=$('bc'+idx); if(el) el.classList.toggle('sel',idx===i); });
+  NC_BRAND=BRANDS[i];
+  const wrap=$('ncModelWrap'), sel=$('ncModel');
+  sel.innerHTML='<option>Loading…</option>'; wrap.style.display='block';
+  let models=MODELS_CACHE[NC_BRAND.id];
+  if(!models){
+    const {data}=await sb.from('gl_car_models').select('name').eq('brand_id',NC_BRAND.id).order('sort_order',{ascending:true});
+    models=(data||[]).map(m=>m.name); MODELS_CACHE[NC_BRAND.id]=models;
+  }
+  sel.innerHTML='<option value="">— select model —</option>'+models.map(m=>`<option>${esc(m)}</option>`).join('')+'<option value="__other">Other / not listed</option>';
+}
+async function saveNewCustomer(){
+  const name=$('ncName').value.trim(), phone=$('ncPhone').value.trim(), plate=$('ncPlate').value.trim().toUpperCase();
+  const model=($('ncModel')&&$('ncModel').value&&$('ncModel').value!=='__other')?$('ncModel').value:(NC_BRAND?NC_BRAND.name:'');
+  if(!name||!phone){ $('ncStatus').textContent='Name and phone required.'; return; }
+  $('ncStatus').textContent='Saving…';
+  try{
+    const ins={name,phone,plate,model,car_type:NC_BRAND?NC_BRAND.name:''};
+    const {data,error}=await sb.from('gl_walkin').insert(ins).select().maybeSingle();
+    if(error) throw error;
+    CUR.name=name; CUR.phone=phone; CUR.plate=plate; CUR.model=model; CUR.customer_id=null;
+    toast('Customer added'); closeModal('custModal'); renderCheckout();
+  }catch(e){ $('ncStatus').textContent='Error: '+e.message; }
+}
+
+/* ---------- confirm payment ---------- */
+async function confirmPay(){
+  if(!PAY.method) return;
+  $('payBtn').disabled=true; $('payBtn').innerHTML='<i class="ti ti-loader"></i> Processing…';
+  try{
+    if(PAY.walletUsed>0 && PAY.hasProfile && CUR.customer_id){
+      const {error}=await sb.rpc('gl_deduct_wallet',{p_customer:CUR.customer_id,p_amount:PAY.walletUsed});
+      if(error) throw new Error('Wallet: '+error.message);
+    }
+    if(PAY.pointsUsed>0 && PAY.hasProfile && CUR.customer_id){
+      const {error}=await sb.rpc('gl_deduct_points',{p_customer:CUR.customer_id,p_points:PAY.pointsUsed});
+      if(error) throw new Error('Points: '+error.message);
+    }
+    if(PAY.packageUsed && CUR.customer_id && !PAY.voucher){
+      const {data:pk}=await sb.from('gl_packages').select('id,total_uses,used_uses')
+        .eq('owner_id',CUR.customer_id).eq('status','active').limit(1).maybeSingle();
+      if(pk && (pk.total_uses-pk.used_uses)>0){
+        await sb.from('gl_packages').update({used_uses:(pk.used_uses||0)+1}).eq('id',pk.id);
+      }
+    }
+    const {data:invData,error:invErr}=await sb.rpc('gl_next_invoice_no');
+    if(invErr) throw new Error('Invoice: '+invErr.message);
+    const invoice=invData;
+    const net=netDue();
+    const {error:payErr}=await sb.from('gl_payments').insert({
+      job_id:String(CUR.id), invoice_no:invoice, customer_id:CUR.customer_id||null,
+      customer_name:CUR.name||'', phone:CUR.hp||CUR.phone||'', plate:CUR.plate||'',
+      gross:PAY.gross, discount:PAY.discount, discount_by:PAY.discountBy||null,
+      deposit_used:PAY.depositUsed, package_used:PAY.packageUsed,
+      wallet_used:PAY.walletUsed, points_used:PAY.pointsUsed, points_value:PAY.pointsUsed*POINTS_RATE,
+      voucher_code:PAY.voucher?PAY.voucher.barcode:null, voucher_value:PAY.voucher?Number(PAY.voucher.value||0):0,
+      net_paid:net, method:PAY.method, taken_by:ME
+    });
+    if(payErr) throw new Error('Payment: '+payErr.message);
+    if(!CUR._walkin){
+      await sb.from('gl_jobs').update({status:'paid', payment:PAY.method, collected:true, total:PAY.gross, on_hold:false}).eq('id',CUR.id);
+      JOBS=JOBS.filter(j=>j.id!==CUR.id);
+    }
+    showDone(invoice, net);
+    loadTakings();
+  }catch(e){
+    alert('Could not complete: '+e.message);
+    $('payBtn').disabled=false; $('payBtn').innerHTML='<i class="ti ti-check"></i> Confirm payment';
+  }
+}
+
+/* ---------- mark unpaid (workshop credit) ---------- */
+async function markUnpaid(){
+  if(CUR._walkin){ alert('Walk-in sales can\u2019t be marked unpaid \u2014 use Confirm payment.'); return; }
+  if(!confirm('Mark this job DONE but UNPAID?\nIt leaves the board and is recorded as owing (workshop credit).')) return;
+  $('unpaidBtn').disabled=true; $('unpaidBtn').innerHTML='<i class="ti ti-loader"></i> Saving…';
+  try{
+    const {data:invData,error:invErr}=await sb.rpc('gl_next_invoice_no');
+    if(invErr) throw new Error('Invoice: '+invErr.message);
+    const invoice=invData;
+    const amount=PAY.gross - PAY.depositUsed; // still owed after any deposit
+    // record the outstanding amount
+    const {error:upErr}=await sb.from('gl_unpaid').insert({
+      job_id:String(CUR.id), invoice_no:invoice, customer_id:CUR.customer_id||null,
+      customer_name:CUR.name||'', phone:CUR.hp||CUR.phone||'', plate:CUR.plate||'',
+      workshop_name:CUR.workshop_name||'', amount_owed:Math.max(0,amount),
+      gross:PAY.gross, deposit_used:PAY.depositUsed, marked_by:ME
+    });
+    if(upErr) throw new Error('Unpaid record: '+upErr.message);
+    // job: done + off board, status 'unpaid' (not paid -> not in takings)
+    await sb.from('gl_jobs').update({status:'unpaid', collected:false, total:PAY.gross}).eq('id',CUR.id);
+    JOBS=JOBS.filter(j=>j.id!==CUR.id);
+    showUnpaidDone(invoice, Math.max(0,amount));
+  }catch(e){
+    alert('Could not mark unpaid: '+e.message);
+    $('unpaidBtn').disabled=false; $('unpaidBtn').innerHTML='<i class="ti ti-clock-dollar"></i> Mark unpaid';
+  }
+}
+function showUnpaidDone(invoice, owed){
+  $('coBody').innerHTML=`
+    <div class="done">
+      <div class="tick">🧾</div>
+      <h3 style="font-size:18px;font-weight:900">Marked unpaid</h3>
+      <div class="inv-big">${esc(invoice)}</div>
+      <div class="co-sub" style="text-align:center;margin-bottom:14px">Outstanding ${RM(owed)} · workshop credit<br>Removed from board, added to statement.</div>
+      <button class="btn" onclick="clearCheckout()"><i class="ti ti-check"></i> Done</button>
+    </div>`;
+}
+
+/* ---------- on-hold (park order, finish/pay later) ---------- */
+async function holdOrder(){
+  if(CUR._walkin){ alert('Start the walk-in as a job first, or just take payment.'); return; }
+  if(!confirm('Put this order ON HOLD?\nIt stays on the board (work continues) and moves to the On-hold tab. Pay it when the job is done.')) return;
+  try{
+    await sb.from('gl_jobs').update({on_hold:true}).eq('id',CUR.id);
+    toast('Order on hold');
+    clearCheckout();
+    loadJobs();
+  }catch(e){ alert('Could not hold: '+e.message); }
+}
+async function resumeHold(){
+  try{
+    await sb.from('gl_jobs').update({on_hold:false}).eq('id',CUR.id);
+    CUR.on_hold=false;
+    toast('Hold removed');
+    loadJobs();
+    renderCheckout();
+  }catch(e){ alert('Could not resume: '+e.message); }
+}
+
+function showDone(invoice, net){
+  const phone=(CUR.hp||CUR.phone||'').replace(/[^\d]/g,'');
+  const receipt=buildReceipt(invoice, net);
+  $('coBody').innerHTML=`
+    <div class="done">
+      <div class="tick">✅</div>
+      <h3 style="font-size:18px;font-weight:900">Payment recorded</h3>
+      <div class="inv-big">${esc(invoice)}</div>
+      <div class="co-sub" style="text-align:center;margin-bottom:14px">${RM(net)} · ${esc(METHODS.find(m=>m.k===PAY.method)?.label||PAY.method)}</div>
+      ${phone?`<a class="btn btn-wa" href="https://wa.me/${phone}?text=${encodeURIComponent(receipt)}" target="_blank" rel="noopener"><i class="ti ti-brand-whatsapp"></i> Send receipt on WhatsApp</a>`:''}
+      <button class="btn" style="margin-top:10px" onclick="clearCheckout()"><i class="ti ti-check"></i> Done</button>
+    </div>`;
+}
+function buildReceipt(invoice, net){
+  const lines=jobServices(CUR).map(s=>`• ${svcDesc(s)} — ${RM(svcPrice(s))}`).join('\n')||`• ${RM(PAY.gross)}`;
+  let r=`*GRANDLAB DETAILING*\nReceipt ${invoice}\n${new Date().toLocaleString('en-GB')}\n\n`;
+  r+=`Vehicle: ${titleCase(CUR.model||'')} ${CUR.plate||''}\n\n${lines}\n\nSubtotal: ${RM(PAY.gross)}`;
+  if(PAY.discount>0) r+=`\nDiscount: −${RM(PAY.discount)}`;
+  if(PAY.voucher&&PAY.voucher.value>0) r+=`\nVoucher: −${RM(PAY.voucher.value)}`;
+  if(PAY.depositUsed>0) r+=`\nDeposit: −${RM(PAY.depositUsed)}`;
+  if(PAY.walletUsed>0) r+=`\nApp credit: −${RM(PAY.walletUsed)}`;
+  if(PAY.pointsUsed>0) r+=`\nPoints (${PAY.pointsUsed}): −${RM(PAY.pointsUsed*POINTS_RATE)}`;
+  r+=`\n*Paid: ${RM(net)}* (${METHODS.find(m=>m.k===PAY.method)?.label||PAY.method})\n\nThank you! 🚗✨`;
+  return r;
+}
+
+boot();
+</script>
+</body>
+</html>
