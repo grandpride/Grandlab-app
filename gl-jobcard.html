@@ -728,6 +728,8 @@ async function _doPlateLookup(){
     const {data:wk}=await sb.from('gl_walkin').select('*').ilike('plate',plate).limit(1).maybeSingle();
     if(wk) fillFromWalkin_(wk);
   }
+  // packages are keyed by plate now — load them regardless of member/walk-in
+  await loadCustPackages();
 }
 function onCarSel(){
   const v=$('f_carsel').value;
@@ -736,11 +738,15 @@ function onCarSel(){
   if(c){ $('f_model').value=[c.make,c.model].filter(Boolean).join(' '); $('f_plate').value=c.plate||''; loadCustPackages(); }
 }
 async function loadCustPackages(){
-  if(!foundProfile){ $('pkgChips').innerHTML=''; return; }
   const plate=($('f_plate').value||'').trim().toUpperCase();
-  const {data}=await sb.from('gl_packages').select('*').eq('owner_id',foundProfile.id).eq('status','active');
+  const owner=foundProfile?foundProfile.id:null;
+  if(!plate && !owner){ $('pkgChips').innerHTML=''; CAR_PACKAGES=[]; return; }
+  let q=sb.from('gl_packages').select('*').eq('status','active');
+  if(plate && owner) q=q.or(`vehicle_label.ilike.${plate},owner_id.eq.${owner}`);
+  else if(plate) q=q.ilike('vehicle_label',plate);
+  else q=q.eq('owner_id',owner);
+  const {data}=await q;
   let pk=(data||[]).map(p=>({...p,remaining:(p.total_uses||0)-(p.used_uses||0)})).filter(p=>p.remaining>0);
-  if(plate) pk=pk.filter(p=>!p.vehicle_label || p.vehicle_label===plate); // match this car if labelled
   CAR_PACKAGES=pk;
   if(!CAR_PACKAGES.length){ $('pkgChips').innerHTML=''; return; }
   $('pkgChips').innerHTML=CAR_PACKAGES.map((p,i)=>`<div class="chip" onclick="usePkg('${p.id}')">🎟️ ${esc(p.service_name)} · ${p.remaining} left</div>`).join('');

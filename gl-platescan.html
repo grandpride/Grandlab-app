@@ -176,7 +176,9 @@ html,body{height:100%;background:var(--bg);font-family:-apple-system,BlinkMacSys
     </div>
 
     <div class="sec-h">Package / Maintenance Balance</div>
+    <div id="ePkgList"></div>
     <div id="ePkgHint" style="display:none;font-size:12px;background:#2a2a1a;border:1px solid #4a4020;border-radius:8px;padding:8px 10px;margin-bottom:8px;color:#e8d98a"></div>
+    <div style="font-size:12px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;margin:6px 0 8px">Add a balance</div>
     <div class="fld"><label>Package (from services)</label>
       <select id="ePkgName" onchange="onPkgChange()"><option value="">— none —</option></select>
     </div>
@@ -363,8 +365,8 @@ async function openEdit(isNew){
   $('ePkgName').value='';
   $('ePkgTotal').value='';
   $('ePkgUsed').value='';
-  // if this car already has an imported/free-text balance, show it as a read-only hint
-  showExistingPkgHint(CUR.pkg_name, CUR.pkg_total, CUR.pkg_used);
+  // show current balances for this car (with delete), from all sources
+  EXIST_PKGS=[]; renderExistingPkgs(); loadExistingPkgs();
   // car picker: show manual model field with existing value; brand resets to prompt
   if(!BRANDS.length) loadBrands();
   else { const sel=$('eBrand'); if(sel) sel.innerHTML='<option value="">— select brand —</option>'+BRANDS.map(b=>`<option value="${b.id}">${esc(b.name)}</option>`).join('')+'<option value="__other">Other / not listed</option>'; loadCarTypes(); }
@@ -455,17 +457,29 @@ async function saveProfile(){
     if(error){ $('saveMsg').textContent='Profile saved, but history failed: '+error.message; return; }
   }
 
-  // 3) if a package was chosen, record it as a pending package (walk-in),
-  //    matching the admin pattern. Claimed into gl_packages when they sign up.
-  //    Only create if there's a real balance and we have phone+plate.
-  if(pkg_name && pkg_total>0 && phone && plate){
+  // 3) if a package was chosen, save it as the UNIFIED balance in gl_packages
+  //    (keyed by plate via vehicle_label, plus owner_id if this car has an app member).
+  //    This is what job card / booking / POS all read. Also mirror to gl_pending
+  //    so it auto-links if/when the customer signs up.
+  if(pkg_name && pkg_total>0 && plate){
     const remaining = Math.max(0, pkg_total - pkg_used);
-    // avoid duplicate: check an unclaimed pending for same phone+plate+service
-    const {data:exist}=await sb.from('gl_pending')
-      .select('id').eq('phone',phone).eq('plate',plate).eq('service_name',pkg_name).eq('claimed',false).limit(1).maybeSingle();
-    const body={ phone, name, plate, service_name:pkg_name, remaining, is_coating:pkgIsCoat, source:'platescan', claimed:false };
-    if(exist){ await sb.from('gl_pending').update(body).eq('id',exist.id); }
-    else { await sb.from('gl_pending').insert(body); }
+    const ownerId=(CUR&&CUR.ownerId)||null;
+    // gl_packages: update existing same-service on this plate, else insert
+    const {data:exPk}=await sb.from('gl_packages')
+      .select('id').ilike('vehicle_label',plate).eq('service_name',pkg_name).eq('status','active').limit(1).maybeSingle();
+    const pkgBody={ owner_id:ownerId, vehicle_id:null, vehicle_label:plate,
+      service_name:pkg_name, pkg_type: pkgIsCoat?'coating_maintenance':'package',
+      total_uses:pkg_total, used_uses:pkg_used, status:'active', source:'platescan' };
+    if(exPk){ await sb.from('gl_packages').update(pkgBody).eq('id',exPk.id); }
+    else { await sb.from('gl_packages').insert(pkgBody); }
+    // mirror to gl_pending (for signup auto-claim) when we have a phone
+    if(phone){
+      const {data:exPend}=await sb.from('gl_pending')
+        .select('id').eq('phone',phone).eq('plate',plate).eq('service_name',pkg_name).eq('claimed',false).limit(1).maybeSingle();
+      const pendBody={ phone, name, plate, service_name:pkg_name, remaining, is_coating:pkgIsCoat, source:'platescan', claimed:false };
+      if(exPend){ await sb.from('gl_pending').update(pendBody).eq('id',exPend.id); }
+      else { await sb.from('gl_pending').insert(pendBody); }
+    }
   }
 
   $('saveMsg').textContent='✓ Saved.';
@@ -523,6 +537,61 @@ function showExistingPkgHint(name,total,used){
     el.innerHTML='📦 Existing balance on this car: <b>'+esc(name)+(total?` — ${bal} left`:'')+'</b><br><span style="opacity:.8">Pick a clean package below to update, or leave as-is.</span>';
     el.style.display='block';
   } else { el.style.display='none'; }
+}
+
+/* ---- existing balances (from gl_packages, gl_walkin, gl_pending) with delete ---- */
+let EXIST_PKGS=[];
+async function loadExistingPkgs(){
+  EXIST_PKGS=[];
+  const plate=(CUR&&CUR.plate||'').trim().toUpperCase();
+  const owner=(CUR&&CUR.ownerId)||null;
+  if(!plate && !owner){ renderExistingPkgs(); return; }
+  // 1) gl_packages (the unified table) — by plate or owner
+  try{
+    let q=sb.from('gl_packages').select('id,service_name,total_uses,used_uses,vehicle_label,owner_id,status').eq('status','active');
+    if(plate && owner) q=q.or(`vehicle_label.ilike.${plate},owner_id.eq.${owner}`);
+    else if(plate) q=q.ilike('vehicle_label',plate);
+    else q=q.eq('owner_id',owner);
+    const {data}=await q;
+    (data||[]).forEach(p=>{ const bal=(p.total_uses||0)-(p.used_uses||0);
+      EXIST_PKGS.push({src:'gl_packages',id:p.id,name:p.service_name,bal,raw:p}); });
+  }catch(e){}
+  // 2) gl_walkin simple pkg fields
+  try{
+    if(CUR&&CUR.walkinId){
+      const {data}=await sb.from('gl_walkin').select('id,pkg_name,pkg_total,pkg_used').eq('id',CUR.walkinId).maybeSingle();
+      if(data&&data.pkg_name){ const bal=(data.pkg_total||0)-(data.pkg_used||0);
+        EXIST_PKGS.push({src:'gl_walkin',id:data.id,name:data.pkg_name,bal,raw:data}); }
+    }
+  }catch(e){}
+  // 3) gl_pending (unclaimed)
+  try{
+    if(plate){
+      const {data}=await sb.from('gl_pending').select('id,service_name,remaining,claimed,plate').ilike('plate',plate).eq('claimed',false);
+      (data||[]).forEach(p=>EXIST_PKGS.push({src:'gl_pending',id:p.id,name:p.service_name,bal:p.remaining,raw:p}));
+    }
+  }catch(e){}
+  renderExistingPkgs();
+}
+function renderExistingPkgs(){
+  const box=$('ePkgList'); if(!box) return;
+  if(!EXIST_PKGS.length){ box.innerHTML='<div style="font-size:12px;color:var(--text2);margin-bottom:8px">No balances on this car yet.</div>'; return; }
+  box.innerHTML='<div style="font-size:12px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;margin:4px 0 6px">Current balances</div>'+
+    EXIST_PKGS.map((p,i)=>`<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;background:var(--card2,#1c1c1c);border:1px solid var(--line,#333);border-radius:9px;padding:8px 10px;margin-bottom:6px">
+      <span style="font-size:13px">${esc(p.name||'Package')} <b style="color:var(--gold,#f5c518)">· ${p.bal} left</b> <span style="font-size:10px;color:var(--text2);opacity:.7">(${p.src.replace('gl_','')})</span></span>
+      <button onclick="delExistPkg(${i})" style="background:#3a1a1a;color:#ff6b5a;border:1px solid #5a2a2a;border-radius:7px;padding:5px 9px;font-size:12px;cursor:pointer"><i class="ti ti-trash"></i></button>
+    </div>`).join('');
+}
+async function delExistPkg(i){
+  const p=EXIST_PKGS[i]; if(!p) return;
+  if(!confirm('Delete this balance?\n'+(p.name||'')+' ('+p.bal+' left)\nThis removes it so you can add a fresh one.')) return;
+  try{
+    if(p.src==='gl_packages'){ await sb.from('gl_packages').delete().eq('id',p.id); }
+    else if(p.src==='gl_pending'){ await sb.from('gl_pending').delete().eq('id',p.id); }
+    else if(p.src==='gl_walkin'){ await sb.from('gl_walkin').update({pkg_name:null,pkg_total:0,pkg_used:0}).eq('id',p.id); if(CUR){CUR.pkg_name='';CUR.pkg_total=0;CUR.pkg_used=0;} }
+    EXIST_PKGS.splice(i,1); renderExistingPkgs();
+    showExistingPkgHint('','',''); // clear the hint too
+  }catch(e){ alert('Delete failed: '+(e.message||e)); }
 }
 async function loadCarTypes(){
   if(CAR_TYPES.length){ fillTypeSelect(); return; }

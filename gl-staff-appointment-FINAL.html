@@ -404,13 +404,15 @@ async function autoBalance(plate){
   $('bal').value='';$('balHint').textContent='';
   CAR_PACKAGES=[];
   renderPkgChips();
-  if(!connected || !foundProfile || !plate) return;
+  if(!connected || !plate) return;
   try{
-    const {data}=await sb.from('gl_packages')
-      .select('id,total_uses,used_uses,service_name,status,vehicle_label,pkg_type')
-      .eq('owner_id', foundProfile.id)
-      .eq('vehicle_label', plate)
+    const owner=foundProfile?foundProfile.id:null;
+    let q=sb.from('gl_packages')
+      .select('id,total_uses,used_uses,service_name,status,vehicle_label,pkg_type,owner_id')
       .eq('status','active');
+    if(plate && owner) q=q.or(`vehicle_label.ilike.${plate},owner_id.eq.${owner}`);
+    else q=q.ilike('vehicle_label',plate);
+    const {data}=await q;
     CAR_PACKAGES = (data||[]).map(p=>({...p, remaining:(p.total_uses||0)-(p.used_uses||0)}))
                               .filter(p=>p.remaining>0);
     renderPkgChips();
@@ -485,7 +487,7 @@ $('plate').addEventListener('input',()=>{
       // not in profiles — check gl_walkin by plate
       const {data:wk}=await sb.from('gl_walkin').select('*').ilike('plate',plate).limit(1).maybeSingle();
       if(wk){ fillFromWalkin_(wk); }
-      else autoBalance(plate); // no customer match — still try balance
+      autoBalance(plate); // packages keyed by plate — always try
     }
   },500);
 });
