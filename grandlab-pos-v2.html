@@ -517,8 +517,8 @@ async function startCheckout(job, gross){
         walletUsed:0, pointsUsed:0, voucher:null, method:null, quick:null,
         custWallet:0, custPoints:0, hasProfile:false };
   if(job.customer_id){
-    const {data}=await sb.from('gl_profiles').select('wallet,points').eq('id',job.customer_id).maybeSingle();
-    if(data){ PAY.hasProfile=true; PAY.custWallet=Number(data.wallet)||0; PAY.custPoints=Number(data.points)||0; }
+    const {data}=await sb.from('gl_profiles').select('wallet,points,sqlacc_code').eq('id',job.customer_id).maybeSingle();
+    if(data){ PAY.hasProfile=true; PAY.custWallet=Number(data.wallet)||0; PAY.custPoints=Number(data.points)||0; if(data.sqlacc_code) CUR.sqlacc_code=data.sqlacc_code; }
   }
   // find SQL Account code from gl_walkin by phone or plate (for export)
   if(!CUR.sqlacc_code){
@@ -749,8 +749,8 @@ async function pickCust(r){
   CUR.customer_id=r.profile?r.id:null;
   CUR.sqlacc_code=r.sqlacc_code||'';
   if(r.profile){
-    const {data}=await sb.from('gl_profiles').select('wallet,points').eq('id',r.id).maybeSingle();
-    if(data){ PAY.hasProfile=true; PAY.custWallet=Number(data.wallet)||0; PAY.custPoints=Number(data.points)||0; }
+    const {data}=await sb.from('gl_profiles').select('wallet,points,sqlacc_code').eq('id',r.id).maybeSingle();
+    if(data){ PAY.hasProfile=true; PAY.custWallet=Number(data.wallet)||0; PAY.custPoints=Number(data.points)||0; if(data.sqlacc_code) CUR.sqlacc_code=data.sqlacc_code; }
   }
   closeModal('custModal'); renderCheckout();
 }
