@@ -151,6 +151,11 @@ button,input{font-family:inherit}
 /* catalogue picker grid */
 .cat-search{width:100%;padding:11px 12px;border:1px solid var(--line2);border-radius:10px;font-family:inherit;font-size:14px;outline:none;margin-bottom:12px}
 .cat-search:focus{border-color:var(--gold)}
+.cat-tabs{display:flex;gap:7px;overflow-x:auto;padding-bottom:4px;margin-bottom:6px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.cat-tabs::-webkit-scrollbar{display:none}
+.cat-tab{flex:0 0 auto;padding:7px 13px;border:1px solid var(--line2);border-radius:20px;background:var(--surface);font-family:inherit;font-size:12px;font-weight:700;color:var(--ink3);cursor:pointer;white-space:nowrap;transition:.12s}
+.cat-tab:active{transform:scale(.96)}
+.cat-tab.on{background:var(--gold);border-color:var(--gold);color:#080808}
 .cat-sec{font-size:12px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--gold-deep);margin:14px 0 8px}
 .cat-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:9px}
 .cat-card{background:var(--surface);border:1px solid var(--line2);border-radius:12px;overflow:hidden;cursor:pointer;display:flex;flex-direction:column;transition:.12s}
@@ -352,6 +357,7 @@ button,input{font-family:inherit}
     <div class="dialog-h"><h3>Add service / product</h3><button class="closex" onclick="closeModal('catModal')">×</button></div>
     <div class="dialog-b">
       <input class="cat-search" id="catSearch" placeholder="Search…" oninput="renderCat()" autocomplete="off">
+      <div id="catTabs" class="cat-tabs"></div>
       <div id="catContent"></div>
       <div class="cat-custom">
         <div class="cat-sec" style="margin-top:0">Custom item</div>
@@ -781,15 +787,29 @@ async function loadCatalog(){
 async function addItem(){
   await loadCatalog();
   $('catSearch').value='';
+  CAT_TAB='__all';
+  renderCatTabs();
   renderCat();
   $('catModal').classList.add('show');
   setTimeout(()=>$('catSearch').focus(),50);
 }
+let CAT_TAB='__all';
+function renderCatTabs(){
+  const cats=[];
+  CATALOG.forEach(s=>{ const c=(s.category||'').trim(); if(c&&cats.indexOf(c)<0) cats.push(c); });
+  cats.sort((a,b)=>a.localeCompare(b));
+  const tabs=[{k:'__all',label:'All'},...cats.map(c=>({k:c,label:c}))];
+  $('catTabs').innerHTML=tabs.map(t=>
+    `<button class="cat-tab${CAT_TAB===t.k?' on':''}" onclick="setCatTab('${esc(t.k).replace(/'/g,"\\'")}')">${esc(t.label)}</button>`
+  ).join('');
+}
+function setCatTab(k){ CAT_TAB=k; renderCatTabs(); renderCat(); }
 function catImg(s){ const m=Array.isArray(s.media)?s.media.find(x=>typeof x==='string'||x&&x.url):null; return typeof m==='string'?m:(m&&m.url)||''; }
 function catPrice(s){ return Number(s.base_price)||0; }
 function renderCat(){
   const q=($('catSearch').value||'').toLowerCase().trim();
-  const match=s=>!q||(s.name||'').toLowerCase().includes(q)||(s.category||'').toLowerCase().includes(q);
+  const inTab=s=>CAT_TAB==='__all'||((s.category||'').trim()===CAT_TAB);
+  const match=s=>inTab(s)&&(!q||(s.name||'').toLowerCase().includes(q)||(s.category||'').toLowerCase().includes(q));
   const products=CATALOG.filter(s=>s.rebate_kind==='product'&&match(s));
   const services=CATALOG.filter(s=>s.rebate_kind!=='product'&&match(s));
   window._catMap=[...services,...products];
@@ -904,11 +924,41 @@ function searchCust(){
     const rows=[];
     (p.data||[]).forEach(r=>rows.push({src:'app',id:r.id,name:r.name,phone:r.phone,plate:'',model:'',profile:true}));
     (w.data||[]).forEach(r=>rows.push({src:'walk-in',id:r.id,name:r.name,phone:r.phone,plate:r.plate,model:r.model,sqlacc_code:r.sqlacc_code||''}));
-    $('custResults').innerHTML=rows.length?rows.map((r,i)=>{
+    // merge rows sharing the same phone into one card
+    const normPh=s=>String(s||'').replace(/\D/g,'').replace(/^0*/,'');
+    const groups=[], gmap={};
+    rows.forEach(r=>{
+      const k=normPh(r.phone)||('__'+(r.id||Math.random()));
+      let g=gmap[k];
+      if(!g){ g={key:k,rows:[],apps:0,walkins:0,plates:[],app:null,walk:null,phone:r.phone}; gmap[k]=g; groups.push(g); }
+      g.rows.push(r);
+      if(r.profile){ g.apps++; if(!g.app) g.app=r; }
+      else { g.walkins++; if(!g.walk) g.walk=r; }
+      if(r.plate && g.plates.indexOf(r.plate)<0) g.plates.push(r.plate);
+      if(!g.phone && r.phone) g.phone=r.phone;
+    });
+    // build one selectable customer per group: attach to APP profile if present, else first walk-in
+    const merged=groups.map(g=>{
+      const base=g.app||g.walk||g.rows[0];
+      // name: prefer APP name, else longest name in the group
+      let name=g.app?g.app.name:'';
+      if(!name){ name=g.rows.reduce((best,r)=>((r.name||'').length>(best||'').length?r.name:best),''); }
+      const badges=[]; if(g.apps) badges.push('app'); if(g.walkins) badges.push('walk-in');
+      return {
+        id:base.id, profile:!!g.app, name:name||base.name,
+        phone:g.phone||base.phone,
+        plate:(g.plates[0]||base.plate||''), model:base.model||'',
+        sqlacc_code:(g.walk&&g.walk.sqlacc_code)||base.sqlacc_code||'',
+        _plates:g.plates, _badges:badges
+      };
+    });
+    $('custResults').innerHTML=merged.length?merged.map((r,i)=>{
       window['_c'+i]=r;
+      const plateLine=r._plates.length?r._plates.map(esc).join(' · '):'';
+      const badgeHtml=r._badges.map(b=>`<span class="src">${b}</span>`).join('');
       return `<div class="cust" onclick="pickCust(_c${i})">
-        <div><div class="nm">${esc(titleCase(r.name||'—'))}</div><div class="mt">${esc(r.phone||'')} ${r.plate?'· '+esc(r.plate):''}</div></div>
-        <span class="src">${r.src}</span></div>`;
+        <div><div class="nm">${esc(titleCase(r.name||'—'))}</div><div class="mt">${esc(r.phone||'')}${plateLine?' · '+plateLine:''}</div></div>
+        <div style="display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end">${badgeHtml}</div></div>`;
     }).join(''):'<div class="status">No match.</div>';
   },250);
 }
