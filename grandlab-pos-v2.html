@@ -120,6 +120,14 @@ button,input{font-family:inherit}
 .method:active{transform:scale(.97)}
 .method.dis{opacity:.34;pointer-events:none}
 .method .mi{font-size:19px;display:block;margin-bottom:4px}
+.splitbox{background:var(--surface);border:1px solid var(--line2);border-radius:12px;padding:12px;margin-top:10px;display:flex;flex-direction:column;gap:9px}
+.split-row{display:flex;gap:9px}
+.split-sel{flex:1.2;background:#fff;border:1px solid var(--line2);border-radius:9px;padding:10px;font-family:inherit;font-size:13px;font-weight:600;outline:none}
+.split-sel:focus{border-color:var(--gold)}
+.split-amt{flex:1;background:#fff;border:1px solid var(--line2);border-radius:9px;padding:10px;font-family:inherit;font-size:14px;font-weight:700;text-align:right;outline:none}
+.split-amt:focus{border-color:var(--gold)}
+.split-amt:disabled{background:var(--surface2);color:var(--ink2)}
+.split-note{font-size:12px;font-weight:600;text-align:center;min-height:16px}
 
 .totals{background:var(--surface2);border:1px solid var(--line);border-radius:13px;padding:14px;margin-top:14px}
 .totals .row{display:flex;justify-content:space-between;font-size:14px;padding:4px 0}
@@ -459,6 +467,25 @@ const METHODS=[
   {k:'app_points',label:'App Points',icon:'star'},
 ];
 
+// methods available inside a split (real tender types only)
+const SPLIT_METHODS=[
+  {k:'cash',label:'Cash'},{k:'credit_card',label:'Credit'},{k:'debit_card',label:'Debit'},
+  {k:'cc_installment',label:'CC Install'},{k:'tng',label:'TnG'},{k:'mae',label:'MAE'},
+  {k:'grabpay',label:'GrabPay'},{k:'shopeepay',label:'ShopeePay'},{k:'atome',label:'Atome'},
+];
+// nice label for the current payment method (expands split into its breakdown)
+function methodDisplay(){
+  if(PAY.method==='split'){
+    const due=netDue();
+    const a1=Math.round((Number(PAY.split1Amt)||0)*100)/100;
+    const a2=Math.round((due-a1)*100)/100;
+    const l1=(SPLIT_METHODS.find(m=>m.k===PAY.split1Method)||{}).label||PAY.split1Method;
+    const l2=(SPLIT_METHODS.find(m=>m.k===PAY.split2Method)||{}).label||PAY.split2Method;
+    return l1+' '+RM(a1)+' + '+l2+' '+RM(a2);
+  }
+  return (METHODS.find(m=>m.k===PAY.method)||{}).label||PAY.method;
+}
+
 /* ---------- helpers ---------- */
 const RM=n=>'RM'+(Math.round((Number(n)||0)*100)/100).toLocaleString('en-MY',{minimumFractionDigits:2,maximumFractionDigits:2});
 function esc(s){ return (s||'').toString().replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
@@ -581,7 +608,8 @@ async function startCheckout(job, gross){
   PAY={ gross, discount:0, discountOk:false, discountBy:null, _pendingDisc:0,
         depositUsed:Number(job.dep_amt)||0, packageUsed:false,
         walletUsed:0, pointsUsed:0, voucher:null, method:null, quick:null,
-        custWallet:0, custPoints:0, hasProfile:false, pkgList:[], pkgUse:null };
+        custWallet:0, custPoints:0, hasProfile:false, pkgList:[], pkgUse:null,
+        split1Method:null, split2Method:null, split1Amt:0 };
   if(job.customer_id){
     const {data}=await sb.from('gl_profiles').select('wallet,points,sqlacc_code').eq('id',job.customer_id).maybeSingle();
     if(data){ PAY.hasProfile=true; PAY.custWallet=Number(data.wallet)||0; PAY.custPoints=Number(data.points)||0; if(data.sqlacc_code) CUR.sqlacc_code=data.sqlacc_code; }
@@ -703,7 +731,25 @@ function renderCheckout(){
         const dis=(m.k==='app_credit'&&(!PAY.hasProfile||PAY.custWallet<=0))||(m.k==='app_points'&&(!PAY.hasProfile||PAY.custPoints<=0));
         return `<div class="method ${PAY.method===m.k?'sel':''} ${dis?'dis':''}" onclick="pickMethod('${m.k}')"><span class="mi"><i class="ti ti-${m.icon}"></i></span>${m.label}</div>`;
       }).join('')}
+      <div class="method ${PAY.method==='split'?'sel':''}" onclick="pickMethod('split')"><span class="mi"><i class="ti ti-arrows-split-2"></i></span>Split</div>
     </div>
+
+    ${PAY.method==='split'?`
+    <div class="splitbox">
+      <div class="split-row">
+        <select id="split1Method" class="split-sel" onchange="onSplitChange()">
+          ${SPLIT_METHODS.map(m=>`<option value="${m.k}" ${PAY.split1Method===m.k?'selected':''}>${m.label}</option>`).join('')}
+        </select>
+        <input id="split1Amt" class="split-amt" type="number" inputmode="decimal" value="${PAY.split1Amt||''}" placeholder="0.00" oninput="onSplitChange()">
+      </div>
+      <div class="split-row">
+        <select id="split2Method" class="split-sel" onchange="onSplitChange()">
+          ${SPLIT_METHODS.map(m=>`<option value="${m.k}" ${PAY.split2Method===m.k?'selected':''}>${m.label}</option>`).join('')}
+        </select>
+        <input class="split-amt" type="number" value="${(Math.round((due-(Number(PAY.split1Amt)||0))*100)/100).toFixed(2)}" disabled>
+      </div>
+      <div class="split-note" id="splitNote"></div>
+    </div>`:''}
 
     <div class="totals">
       <div class="row"><span>Subtotal</span><span>${RM(PAY.gross)}</span></div>
@@ -768,10 +814,33 @@ function onPoints(){
 }
 function pickQuick(v){ PAY.quick=v; renderCheckout(); }
 function pickMethod(k){
+  if(k==='split'){
+    PAY.method='split';
+    if(!PAY.split1Method){ PAY.split1Method='cash'; PAY.split2Method='tng'; }
+    renderCheckout();
+    setTimeout(()=>{ if($('split1Method')) onSplitChange(); },30);
+    return;
+  }
   const m=METHODS.find(x=>x.k===k);
   if(m.k==='app_credit'&&(!PAY.hasProfile||PAY.custWallet<=0))return;
   if(m.k==='app_points'&&(!PAY.hasProfile||PAY.custPoints<=0))return;
   PAY.method=k; renderCheckout();
+}
+function onSplitChange(){
+  PAY.split1Method=$('split1Method').value;
+  PAY.split2Method=$('split2Method').value;
+  const raw=parseFloat($('split1Amt').value);
+  PAY.split1Amt=isNaN(raw)?0:Math.max(0,Math.round(raw*100)/100);
+  const due=netDue();
+  const rem=Math.round((due-PAY.split1Amt)*100)/100;
+  // update the disabled second-amount box + note without a full re-render (keeps focus)
+  const box=document.querySelectorAll('.split-amt')[1]; if(box) box.value=rem.toFixed(2);
+  const note=$('splitNote');
+  if(note){
+    if(PAY.split1Method===PAY.split2Method){ note.textContent='Pick two different methods.'; note.style.color='#c00'; }
+    else if(PAY.split1Amt<=0||rem<0){ note.textContent='First amount must be between 0 and the balance.'; note.style.color='#c00'; }
+    else { note.textContent=SPLIT_METHODS.find(m=>m.k===PAY.split1Method).label+' '+RM(PAY.split1Amt)+' + '+SPLIT_METHODS.find(m=>m.k===PAY.split2Method).label+' '+RM(rem); note.style.color='var(--ink3)'; }
+  }
 }
 
 /* ---------- walk-in: add item ---------- */
@@ -1036,6 +1105,18 @@ async function saveNewCustomer(){
 /* ---------- confirm payment ---------- */
 async function confirmPay(){
   if(!PAY.method) return;
+  // resolve the method label to store (handles split)
+  let methodLabel=PAY.method;
+  if(PAY.method==='split'){
+    const due=netDue();
+    const a1=Math.round((Number(PAY.split1Amt)||0)*100)/100;
+    const a2=Math.round((due-a1)*100)/100;
+    if(PAY.split1Method===PAY.split2Method){ alert('Split needs two different payment methods.'); return; }
+    if(a1<=0 || a2<0){ alert('First split amount must be between 0 and the balance ('+RM(due)+').'); return; }
+    const l1=SPLIT_METHODS.find(m=>m.k===PAY.split1Method).label;
+    const l2=SPLIT_METHODS.find(m=>m.k===PAY.split2Method).label;
+    methodLabel=l1+' '+RM(a1)+' + '+l2+' '+RM(a2);
+  }
   $('payBtn').disabled=true; $('payBtn').innerHTML='<i class="ti ti-loader"></i> Processing…';
   try{
     if(PAY.walletUsed>0 && PAY.hasProfile && CUR.customer_id){
@@ -1070,13 +1151,13 @@ async function confirmPay(){
       deposit_used:PAY.depositUsed, package_used:PAY.packageUsed,
       wallet_used:PAY.walletUsed, points_used:PAY.pointsUsed, points_value:PAY.pointsUsed*POINTS_RATE,
       voucher_code:PAY.voucher?PAY.voucher.barcode:null, voucher_value:PAY.voucher?Number(PAY.voucher.value||0):0,
-      net_paid:net, method:PAY.method, taken_by:ME,
+      net_paid:net, method:methodLabel, taken_by:ME,
       sqlacc_code:CUR.sqlacc_code||null,
       items:JSON.stringify(jobServices(CUR).map(s=>({desc:svcDesc(s),price:svcPrice(s),qty:s.qty||1,code:s.code||''})))
     });
     if(payErr) throw new Error('Payment: '+payErr.message);
     if(!CUR._walkin){
-      await sb.from('gl_jobs').update({status:'paid', payment:PAY.method, collected:true, total:PAY.gross, on_hold:false}).eq('id',CUR.id);
+      await sb.from('gl_jobs').update({status:'paid', payment:methodLabel, collected:true, total:PAY.gross, on_hold:false}).eq('id',CUR.id);
       JOBS=JOBS.filter(j=>j.id!==CUR.id);
     }
     showDone(invoice, net);
@@ -1183,7 +1264,7 @@ function showDone(invoice, net){
       <div class="tick">✅</div>
       <h3 style="font-size:18px;font-weight:900">Payment recorded</h3>
       <div class="inv-big">${esc(invoice)}</div>
-      <div class="co-sub" style="text-align:center;margin-bottom:14px">${RM(net)} · ${esc(METHODS.find(m=>m.k===PAY.method)?.label||PAY.method)}</div>
+      <div class="co-sub" style="text-align:center;margin-bottom:14px">${RM(net)} · ${esc(methodDisplay())}</div>
       <button class="btn btn-blue" onclick="openReceipt('${esc(invoice)}',${net})"><i class="ti ti-file-invoice"></i> View / print receipt</button>
       ${phone?`<a class="btn btn-wa" style="margin-top:10px" href="https://wa.me/${phone}?text=${encodeURIComponent(waText)}" target="_blank" rel="noopener"><i class="ti ti-brand-whatsapp"></i> Send receipt on WhatsApp</a>`:''}
       <button class="btn" style="margin-top:10px" onclick="clearCheckout()"><i class="ti ti-check"></i> Done</button>
@@ -1200,7 +1281,7 @@ function buildReceipt(invoice, net){
   if(PAY.depositUsed>0) r+=`\nDeposit: −${RM(PAY.depositUsed)}`;
   if(PAY.walletUsed>0) r+=`\nApp credit: −${RM(PAY.walletUsed)}`;
   if(PAY.pointsUsed>0) r+=`\nPoints (${PAY.pointsUsed}): −${RM(PAY.pointsUsed*POINTS_RATE)}`;
-  r+=`\n*Paid: ${RM(net)}* (${METHODS.find(m=>m.k===PAY.method)?.label||PAY.method})\n\nThank you! 🚗✨`;
+  r+=`\n*Paid: ${RM(net)}* (${methodDisplay()})\n\nThank you! 🚗✨`;
   return r;
 }
 
@@ -1279,8 +1360,8 @@ function openReceipt(invoice, net){
       ${PAY.depositUsed>0?`<div>Deposit: −${RM(PAY.depositUsed)}</div>`:''}
       ${PAY.walletUsed>0?`<div>App credit: −${RM(PAY.walletUsed)}</div>`:''}
       ${PAY.pointsUsed>0?`<div>Points: −${RM(PAY.pointsUsed*POINTS_RATE)}</div>`:''}
-      <div><b>Paid by ${esc(METHODS.find(m=>m.k===PAY.method)?.label||PAY.method)}: ${RM(net)}</b></div>
-    </div>`:`<div class="rc-adj"><div><b>Paid by ${esc(METHODS.find(m=>m.k===PAY.method)?.label||PAY.method)}: ${RM(net)}</b></div></div>`}
+      <div><b>Paid by ${esc(methodDisplay())}: ${RM(net)}</b></div>
+    </div>`:`<div class="rc-adj"><div><b>Paid by ${esc(methodDisplay())}: ${RM(net)}</b></div></div>`}
 
     <div class="rc-spacer"></div>
 
