@@ -349,6 +349,12 @@ function showAllHistory(){ renderHistory(ALL_HISTORY); $('moreBtn').style.displa
 
 function fmtDate(ts){ if(!ts) return '—'; const d=new Date(ts); return d.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}); }
 function esc(s){ return (s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+// unique barcode value (same format as customer app): GL + base36 time + random
+function genBarcodeValue(){
+  const t=Date.now().toString(36).toUpperCase();
+  const r=Math.random().toString(36).slice(2,7).toUpperCase();
+  return ('GL'+t+r).replace(/[^A-Z0-9]/g,'');
+}
 
 /* ---------- Edit / Complete Profile ---------- */
 async function openEdit(isNew){
@@ -471,7 +477,7 @@ async function saveProfile(){
       service_name:pkg_name, pkg_type: pkgIsCoat?'coating_maintenance':'package',
       total_uses:pkg_total, used_uses:pkg_used, status:'active', source:'platescan' };
     if(exPk){ await sb.from('gl_packages').update(pkgBody).eq('id',exPk.id); }
-    else { await sb.from('gl_packages').insert(pkgBody); }
+    else { await sb.from('gl_packages').insert({...pkgBody, barcode:genBarcodeValue()}); }
     // mirror to gl_pending (for signup auto-claim) when we have a phone
     if(phone){
       const {data:exPend}=await sb.from('gl_pending')

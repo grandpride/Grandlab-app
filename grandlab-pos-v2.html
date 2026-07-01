@@ -657,7 +657,7 @@ function renderCheckout(){
       const bal=(p.total_uses||0)-(p.used_uses||0);
       const on=PAY.pkgUse&&PAY.pkgUse.id===p.id;
       return `<div class="adj">
-        <span class="lab"><i class="ti ti-package"></i> ${esc(cleanPkgName(p.service_name))} <b style="color:var(--gold-deep)">· ${bal} left</b></span>
+        <span class="lab"><i class="ti ti-package"></i> ${esc(cleanPkgName(p.service_name))} <b style="color:var(--gold-deep)">· ${bal} left</b>${on?` <span style="color:var(--ink3);font-size:11px">(will use 1 → ${bal-1} left)</span>`:''}</span>
         <button class="toggle ${on?'on':''}" onclick="togglePkgUse('${p.id}')"><span class="dot"></span></button>
       </div>`;
     }).join('')
@@ -738,7 +738,7 @@ function clearCheckout(){
 
 /* ---------- adjustments ---------- */
 function togglePkgUse(id){
-  if(PAY.pkgUse && PAY.pkgUse.id===id){ PAY.pkgUse=null; }
+  if(PAY.pkgUse && String(PAY.pkgUse.id)===String(id)){ PAY.pkgUse=null; }
   else { PAY.pkgUse=(PAY.pkgList||[]).find(p=>String(p.id)===String(id))||null; }
   PAY.packageUsed=!!PAY.pkgUse;
   renderCheckout();
@@ -963,12 +963,26 @@ function searchCust(){
   },250);
 }
 async function pickCust(r){
-  CUR.name=r.name||''; CUR.phone=r.phone||''; CUR.plate=r.plate||CUR.plate; CUR.model=r.model||CUR.model;
+  CUR.name=r.name||''; CUR.phone=r.phone||'';
+  // pick plate: if the merged card has several, let the cashier choose; else use the one we have
+  let plate=r.plate||'';
+  const plates=(r._plates&&r._plates.length)?r._plates:(plate?[plate]:[]);
+  if(plates.length>1){
+    const chosen=prompt('This customer has more than one car.\nType the plate for this sale:\n\n'+plates.join('\n'),plates[0]);
+    if(chosen){ const hit=plates.find(p=>p.toUpperCase()===chosen.trim().toUpperCase()); plate=hit||chosen.trim().toUpperCase(); }
+    else plate=plates[0];
+  } else if(plates.length===1){ plate=plates[0]; }
+  CUR.plate=plate||CUR.plate; CUR.model=r.model||CUR.model;
   CUR.customer_id=r.profile?r.id:null;
   CUR.sqlacc_code=r.sqlacc_code||'';
   if(r.profile){
     const {data}=await sb.from('gl_profiles').select('wallet,points,sqlacc_code').eq('id',r.id).maybeSingle();
     if(data){ PAY.hasProfile=true; PAY.custWallet=Number(data.wallet)||0; PAY.custPoints=Number(data.points)||0; if(data.sqlacc_code) CUR.sqlacc_code=data.sqlacc_code; }
+  }
+  // if we still have no model but do have a plate, try to pull car details from gl_walkin
+  if((!CUR.model||CUR.model==='') && CUR.plate){
+    const {data:wd}=await sb.from('gl_walkin').select('model,car_type').ilike('plate',CUR.plate).limit(1).maybeSingle();
+    if(wd){ CUR.model=wd.model||CUR.model; }
   }
   // load this customer's packages (by plate/owner) so 'use package visit' shows
   await loadCheckoutPackages({plate:CUR.plate, customer_id:CUR.customer_id});
