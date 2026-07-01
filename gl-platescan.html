@@ -176,7 +176,9 @@ html,body{height:100%;background:var(--bg);font-family:-apple-system,BlinkMacSys
     </div>
 
     <div class="sec-h">Package / Maintenance Balance</div>
-    <div class="fld"><label>Package name</label><input id="ePkgName" placeholder="e.g. Coating Maintenance"></div>
+    <div class="fld"><label>Package (from services)</label>
+      <select id="ePkgName" onchange="onPkgChange()"><option value="">— none —</option></select>
+    </div>
     <div class="frow">
       <div class="fld"><label>Total uses</label><input id="ePkgTotal" type="number" min="0" placeholder="0"></div>
       <div class="fld"><label>Used</label><input id="ePkgUsed" type="number" min="0" placeholder="0"></div>
@@ -346,23 +348,29 @@ function fmtDate(ts){ if(!ts) return '—'; const d=new Date(ts); return d.toLoc
 function esc(s){ return (s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 
 /* ---------- Edit / Complete Profile ---------- */
-function openEdit(isNew){
+async function openEdit(isNew){
   if(!CUR){ CUR={src:'new',walkinId:null,name:'',phone:'',plate:'',model:'',car_type:'',pkg_name:'',pkg_total:0,pkg_used:0}; }
   $('editTitle').textContent = (CUR.src==='new'||isNew) ? 'Add Customer' : 'Edit / Complete Profile';
   $('eName').value=CUR.name||'';
   $('ePhone').value=CUR.phone||'';
   $('ePlate').value=CUR.plate||'';
   $('eModel').value=CUR.model||'';
-  $('eType').value=CUR.car_type||'';
+  await loadPkgServices();
+  // ensure existing pkg name shows even if not in the active list
+  if(CUR.pkg_name && ![...$('ePkgName').options].some(o=>o.value===CUR.pkg_name)){
+    const o=document.createElement('option'); o.value=CUR.pkg_name; o.textContent=CUR.pkg_name; $('ePkgName').appendChild(o);
+  }
   $('ePkgName').value=CUR.pkg_name||'';
   $('ePkgTotal').value=CUR.pkg_total||'';
   $('ePkgUsed').value=CUR.pkg_used||'';
   // car picker: show manual model field with existing value; brand resets to prompt
   if(!BRANDS.length) loadBrands();
-  else { const sel=$('eBrand'); if(sel) sel.innerHTML='<option value="">— select brand —</option>'+BRANDS.map(b=>`<option value="${b.id}">${esc(b.name)}</option>`).join('')+'<option value="__other">Other / not listed</option>'; }
+  else { const sel=$('eBrand'); if(sel) sel.innerHTML='<option value="">— select brand —</option>'+BRANDS.map(b=>`<option value="${b.id}">${esc(b.name)}</option>`).join('')+'<option value="__other">Other / not listed</option>'; loadCarTypes(); }
   $('eBrand').value='';
   $('eModelSel').style.display='none';
   $('eModel').style.display='block';
+  // set car type AFTER types load (ensures the option exists, survives dropdown rebuild)
+  setCarType(CUR.car_type||'');
   HIST_ROWS=[]; renderHistRows();
   $('saveMsg').textContent='';
   $('editModal').classList.add('show');
@@ -398,6 +406,8 @@ async function saveProfile(){
   const pkg_name=$('ePkgName').value.trim();
   const pkg_total=parseInt($('ePkgTotal').value)||0;
   const pkg_used=parseInt($('ePkgUsed').value)||0;
+  const pkgOpt=$('ePkgName').selectedOptions[0];
+  const pkgIsCoat = pkgOpt ? pkgOpt.dataset.coat==='1' : false;
 
   if(!name && !phone && !plate){ $('saveMsg').textContent='Enter at least a name, phone or plate.'; return; }
   $('saveMsg').textContent='Saving…';
@@ -443,6 +453,19 @@ async function saveProfile(){
     if(error){ $('saveMsg').textContent='Profile saved, but history failed: '+error.message; return; }
   }
 
+  // 3) if a package was chosen, record it as a pending package (walk-in),
+  //    matching the admin pattern. Claimed into gl_packages when they sign up.
+  //    Only create if there's a real balance and we have phone+plate.
+  if(pkg_name && pkg_total>0 && phone && plate){
+    const remaining = Math.max(0, pkg_total - pkg_used);
+    // avoid duplicate: check an unclaimed pending for same phone+plate+service
+    const {data:exist}=await sb.from('gl_pending')
+      .select('id').eq('phone',phone).eq('plate',plate).eq('service_name',pkg_name).eq('claimed',false).limit(1).maybeSingle();
+    const body={ phone, name, plate, service_name:pkg_name, remaining, is_coating:pkgIsCoat, source:'platescan', claimed:false };
+    if(exist){ await sb.from('gl_pending').update(body).eq('id',exist.id); }
+    else { await sb.from('gl_pending').insert(body); }
+  }
+
   $('saveMsg').textContent='✓ Saved.';
   // update CUR + card display
   if(CUR){ CUR.walkinId=walkinId; CUR.name=name; CUR.phone=phone; CUR.plate=plate; CUR.model=model; CUR.car_type=car_type; CUR.pkg_name=pkg_name; CUR.pkg_total=pkg_total; CUR.pkg_used=pkg_used; }
@@ -458,7 +481,27 @@ async function loadBrands(){
   if(sel) sel.innerHTML='<option value="">— select brand —</option>'+BRANDS.map(b=>`<option value="${b.id}">${esc(b.name)}</option>`).join('')+'<option value="__other">Other / not listed</option>';
   loadCarTypes();
 }
-let CAR_TYPES=[];
+let CAR_TYPES=[], PENDING_TYPE=null;
+let PKG_SERVICES=[];
+async function loadPkgServices(){
+  if(PKG_SERVICES.length){ fillPkgSelect(); return; }
+  const {data}=await sb.from('gl_services').select('name,pkg_uses,pkg_type,maint_months,is_package').eq('is_package',true).eq('active',true).order('sort_order',{ascending:true});
+  PKG_SERVICES=data||[];
+  fillPkgSelect();
+}
+function fillPkgSelect(){
+  const sel=$('ePkgName'); if(!sel) return;
+  const cur=sel.value;
+  sel.innerHTML='<option value="">— none —</option>'+PKG_SERVICES.map(s=>{
+    const coat=/coat|maint/i.test((s.pkg_type||'')+' '+s.name)?'1':'0';
+    return `<option value="${esc(s.name)}" data-uses="${s.pkg_uses||''}" data-coat="${coat}">${esc(s.name)}</option>`;
+  }).join('');
+  if(cur) sel.value=cur;
+}
+function onPkgChange(){
+  const sel=$('ePkgName'); const o=sel.selectedOptions[0];
+  if(o && o.dataset.uses && !$('ePkgTotal').value){ $('ePkgTotal').value=o.dataset.uses; }
+}
 async function loadCarTypes(){
   if(CAR_TYPES.length){ fillTypeSelect(); return; }
   const {data}=await sb.from('gl_car_models').select('type').eq('active',true);
@@ -467,10 +510,19 @@ async function loadCarTypes(){
   fillTypeSelect();
 }
 function fillTypeSelect(){
-  const sel=$('eType'); if(!sel||!CAR_TYPES.length) return;
-  const cur=sel.value;
-  sel.innerHTML='<option value="">—</option>'+CAR_TYPES.map(t=>`<option>${esc(t)}</option>`).join('');
-  if(cur) sel.value=cur;
+  const sel=$('eType'); if(!sel) return;
+  const cur=PENDING_TYPE!=null?PENDING_TYPE:sel.value;
+  if(CAR_TYPES.length){
+    sel.innerHTML='<option value="">—</option>'+CAR_TYPES.map(t=>`<option>${esc(t)}</option>`).join('');
+  }
+  if(cur){
+    // ensure the value exists as an option, then select it
+    if(![...sel.options].some(o=>o.value===cur || o.textContent===cur)){
+      const o=document.createElement('option'); o.value=cur; o.textContent=cur; sel.appendChild(o);
+    }
+    sel.value=cur;
+  }
+  PENDING_TYPE=null;
 }
 async function onBrandChange(){
   const bid=$('eBrand').value;
@@ -510,8 +562,10 @@ function onModelChange(){
 function setCarType(t){
   const sel=$('eType'); if(!sel) return;
   t=(t||'').trim();
-  if(!t) return;                 // no type set for this model — leave as-is
-  // ensure the exact DB value exists as an option, then select it
+  if(!t){ return; }
+  // if the type dropdown hasn't been populated from DB yet, stash it so
+  // fillTypeSelect() re-applies it once options load
+  if(!CAR_TYPES.length){ PENDING_TYPE=t; }
   if(![...sel.options].some(o=>o.value===t || o.textContent===t)){
     const o=document.createElement('option'); o.value=t; o.textContent=t; sel.appendChild(o);
   }
