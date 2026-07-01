@@ -456,6 +456,21 @@ async function loadBrands(){
   BRANDS=data||[];
   const sel=$('eBrand');
   if(sel) sel.innerHTML='<option value="">— select brand —</option>'+BRANDS.map(b=>`<option value="${b.id}">${esc(b.name)}</option>`).join('')+'<option value="__other">Other / not listed</option>';
+  loadCarTypes();
+}
+let CAR_TYPES=[];
+async function loadCarTypes(){
+  if(CAR_TYPES.length){ fillTypeSelect(); return; }
+  const {data}=await sb.from('gl_car_models').select('type').eq('active',true);
+  const set=new Set((data||[]).map(r=>(r.type||'').trim()).filter(Boolean));
+  CAR_TYPES=[...set].sort();
+  fillTypeSelect();
+}
+function fillTypeSelect(){
+  const sel=$('eType'); if(!sel||!CAR_TYPES.length) return;
+  const cur=sel.value;
+  sel.innerHTML='<option value="">—</option>'+CAR_TYPES.map(t=>`<option>${esc(t)}</option>`).join('');
+  if(cur) sel.value=cur;
 }
 async function onBrandChange(){
   const bid=$('eBrand').value;
@@ -487,26 +502,20 @@ function onModelChange(){
   if(!val){ modelInput.value=''; return; }
   const brand=sel.dataset.brand||'';
   modelInput.value=(brand?brand+' ':'')+val;   // full model name into hidden field
-  // auto-fill car type from the picked model
+  // auto-fill car type using the EXACT type set in your database
   const opt=sel.options[sel.selectedIndex];
-  const t=opt&&opt.getAttribute('data-type');
-  if(t){ mapTypeToSelect(t); }
+  const t=opt?opt.getAttribute('data-type'):'';
+  setCarType(t);
 }
-function mapTypeToSelect(t){
+function setCarType(t){
   const sel=$('eType'); if(!sel) return;
-  const norm=(t||'').toLowerCase();
-  let target='';
-  if(/suv|mpv/.test(norm)) target='SUV/MPV';
-  else if(/sedan/.test(norm)) target='Sedan';
-  else if(/hatch/.test(norm)) target='Hatchback';
-  else if(/pickup|truck/.test(norm)) target='Pickup';
-  else if(/super|exotic/.test(norm)) target='Supercar';
-  else if(/luxury/.test(norm)) target='Luxury';
-  else if(/bike|motor/.test(norm)) target='Motorbike';
-  else target='Other';
-  // add the exact type as an option if not present, then select
-  if(![...sel.options].some(o=>o.value===target)) { const o=document.createElement('option'); o.textContent=target; sel.appendChild(o); }
-  sel.value=target;
+  t=(t||'').trim();
+  if(!t) return;                 // no type set for this model — leave as-is
+  // ensure the exact DB value exists as an option, then select it
+  if(![...sel.options].some(o=>o.value===t || o.textContent===t)){
+    const o=document.createElement('option'); o.value=t; o.textContent=t; sel.appendChild(o);
+  }
+  sel.value=t;
 }
 
 boot();
