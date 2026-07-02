@@ -812,18 +812,19 @@ async function loadSqlQueue(){
     .select('id,invoice_no,customer_name,plate,net_paid,method,paid_at,sql_invoice_no,sql_payment_no,attendee')
     .order('paid_at',{ascending:false}).limit(120);
   if(error){ $('sqlList').innerHTML='<div class="status">Error: '+esc(error.message)+'</div>'; return; }
-  SQLQ=data||[];
-  const pending=SQLQ.filter(r=>!(r.sql_invoice_no&&r.sql_payment_no)).length;
-  $('cntSql').textContent=pending;
-  if(!SQLQ.length){ $('sqlList').innerHTML='<div class="empty" style="display:block"><div class="big">📄</div><div>No paid orders yet.</div></div>'; return; }
+  const all=data||[];
+  const pending=all.filter(r=>!(r.sql_invoice_no&&r.sql_payment_no));
+  $('cntSql').textContent=pending.length;
+  // waiting list: show only orders still needing keying
+  SQLQ=pending;
+  if(!SQLQ.length){ $('sqlList').innerHTML='<div class="empty" style="display:block"><div class="big">✅</div><div>All paid orders keyed — nothing waiting.</div></div>'; return; }
   $('sqlList').innerHTML=SQLQ.map((r,i)=>{
-    const done=!!(r.sql_invoice_no&&r.sql_payment_no);
-    return `<div class="sqlrow ${done?'done':''}">
+    return `<div class="sqlrow">
       <div class="sqlrow-h">
         <div><b>${esc(titleCase(r.customer_name||'Customer'))}</b> <span style="color:var(--ink3)">· ${esc(r.plate||'—')}</span></div>
         <div class="sqlrow-amt">${RM(r.net_paid)}</div>
       </div>
-      <div class="sqlrow-meta">GLIV <b>${esc(r.invoice_no||'—')}</b> · ${esc(r.method||'')} · ${new Date(r.paid_at).toLocaleDateString('en-MY')}${done?' · <span style="color:#0a0">keyed ✓</span>':''}</div>
+      <div class="sqlrow-meta">GLIV <b>${esc(r.invoice_no||'—')}</b> · ${esc(r.method||'')} · ${new Date(r.paid_at).toLocaleDateString('en-MY')}</div>
       <div class="sqlrow-in">
         <input id="sqli_${i}" placeholder="SQL invoice no" value="${esc(r.sql_invoice_no||'')}">
         <input id="sqlp_${i}" placeholder="SQL payment no" value="${esc(r.sql_payment_no||'')}">
@@ -840,7 +841,9 @@ async function saveSqlRow(i){
     sql_keyed_at:(inv&&pay)?new Date().toISOString():null
   }).eq('id',r.id);
   if(error){ alert('Save failed: '+error.message); return; }
-  toast('Saved ✓'); loadSqlQueue();
+  if(inv&&pay){ toast('Keyed ✓ — removed from list'); }
+  else { toast('Saved — fill BOTH invoice + payment to clear it'); }
+  loadSqlQueue();
 }
 
 /* ---------- takings ---------- */
