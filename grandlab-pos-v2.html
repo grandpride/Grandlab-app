@@ -788,8 +788,14 @@ async function deleteTx(i){
     }catch(e){}
   }
   // soft-delete (void) so the sheet mirror can clear that row on next sync
-  const {error}=await sb.from('gl_payments').update({voided:true, voided_at:new Date().toISOString()}).eq('id',r.id);
+  const {data:vd,error}=await sb.from('gl_payments')
+    .update({voided:true, voided_at:new Date().toISOString()})
+    .eq('id',r.id).select('id,voided');
   if(error){ alert('Delete failed: '+error.message); return; }
+  if(!vd || !vd.length || !vd[0].voided){
+    alert('Delete did not take effect — the payment update was blocked (likely a permissions/RLS issue on gl_payments). Nothing was changed.');
+    return;
+  }
   // reopen the job so it comes back to the Ready list to redo
   if(r.job_id){
     try{ await sb.from('gl_jobs').update({status:'open', collected:false, payment:null, on_hold:false}).eq('id',r.job_id); }catch(e){}
