@@ -162,6 +162,8 @@ button,input{font-family:inherit}
 .dash-tx td{padding:8px 10px;border-top:1px solid var(--line2);white-space:nowrap}
 .dash-edit{background:none;border:1px solid var(--line2);border-radius:7px;padding:4px 7px;cursor:pointer;color:var(--gold-deep);font-size:13px}
 .dash-edit:active{transform:scale(.95)}
+.dash-del{background:none;border:1px solid var(--line2);border-radius:7px;padding:4px 7px;cursor:pointer;color:var(--danger);font-size:13px}
+.dash-del:active{transform:scale(.95)}
 
 .totals{background:var(--surface2);border:1px solid var(--line);border-radius:13px;padding:14px;margin-top:14px}
 .totals .row{display:flex;justify-content:space-between;font-size:14px;padding:4px 0}
@@ -542,6 +544,7 @@ function methodDisplay(){
     const l2=(SPLIT_METHODS.find(m=>m.k===PAY.split2Method)||{}).label||PAY.split2Method;
     return l1+' '+RM(a1)+' + '+l2+' '+RM(a2);
   }
+  if(PAY.method==='voucher') return 'Voucher / Package';
   return (METHODS.find(m=>m.k===PAY.method)||{}).label||PAY.method;
 }
 
@@ -605,6 +608,7 @@ async function loadJobs(){
 async function refreshSqlCount(){
   try{
     const {count}=await sb.from('gl_payments').select('id',{count:'exact',head:true})
+      .eq('voided',false)
       .or('sql_invoice_no.is.null,sql_payment_no.is.null');
     if(count!=null && $('cntSql')) $('cntSql').textContent=count;
   }catch(e){}
@@ -668,14 +672,14 @@ async function loadDashboard(){
 
   // this year's payments for the totals; this month's full rows for chart + table
   const [{data:yRows,error:e1},{data:mRows,error:e2},{data:unpaidRows},{data:depRows}] = await Promise.all([
-    sb.from('gl_payments').select('net_paid,method,paid_at').gte('paid_at',startYear.toISOString()),
-    sb.from('gl_payments').select('id,invoice_no,customer_name,plate,net_paid,method,paid_at').gte('paid_at',startMonth.toISOString()).order('paid_at',{ascending:false}),
+    sb.from('gl_payments').select('net_paid,method,paid_at,voided').gte('paid_at',startYear.toISOString()),
+    sb.from('gl_payments').select('id,job_id,invoice_no,customer_name,plate,net_paid,method,paid_at,voided').gte('paid_at',startMonth.toISOString()).order('paid_at',{ascending:false}),
     sb.from('gl_unpaid').select('amount').then(r=>r).catch(()=>({data:[]})),
     sb.from('gl_jobs').select('dep_amt,status').gte('dep_amt',0.01).then(r=>r).catch(()=>({data:[]}))
   ]);
   if(e1){ $('dashList').innerHTML='<div class="status">Error: '+esc(e1.message)+'</div>'; return; }
 
-  const rows=yRows||[];
+  const rows=(yRows||[]).filter(r=>!r.voided);
   let tToday=0,tWeek=0,tMonth=0,tYear=0,cToday=0;
   const methodTotals={};
   rows.forEach(r=>{
@@ -732,7 +736,7 @@ async function loadDashboard(){
         <td>${esc(r.plate||'—')}</td>
         <td>${esc(r.method||'')}</td>
         <td style="text-align:right;font-weight:700">${RM(r.net_paid)}</td>
-        <td style="text-align:right"><button class="dash-edit" onclick="openEditTx(${i})" title="Edit"><i class="ti ti-edit"></i></button></td>
+        <td style="text-align:right;white-space:nowrap"><button class="dash-edit" onclick="openEditTx(${i})" title="Edit"><i class="ti ti-edit"></i></button> <button class="dash-del" onclick="deleteTx(${i})" title="Delete / redo"><i class="ti ti-trash"></i></button></td>
       </tr>`).join('')}
       </tbody></table>`:'<div class="status">No transactions this month.</div>'}
     </div>
@@ -767,6 +771,19 @@ async function saveEditTx(){
   if(error){ alert('Update failed: '+error.message); return; }
   toast('Transaction updated ✓');
   closeModal('etxModal'); loadDashboard(); loadTakings();
+}
+async function deleteTx(i){
+  const r=DASH_TX[i]; if(!r) return;
+  if(!confirm('Delete this sale for '+(r.customer_name||'customer')+' ('+RM(r.net_paid)+')?\n\nThe job will be reopened so you can redo it, and its row on the sheet will be cleared.')) return;
+  // soft-delete (void) so the sheet mirror can clear that row on next sync
+  const {error}=await sb.from('gl_payments').update({voided:true, voided_at:new Date().toISOString()}).eq('id',r.id);
+  if(error){ alert('Delete failed: '+error.message); return; }
+  // reopen the job so it comes back to the Ready list to redo
+  if(r.job_id){
+    try{ await sb.from('gl_jobs').update({status:'open', collected:false, payment:null, on_hold:false}).eq('id',r.job_id); }catch(e){}
+  }
+  toast('Sale deleted — job reopened to redo');
+  loadDashboard(); loadJobs(); loadTakings();
 }
 function downloadDashReport(){
   if(!DASH_TX.length){ alert('No transactions to export.'); return; }
@@ -809,7 +826,8 @@ async function loadSqlQueue(){
   $('sqlList').innerHTML='<div class="status">Loading paid orders…</div>';
   // every paid order; reception keys the SQL invoice (S) + payment number (T)
   const {data,error}=await sb.from('gl_payments')
-    .select('id,invoice_no,customer_name,plate,net_paid,method,paid_at,sql_invoice_no,sql_payment_no,attendee')
+    .select('id,invoice_no,customer_name,plate,net_paid,method,paid_at,sql_invoice_no,sql_payment_no,attendee,voided')
+    .eq('voided',false)
     .order('paid_at',{ascending:false}).limit(120);
   if(error){ $('sqlList').innerHTML='<div class="status">Error: '+esc(error.message)+'</div>'; return; }
   const all=data||[];
@@ -849,7 +867,7 @@ async function saveSqlRow(i){
 /* ---------- takings ---------- */
 async function loadTakings(){
   const start=new Date(); start.setHours(0,0,0,0);
-  const {data}=await sb.from('gl_payments').select('net_paid,paid_at').gte('paid_at',start.toISOString());
+  const {data}=await sb.from('gl_payments').select('net_paid,paid_at,voided').eq('voided',false).gte('paid_at',start.toISOString());
   const rows=data||[];
   $('takings').style.display='flex';
   $('tkCount').textContent=rows.length;
@@ -994,13 +1012,19 @@ function renderCheckout(){
     </div>
 
     <div class="section-h">Payment method</div>
+    ${(due===0 && PAY.pkgUse)?`
+    <div class="methods">
+      <div class="method ${PAY.method==='voucher'?'sel':''}" style="grid-column:1/-1" onclick="pickMethod('voucher')"><span class="mi"><i class="ti ti-ticket"></i></span>Voucher / Package (no payment)</div>
+    </div>
+    <div class="split-note" style="color:var(--ink3);text-align:center;margin-top:8px">Paid by package balance — nothing to collect. Confirm to print receipt.</div>
+    `:`
     <div class="methods">
       ${METHODS.map(m=>{
         const dis=(m.k==='app_credit'&&(!PAY.hasProfile||PAY.custWallet<=0))||(m.k==='app_points'&&(!PAY.hasProfile||PAY.custPoints<=0));
         return `<div class="method ${PAY.method===m.k?'sel':''} ${dis?'dis':''}" onclick="pickMethod('${m.k}')"><span class="mi"><i class="ti ti-${m.icon}"></i></span>${m.label}</div>`;
       }).join('')}
       <div class="method ${PAY.method==='split'?'sel':''}" onclick="pickMethod('split')"><span class="mi"><i class="ti ti-arrows-split-2"></i></span>Split</div>
-    </div>
+    </div>`}
 
     ${PAY.method==='split'?`
     <div class="splitbox">
@@ -1089,7 +1113,9 @@ function pickMethod(k){
     setTimeout(()=>{ if($('split1Method')) onSplitChange(); },30);
     return;
   }
+  if(k==='voucher'){ PAY.method='voucher'; renderCheckout(); return; }
   const m=METHODS.find(x=>x.k===k);
+  if(!m) return;
   if(m.k==='app_credit'&&(!PAY.hasProfile||PAY.custWallet<=0))return;
   if(m.k==='app_points'&&(!PAY.hasProfile||PAY.custPoints<=0))return;
   PAY.method=k; renderCheckout();
@@ -1414,8 +1440,9 @@ async function saveNewCustomer(){
 /* ---------- confirm payment ---------- */
 async function confirmPay(){
   if(!PAY.method) return;
-  // resolve the method label to store (handles split)
+  // resolve the method label to store (handles split + voucher)
   let methodLabel=PAY.method;
+  if(PAY.method==='voucher'){ methodLabel='Voucher / Package'; }
   if(PAY.method==='split'){
     const due=netDue();
     const a1=Math.round((Number(PAY.split1Amt)||0)*100)/100;
