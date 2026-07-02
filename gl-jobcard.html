@@ -213,7 +213,11 @@ html,body{height:100%;background:var(--bg);font-family:-apple-system,BlinkMacSys
     <!-- REPORT VIEW -->
     <div class="view" id="view-report">
       <div class="card">
-        <div class="card-t"><i class="ti ti-chart-bar"></i> Today's Jobs</div>
+        <div class="card-t"><i class="ti ti-chart-bar"></i> Daily Report</div>
+        <div style="display:flex;gap:8px;align-items:center;margin:6px 0 12px;flex-wrap:wrap">
+          <input type="date" id="reportDate" onchange="renderReport()" style="flex:1;min-width:150px;padding:9px;border:1px solid var(--border);border-radius:8px;font-family:inherit;font-size:13px">
+          <button class="btn" onclick="downloadReportPDF()" style="white-space:nowrap"><i class="ti ti-file-type-pdf"></i> Download PDF</button>
+        </div>
         <div id="reportBody"><div class="empty">Loading…</div></div>
       </div>
     </div>
@@ -977,16 +981,75 @@ async function markCollected(id){ await sb.from('gl_jobs').update({status:'paid'
 async function delJob(id){ if(!confirm('Delete this job?'))return; await sb.from('gl_jobs').delete().eq('id',id); toast('Deleted'); loadJobs(); showView('list'); }
 
 /* ---------- REPORT ---------- */
+function reportDayRange_(){
+  const el=document.getElementById('reportDate');
+  let base;
+  if(el && el.value){ base=new Date(el.value+'T00:00:00'); }
+  else { base=new Date(); if(el){ el.value=base.toISOString().slice(0,10); } }
+  const start=new Date(base); start.setHours(0,0,0,0);
+  const end=new Date(start); end.setDate(end.getDate()+1);
+  return {start:start.getTime(), end:end.getTime(), label:start.toLocaleDateString('en-GB',{weekday:'long',day:'2-digit',month:'short',year:'numeric'})};
+}
+function reportJobs_(){
+  const {start,end}=reportDayRange_();
+  return JOBS.filter(j=>{ const t=Number(j.created_at)||0; return t>=start && t<end; });
+}
 function renderReport(){
-  const start=new Date(); start.setHours(0,0,0,0);
-  const todays=JOBS.filter(j=>(j.created_at||0)>=start.getTime());
+  const todays=reportJobs_();
   const total=todays.reduce((a,j)=>a+(parseFloat(j.total)||0),0);
   $('reportBody').innerHTML=`
     <div style="display:flex;gap:10px;margin-bottom:12px">
       <div class="card" style="flex:1;text-align:center;margin:0"><div style="font-size:24px;font-weight:800">${todays.length}</div><div style="font-size:11px;color:var(--text3)">Total Jobs</div></div>
       <div class="card" style="flex:1;text-align:center;margin:0"><div style="font-size:24px;font-weight:800">RM ${total.toFixed(0)}</div><div style="font-size:11px;color:var(--text3)">Total Value</div></div>
     </div>
-    ${todays.map(j=>`<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px"><span>${esc(j.plate)} · ${esc(j.name||'')}</span><span style="font-weight:700">RM ${(parseFloat(j.total)||0).toFixed(0)}</span></div>`).join('')||'<div class="empty">No jobs today yet.</div>'}`;
+    ${todays.map(j=>`<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px"><span>${esc(j.plate)} · ${esc(j.name||j.workshop_name||'')}</span><span style="font-weight:700">RM ${(parseFloat(j.total)||0).toFixed(0)}</span></div>`).join('')||'<div class="empty">No jobs on this day.</div>'}`;
+}
+
+function downloadReportPDF(){
+  const {label}=reportDayRange_();
+  const jobs=reportJobs_();
+  if(!jobs.length){ alert('No jobs on this day to export.'); return; }
+  const total=jobs.reduce((a,j)=>a+(parseFloat(j.total)||0),0);
+  const rows=jobs.map((j,i)=>{
+    const svc=(j.services||[]).map(s=>s.desc).filter(Boolean).join(', ');
+    const att=j.attendee||'';
+    const pay=j.payment||'';
+    return '<tr>'
+      +'<td style="border:1px solid #000;padding:4px 6px;text-align:center">'+(i+1)+'</td>'
+      +'<td style="border:1px solid #000;padding:4px 6px">'+esc(j.plate||'')+'</td>'
+      +'<td style="border:1px solid #000;padding:4px 6px">'+esc(j.name||j.workshop_name||'')+'</td>'
+      +'<td style="border:1px solid #000;padding:4px 6px">'+esc(svc)+'</td>'
+      +'<td style="border:1px solid #000;padding:4px 6px;text-align:center">'+esc(att)+'</td>'
+      +'<td style="border:1px solid #000;padding:4px 6px;text-align:center">'+esc(pay)+'</td>'
+      +'<td style="border:1px solid #000;padding:4px 6px;text-align:right;white-space:nowrap">RM '+(parseFloat(j.total)||0).toFixed(2)+'</td>'
+      +'</tr>';
+  }).join('');
+  const logoEl=document.getElementById('gl-logo')||document.querySelector('img[alt="Grandlab logo"]');
+  const logoSrc=logoEl?logoEl.src:'';
+  const html='<!DOCTYPE html><html><head><meta charset="utf-8"><title>Grandlab Daily Report — '+label+'</title>'
+    +'<style>*{box-sizing:border-box;margin:0;padding:0}'
+    +'body{font-family:Arial,sans-serif;font-size:12px;color:#000;padding:18px;max-width:900px;margin:0 auto}'
+    +'.top{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;border-bottom:2px solid #000;padding-bottom:10px}'
+    +'.title{font-size:20px;font-weight:900}'
+    +'.sub{font-size:12px;color:#333;margin-top:2px}'
+    +'.logo{height:44px}'
+    +'table{width:100%;border-collapse:collapse;margin-top:8px}'
+    +'th{border:1px solid #000;padding:5px 6px;font-size:11px;background:#f0f0f0;text-align:left}'
+    +'tfoot td{border:1px solid #000;padding:6px;font-weight:800}'
+    +'.foot{margin-top:14px;font-size:10px;color:#555;text-align:center}'
+    +'@media print{body{padding:8px}}'
+    +'</style></head><body>'
+    +'<div class="top"><div><div class="title">Grandlab Detailing</div><div class="sub">Daily Job Report · '+label+'</div></div>'
+    +(logoSrc?'<img class="logo" src="'+logoSrc+'">':'')+'</div>'
+    +'<table><thead><tr><th style="width:30px">#</th><th>Plate</th><th>Customer</th><th>Service</th><th style="width:80px">Attendee</th><th style="width:90px">Payment</th><th style="width:90px;text-align:right">Total</th></tr></thead>'
+    +'<tbody>'+rows+'</tbody>'
+    +'<tfoot><tr><td colspan="6" style="text-align:right">Total ('+jobs.length+' jobs)</td><td style="text-align:right">RM '+total.toFixed(2)+'</td></tr></tfoot>'
+    +'</table>'
+    +'<div class="foot">Generated '+new Date().toLocaleString('en-GB')+' · Grandlab Job Card</div>'
+    +'</body></html>';
+  const w=window.open('','_blank');
+  if(w){ w.document.write(html); w.document.close(); setTimeout(()=>w.print(),700); }
+  else { alert('Popup blocked — allow popups to download the report.'); }
 }
 
 function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
