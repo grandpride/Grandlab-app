@@ -182,11 +182,7 @@ html,body{height:100%;background:var(--bg);font-family:-apple-system,BlinkMacSys
     <div class="fld"><label>Package (from services)</label>
       <select id="ePkgName" onchange="onPkgChange()"><option value="">— none —</option></select>
     </div>
-    <div class="frow" id="ePkgTwoFields">
-      <div class="fld"><label>Total uses</label><input id="ePkgTotal" type="number" min="0" placeholder="0"></div>
-      <div class="fld"><label>Used</label><input id="ePkgUsed" type="number" min="0" placeholder="0"></div>
-    </div>
-    <div class="fld" id="ePkgBalField" style="display:none">
+    <div class="fld" id="ePkgBalField">
       <label>Balance left</label><input id="ePkgBal" type="number" min="0" placeholder="e.g. 5">
     </div>
 
@@ -250,11 +246,18 @@ async function doSearch(raw){
       $('cPhone').textContent=wk.phone||'—';
       $('cTier').textContent='Non-Member (walk-in)';
       $('bookBtn').href=JOBCARD_URL+'?plate='+encodeURIComponent(wk.plate||plate)+'&phone='+encodeURIComponent((wk.phone||'').replace(/^\+/,''));
-      // walk-in package balance if any
-      if(wk.pkg_name){
-        const bal=(wk.pkg_total||0)-(wk.pkg_used||0);
-        $('pkgWrap').innerHTML='<div class="pkg"><div style="font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Package</div><div class="pkg-line"><span>'+esc(wk.pkg_name)+'</span><span class="pkg-bal'+(bal<=0?' zero':'')+'">'+bal+' left</span></div></div>';
-      } else { $('pkgWrap').innerHTML=''; }
+      // balance chip — read from gl_packages (source of truth), fallback to legacy walkin field
+      let chip='';
+      try{
+        const {data:pk}=await sb.from('gl_packages').select('service_name,total_uses,used_uses').ilike('vehicle_label',wk.plate||plate).eq('status','active');
+        if(pk&&pk.length){
+          chip=pk.map(p=>{ const b=(p.total_uses||0)-(p.used_uses||0);
+            return '<div class="pkg-line"><span>'+esc(p.service_name)+'</span><span class="pkg-bal'+(b<=0?' zero':'')+'">'+b+' left</span></div>'; }).join('');
+        }
+      }catch(e){}
+      if(!chip && wk.pkg_name){ const bal=(wk.pkg_total||0)-(wk.pkg_used||0);
+        chip='<div class="pkg-line"><span>'+esc(wk.pkg_name)+'</span><span class="pkg-bal'+(bal<=0?' zero':'')+'">'+bal+' left</span></div>'; }
+      $('pkgWrap').innerHTML = chip ? '<div class="pkg"><div style="font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Package</div>'+chip+'</div>' : '';
       await loadWalkinHistory(wk.id, wk.plate||plate);
       $('cust').classList.add('show');
       return;
@@ -372,11 +375,7 @@ async function openEdit(isNew){
   // dropdown shows ONLY clean gl_services packages — start unselected.
   // (old imported balances like "X (5 left) + Y (20 left)" are shown separately below, not force-picked here)
   $('ePkgName').value='';
-  $('ePkgTotal').value='';
-  $('ePkgUsed').value='';
   if($('ePkgBal')) $('ePkgBal').value='';
-  if($('ePkgTwoFields')) $('ePkgTwoFields').style.display='flex';
-  if($('ePkgBalField')) $('ePkgBalField').style.display='none';
   // show current balances for this car (with delete), from all sources
   EXIST_PKGS=[]; renderExistingPkgs(); loadExistingPkgs();
   // car picker: show manual model field with existing value; brand resets to prompt
@@ -422,17 +421,16 @@ async function saveProfile(){
   const pkg_name=$('ePkgName').value.trim();
   const pkgOpt=$('ePkgName').selectedOptions[0];
   const pkgIsCoat = pkgOpt ? pkgOpt.dataset.coat==='1' : false;
-  const pkgIsBal  = pkgOpt ? pkgOpt.dataset.bal==='1' : false;
-  // balance-holder packages store the remaining balance as total_uses (used=0);
-  // regular packages use the two-field total + used.
-  const pkg_total = pkgIsBal ? (parseInt($('ePkgBal').value)||0) : (parseInt($('ePkgTotal').value)||0);
-  const pkg_used  = pkgIsBal ? 0 : (parseInt($('ePkgUsed').value)||0);
+  // single balance field for all packages: store remaining as total_uses, used=0
+  const pkg_total = parseInt($('ePkgBal').value)||0;
+  const pkg_used  = 0;
 
   if(!name && !phone && !plate){ $('saveMsg').textContent='Enter at least a name, phone or plate.'; return; }
   $('saveMsg').textContent='Saving…';
 
-  // 1) upsert gl_walkin by phone+plate
-  const row={name,phone,plate,model,car_type,pkg_name,pkg_total,pkg_used};
+  // 1) upsert gl_walkin by phone+plate (customer/car only — package balance
+  //    now lives in gl_packages + gl_pending, not here, to avoid duplicates)
+  const row={name,phone,plate,model,car_type};
   let walkinId=CUR&&CUR.walkinId;
   try{
     if(walkinId){
@@ -545,11 +543,8 @@ function fillPkgSelect(){
 }
 function onPkgChange(){
   const sel=$('ePkgName'); const o=sel.selectedOptions[0];
-  const isBal = o && o.dataset.bal==='1';
-  // balance-holder packages: show one "Balance left" field; others: total + used
-  if($('ePkgTwoFields')) $('ePkgTwoFields').style.display = isBal ? 'none' : 'flex';
-  if($('ePkgBalField'))  $('ePkgBalField').style.display  = isBal ? 'block' : 'none';
-  if(!isBal && o && o.dataset.uses && !$('ePkgTotal').value){ $('ePkgTotal').value=o.dataset.uses; }
+  // single balance field for all packages; prefill default uses if the service has one
+  if(o && o.dataset.uses && !$('ePkgBal').value){ $('ePkgBal').value=o.dataset.uses; }
 }
 function showExistingPkgHint(name,total,used){
   const el=$('ePkgHint'); if(!el) return;
@@ -567,7 +562,9 @@ async function loadExistingPkgs(){
   const plate=(CUR&&CUR.plate||'').trim().toUpperCase();
   const owner=(CUR&&CUR.ownerId)||null;
   if(!plate && !owner){ renderExistingPkgs(); return; }
-  // 1) gl_packages (the unified table) — by plate or owner
+  const seen={}; // normalized service name → already shown (gl_packages wins)
+  const norm=s=>(s||'').toString().replace(/^\s*\d+\s*x?\s*(times?\s*)?/i,'').trim().toLowerCase();
+  // 1) gl_packages (the unified table) — by plate or owner — source of truth
   try{
     let q=sb.from('gl_packages').select('id,service_name,total_uses,used_uses,vehicle_label,owner_id,status').eq('status','active');
     if(plate && owner) q=q.or(`vehicle_label.ilike.${plate},owner_id.eq.${owner}`);
@@ -575,21 +572,24 @@ async function loadExistingPkgs(){
     else q=q.eq('owner_id',owner);
     const {data}=await q;
     (data||[]).forEach(p=>{ const bal=(p.total_uses||0)-(p.used_uses||0);
+      seen[norm(p.service_name)]=true;
       EXIST_PKGS.push({src:'gl_packages',id:p.id,name:p.service_name,bal,raw:p}); });
   }catch(e){}
-  // 2) gl_walkin simple pkg fields
+  // 2) gl_walkin simple pkg fields — only if NOT already in gl_packages (legacy rows)
   try{
     if(CUR&&CUR.walkinId){
       const {data}=await sb.from('gl_walkin').select('id,pkg_name,pkg_total,pkg_used').eq('id',CUR.walkinId).maybeSingle();
-      if(data&&data.pkg_name){ const bal=(data.pkg_total||0)-(data.pkg_used||0);
+      if(data&&data.pkg_name&&!seen[norm(data.pkg_name)]){ const bal=(data.pkg_total||0)-(data.pkg_used||0);
+        seen[norm(data.pkg_name)]=true;
         EXIST_PKGS.push({src:'gl_walkin',id:data.id,name:data.pkg_name,bal,raw:data}); }
     }
   }catch(e){}
-  // 3) gl_pending (unclaimed)
+  // 3) gl_pending (unclaimed) — only if NOT already shown above
   try{
     if(plate){
       const {data}=await sb.from('gl_pending').select('id,service_name,remaining,claimed,plate').ilike('plate',plate).eq('claimed',false);
-      (data||[]).forEach(p=>EXIST_PKGS.push({src:'gl_pending',id:p.id,name:p.service_name,bal:p.remaining,raw:p}));
+      (data||[]).forEach(p=>{ if(!seen[norm(p.service_name)]){ seen[norm(p.service_name)]=true;
+        EXIST_PKGS.push({src:'gl_pending',id:p.id,name:p.service_name,bal:p.remaining,raw:p}); } });
     }
   }catch(e){}
   renderExistingPkgs();
