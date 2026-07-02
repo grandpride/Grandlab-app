@@ -673,7 +673,7 @@ async function loadDashboard(){
   // this year's payments for the totals; this month's full rows for chart + table
   const [{data:yRows,error:e1},{data:mRows,error:e2},{data:unpaidRows},{data:depRows}] = await Promise.all([
     sb.from('gl_payments').select('net_paid,method,paid_at,voided').gte('paid_at',startYear.toISOString()),
-    sb.from('gl_payments').select('id,job_id,invoice_no,customer_name,plate,net_paid,method,paid_at,voided').gte('paid_at',startMonth.toISOString()).order('paid_at',{ascending:false}),
+    sb.from('gl_payments').select('id,job_id,invoice_no,customer_name,plate,net_paid,method,paid_at,voided,sql_invoice_no,sql_payment_no').gte('paid_at',startMonth.toISOString()).order('paid_at',{ascending:false}),
     sb.from('gl_unpaid').select('amount').then(r=>r).catch(()=>({data:[]})),
     sb.from('gl_jobs').select('dep_amt,status').gte('dep_amt',0.01).then(r=>r).catch(()=>({data:[]}))
   ]);
@@ -736,7 +736,7 @@ async function loadDashboard(){
         <td>${esc(r.plate||'—')}</td>
         <td>${esc(r.method||'')}</td>
         <td style="text-align:right;font-weight:700">${RM(r.net_paid)}</td>
-        <td style="text-align:right;white-space:nowrap"><button class="dash-edit" onclick="openEditTx(${i})" title="Edit"><i class="ti ti-edit"></i></button> <button class="dash-del" onclick="deleteTx(${i})" title="Delete / redo"><i class="ti ti-trash"></i></button></td>
+        <td style="text-align:right;white-space:nowrap"><button class="dash-edit" onclick="openEditTx(${i})" title="Edit"><i class="ti ti-edit"></i></button> <button class="dash-edit" onclick="printTxReceipt(${i})" title="Receipt PDF"><i class="ti ti-receipt"></i></button> <button class="dash-edit" onclick="printTxJobOrder(${i})" title="Job Order PDF"><i class="ti ti-file-invoice"></i></button> <button class="dash-del" onclick="deleteTx(${i})" title="Delete / redo"><i class="ti ti-trash"></i></button></td>
       </tr>`).join('')}
       </tbody></table>`:'<div class="status">No transactions this month.</div>'}
     </div>
@@ -784,6 +784,83 @@ async function deleteTx(i){
   }
   toast('Sale deleted — job reopened to redo');
   loadDashboard(); loadJobs(); loadTakings();
+}
+/* ---- Dashboard: print receipt / job order PDF for a transaction ---- */
+async function printTxReceipt(i){
+  const r=DASH_TX[i]; if(!r) return;
+  let items=[];
+  if(r.job_id){
+    try{ const {data:j}=await sb.from('gl_jobs').select('services,total').eq('id',r.job_id).maybeSingle();
+      if(j&&Array.isArray(j.services)) items=j.services; }catch(e){}
+  }
+  const rows=items.length?items.map(s=>'<tr><td style="padding:3px 0">'+esc(s.desc||'')+'</td><td style="padding:3px 0;text-align:right">'+RM(s.price||0)+'</td></tr>').join('')
+    :'<tr><td style="padding:3px 0">Service</td><td style="padding:3px 0;text-align:right">'+RM(r.net_paid)+'</td></tr>';
+  const html='<!DOCTYPE html><html><head><meta charset="utf-8"><title>Receipt '+esc(r.invoice_no||'')+'</title>'
+    +'<style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,sans-serif;font-size:13px;color:#000;padding:18px;max-width:360px;margin:0 auto}'
+    +'.c{text-align:center}.b{font-weight:800}h1{font-size:18px}hr{border:none;border-top:1px dashed #000;margin:8px 0}'
+    +'table{width:100%;border-collapse:collapse}@media print{body{padding:6px}}</style></head><body>'
+    +'<div class="c b" style="font-size:20px">GRANDLAB DETAILING</div>'
+    +'<div class="c" style="font-size:11px;color:#333">Official Receipt</div><hr>'
+    +'<div>Invoice: <b>'+esc(r.invoice_no||'—')+'</b></div>'
+    +'<div>Date: '+new Date(r.paid_at).toLocaleString('en-GB')+'</div>'
+    +'<div>Customer: '+esc(r.customer_name||'—')+'</div>'
+    +'<div>Plate: '+esc(r.plate||'—')+'</div><hr>'
+    +'<table>'+rows+'</table><hr>'
+    +'<table><tr><td class="b">TOTAL</td><td class="b" style="text-align:right">'+RM(r.net_paid)+'</td></tr>'
+    +'<tr><td>Method</td><td style="text-align:right">'+esc(r.method||'')+'</td></tr></table><hr>'
+    +'<div class="c" style="font-size:11px">Thank you! 🚗✨</div>'
+    +'</body></html>';
+  const w=window.open('','_blank'); if(w){ w.document.write(html); w.document.close(); setTimeout(()=>w.print(),500); }
+}
+async function printTxJobOrder(i){
+  const r=DASH_TX[i]; if(!r) return;
+  if(!r.job_id){ alert('This sale has no linked job order (walk-in quick sale).'); return; }
+  let j=null;
+  try{ const {data}=await sb.from('gl_jobs').select('*').eq('id',r.job_id).maybeSingle(); j=data; }catch(e){}
+  if(!j){ alert('Job not found for this sale.'); return; }
+  // merge the POS payment numbers into the slip fields
+  const svcs=Array.isArray(j.services)?j.services:[];
+  let svcRows='';
+  for(let k=0;k<7;k++){ const s=svcs[k]||{};
+    svcRows+='<tr><td style="border:1px solid #000;padding:4px 6px;text-align:center;width:30px">'+(k+1)+'</td>'
+      +'<td style="border:1px solid #000;padding:4px 6px;text-align:center;width:70px">'+esc(s.staff||'')+'</td>'
+      +'<td style="border:1px solid #000;padding:4px 6px">'+esc(s.desc||'')+'</td>'
+      +'<td style="border:1px solid #000;padding:4px 6px;text-align:right;width:80px">'+(s.price?'RM '+parseFloat(s.price).toFixed(2):'RM')+'</td></tr>';
+  }
+  const defText=(j.defects||[]).filter(d=>d.note).map(d=>d.note+(d.status&&d.status!=='noted'?' ('+d.status+')':'')).join(', ');
+  const total=(parseFloat(j.total)||parseFloat(r.net_paid)||0).toFixed(2);
+  const chk='&#10003;';
+  const html='<!DOCTYPE html><html><head><meta charset="utf-8"><title>Sales Order '+esc(j.plate||'')+'</title>'
+    +'<style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,sans-serif;font-size:12px;color:#000;padding:16px;max-width:680px;margin:0 auto}'
+    +'.top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px}.title{font-size:18px;font-weight:900;font-style:italic}'
+    +'.info-row{display:flex;align-items:baseline;margin-bottom:5px;gap:6px}.info-row .lbl{font-weight:700;font-size:11px;white-space:nowrap;min-width:90px}'
+    +'.info-row .val{border-bottom:1px solid #000;flex:1;min-height:16px;padding:0 4px;font-size:12px}'
+    +'.info-2col{display:grid;grid-template-columns:1fr 1fr;gap:0 20px;margin-bottom:5px}'
+    +'table{width:100%;border-collapse:collapse;margin-bottom:8px}th{border:1px solid #000;padding:4px 6px;font-weight:700;font-size:11px;background:#f0f0f0}'
+    +'.remark-box{border-bottom:1px solid #000;min-height:14px;margin-bottom:4px;padding:0 4px}.divider{border-top:2px solid #000;margin:10px 0}'
+    +'.pm-box{width:18px;height:18px;border:1.5px solid #000;display:inline-flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;margin-right:4px}'
+    +'.admin-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px 24px;margin-top:12px;padding-top:10px;border-top:1.5px solid #000}'
+    +'.admin-line{border-bottom:1px solid #000;min-height:18px;padding:0 4px;margin-top:3px}@media print{body{padding:8px}.no-print{display:none!important}}'
+    +'</style></head><body>'
+    +'<div class="no-print" style="position:fixed;top:0;left:0;right:0;background:#1a1a1a;padding:10px 16px;display:flex;align-items:center;justify-content:space-between;z-index:999"><span style="color:#fff;font-size:13px;font-weight:600">Job Order</span><button onclick="window.print()" style="background:#F5C518;color:#111;border:none;border-radius:6px;padding:7px 14px;font-weight:700;cursor:pointer;margin-right:8px">Print</button></div><div style="height:44px"></div>'
+    +'<div class="top"><div><div class="title">SALES ORDER RECORD</div></div><div style="font-size:11px;color:#333">GL/SALES/SO/V1</div></div>'
+    +'<div class="info-row"><span class="lbl">* CUSTOMER:</span><span class="val">'+esc(j.name||j.workshop_name||r.customer_name||'')+'</span></div>'
+    +'<div class="info-row"><span class="lbl">* CAR MODEL:</span><span class="val">'+esc(j.model||'')+'</span></div>'
+    +'<div class="info-2col"><div class="info-row"><span class="lbl">* CAR PLATE:</span><span class="val">'+esc(j.plate||'')+'</span></div>'
+    +'<div class="info-row"><span class="lbl">* H/P NUMBER:</span><span class="val">'+esc(j.hp||'')+'</span></div></div>'
+    +'<div class="info-2col"><div class="info-row"><span class="lbl">ATTEND BY:</span><span class="val">'+esc(j.attendee||j.staff||'')+'</span></div>'
+    +'<div class="info-row"><span class="lbl">DATE:</span><span class="val">'+new Date(r.paid_at).toLocaleDateString('en-GB')+'</span></div></div>'
+    +'<table><thead><tr><th style="text-align:center">NO</th><th style="text-align:center">STAFF CODE</th><th>DESCRIPTION</th><th style="text-align:right">PRICE</th></tr></thead><tbody>'+svcRows+'</tbody></table>'
+    +'<div style="font-weight:700;font-size:11px;margin-bottom:3px">REMARK:</div><div class="remark-box">'+esc(defText)+'</div>'
+    +'<div class="divider"></div>'
+    +'<div class="info-row"><span class="lbl">TOTAL AMOUNT</span><span class="val">RM '+total+'</span></div>'
+    +'<div class="info-row"><span class="lbl">PAYMENT</span><span class="val">'+esc(r.method||'')+'</span></div>'
+    +'<div class="admin-grid">'
+    +'<div><div style="font-size:12px;font-weight:700">GLIV / RECEIPT:</div><div class="admin-line">'+esc(r.invoice_no||'')+'</div></div>'
+    +'<div><div style="font-size:12px;font-weight:700">SQL INVOICE:</div><div class="admin-line">'+esc(r.sql_invoice_no||'')+'</div></div>'
+    +'<div style="grid-column:span 2"><div style="font-size:12px;font-weight:700">SQL KNOCK OFF:</div><div class="admin-line">'+esc(r.sql_payment_no||'')+'</div></div>'
+    +'</div></body></html>';
+  const w=window.open('','_blank'); if(w){ w.document.write(html); w.document.close(); setTimeout(()=>w.print(),600); }
 }
 function downloadDashReport(){
   if(!DASH_TX.length){ alert('No transactions to export.'); return; }
