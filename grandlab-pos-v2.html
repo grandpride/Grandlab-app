@@ -144,6 +144,24 @@ button,input{font-family:inherit}
 .sqlrow-in{display:flex;gap:7px}
 .sqlrow-in input{flex:1;min-width:0;background:#fff;border:1px solid var(--line2);border-radius:8px;padding:9px;font-family:inherit;font-size:13px;outline:none}
 .sqlrow-in input:focus{border-color:var(--gold)}
+.dash-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}
+.dash-card{background:var(--surface);border:1px solid var(--line2);border-radius:14px;padding:16px;text-align:center}
+.dash-num{font-size:22px;font-weight:900;color:var(--ink)}
+.dash-num.g{color:var(--gold-deep)}
+.dash-lbl{font-size:11px;color:var(--ink3);text-transform:uppercase;letter-spacing:.05em;margin-top:4px}
+.dash-sec{font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--ink2);margin:6px 0 10px}
+.dash-m{margin-bottom:11px}
+.dash-m-top{display:flex;justify-content:space-between;font-size:13px;font-weight:600;margin-bottom:4px}
+.dash-m-amt{font-weight:800;color:var(--gold-deep)}
+.dash-m-bar{height:8px;background:var(--surface2);border-radius:6px;overflow:hidden}
+.dash-m-fill{height:100%;background:var(--gold);border-radius:6px}
+.dash-chart{background:var(--surface);border:1px solid var(--line2);border-radius:12px;padding:10px;overflow-x:auto;margin-bottom:4px}
+.dash-tx-wrap{overflow-x:auto;border:1px solid var(--line2);border-radius:12px}
+.dash-tx{width:100%;border-collapse:collapse;font-size:12.5px}
+.dash-tx th{text-align:left;padding:8px 10px;background:var(--surface2);color:var(--ink2);font-weight:700;font-size:11px;white-space:nowrap}
+.dash-tx td{padding:8px 10px;border-top:1px solid var(--line2);white-space:nowrap}
+.dash-edit{background:none;border:1px solid var(--line2);border-radius:7px;padding:4px 7px;cursor:pointer;color:var(--gold-deep);font-size:13px}
+.dash-edit:active{transform:scale(.95)}
 
 .totals{background:var(--surface2);border:1px solid var(--line);border-radius:13px;padding:14px;margin-top:14px}
 .totals .row{display:flex;justify-content:space-between;font-size:14px;padding:4px 0}
@@ -314,6 +332,7 @@ button,input{font-family:inherit}
     <div>
       <div class="panel">
         <div class="tabs">
+          <div class="tab" id="tabDash" onclick="switchTab('dash')"><i class="ti ti-chart-pie"></i> Dashboard</div>
           <div class="tab on" id="tabReady" onclick="switchTab('ready')"><i class="ti ti-receipt"></i> Ready <span class="cnt" id="cntReady">0</span></div>
           <div class="tab" id="tabHold" onclick="switchTab('hold')"><i class="ti ti-player-pause"></i> On-hold <span class="cnt" id="cntHold">0</span></div>
           <div class="tab" id="tabSql" onclick="switchTab('sql')"><i class="ti ti-file-invoice"></i> SQL keying <span class="cnt" id="cntSql">0</span></div>
@@ -324,6 +343,7 @@ button,input{font-family:inherit}
         </div>
         <div class="panel-b">
           <div class="status" id="status"></div>
+          <div id="dashList" style="display:none"></div>
           <div id="jobs"></div>
           <div id="sqlList" style="display:none"></div>
           <div class="empty" id="empty" style="display:none">
@@ -397,6 +417,20 @@ button,input{font-family:inherit}
   <div class="dialog">
     <div class="dialog-h"><h3 id="sizeTitle">Choose size</h3><button class="closex" onclick="closeModal('sizeModal')">×</button></div>
     <div class="dialog-b" id="sizeBody"></div>
+  </div>
+</div>
+
+<div class="modal" id="etxModal">
+  <div class="dialog">
+    <div class="dialog-h"><h3>Edit transaction</h3><button class="closex" onclick="closeModal('etxModal')">×</button></div>
+    <div class="dialog-b">
+      <div style="font-size:13px;color:var(--ink2);margin-bottom:12px" id="etxWho"></div>
+      <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px">Payment method</label>
+      <input id="etxMethod" class="cat-search" placeholder="e.g. Cash / TnG" style="margin-bottom:12px">
+      <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px">Amount (RM)</label>
+      <input id="etxAmount" class="cat-search" type="number" step="0.01" min="0" style="margin-bottom:16px">
+      <button class="btn btn-blue" onclick="saveEditTx()"><i class="ti ti-device-floppy"></i> Save changes</button>
+    </div>
   </div>
 </div>
 
@@ -577,20 +611,22 @@ async function refreshSqlCount(){
 }
 function switchTab(t){
   TAB=t;
+  $('tabDash').classList.toggle('on',t==='dash');
   $('tabReady').classList.toggle('on',t==='ready');
   $('tabHold').classList.toggle('on',t==='hold');
   $('tabSql').classList.toggle('on',t==='sql');
-  $('listTitle').textContent=t==='hold'?'On-hold orders':(t==='sql'?'SQL Account keying':'Ready to bill');
+  $('listTitle').textContent=t==='dash'?'Dashboard':(t==='hold'?'On-hold orders':(t==='sql'?'SQL Account keying':'Ready to bill'));
   $('emptyMsg').textContent=t==='hold'?'No orders on hold.':'No jobs waiting to be paid.';
   $('walkinBtn').style.display=t==='hold'?'none':'inline-flex';
   $('takings').style.display=(t==='ready')?'flex':'none';
-  // toggle the two list containers
-  const sqlMode=(t==='sql');
-  $('jobs').style.display=sqlMode?'none':'block';
+  const dashMode=(t==='dash'), sqlMode=(t==='sql');
+  $('dashList').style.display=dashMode?'block':'none';
+  $('jobs').style.display=(dashMode||sqlMode)?'none':'block';
   $('empty').style.display='none';
   $('sqlList').style.display=sqlMode?'block':'none';
   if(document.getElementById('exportRow')) $('exportRow').style.display=(t==='ready')?'block':'none';
-  if(sqlMode){ loadSqlQueue(); }
+  if(dashMode){ loadDashboard(); }
+  else if(sqlMode){ loadSqlQueue(); }
   else renderJobs();
 }
 function currentList(){ return TAB==='hold'?HOLD:JOBS; }
@@ -619,8 +655,156 @@ function openFromList(i){
   CUR=j; startCheckout(CUR, jobTotal(CUR)); renderJobs();
 }
 
-/* ---------- SQL Account keying queue ---------- */
-let SQLQ=[];
+/* ---------- Dashboard ---------- */
+let DASH_TX=[];  // this month's transactions, cached for the table + edit
+function dayStart_(d){ const x=new Date(d); x.setHours(0,0,0,0); return x; }
+async function loadDashboard(){
+  $('dashList').innerHTML='<div class="status">Loading dashboard…</div>';
+  const now=new Date();
+  const startToday=dayStart_(now);
+  const startWeek=dayStart_(now); startWeek.setDate(startWeek.getDate()-((startWeek.getDay()+6)%7)); // Monday
+  const startMonth=new Date(now.getFullYear(),now.getMonth(),1);
+  const startYear=new Date(now.getFullYear(),0,1);
+
+  // this year's payments for the totals; this month's full rows for chart + table
+  const [{data:yRows,error:e1},{data:mRows,error:e2},{data:unpaidRows},{data:depRows}] = await Promise.all([
+    sb.from('gl_payments').select('net_paid,method,paid_at').gte('paid_at',startYear.toISOString()),
+    sb.from('gl_payments').select('id,invoice_no,customer_name,plate,net_paid,method,paid_at').gte('paid_at',startMonth.toISOString()).order('paid_at',{ascending:false}),
+    sb.from('gl_unpaid').select('amount').then(r=>r).catch(()=>({data:[]})),
+    sb.from('gl_jobs').select('dep_amt,status').gte('dep_amt',0.01).then(r=>r).catch(()=>({data:[]}))
+  ]);
+  if(e1){ $('dashList').innerHTML='<div class="status">Error: '+esc(e1.message)+'</div>'; return; }
+
+  const rows=yRows||[];
+  let tToday=0,tWeek=0,tMonth=0,tYear=0,cToday=0;
+  const methodTotals={};
+  rows.forEach(r=>{
+    const amt=Number(r.net_paid)||0, when=new Date(r.paid_at);
+    tYear+=amt;
+    if(when>=startMonth) tMonth+=amt;
+    if(when>=startWeek)  tWeek+=amt;
+    if(when>=startToday){ tToday+=amt; cToday++; }
+    if(when>=startMonth){ const k=bucketMethod_(r.method); methodTotals[k]=(methodTotals[k]||0)+amt; }
+  });
+
+  // outstanding (unpaid) + deposits held
+  const outstanding=(unpaidRows||[]).reduce((s,r)=>s+(Number(r.amount)||0),0);
+  const deposits=(depRows||[]).filter(j=>j.status!=='paid').reduce((s,j)=>s+(Number(j.dep_amt)||0),0);
+
+  // daily chart data for this month
+  DASH_TX=mRows||[];
+  const daysInMonth=new Date(now.getFullYear(),now.getMonth()+1,0).getDate();
+  const perDay=new Array(daysInMonth+1).fill(0);
+  DASH_TX.forEach(r=>{ const d=new Date(r.paid_at).getDate(); perDay[d]+=Number(r.net_paid)||0; });
+  const maxDay=Math.max(1,...perDay);
+
+  const methodRows=Object.keys(methodTotals).sort((a,b)=>methodTotals[b]-methodTotals[a]);
+  const maxM=Math.max(1,...Object.values(methodTotals));
+
+  $('dashList').innerHTML=`
+    <div class="dash-grid">
+      <div class="dash-card"><div class="dash-num g">${RM(tToday)}</div><div class="dash-lbl">Today${cToday?` · ${cToday} paid`:''}</div></div>
+      <div class="dash-card"><div class="dash-num">${RM(tWeek)}</div><div class="dash-lbl">This week</div></div>
+      <div class="dash-card"><div class="dash-num">${RM(tMonth)}</div><div class="dash-lbl">This month</div></div>
+      <div class="dash-card"><div class="dash-num">${RM(tYear)}</div><div class="dash-lbl">This year</div></div>
+      <div class="dash-card"><div class="dash-num" style="color:var(--danger)">${RM(outstanding)}</div><div class="dash-lbl">Outstanding</div></div>
+      <div class="dash-card"><div class="dash-num">${RM(deposits)}</div><div class="dash-lbl">Deposits held</div></div>
+    </div>
+
+    <div class="dash-sec">Daily sales · ${now.toLocaleDateString('en-MY',{month:'long'})}</div>
+    <div class="dash-chart">${dashChart_(perDay,maxDay,daysInMonth)}</div>
+
+    <div class="dash-sec">Payment methods · this month</div>
+    ${methodRows.length?methodRows.map(k=>{
+      const v=methodTotals[k]; const pct=Math.round(v/maxM*100);
+      return `<div class="dash-m"><div class="dash-m-top"><span>${esc(k)}</span><span class="dash-m-amt">${RM(v)}</span></div><div class="dash-m-bar"><div class="dash-m-fill" style="width:${pct}%"></div></div></div>`;
+    }).join(''):'<div class="status">No payments this month yet.</div>'}
+
+    <div class="dash-sec" style="display:flex;justify-content:space-between;align-items:center">
+      <span>Sales overview · this month</span>
+      <button class="btn-mini" onclick="downloadDashReport()"><i class="ti ti-file-type-pdf"></i> Download</button>
+    </div>
+    <div class="dash-tx-wrap">
+      ${DASH_TX.length?`<table class="dash-tx"><thead><tr><th>Date</th><th>Customer</th><th>Plate</th><th>Method</th><th style="text-align:right">Amount</th><th></th></tr></thead><tbody>
+      ${DASH_TX.map((r,i)=>`<tr>
+        <td>${new Date(r.paid_at).toLocaleDateString('en-MY',{day:'2-digit',month:'short'})}</td>
+        <td>${esc(titleCase(r.customer_name||'—'))}</td>
+        <td>${esc(r.plate||'—')}</td>
+        <td>${esc(r.method||'')}</td>
+        <td style="text-align:right;font-weight:700">${RM(r.net_paid)}</td>
+        <td style="text-align:right"><button class="dash-edit" onclick="openEditTx(${i})" title="Edit"><i class="ti ti-edit"></i></button></td>
+      </tr>`).join('')}
+      </tbody></table>`:'<div class="status">No transactions this month.</div>'}
+    </div>
+    <button class="btn-mini" style="margin-top:14px" onclick="loadDashboard()"><i class="ti ti-refresh"></i> Refresh</button>`;
+}
+function dashChart_(perDay,maxDay,days){
+  const W=Math.max(320, days*18), H=140, pad=22, bw=Math.max(6,(W-pad)/days-4);
+  let bars='';
+  for(let d=1; d<=days; d++){
+    const v=perDay[d]||0;
+    const h=Math.round((v/maxDay)*(H-pad-14));
+    const x=pad+(d-1)*((W-pad)/days), y=H-14-h;
+    bars+=`<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${bw.toFixed(1)}" height="${Math.max(0,h)}" rx="2" fill="var(--gold)"><title>${d}: ${RM(v)}</title></rect>`;
+    if(d%5===0||d===1){ bars+=`<text x="${(x+bw/2).toFixed(1)}" y="${H-2}" font-size="8" fill="var(--ink3)" text-anchor="middle">${d}</text>`; }
+  }
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" preserveAspectRatio="xMinYMin meet">${bars}</svg>`;
+}
+function openEditTx(i){
+  const r=DASH_TX[i]; if(!r) return;
+  window._editTx=r;
+  $('etxWho').textContent=(r.customer_name||'—')+' · '+(r.plate||'—');
+  $('etxMethod').value=r.method||'';
+  $('etxAmount').value=Number(r.net_paid)||0;
+  $('etxModal').classList.add('show');
+}
+async function saveEditTx(){
+  const r=window._editTx; if(!r) return;
+  const method=$('etxMethod').value.trim();
+  const amt=parseFloat($('etxAmount').value);
+  if(isNaN(amt)||amt<0){ alert('Enter a valid amount.'); return; }
+  const {error}=await sb.from('gl_payments').update({method:method||null, net_paid:amt}).eq('id',r.id);
+  if(error){ alert('Update failed: '+error.message); return; }
+  toast('Transaction updated ✓');
+  closeModal('etxModal'); loadDashboard(); loadTakings();
+}
+function downloadDashReport(){
+  if(!DASH_TX.length){ alert('No transactions to export.'); return; }
+  const now=new Date();
+  const total=DASH_TX.reduce((a,r)=>a+(Number(r.net_paid)||0),0);
+  const rowsHtml=DASH_TX.slice().reverse().map((r,i)=>'<tr>'
+    +'<td style="border:1px solid #000;padding:4px 6px;text-align:center">'+(i+1)+'</td>'
+    +'<td style="border:1px solid #000;padding:4px 6px">'+new Date(r.paid_at).toLocaleDateString('en-GB')+'</td>'
+    +'<td style="border:1px solid #000;padding:4px 6px">'+esc(r.invoice_no||'')+'</td>'
+    +'<td style="border:1px solid #000;padding:4px 6px">'+esc(r.customer_name||'')+'</td>'
+    +'<td style="border:1px solid #000;padding:4px 6px">'+esc(r.plate||'')+'</td>'
+    +'<td style="border:1px solid #000;padding:4px 6px">'+esc(r.method||'')+'</td>'
+    +'<td style="border:1px solid #000;padding:4px 6px;text-align:right;white-space:nowrap">'+RM(r.net_paid)+'</td></tr>').join('');
+  const html='<!DOCTYPE html><html><head><meta charset="utf-8"><title>Grandlab Sales Report</title>'
+    +'<style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,sans-serif;font-size:12px;color:#000;padding:18px;max-width:900px;margin:0 auto}'
+    +'.top{border-bottom:2px solid #000;padding-bottom:10px;margin-bottom:14px}.title{font-size:20px;font-weight:900}.sub{font-size:12px;color:#333;margin-top:2px}'
+    +'table{width:100%;border-collapse:collapse;margin-top:8px}th{border:1px solid #000;padding:5px 6px;font-size:11px;background:#f0f0f0;text-align:left}'
+    +'tfoot td{border:1px solid #000;padding:6px;font-weight:800}.foot{margin-top:14px;font-size:10px;color:#555;text-align:center}@media print{body{padding:8px}}'
+    +'</style></head><body>'
+    +'<div class="top"><div class="title">Grandlab Detailing</div><div class="sub">Sales Report · '+now.toLocaleDateString('en-MY',{month:'long',year:'numeric'})+'</div></div>'
+    +'<table><thead><tr><th style="width:28px">#</th><th>Date</th><th>Invoice</th><th>Customer</th><th>Plate</th><th>Method</th><th style="text-align:right">Amount</th></tr></thead>'
+    +'<tbody>'+rowsHtml+'</tbody>'
+    +'<tfoot><tr><td colspan="6" style="text-align:right">Total ('+DASH_TX.length+')</td><td style="text-align:right">'+RM(total)+'</td></tr></tfoot></table>'
+    +'<div class="foot">Generated '+now.toLocaleString('en-GB')+' · Grandlab POS</div></body></html>';
+  const w=window.open('','_blank');
+  if(w){ w.document.write(html); w.document.close(); setTimeout(()=>w.print(),700); }
+  else alert('Popup blocked — allow popups to download.');
+}
+// bucket a stored method label into a clean category (splits → "Split")
+function bucketMethod_(m){
+  const s=String(m||'').trim();
+  if(!s) return 'Other';
+  if(s.indexOf('+')>=0) return 'Split';
+  const hit=METHODS.find(x=>x.label.toLowerCase()===s.toLowerCase()||x.k===s);
+  return hit?hit.label:s;
+}
+
+
 async function loadSqlQueue(){
   $('sqlList').innerHTML='<div class="status">Loading paid orders…</div>';
   // every paid order; reception keys the SQL invoice (S) + payment number (T)
