@@ -1569,12 +1569,13 @@ async function confirmPay(){
     if(invErr) throw new Error('Invoice: '+invErr.message);
     const invoice=invData;
     const net=netDue();
+    const isUuid=v=>typeof v==='string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
     const {error:payErr}=await sb.from('gl_payments').insert({
-      job_id:String(CUR.id), invoice_no:invoice, customer_id:CUR.customer_id||null,
+      job_id:CUR._walkin?null:String(CUR.id), invoice_no:invoice, customer_id:CUR.customer_id||null,
       customer_name:CUR.name||'', phone:CUR.hp||CUR.phone||'', plate:CUR.plate||'',
       gross:PAY.gross, discount:PAY.discount, discount_by:PAY.discountBy||null,
       deposit_used:PAY.depositUsed, package_used:PAY.packageUsed,
-      pkg_used_id:(PAY.pkgUse&&!PAY.voucher)?PAY.pkgUse.id:null,
+      pkg_used_id:(PAY.pkgUse&&!PAY.voucher&&isUuid(String(PAY.pkgUse.id)))?PAY.pkgUse.id:null,
       wallet_used:PAY.walletUsed, points_used:PAY.pointsUsed, points_value:PAY.pointsUsed*POINTS_RATE,
       voucher_code:PAY.voucher?PAY.voucher.barcode:null, voucher_value:PAY.voucher?Number(PAY.voucher.value||0):0,
       net_paid:net, method:methodLabel, taken_by:ME,
