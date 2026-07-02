@@ -384,6 +384,7 @@ function fillFromWalkin_(wk){
   if(wk.phone && !$('contact').value) $('contact').value=wk.phone.replace(/^\+/,'');
   if(wk.plate) $('plate').value=wk.plate;
   if(wk.model) $('car').value=wk.model;
+  if(wk.car_type){ const t=$('bkType'); if(t){ const o=[...t.options].find(x=>x.value.toLowerCase()===String(wk.car_type).toLowerCase()); t.value=o?o.value:wk.car_type; } }
   CAR_PACKAGES=[]; renderPkgChips();
 }
 $('carSelect').addEventListener('change',onCarSelect);
@@ -393,7 +394,9 @@ async function onCarSelect(){
   else{
     const c=profileCars.find(x=>x.id===v);
     $('carEntry').style.display='none';
-    if(c){ $('car').value=[c.make,c.model].filter(Boolean).join(' ');$('plate').value=c.plate||''; await autoBalance(c.plate); }
+    if(c){ $('car').value=[c.make,c.model].filter(Boolean).join(' ');$('plate').value=c.plate||'';
+      if(c.car_type){ const t=$('bkType'); if(t){ const o=[...t.options].find(x=>x.value.toLowerCase()===String(c.car_type).toLowerCase()); t.value=o?o.value:c.car_type; } }
+      await autoBalance(c.plate); }
   }
   build();
 }
@@ -416,11 +419,16 @@ async function autoBalance(plate){
     CAR_PACKAGES = (data||[]).map(p=>({...p, remaining:(p.total_uses||0)-(p.used_uses||0)}))
                               .filter(p=>p.remaining>0);
     renderPkgChips();
-    // if a coating service is already chosen, fill its balance
-    if(selectedServiceObj && selectedServiceObj.is_coating){
-      const total=CAR_PACKAGES.reduce((s,p)=>s+p.remaining,0);
-      if(total>0){ $('bal').value=total; $('balHint').textContent='(auto from package)'; }
-      else $('balHint').textContent='(no package on file — type manually)';
+    // if the chosen service matches an active package on this car, fill its balance
+    if(selectedServiceObj){
+      const nm=(selectedServiceObj.name||'').toLowerCase().replace(/^\s*\d+\s*x?\s*(times?\s*)?/,'').trim();
+      const match=CAR_PACKAGES.find(p=>(p.service_name||'').toLowerCase().replace(/^\s*\d+\s*x?\s*(times?\s*)?/,'').trim()===nm);
+      if(match){ $('bal').value=match.remaining; $('balHint').textContent='(auto from package)'; }
+      else if(selectedServiceObj.is_coating){
+        const total=CAR_PACKAGES.reduce((s,p)=>s+p.remaining,0);
+        if(total>0){ $('bal').value=total; $('balHint').textContent='(auto from package)'; }
+        else $('balHint').textContent='(no package on file — type manually)';
+      }
     }
   }catch(e){ $('balHint').textContent='(type manually)'; }
 }
@@ -497,14 +505,16 @@ function isCoating(){ return !!(selectedServiceObj&&selectedServiceObj.is_coatin
 function serviceName(){ return selectedServiceObj?selectedServiceObj.name:''; }
 function fmtDate(v){if(!v)return"";const[y,m,d]=v.split("-");return `${+d}/${+m}/${y}`;}
 function build(){
-  $('balwrap').classList.toggle('show',isCoating());
+  // show the balance field if a coating service OR any active package is on this car
+  const hasPkg=(typeof CAR_PACKAGES!=='undefined' && CAR_PACKAGES && CAR_PACKAGES.length>0);
+  $('balwrap').classList.toggle('show', isCoating()||hasPkg);
   const s=serviceName(),date=fmtDate($('date').value),time=$('time').value.trim(),
     name=$('name').value.trim(),contact=$('contact').value.trim(),
     car=$('car').value.trim(),plate=$('plate').value.trim(),bal=$('bal').value.trim();
   if(!s&&!name&&!date){$('preview').innerHTML='<span class="ph">Fill the form to see the message…</span>';return"";}
   let m=`${s||"(service)"} ✅\nDate : ${date||"(date)"}\nTime : ${time||"(time)"}\n\n`;
   m+=`Full Name: ${name||"(name)"}\nContact no: ${contact||"(contact)"}\nCar model: ${car||"(car)"}\nNumber plate: ${plate||"(plate)"}\n`;
-  if(isCoating())m+=`\ncoating maintenance balance : ${bal||"(balance)"}\n`;
+  if(bal)m+=`\nmaintenance / package balance : ${bal}\n`;
   const dep=parseFloat($('deposit').value);
   if(!isNaN(dep)&&dep>0){ m+=`\nDeposit paid : RM${dep}${$('depDate').value?(' on '+fmtDate($('depDate').value)):''}\n`; }
   $('preview').textContent=m;return m;
@@ -514,7 +524,14 @@ function build(){
 /* ---------- copy / save to gl_bookings ---------- */
 async function copyMsg(){const m=build();if(!m.trim()){toast('Fill the form first',true);return null;}
   try{await navigator.clipboard.writeText(m);}catch(e){const t=document.createElement('textarea');t.value=m;document.body.appendChild(t);t.select();document.execCommand('copy');t.remove();}return m;}
-$('send').onclick=async()=>{const m=await copyMsg();if(!m)return;toast('Copied! Opening WhatsApp…');setTimeout(()=>location.href="whatsapp://send",700);};
+$('send').onclick=async()=>{const m=await copyMsg();if(!m)return;
+  const phone=normPhone($('contact').value);
+  toast('Copied! Opening WhatsApp…');
+  const url=phone
+    ? 'https://web.whatsapp.com/send?phone='+phone+'&text='+encodeURIComponent(m)
+    : 'https://web.whatsapp.com/';
+  setTimeout(()=>window.open(url,'_blank'),400);
+};
 $('clear').onclick=()=>{document.querySelectorAll('input').forEach(i=>i.value="");$('svc').selectedIndex=0;selectedServiceObj=null;
   $('lookup').className='lookup';foundProfile=null;profileCars=[];selectedSlot=null;$('carEntry').style.display='flex';
   CAR_PACKAGES=[];renderPkgChips();
