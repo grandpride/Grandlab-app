@@ -437,11 +437,18 @@ async function saveProfile(){
       const {error}=await sb.from('gl_walkin').update(row).eq('id',walkinId);
       if(error) throw error;
     } else {
-      // try find existing by phone+plate first (avoid dup) — only if both present-ish
+      // find an existing walk-in for this car so we UPDATE instead of duplicating.
+      // match by plate first (strongest key for a car), else by normalized phone.
       let existing=null;
-      if(phone && plate){
-        const {data}=await sb.from('gl_walkin').select('id').eq('phone',phone).eq('plate',plate).limit(1).maybeSingle();
+      if(plate){
+        const {data}=await sb.from('gl_walkin').select('id').ilike('plate',plate).limit(1).maybeSingle();
         existing=data;
+      }
+      if(!existing && phone){
+        const digits=phone.replace(/\D/g,'');
+        const {data}=await sb.from('gl_walkin').select('id,phone').limit(1000);
+        const hit=(data||[]).find(r=>String(r.phone||'').replace(/\D/g,'')===digits);
+        if(hit) existing={id:hit.id};
       }
       if(existing){
         walkinId=existing.id;

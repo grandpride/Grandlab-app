@@ -514,14 +514,7 @@ function build(){
 /* ---------- copy / save to gl_bookings ---------- */
 async function copyMsg(){const m=build();if(!m.trim()){toast('Fill the form first',true);return null;}
   try{await navigator.clipboard.writeText(m);}catch(e){const t=document.createElement('textarea');t.value=m;document.body.appendChild(t);t.select();document.execCommand('copy');t.remove();}return m;}
-$('send').onclick=async()=>{const m=await copyMsg();if(!m)return;
-  const phone=normPhone($('contact').value);
-  toast('Copied! Opening WhatsApp…');
-  const url=phone
-    ? 'https://web.whatsapp.com/send?phone='+phone+'&text='+encodeURIComponent(m)
-    : 'https://web.whatsapp.com/';
-  setTimeout(()=>window.open(url,'_blank'),400);
-};
+$('send').onclick=async()=>{const m=await copyMsg();if(!m)return;toast('Copied! Opening WhatsApp…');setTimeout(()=>location.href="whatsapp://send",700);};
 $('clear').onclick=()=>{document.querySelectorAll('input').forEach(i=>i.value="");$('svc').selectedIndex=0;selectedServiceObj=null;
   $('lookup').className='lookup';foundProfile=null;profileCars=[];selectedSlot=null;$('carEntry').style.display='flex';
   CAR_PACKAGES=[];renderPkgChips();
@@ -561,13 +554,20 @@ $('save').onclick=async()=>{
         }
       }else{
         // save as a walk-in record (claimed into a real profile when they register)
-        const {data:ex2}=await sb.from('gl_walkin').select('id')
-          .or(`phone.eq.+${phone},phone.eq.${phone}`).limit(1).maybeSingle();
-        if(!ex2){
-          await sb.from('gl_walkin').insert({
-            name:nm||null, phone:'+'+phone, plate:plate||null, model:carModel||null
-          });
+        // dedupe: match by plate first, else by normalized phone — update, don't duplicate
+        let ex2=null;
+        if(plate){
+          const {data}=await sb.from('gl_walkin').select('id').ilike('plate',plate).limit(1).maybeSingle();
+          ex2=data;
         }
+        if(!ex2 && phone){
+          const {data}=await sb.from('gl_walkin').select('id,phone').limit(1000);
+          const hit=(data||[]).find(r=>String(r.phone||'').replace(/\D/g,'')===String(phone).replace(/\D/g,''));
+          if(hit) ex2={id:hit.id};
+        }
+        const wkBody={ name:nm||null, phone:'+'+phone, plate:plate||null, model:carModel||null };
+        if(ex2){ await sb.from('gl_walkin').update(wkBody).eq('id',ex2.id); }
+        else { await sb.from('gl_walkin').insert(wkBody); }
         // bookings for walk-ins keep customer_id null (details are in notes)
       }
     }
