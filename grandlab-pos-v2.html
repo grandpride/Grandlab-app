@@ -696,7 +696,7 @@ async function loadDashboard(){
   const deposits=(depRows||[]).filter(j=>j.status!=='paid').reduce((s,j)=>s+(Number(j.dep_amt)||0),0);
 
   // daily chart data for this month
-  DASH_TX=mRows||[];
+  DASH_TX=(mRows||[]).filter(r=>!r.voided);
   const daysInMonth=new Date(now.getFullYear(),now.getMonth()+1,0).getDate();
   const perDay=new Array(daysInMonth+1).fill(0);
   DASH_TX.forEach(r=>{ const d=new Date(r.paid_at).getDate(); perDay[d]+=Number(r.net_paid)||0; });
