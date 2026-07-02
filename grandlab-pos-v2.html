@@ -724,9 +724,13 @@ async function loadDashboard(){
       return `<div class="dash-m"><div class="dash-m-top"><span>${esc(k)}</span><span class="dash-m-amt">${RM(v)}</span></div><div class="dash-m-bar"><div class="dash-m-fill" style="width:${pct}%"></div></div></div>`;
     }).join(''):'<div class="status">No payments this month yet.</div>'}
 
-    <div class="dash-sec" style="display:flex;justify-content:space-between;align-items:center">
+    <div class="dash-sec" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
       <span>Sales overview · this month</span>
-      <button class="btn-mini" onclick="downloadDashReport()"><i class="ti ti-file-type-pdf"></i> Download</button>
+      <div style="display:flex;gap:6px;align-items:center">
+        <input type="date" id="dashRepDate" value="${new Date().toLocaleDateString('en-CA')}" style="padding:6px 8px;border:1px solid var(--line2);border-radius:8px;font-family:inherit;font-size:12px">
+        <button class="btn-mini" onclick="downloadDashReport()"><i class="ti ti-file-type-pdf"></i> Day report</button>
+        <button class="btn-mini" onclick="downloadDashReport(true)"><i class="ti ti-calendar"></i> Month</button>
+      </div>
     </div>
     <div class="dash-tx-wrap">
       ${DASH_TX.length?`<table class="dash-tx"><thead><tr><th>Date</th><th>Customer</th><th>Plate</th><th>Method</th><th style="text-align:right">Amount</th><th></th></tr></thead><tbody>
@@ -880,11 +884,23 @@ async function printTxJobOrder(i){
     +'</div></body></html>';
   const w=window.open('','_blank'); if(w){ w.document.write(html); w.document.close(); setTimeout(()=>w.print(),600); }
 }
-function downloadDashReport(){
-  if(!DASH_TX.length){ alert('No transactions to export.'); return; }
+function downloadDashReport(monthMode){
   const now=new Date();
-  const total=DASH_TX.reduce((a,r)=>a+(Number(r.net_paid)||0),0);
-  const rowsHtml=DASH_TX.slice().reverse().map((r,i)=>'<tr>'
+  // day mode: filter to the picked date; month mode: whole month
+  let list=DASH_TX.slice();
+  let periodLabel;
+  if(monthMode){
+    periodLabel=now.toLocaleDateString('en-MY',{month:'long',year:'numeric'});
+  } else {
+    const dv=$('dashRepDate')?$('dashRepDate').value:'';
+    const day=dv?new Date(dv+'T00:00:00'):dayStart_(now);
+    const dayEnd=new Date(day); dayEnd.setDate(dayEnd.getDate()+1);
+    list=list.filter(r=>{ const t=new Date(r.paid_at); return t>=day && t<dayEnd; });
+    periodLabel=day.toLocaleDateString('en-GB',{weekday:'long',day:'2-digit',month:'short',year:'numeric'});
+  }
+  if(!list.length){ alert('No transactions for '+periodLabel+'.'); return; }
+  const total=list.reduce((a,r)=>a+(Number(r.net_paid)||0),0);
+  const rowsHtml=list.slice().reverse().map((r,i)=>'<tr>'
     +'<td style="border:1px solid #000;padding:4px 6px;text-align:center">'+(i+1)+'</td>'
     +'<td style="border:1px solid #000;padding:4px 6px">'+new Date(r.paid_at).toLocaleDateString('en-GB')+'</td>'
     +'<td style="border:1px solid #000;padding:4px 6px">'+esc(r.invoice_no||'')+'</td>'
@@ -898,10 +914,10 @@ function downloadDashReport(){
     +'table{width:100%;border-collapse:collapse;margin-top:8px}th{border:1px solid #000;padding:5px 6px;font-size:11px;background:#f0f0f0;text-align:left}'
     +'tfoot td{border:1px solid #000;padding:6px;font-weight:800}.foot{margin-top:14px;font-size:10px;color:#555;text-align:center}@media print{body{padding:8px}}'
     +'</style></head><body>'
-    +'<div class="top"><div class="title">Grandlab Detailing</div><div class="sub">Sales Report · '+now.toLocaleDateString('en-MY',{month:'long',year:'numeric'})+'</div></div>'
+    +'<div class="top"><div class="title">Grandlab Detailing</div><div class="sub">Sales Report · '+periodLabel+'</div></div>'
     +'<table><thead><tr><th style="width:28px">#</th><th>Date</th><th>Invoice</th><th>Customer</th><th>Plate</th><th>Method</th><th style="text-align:right">Amount</th></tr></thead>'
     +'<tbody>'+rowsHtml+'</tbody>'
-    +'<tfoot><tr><td colspan="6" style="text-align:right">Total ('+DASH_TX.length+')</td><td style="text-align:right">'+RM(total)+'</td></tr></tfoot></table>'
+    +'<tfoot><tr><td colspan="6" style="text-align:right">Total ('+list.length+')</td><td style="text-align:right">'+RM(total)+'</td></tr></tfoot></table>'
     +'<div class="foot">Generated '+now.toLocaleString('en-GB')+' · Grandlab POS</div></body></html>';
   const w=window.open('','_blank');
   if(w){ w.document.write(html); w.document.close(); setTimeout(()=>w.print(),700); }
