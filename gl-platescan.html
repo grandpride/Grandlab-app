@@ -483,8 +483,13 @@ async function saveProfile(){
     const pkgBody={ owner_id:ownerId, vehicle_id:null, vehicle_label:plate,
       service_name:pkg_name, pkg_type: pkgIsCoat?'coating_maintenance':'package',
       total_uses:pkg_total, used_uses:pkg_used, status:'active', source:'platescan' };
-    if(exPk){ await sb.from('gl_packages').update(pkgBody).eq('id',exPk.id); }
-    else { await sb.from('gl_packages').insert({...pkgBody, barcode:genBarcodeValue()}); }
+    if(exPk){
+      const {error:upErr}=await sb.from('gl_packages').update(pkgBody).eq('id',exPk.id);
+      if(upErr){ $('saveMsg').textContent='Package balance failed (update): '+upErr.message; return; }
+    } else {
+      const {error:inErr}=await sb.from('gl_packages').insert({...pkgBody, barcode:genBarcodeValue()});
+      if(inErr){ $('saveMsg').textContent='Package balance failed (insert): '+inErr.message; return; }
+    }
     // mirror to gl_pending (for signup auto-claim) when we have a phone
     if(phone){
       const {data:exPend}=await sb.from('gl_pending')
