@@ -1539,6 +1539,34 @@ function loadSession(){
   try{ const s=localStorage.getItem('gl_session'); if(s) SESSION=JSON.parse(s); }catch(e){}
   return SESSION;
 }
+/* Refresh an expired/near-expired access token using the stored refresh_token.
+   Supabase access tokens last ~1 hour; the refresh token lasts much longer.
+   Without this, reopening the app after >1h logs the user out. */
+async function refreshSession(){
+  if(!SESSION || !SESSION.refresh_token) return false;
+  // if token still has >5 min left, no need to refresh
+  const now=Math.floor(Date.now()/1000);
+  if(SESSION.expires_at && SESSION.expires_at - now > 300) return true;
+  try{
+    const r=await fetch(`${SUPA_URL}/auth/v1/token?grant_type=refresh_token`,{
+      method:"POST",
+      headers:{ "Content-Type":"application/json", apikey:SUPA_ANON },
+      body:JSON.stringify({ refresh_token: SESSION.refresh_token })
+    });
+    if(!r.ok) return false;
+    const res=await r.json();
+    if(res && res.access_token){
+      // preserve user if the refresh response omits it
+      if(!res.user && SESSION.user) res.user=SESSION.user;
+      // compute expires_at if only expires_in came back
+      if(!res.expires_at && res.expires_in) res.expires_at=Math.floor(Date.now()/1000)+Number(res.expires_in);
+      SESSION=res;
+      localStorage.setItem('gl_session', JSON.stringify(res));
+      return true;
+    }
+  }catch(e){}
+  return false;
+}
 /* TEST LOGIN: email+password sign-in that bypasses OTP (for testing only).
    Remove the hidden trigger before launch. */
 async function testLogin(email, password){
@@ -5133,6 +5161,8 @@ Object.defineProperty(window,'stepIndex',{get:()=>cur,set:v=>{cur=v;}});
   // already logged in? go straight to the app
   loadSession();
   if(SESSION?.access_token){
+    // refresh the token if it's expired/near expiry (prevents auto-logout after ~1h/days)
+    await refreshSession();
     // run all loads in parallel instead of one-by-one (much faster startup)
     const results = await Promise.allSettled([
       fetchSlides(),      // loads STYLE too
@@ -5155,6 +5185,8 @@ Object.defineProperty(window,'stepIndex',{get:()=>cur,set:v=>{cur=v;}});
     if(PROFILE && PROFILE.name){ enterApp('home'); }
     else { enterApp('profile'); }
     handlePayReturn();
+    // keep the session alive: refresh the token every 45 min while the app is open
+    setInterval(()=>{ refreshSession(); }, 45*60*1000);
     return;
   }
   await fetchSlides();
