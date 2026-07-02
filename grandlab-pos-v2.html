@@ -673,7 +673,7 @@ async function loadDashboard(){
   // this year's payments for the totals; this month's full rows for chart + table
   const [{data:yRows,error:e1},{data:mRows,error:e2},{data:unpaidRows},{data:depRows}] = await Promise.all([
     sb.from('gl_payments').select('net_paid,method,paid_at,voided').gte('paid_at',startYear.toISOString()),
-    sb.from('gl_payments').select('id,job_id,invoice_no,customer_name,plate,net_paid,method,paid_at,voided,sql_invoice_no,sql_payment_no').gte('paid_at',startMonth.toISOString()).order('paid_at',{ascending:false}),
+    sb.from('gl_payments').select('id,job_id,invoice_no,customer_name,plate,net_paid,method,paid_at,voided,sql_invoice_no,sql_payment_no,pkg_used_id').gte('paid_at',startMonth.toISOString()).order('paid_at',{ascending:false}),
     sb.from('gl_unpaid').select('amount').then(r=>r).catch(()=>({data:[]})),
     sb.from('gl_jobs').select('dep_amt,status').gte('dep_amt',0.01).then(r=>r).catch(()=>({data:[]}))
   ]);
@@ -774,7 +774,19 @@ async function saveEditTx(){
 }
 async function deleteTx(i){
   const r=DASH_TX[i]; if(!r) return;
-  if(!confirm('Delete this sale for '+(r.customer_name||'customer')+' ('+RM(r.net_paid)+')?\n\nThe job will be reopened so you can redo it, and its row on the sheet will be cleared.')) return;
+  const willRestore = !!r.pkg_used_id;
+  if(!confirm('Delete this sale for '+(r.customer_name||'customer')+' ('+RM(r.net_paid)+')?\n\n'
+    +(willRestore?'The package balance used will be added back. ':'')
+    +'The job will be reopened so you can redo it, and its row on the sheet will be cleared.')) return;
+  // restore the package visit if this sale used one (so redo won't double-deduct)
+  if(r.pkg_used_id){
+    try{
+      const {data:pk}=await sb.from('gl_packages').select('id,used_uses').eq('id',r.pkg_used_id).maybeSingle();
+      if(pk && (pk.used_uses||0)>0){
+        await sb.from('gl_packages').update({used_uses:pk.used_uses-1}).eq('id',pk.id);
+      }
+    }catch(e){}
+  }
   // soft-delete (void) so the sheet mirror can clear that row on next sync
   const {error}=await sb.from('gl_payments').update({voided:true, voided_at:new Date().toISOString()}).eq('id',r.id);
   if(error){ alert('Delete failed: '+error.message); return; }
@@ -782,7 +794,7 @@ async function deleteTx(i){
   if(r.job_id){
     try{ await sb.from('gl_jobs').update({status:'open', collected:false, payment:null, on_hold:false}).eq('id',r.job_id); }catch(e){}
   }
-  toast('Sale deleted — job reopened to redo');
+  toast(willRestore?'Sale deleted — balance restored, job reopened':'Sale deleted — job reopened to redo');
   loadDashboard(); loadJobs(); loadTakings();
 }
 /* ---- Dashboard: print receipt / job order PDF for a transaction ---- */
@@ -1562,6 +1574,7 @@ async function confirmPay(){
       customer_name:CUR.name||'', phone:CUR.hp||CUR.phone||'', plate:CUR.plate||'',
       gross:PAY.gross, discount:PAY.discount, discount_by:PAY.discountBy||null,
       deposit_used:PAY.depositUsed, package_used:PAY.packageUsed,
+      pkg_used_id:(PAY.pkgUse&&!PAY.voucher)?PAY.pkgUse.id:null,
       wallet_used:PAY.walletUsed, points_used:PAY.pointsUsed, points_value:PAY.pointsUsed*POINTS_RATE,
       voucher_code:PAY.voucher?PAY.voucher.barcode:null, voucher_value:PAY.voucher?Number(PAY.voucher.value||0):0,
       net_paid:net, method:methodLabel, taken_by:ME,
