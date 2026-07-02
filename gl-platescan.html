@@ -182,9 +182,12 @@ html,body{height:100%;background:var(--bg);font-family:-apple-system,BlinkMacSys
     <div class="fld"><label>Package (from services)</label>
       <select id="ePkgName" onchange="onPkgChange()"><option value="">— none —</option></select>
     </div>
-    <div class="frow">
+    <div class="frow" id="ePkgTwoFields">
       <div class="fld"><label>Total uses</label><input id="ePkgTotal" type="number" min="0" placeholder="0"></div>
       <div class="fld"><label>Used</label><input id="ePkgUsed" type="number" min="0" placeholder="0"></div>
+    </div>
+    <div class="fld" id="ePkgBalField" style="display:none">
+      <label>Balance left</label><input id="ePkgBal" type="number" min="0" placeholder="e.g. 5">
     </div>
 
     <div class="sec-h">Service History <span style="color:var(--text2);font-weight:400;text-transform:none">— add past visits</span></div>
@@ -248,7 +251,7 @@ async function doSearch(raw){
       $('cTier').textContent='Non-Member (walk-in)';
       $('bookBtn').href=JOBCARD_URL+'?plate='+encodeURIComponent(wk.plate||plate)+'&phone='+encodeURIComponent((wk.phone||'').replace(/^\+/,''));
       // walk-in package balance if any
-      if(wk.pkg_name && wk.pkg_total>0){
+      if(wk.pkg_name){
         const bal=(wk.pkg_total||0)-(wk.pkg_used||0);
         $('pkgWrap').innerHTML='<div class="pkg"><div style="font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Package</div><div class="pkg-line"><span>'+esc(wk.pkg_name)+'</span><span class="pkg-bal'+(bal<=0?' zero':'')+'">'+bal+' left</span></div></div>';
       } else { $('pkgWrap').innerHTML=''; }
@@ -371,6 +374,9 @@ async function openEdit(isNew){
   $('ePkgName').value='';
   $('ePkgTotal').value='';
   $('ePkgUsed').value='';
+  if($('ePkgBal')) $('ePkgBal').value='';
+  if($('ePkgTwoFields')) $('ePkgTwoFields').style.display='flex';
+  if($('ePkgBalField')) $('ePkgBalField').style.display='none';
   // show current balances for this car (with delete), from all sources
   EXIST_PKGS=[]; renderExistingPkgs(); loadExistingPkgs();
   // car picker: show manual model field with existing value; brand resets to prompt
@@ -414,10 +420,13 @@ async function saveProfile(){
   const model=$('eModel').value.trim();
   const car_type=$('eType').value;
   const pkg_name=$('ePkgName').value.trim();
-  const pkg_total=parseInt($('ePkgTotal').value)||0;
-  const pkg_used=parseInt($('ePkgUsed').value)||0;
   const pkgOpt=$('ePkgName').selectedOptions[0];
   const pkgIsCoat = pkgOpt ? pkgOpt.dataset.coat==='1' : false;
+  const pkgIsBal  = pkgOpt ? pkgOpt.dataset.bal==='1' : false;
+  // balance-holder packages store the remaining balance as total_uses (used=0);
+  // regular packages use the two-field total + used.
+  const pkg_total = pkgIsBal ? (parseInt($('ePkgBal').value)||0) : (parseInt($('ePkgTotal').value)||0);
+  const pkg_used  = pkgIsBal ? 0 : (parseInt($('ePkgUsed').value)||0);
 
   if(!name && !phone && !plate){ $('saveMsg').textContent='Enter at least a name, phone or plate.'; return; }
   $('saveMsg').textContent='Saving…';
@@ -467,7 +476,7 @@ async function saveProfile(){
   //    (keyed by plate via vehicle_label, plus owner_id if this car has an app member).
   //    This is what job card / booking / POS all read. Also mirror to gl_pending
   //    so it auto-links if/when the customer signs up.
-  if(pkg_name && pkg_total>0 && plate){
+  if(pkg_name && plate){
     const remaining = Math.max(0, pkg_total - pkg_used);
     const ownerId=(CUR&&CUR.ownerId)||null;
     // gl_packages: update existing same-service on this plate, else insert
@@ -528,13 +537,19 @@ function fillPkgSelect(){
   const cur=sel.value;
   sel.innerHTML='<option value="">— none —</option>'+PKG_SERVICES.map(s=>{
     const coat=/coat|maint/i.test((s.pkg_type||'')+' '+s.name)?'1':'0';
-    return `<option value="${esc(s.name)}" data-uses="${s.pkg_uses||''}" data-coat="${coat}">${esc(s.name)}</option>`;
+    // "balance holder" package = blank pkg_uses, or name starts with "Balance"
+    const isBal=(!s.pkg_uses || s.pkg_uses==='' || /^balance/i.test(s.name||''))?'1':'0';
+    return `<option value="${esc(s.name)}" data-uses="${s.pkg_uses||''}" data-coat="${coat}" data-bal="${isBal}">${esc(s.name)}</option>`;
   }).join('');
   if(cur) sel.value=cur;
 }
 function onPkgChange(){
   const sel=$('ePkgName'); const o=sel.selectedOptions[0];
-  if(o && o.dataset.uses && !$('ePkgTotal').value){ $('ePkgTotal').value=o.dataset.uses; }
+  const isBal = o && o.dataset.bal==='1';
+  // balance-holder packages: show one "Balance left" field; others: total + used
+  if($('ePkgTwoFields')) $('ePkgTwoFields').style.display = isBal ? 'none' : 'flex';
+  if($('ePkgBalField'))  $('ePkgBalField').style.display  = isBal ? 'block' : 'none';
+  if(!isBal && o && o.dataset.uses && !$('ePkgTotal').value){ $('ePkgTotal').value=o.dataset.uses; }
 }
 function showExistingPkgHint(name,total,used){
   const el=$('ePkgHint'); if(!el) return;

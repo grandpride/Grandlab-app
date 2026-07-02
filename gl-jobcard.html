@@ -932,6 +932,7 @@ async function deductPackages_(j){
   const svcs=Array.isArray(j.services)?j.services:[];
   if(!svcs.length || !j.customer_id) return false;
   let any=false;
+  let balAfter=null;  // remaining balance to record on the job (for the sheet remark)
   // gather candidate package uses: explicit pkg_id OR a coating/maintenance service
   for(const s of svcs){
     let pkg=null;
@@ -952,8 +953,10 @@ async function deductPackages_(j){
     const used=(pkg.used_uses||0)+1;
     if(used>(pkg.total_uses||0)){ toast('⚠️ '+pkg.service_name+' no balance left'); continue; }
     const {error}=await sb.from('gl_packages').update({used_uses:used}).eq('id',pkg.id);
-    if(!error){ any=true; toast(pkg.service_name+' deducted · '+((pkg.total_uses||0)-used)+' left'); }
+    if(!error){ any=true; const rem=(pkg.total_uses||0)-used; balAfter=rem; toast(pkg.service_name+' deducted · '+rem+' left'); }
   }
+  // save remaining balance onto the job so the sheet mirror can show it
+  if(balAfter!=null){ try{ await sb.from('gl_jobs').update({pkg_balance_after:balAfter}).eq('id',j.id); }catch(e){} }
   return any;
 }
 function editJob(id){
