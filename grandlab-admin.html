@@ -192,7 +192,6 @@
         <button class="tab" data-tab="stores" onclick="switchTab('stores')">Stores</button>
         <button class="tab" data-tab="brands" onclick="switchTab('brands')">Brands</button>
         <button class="tab" data-tab="highlights" onclick="switchTab('highlights')">Highlights</button>
-        <button class="tab" data-tab="mysterybox" onclick="switchTab('mysterybox')">Mystery Box</button>
         <button class="tab" data-tab="warranty" onclick="switchTab('warranty')">Warranty Link</button>
         <button class="tab" data-tab="actionbtn" onclick="switchTab('actionbtn')">Action Button</button>
         <button class="tab" data-tab="vehicles" onclick="switchTab('vehicles')">Vehicles</button>
@@ -2933,7 +2932,7 @@ function renderPreview(){
           <div style="font-size:9px;color:${theme.accent};text-transform:uppercase;font-weight:700">${esc(theme.homeMemberTier||'Non-Member')}</div>
           <div style="font-size:14px;font-weight:700">Jimmy Kuek</div>
           <div style="margin-top:12px"><div style="font-size:10px;color:#8A8A8A">${esc(theme.homeWalletLabel||'Wallet Balance')}</div><div style="font-size:17px;font-weight:800">RM 0.00</div></div>
-          <div style="margin-top:8px"><div style="font-size:10px;color:#8A8A8A">Points</div><div style="font-size:17px;font-weight:800">⭐ 0</div></div>
+          <div style="margin-top:8px"><div style="font-size:10px;color:#8A8A8A">${esc(theme.coinName||'G Coin')}</div><div style="font-size:17px;font-weight:800">⭐ 0</div></div>
           <div style="margin-top:12px;background:${theme.accent};color:#111;border-radius:10px;padding:9px;text-align:center;font-weight:800;font-size:12px">${esc(theme.homeJoinMemberBtn||'Join Member')}</div>
         </div>
         ${secTitle(theme.homeServicesTitle||'Our Services')}
