@@ -274,29 +274,39 @@ async function submitSpin(){
 // ---- STEP 2: spin ----
 async function doSpin(){
   if(spinning) return; spinning=true; $('spinBtn').disabled=true; $('spinBtn').textContent='Spinning…';
+  // re-check the phone hasn't already spun (block refresh-respin)
+  try{ const {data:taken}=await sb.rpc('gl_spin_phone_taken',{p_phone:SUBMITTED.phone});
+    if(taken===true){
+      spinning=false; $('spinBtn').disabled=false; $('spinBtn').textContent='SPIN NOW';
+      showStatus('This phone number has already spun. Only one spin per number.','err');
+      return;
+    }
+  }catch(e){}
   // server decides the prize (tamper-proof)
   let prize=null;
   try{ const {data}=await sb.rpc('gl_spin_draw'); prize=Array.isArray(data)?data[0]:data; }catch(e){}
-  if(!prize){ // fallback: pick client-side by weight
-    const tot=PRIZES.reduce((s,p)=>s+Number(p.weight||1),0); let r=Math.random()*tot,a=0;
-    prize=PRIZES.find(p=>{ a+=Number(p.weight||1); return r<=a; })||PRIZES[0];
-  }
+  if(!prize){ const tot=PRIZES.reduce((s,p)=>s+Number(p.weight||1),0); let r=Math.random()*tot,a=0;
+    prize=PRIZES.find(p=>{ a+=Number(p.weight||1); return r<=a; })||PRIZES[0]; }
   WON=prize;
-  // spin animation to land on the prize
-  const idx=Math.max(0,PRIZES.findIndex(p=>p.id===prize.id));
-  const n=PRIZES.length, seg=360/n;
-  const target=360*8 + (360 - (idx*seg + seg/2)); // land pointer (top) on segment center
-  $('wheel').style.transform=`rotate(${target}deg)`;
-  // save the win
+  // SAVE THE WIN FIRST — if it fails (duplicate phone), stop and don't spin
   const ref='SP-'+Math.random().toString(36).slice(2,6).toUpperCase();
   const s=SUBMITTED;
-  try{
-    await sb.from('gl_spin_wins').insert({
-      ref_code:ref, name:s.name, phone:'+'+s.phone, plate:s.plate,
-      car_brand:s.brandName==='— select —'?'':s.brandName, car_model:s.model, car_type:s.ctype||null, email:s.email,
-      prize_id:prize.id, prize_label:prize.label, prize_kind:prize.kind, prize_value:prize.value, status:'won'
-    });
-  }catch(e){}
+  const {error:winErr}=await sb.from('gl_spin_wins').insert({
+    ref_code:ref, name:s.name, phone:'+'+s.phone, plate:s.plate,
+    car_brand:s.brandName==='— select —'?'':s.brandName, car_model:s.model, car_type:s.ctype||null, email:s.email,
+    prize_id:prize.id, prize_label:prize.label, prize_kind:prize.kind, prize_value:prize.value, status:'won'
+  });
+  if(winErr){
+    spinning=false; $('spinBtn').disabled=false; $('spinBtn').textContent='SPIN NOW';
+    if(String(winErr.message||'').match(/duplicate|unique/i)) showStatus('This phone number has already spun. Only one spin per number.','err');
+    else showStatus('Could not record your spin. Please try again.','err');
+    return;
+  }
+  // win saved -> now animate the wheel to land on the prize
+  const idx=Math.max(0,PRIZES.findIndex(p=>p.id===prize.id));
+  const n=PRIZES.length, seg=360/n;
+  const target=360*8 + (360 - (idx*seg + seg/2));
+  $('wheel').style.transform=`rotate(${target}deg)`;
   setTimeout(()=>{ showResult(ref); }, 6600);
 }
 function showResult(ref){
