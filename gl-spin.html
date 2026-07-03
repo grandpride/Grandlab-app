@@ -149,30 +149,20 @@ async function checkPhone(){
   autoFillFromPhone(phone);
 }
 async function autoFillFromPhone(phone){
-  const variants=['+'+phone, phone, '+'+phone.replace(/^0/,''), phone.replace(/^60/,'0')];
   try{
-    let rec=null;
-    for(const v of variants){
-      const {data}=await sb.from('gl_walkin').select('name,phone,plate,model,car_type').eq('phone',v).limit(1).maybeSingle();
-      if(data){ rec=data; break; }
+    const {data}=await sb.rpc('gl_lookup_customer',{p_phone:phone});
+    const rec=Array.isArray(data)?data[0]:data;
+    if(!rec) return;
+    if(rec.name && !$('name').value.trim()) $('name').value=rec.name;
+    if(rec.email && !$('email').value.trim()) $('email').value=rec.email;
+    if(rec.plate && !$('plate').value.trim()) $('plate').value=rec.plate;
+    if(rec.model){
+      const opt=[...$('model').options].find(o=>o.value.toLowerCase()===String(rec.model).toLowerCase());
+      if(opt){ $('model').value=opt.value; onModel(); }
+      else { const o=document.createElement('option'); o.value=rec.model; o.textContent=rec.model; o.dataset.type=rec.car_type||''; $('model').appendChild(o); $('model').value=rec.model; onModel(); }
     }
-    let prof=null;
-    for(const v of variants){
-      const {data}=await sb.from('gl_profiles').select('name,phone,email').eq('phone',v).limit(1).maybeSingle();
-      if(data){ prof=data; break; }
-    }
-    if(!rec && !prof) return;
-    if(((rec&&rec.name)||(prof&&prof.name)) && !$('name').value.trim()) $('name').value=(rec&&rec.name)||prof.name;
-    if(prof&&prof.email && !$('email').value.trim()) $('email').value=prof.email;
-    if(rec){
-      if(rec.plate && !$('plate').value.trim()) $('plate').value=rec.plate;
-      if(rec.model){
-        const opt=[...$('model').options].find(o=>o.value.toLowerCase()===String(rec.model).toLowerCase());
-        if(opt){ $('model').value=opt.value; onModel(); }
-        else { const o=document.createElement('option'); o.value=rec.model; o.textContent=rec.model; o.dataset.type=rec.car_type||''; $('model').appendChild(o); $('model').value=rec.model; onModel(); }
-      }
-      if(rec.car_type && !$('ctype').value){ const t=[...$('ctype').options].find(x=>x.value.toLowerCase()===String(rec.car_type).toLowerCase()); if(t) $('ctype').value=t.value; }
-    }
+    if(rec.car_type && !$('ctype').value){ const t=[...$('ctype').options].find(x=>x.value.toLowerCase()===String(rec.car_type).toLowerCase()); if(t) $('ctype').value=t.value; }
+    if(rec.name || rec.plate){ $('phoneMsg').style.color='#7ee29a'; if(!$('phoneMsg').textContent.includes('filled')) $('phoneMsg').textContent=($('phoneMsg').textContent||'✓ Ready to spin!')+' · details filled'; }
   }catch(e){}
 }
 
