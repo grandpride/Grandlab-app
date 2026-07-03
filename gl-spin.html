@@ -65,7 +65,7 @@
       </div>
       <div class="row">
         <div class="field"><label>Car Type</label><select id="ctype"><option value="">—</option></select></div>
-        <div class="field"><label>Car Plate</label><input id="plate" placeholder="e.g. ABC1234" style="text-transform:uppercase"></div>
+        <div class="field"><label>Car Plate</label><input id="plate" placeholder="e.g. ABC1234" style="text-transform:uppercase" oninput="checkTaken()"></div>
       </div>
       <div class="field"><label>Email</label><input id="email" type="email" placeholder="you@email.com"></div>
       <button class="btn btn-gold" id="submitBtn" onclick="submitSpin()">🎡 Submit &amp; Spin!</button>
@@ -102,7 +102,7 @@
 
     <div class="tnc" id="tncBlock">
       <b>Terms &amp; Conditions:</b><br>
-      • One spin per phone number. Limited to one entry only.<br>
+      • One spin per car. Limited to one entry per vehicle.<br>
       • Prizes are subject to verification and confirmation by Grandlab customer service.<br>
       • Grandlab reserves the right to refuse duplicate, fake, or invalid entries.
     </div>
@@ -142,11 +142,20 @@ function onPhone(){ clearTimeout(pt); pt=setTimeout(checkPhone,500); }
 async function checkPhone(){
   const phone=normPhone($('phone').value); $('phoneMsg').textContent=''; $('phoneMsg').className='lookup'; phoneOk=true;
   if(phone.length<8) return;
-  try{ const {data}=await sb.rpc('gl_spin_phone_taken',{p_phone:phone});
-    if(data===true){ phoneOk=false; $('phoneMsg').textContent='⚠️ This phone number has already spun. One spin per number.'; $('phoneMsg').className='lookup taken'; }
-    else { $('phoneMsg').textContent='✓ Ready to spin!'; $('phoneMsg').style.color='#7ee29a'; }
-  }catch(e){}
+  $('phoneMsg').textContent='✓ Ready to spin!'; $('phoneMsg').style.color='#7ee29a';
   autoFillFromPhone(phone);
+  checkTaken(); // in case plate is already filled
+}
+// check if THIS phone+plate combo already spun
+async function checkTaken(){
+  const phone=normPhone($('phone').value);
+  const plate=($('plate').value||'').trim().toUpperCase().replace(/\s+/g,'');
+  if(phone.length<8 || !plate){ phoneOk=true; return; }
+  try{
+    const {data}=await sb.rpc('gl_spin_phone_taken',{p_phone:phone,p_plate:plate});
+    if(data===true){ phoneOk=false; $('phoneMsg').textContent='⚠️ This car ('+plate+') has already spun. One spin per car.'; $('phoneMsg').className='lookup taken'; }
+    else { phoneOk=true; $('phoneMsg').textContent='✓ Ready to spin!'; $('phoneMsg').className='lookup'; $('phoneMsg').style.color='#7ee29a'; }
+  }catch(e){}
 }
 async function autoFillFromPhone(phone){
   const oldPick=$('carPick'); if(oldPick) oldPick.remove();
@@ -255,7 +264,7 @@ async function submitSpin(){
   if(!model){ showStatus('Please select your car model.','err'); return; }
   if(!plate||plate.length<3){ showStatus('Please enter your car plate.','err'); return; }
   if(!email||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){ showStatus('Please enter a valid email.','err'); return; }
-  if(!phoneOk){ showStatus('This phone number has already spun.','err'); return; }
+  if(!phoneOk){ showStatus('This car has already spun. One spin per car.','err'); return; }
   if(!PRIZES.length){ showStatus('No prizes available right now. Please try later.','err'); return; }
 
   SUBMITTED={name,phone,brandName,model,ctype,plate,email};
@@ -274,11 +283,11 @@ async function submitSpin(){
 // ---- STEP 2: spin ----
 async function doSpin(){
   if(spinning) return; spinning=true; $('spinBtn').disabled=true; $('spinBtn').textContent='Spinning…';
-  // re-check the phone hasn't already spun (block refresh-respin)
-  try{ const {data:taken}=await sb.rpc('gl_spin_phone_taken',{p_phone:SUBMITTED.phone});
+  // re-check this car hasn't already spun (block refresh-respin)
+  try{ const {data:taken}=await sb.rpc('gl_spin_phone_taken',{p_phone:SUBMITTED.phone,p_plate:SUBMITTED.plate});
     if(taken===true){
       spinning=false; $('spinBtn').disabled=false; $('spinBtn').textContent='SPIN NOW';
-      showStatus('This phone number has already spun. Only one spin per number.','err');
+      showStatus('This car has already spun. One spin per car.','err');
       return;
     }
   }catch(e){}
@@ -298,7 +307,7 @@ async function doSpin(){
   });
   if(winErr){
     spinning=false; $('spinBtn').disabled=false; $('spinBtn').textContent='SPIN NOW';
-    if(String(winErr.message||'').match(/duplicate|unique/i)) showStatus('This phone number has already spun. Only one spin per number.','err');
+    if(String(winErr.message||'').match(/duplicate|unique/i)) showStatus('This car has already spun. One spin per car.','err');
     else showStatus('Could not record your spin. Please try again.','err');
     return;
   }

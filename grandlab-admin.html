@@ -3374,7 +3374,8 @@ function renderWins(){
           <div style="font-size:11px;color:${conf?'#1db954':'#e0a000'}">${conf?'✓ '+w.status:'⏳ '+w.status}${w.owner_id?' · in app':''}</div>
         </div>
         <div>${conf?'':`<button class="btn btn-primary btn-sm" onclick="confirmWin('${w.id}')">Confirm</button>`}
-          <button class="btn btn-ghost btn-sm" style="color:#c0392b" onclick="rejectWin('${w.id}')">Reject</button></div>
+          <button class="btn btn-ghost btn-sm" style="color:#c0392b" onclick="rejectWin('${w.id}')">Reject (burn)</button>
+          <button class="btn btn-ghost btn-sm" style="color:#e0a000" onclick="allowRespin('${w.id}','${esc(w.phone||'')}')">Allow respin</button></div>
       </div>
     </div>`;
   }).join('');
@@ -3384,9 +3385,14 @@ async function confirmWin(id){
   catch(e){ alert('Confirm failed: '+e); }
 }
 async function rejectWin(id){
-  if(!confirm('Reject this prize?'))return;
+  if(!confirm('Reject & BURN this prize?\n\nThe prize is denied and the phone stays locked — the customer CANNOT spin again.'))return;
   try{ await sb(`gl_spin_wins?id=eq.${id}`,{method:"PATCH",headers:H(),body:JSON.stringify({status:'rejected'})}); loadWins(); }
   catch(e){ alert('Reject failed: '+e); }
+}
+async function allowRespin(id, phone){
+  if(!confirm('Allow this customer to spin AGAIN?\n\nThis deletes their win and unlocks their phone so they can spin once more.'))return;
+  try{ await sb(`gl_spin_wins?id=eq.${id}`,{method:"DELETE",headers:H()}); loadWins(); alert('Done — '+(phone||'this phone')+' can spin again.'); }
+  catch(e){ alert('Failed: '+e); }
 }
 let PROOFS=[];
 async function loadReviewProofs(){
