@@ -4589,6 +4589,15 @@ async function uploadTaskProof(input, task){
     if(msg){ msg.style.color='#7ee29a'; msg.textContent='✓ Screenshot received! We\'ll approve it and add your spin soon.'; }
   }catch(e){ if(msg){msg.style.color='#ff8a8a';msg.textContent='Upload error. Try again.';} }
 }
+function shortSpinLabel(lbl){
+  let s=(lbl||'').trim();
+  s=s.replace(/\*.*$/,'').trim();
+  s=s.replace(/for any services?/i,'OFF').replace(/for any/i,'').trim();
+  s=s.replace(/\bServices?\b/i,'').trim();
+  s=s.replace(/\s{2,}/g,' ');
+  if(s.length>15) s=s.slice(0,15);
+  return s;
+}
 async function openAppSpin(){
   // load prizes
   try{ const r=await fetch(`${SUPA_URL}/rest/v1/gl_spin_prizes?active=eq.true&order=sort_order.asc`,{headers:authHeaders()});
@@ -4626,12 +4635,12 @@ async function openAppSpin(){
     ctx.fill(); ctx.strokeStyle=mega?'#ffd700':'#F5C518'; ctx.lineWidth=mega?2.5:1.5; ctx.stroke();
     ctx.save(); ctx.translate(cx,cy); ctx.rotate(a0+arc/2); ctx.textAlign='right';
     if(mega){
-      ctx.font="800 8.5px -apple-system,sans-serif"; ctx.fillStyle="#ffe08a"; ctx.fillText("★ MEGA PRIZE ★", rad-14, -5);
-      ctx.font="800 11px -apple-system,sans-serif"; ctx.fillStyle="#fff"; ctx.fillText("Grand Prize", rad-14, 9);
+      ctx.font="800 8px -apple-system,sans-serif"; ctx.fillStyle="#ffe08a"; ctx.fillText("★ MEGA PRIZE ★", rad-14, -6);
+      ctx.font="800 11px -apple-system,sans-serif"; ctx.fillStyle="#fff"; ctx.fillText("Gyeon Coating", rad-14, 8);
     } else {
       const light=(p.color==='#fff5cc'||!p.color||p.color==='#F5C518');
-      ctx.fillStyle=light?'#8a6d00':'#fff'; ctx.font="700 11.5px -apple-system,sans-serif";
-      ctx.fillText((p.label||'').slice(0,16), rad-14, 4);
+      ctx.fillStyle=light?'#8a6d00':'#fff'; ctx.font="700 11px -apple-system,sans-serif";
+      ctx.fillText(shortSpinLabel(p.label), rad-14, 4);
     }
     ctx.restore();
   });
