@@ -315,12 +315,13 @@ function showResult(ref){
   const isNone = WON.kind==='none' || /try\s*again/i.test(WON.label||'');
   if(isNone){
     $('wonLabel').textContent='😊 Aw, not this time!';
-    $('wonSub').textContent='No prize on this spin — thanks for playing! We hope to see you at Grandlab soon.';
-    // hide ref + claim button for no-prize
+    $('wonSub').innerHTML='No prize on this spin — thanks for playing!<br><br>🎁 <b style="color:#F5C518">Good news — you can still get an extra spin!</b><br>Visit us at reception or WhatsApp us now to claim another free spin. <span style="color:#888">T&amp;C apply.</span>';
+    // hide ref, show a WhatsApp "extra spin" button instead of claim
     $('wonRef').textContent='';
     const rb=document.querySelector('#resultStep .lbl'); if(rb) rb.style.display='none';
-    const claimBtn=document.querySelector('#resultStep .btn-wa'); if(claimBtn) claimBtn.style.display='none';
-    const note=document.querySelector('#resultStep .tnc'); if(note) note.textContent='Better luck next time! 🍀';
+    const claimBtn=document.querySelector('#resultStep .btn-wa');
+    if(claimBtn){ claimBtn.style.display='block'; claimBtn.textContent='💬 WhatsApp us for an extra spin'; claimBtn.setAttribute('onclick','askExtraSpin()'); }
+    const note=document.querySelector('#resultStep .tnc'); if(note){ note.textContent='Better luck next time! 🍀'; note.style.textAlign='center'; }
   } else {
     $('wonLabel').textContent='🎉 Congratulations! You won '+(WON.label||'a prize')+'!';
     $('wonSub').textContent=(kindTxt?(kindTxt+(WON.value?(' · '+WON.value):'')+' — '):'')+'claim it with Mia!';
@@ -331,6 +332,13 @@ function showResult(ref){
 function claimPrize(){
   const s=SUBMITTED, ref=WON._ref;
   const msg=`🎡 *SPIN & WIN PRIZE*\n\nHi Mia 🙏\n\n*Ref: ${ref}*\nName: ${s.name}\nPhone: +${s.phone}\nCar: ${s.brandName!=='— select —'?s.brandName+' ':''}${s.model}\nPlate: ${s.plate}\nEmail: ${s.email}\n\n🎁 I won: *${WON.label}*\n\nWhen can I claim my prize? Thank you!`;
+  const isMobile=/Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+  const url=isMobile?'https://wa.me/'+CS_WHATSAPP+'?text='+encodeURIComponent(msg):'https://web.whatsapp.com/send?phone='+CS_WHATSAPP+'&text='+encodeURIComponent(msg);
+  if(isMobile) location.href=url; else window.open(url,'_blank');
+}
+function askExtraSpin(){
+  const s=SUBMITTED, ref=WON._ref;
+  const msg=`🎡 *SPIN & WIN — EXTRA SPIN REQUEST*\n\nHi Mia 🙏\n\n*Ref: ${ref}*\nName: ${s.name}\nPhone: +${s.phone}\nCar: ${s.brandName!=='— select —'?s.brandName+' ':''}${s.model}\nPlate: ${s.plate}\nEmail: ${s.email}\n\nUnfortunately luck wasn't on my side this time 🙈\n\nMay I know how I can get an extra spin? Thank you so much!`;
   const isMobile=/Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
   const url=isMobile?'https://wa.me/'+CS_WHATSAPP+'?text='+encodeURIComponent(msg):'https://web.whatsapp.com/send?phone='+CS_WHATSAPP+'&text='+encodeURIComponent(msg);
   if(isMobile) location.href=url; else window.open(url,'_blank');
