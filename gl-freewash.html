@@ -158,22 +158,52 @@ function onPhoneLookup(){ clearTimeout(phoneTimer); phoneTimer=setTimeout(lookup
 async function lookupPhone(){
   const phone=normPhone($('phone').value);
   const fnd=$('phoneFound'); if(fnd) fnd.textContent='';
+  const oldPick=$('carPick'); if(oldPick) oldPick.remove();
   if(phone.length<8) return;
   try{
-    const {data}=await sb.rpc('gl_lookup_customer',{p_phone:phone});
-    const rec=Array.isArray(data)?data[0]:data;
-    if(!rec) return;
-    if(rec.name && !$('name').value.trim()) $('name').value=rec.name;
-    if(rec.email && !$('email').value.trim()) $('email').value=rec.email;
-    if(rec.plate && !$('plate').value.trim()){ $('plate').value=rec.plate; onPlate(); }
-    if(rec.model){
-      const opt=[...$('model').options].find(o=>o.value.toLowerCase()===String(rec.model).toLowerCase());
-      if(opt){ $('model').value=opt.value; onModel(); }
-      else { const o=document.createElement('option'); o.value=rec.model; o.textContent=rec.model; o.dataset.type=rec.car_type||''; $('model').appendChild(o); $('model').value=rec.model; onModel(); }
+    // name + email
+    const {data:c}=await sb.rpc('gl_lookup_customer',{p_phone:phone});
+    const cust=Array.isArray(c)?c[0]:c;
+    if(cust){
+      if(cust.name) $('name').value=cust.name;
+      if(cust.email && !$('email').value.trim()) $('email').value=cust.email;
     }
-    if(rec.car_type && !$('ctype').value){ const t=[...$('ctype').options].find(x=>x.value.toLowerCase()===String(rec.car_type).toLowerCase()); if(t) $('ctype').value=t.value; }
-    if((rec.name||rec.plate) && fnd){ fnd.style.color='#7ee29a'; fnd.textContent='✓ Welcome back! We filled in your details — please check they\'re correct.'; }
+    // cars
+    const {data:cars}=await sb.rpc('gl_lookup_cars',{p_phone:phone});
+    const list=(cars||[]).filter(x=>x.plate||x.model);
+    if(!cust && !list.length) return;
+    if(list.length<=1){
+      const rec=list[0];
+      if(rec){ applyCar(rec); }
+      if(fnd){ fnd.style.color='#7ee29a'; fnd.textContent='✓ Welcome back! We filled in your details — please check they\'re correct.'; }
+    } else {
+      // multiple cars -> show a picker
+      showCarPicker(list);
+      if(fnd){ fnd.style.color='#F5C518'; fnd.textContent='✓ Welcome back! You have '+list.length+' cars — please choose one below.'; }
+    }
   }catch(e){}
+}
+function applyCar(rec){
+  if(!rec) return;
+  if(rec.plate){ $('plate').value=rec.plate; onPlate(); }
+  if(rec.model){
+    const opt=[...$('model').options].find(o=>o.value.toLowerCase()===String(rec.model).toLowerCase());
+    if(opt){ $('model').value=opt.value; onModel(); }
+    else { const o=document.createElement('option'); o.value=rec.model; o.textContent=rec.model; o.dataset.type=rec.car_type||''; $('model').appendChild(o); $('model').value=rec.model; onModel(); }
+  }
+  if(rec.car_type){ const t=[...$('ctype').options].find(x=>x.value.toLowerCase()===String(rec.car_type).toLowerCase()); if(t) $('ctype').value=t.value; else $('ctype').value=''; }
+}
+function showCarPicker(list){
+  const holder=document.createElement('div');
+  holder.id='carPick'; holder.style.cssText='margin:8px 0 4px';
+  holder.innerHTML='<label style="display:block;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:6px">Choose your car</label>'+
+    '<select id="carPickSel" style="width:100%;background:var(--card);border:1px solid var(--gold);border-radius:12px;color:var(--text);padding:13px 14px;font-size:15px">'+
+    '<option value="">— select your car —</option>'+
+    list.map((r,i)=>`<option value="${i}">${esc([r.plate,r.model].filter(Boolean).join(' · '))}</option>`).join('')+
+    '</select>';
+  const ph=$('phoneFound'); ph.parentNode.insertBefore(holder, ph.nextSibling);
+  window._pickCars=list;
+  $('carPickSel').onchange=function(){ const i=this.value; if(i==='') return; applyCar(window._pickCars[i]); };
 }
 
 async function checkPlate(){
