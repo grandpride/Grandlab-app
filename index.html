@@ -1237,7 +1237,7 @@ const STYLE_DEFAULTS = {
   walletTxnTitle:"Recent Transactions",
   walletShowTopup:true, walletShowGift:true, walletShowVouchers:true,
   rewardsTitle:"My Points", rewardsMyBtn:"My Rewards",
-  rewardsPointsLabel:"Points", rewardsHistoryLabel:"History", rewardsViewMore:"View more",
+  rewardsPointsLabel:"G Coin", rewardsHistoryLabel:"History", rewardsViewMore:"View more",
   rewardsLatestTitle:"Latest Rewards", rewardsPopularTitle:"Popular Rewards",
   // App-wide background photo
   appBg:null, appBgFit:"cover", appBgZoom:100, appBgDark:55, appBgPosX:50, appBgPosY:50
@@ -1528,7 +1528,7 @@ let CLAIMS = [];  // gl_claims rows (free services already claimed by this user)
 let PACKAGES = []; // gl_packages rows (multi-use redeemable packages)
 let REDEEMS = [];  // gl_redemptions rows
 let MYSTERY = {
-  enabled:true, title:'Mystery Box',
+  enabled:false, title:'Mystery Box',
   prizes:[{name:'Interior Sterilization'},{name:'Mineral Off'},{name:'Box Free Sig. Wash'},
           {name:'7% Off'},{name:'5% Off'},{name:'3% Off'}],
   rules:'Eligibility\nUsers earn a Lucky Box entry when a service is successfully completed.\n\nHow It Works\nEntries are awarded based on total spend per completed order:\n\nRM1 – RM199: 1 entry\nRM200 – RM699: 2 entries\nRM700 & above: 3 entries'
@@ -2333,10 +2333,8 @@ async function renderHome(){
   if(hasOrphans){
     catTiles.push(`<div class="svc-tile" onclick="openCategory('Other')">${tileInner(null,'🧽','Other')}</div>`);
   }
-  // Mystery Box + Warranty tiles (with admin photo logos if set)
-  if(MYSTERY.enabled!==false){
-    catTiles.push(`<div class="svc-tile" onclick="openMysteryBox()">${tileInner(MYSTERY.image_url,'🎁',MYSTERY.title||'Mystery Box')}</div>`);
-  }
+  // Mystery Box removed — no longer shown
+  // Warranty tile
   catTiles.push(`<div class="svc-tile" onclick="openWarranty()">${tileInner(STYLE.warrantyImg,'🛡️','AX Film E-Warranty')}</div>`);
   catTiles.push(`<div class="svc-tile" onclick="openSpinTasks()">${tileInner('','🎡','Spin & Win')}</div>`);
   const grid = catTiles.join('') || '<div class="guest-banner" style="grid-column:1/-1">No services yet. Add them in the admin.</div>';
@@ -3262,9 +3260,6 @@ async function renderServicesScreen(){
         : '<div class="guest-banner">No services yet. Add them in the admin.</div>'}
       <div class="sec-title" style="margin-top:26px">More</div>
       <div class="svc-special-grid">
-        <div class="svc-special" onclick="openMysteryBox()">
-          <div class="sp-ic">🎁</div><div class="sp-nm">Mystery Box</div>
-        </div>
         <div class="svc-special" onclick="openWarranty()">
           <div class="sp-ic">🛡️</div><div class="sp-nm">AX Film<br>Warranty Check</div>
         </div>
@@ -4693,7 +4688,7 @@ async function renderRewards(){
     if(r.reward_type==='service' && r.service_id){
       const s=svcById(r.service_id); if(s){ img=s.image_url||img; nm=nm||s.name; }
     }
-    const costLabel = (r.coin_cost||0)===0 ? 'Free' : `${r.coin_cost} ${esc(STYLE.coinName||'pts')}`;
+    const costLabel = (r.coin_cost||0)===0 ? 'Free' : `${r.coin_cost} ${esc(STYLE.coinName||'G Coin')}`;
     return `<div class="rwd-card" onclick="redeemReward('${r.id}',${r.coin_cost||0},'${esc(nm||'')}')">
       <div class="rwd-img" style="${img?`background-image:url('${img}')`:''}">${img?'':'🎁'}<div class="rwd-tag">REWARDS</div></div>
       <div class="rwd-name">${esc(nm||'')}</div>
@@ -4704,7 +4699,7 @@ async function renderRewards(){
   const popular = REWARDS.filter(r=>r.in_popular===true);
   const row=(items)=> items.length
     ? `<div class="rwd-row">${items.map(cardHtml).join('')}</div>`
-    : `<div class="rwd-empty">🎁<div>No rewards here yet</div><span>Check back soon for new ways to spend your ${esc(STYLE.coinName||'coins')}.</span></div>`;
+    : `<div class="rwd-empty">🎁<div>No rewards here yet</div><span>Check back soon for new ways to spend your ${esc(STYLE.coinName||'G Coin')}.</span></div>`;
 
   // spin-wheel prizes won with this account (merged by phone)
   let spinHtml='';
@@ -4736,16 +4731,18 @@ async function renderRewards(){
         </div>
         <div class="rewards-coin">${gCoin(56)}</div>
         <div class="rewards-balance">${coins.toLocaleString()}</div>
-        <div class="rewards-balance-label">${esc(STYLE.rewardsPointsLabel||'Points')}</div>
+        <div class="rewards-balance-label">${esc(STYLE.rewardsPointsLabel||'G Coin')}</div>
         <button class="rewards-my" onclick="openVouchers()">🎟️ My Vouchers ›</button>
         <button class="rewards-my" onclick="openCoinHistory()" style="margin-top:8px">🪙 ${esc(STYLE.coinName||'G Coin')} Activity ›</button>
       </div>
 
       <div class="earn-info">
-        <div class="earn-title">How to earn ${esc(STYLE.coinName||'points')}</div>
+        <div class="earn-title">How to earn ${esc(STYLE.coinName||'G Coin')}</div>
         <div class="earn-row"><span class="earn-ic">🎉</span> Join membership</div>
         <div class="earn-row"><span class="earn-ic">🚗</span> Every service at our outlet</div>
         <div class="earn-row"><span class="earn-ic">👥</span> Refer friends</div>
+        <div class="earn-row"><span class="earn-ic">📅</span> Daily check-in</div>
+        <div class="earn-row"><span class="earn-ic">🎡</span> Free spin every 2 weeks</div>
       </div>
 
       ${spinHtml}
@@ -4772,7 +4769,7 @@ function openRewardsList(which){
   const cardHtml=(r)=>{
     let img=r.image_url, nm=r.name;
     if(r.reward_type==='service' && r.service_id){ const s=svcById(r.service_id); if(s){ img=s.image_url||img; nm=nm||s.name; } }
-    const costLabel=(r.coin_cost||0)===0?'Free':`${r.coin_cost} ${esc(STYLE.coinName||'pts')}`;
+    const costLabel=(r.coin_cost||0)===0?'Free':`${r.coin_cost} ${esc(STYLE.coinName||'G Coin')}`;
     return `<div class="rwd-card grid" onclick="redeemReward('${r.id}',${r.coin_cost||0},'${esc(nm||'')}')">
       <div class="rwd-img" style="${img?`background-image:url('${img}')`:''}">${img?'':'🎁'}<div class="rwd-tag">REWARDS</div></div>
       <div class="rwd-name">${esc(nm||'')}</div><div class="rwd-cost">${costLabel}</div></div>`;
@@ -4830,7 +4827,7 @@ async function openRedemptionHistory(){
     <div class="txn-row">
       <div><div class="txn-note">${esc(h.reward_name||'Reward')}</div>
       <div class="txn-date">${h.created_at?new Date(h.created_at).toLocaleDateString('en-GB'):''} · ${esc(h.status||'pending')}</div></div>
-      <div class="txn-amt neg">-${h.coin_cost||0} ${esc(STYLE.coinName||'pts')}</div>
+      <div class="txn-amt neg">-${h.coin_cost||0} ${esc(STYLE.coinName||'G Coin')}</div>
     </div>`).join('') : `<div class="guest-banner" style="margin-top:14px">No redemptions yet. Redeem a reward and it'll show here.</div>`;
   appRoot.innerHTML=`
     <div class="topbar-app"><button class="back" onclick="routeTab('rewards')">‹</button><div class="ttl">Redemption History</div></div>
@@ -4839,8 +4836,8 @@ async function openRedemptionHistory(){
 
 async function redeemReward(id, cost, name){
   const coins = PROFILE?.points||0;
-  if(coins < cost){ toast(`Not enough ${STYLE.coinName||'points'} — you need ${cost}`); return; }
-  if(!confirm(`Redeem "${name}" for ${cost} ${STYLE.coinName||'points'}?`)) return;
+  if(coins < cost){ toast(`Not enough ${STYLE.coinName||'G Coin'} — you need ${cost}`); return; }
+  if(!confirm(`Redeem "${name}" for ${cost} ${STYLE.coinName||'G Coin'}?`)) return;
   const barcode = genBarcodeValue();
   try{
     // create a redeemable voucher (barcode) the staff can scan
