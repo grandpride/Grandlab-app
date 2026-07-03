@@ -252,7 +252,9 @@ async function submitFreeWash(){
     }
     // create/update gl_walkin (customer record)
     try{
-      const {data:ex}=await sb.from('gl_walkin').select('id').ilike('plate',plate).limit(1).maybeSingle();
+      let ex=null;
+      if(plate){ const {data}=await sb.from('gl_walkin').select('id').ilike('plate',plate).limit(1).maybeSingle(); ex=data; }
+      if(!ex){ const {data}=await sb.from('gl_walkin').select('id').eq('phone','+'+phone).or('plate.is.null,plate.eq.').limit(1).maybeSingle(); ex=data; }
       const wk={name, phone:'+'+phone, plate, model, car_type:ctype||null};
       if(ex) await sb.from('gl_walkin').update(wk).eq('id',ex.id);
       else await sb.from('gl_walkin').insert(wk);

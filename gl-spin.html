@@ -268,11 +268,17 @@ async function submitSpin(){
   if(!PRIZES.length){ showStatus('No prizes available right now. Please try later.','err'); return; }
 
   SUBMITTED={name,phone,brandName,model,ctype,plate,email};
-  // save customer to gl_walkin (dedupe by plate)
+  // save customer to gl_walkin — match an existing row by plate first, else by phone
   try{
-    const {data:ex}=await sb.from('gl_walkin').select('id').ilike('plate',plate).limit(1).maybeSingle();
+    let ex=null;
+    if(plate){ const {data}=await sb.from('gl_walkin').select('id,plate,model').ilike('plate',plate).limit(1).maybeSingle(); ex=data; }
+    if(!ex){ // no plate match — try a row with the same phone that has NO car yet (fill it), else insert new
+      const {data}=await sb.from('gl_walkin').select('id,plate,model').eq('phone','+'+phone).or('plate.is.null,plate.eq.').limit(1).maybeSingle();
+      ex=data;
+    }
     const wk={name, phone:'+'+phone, plate, model, car_type:ctype||null};
-    if(ex) await sb.from('gl_walkin').update(wk).eq('id',ex.id); else await sb.from('gl_walkin').insert(wk);
+    if(ex) await sb.from('gl_walkin').update(wk).eq('id',ex.id);
+    else await sb.from('gl_walkin').insert(wk);
   }catch(e){}
   // go to wheel
   $('formStep').classList.add('hidden'); $('tncBlock').classList.add('hidden');
