@@ -728,6 +728,17 @@
         </div>
 
         <div class="card" style="margin-top:14px">
+          <div class="card-title" style="margin-bottom:8px">🎲 Test the draw (no save, no phone lock)</div>
+          <div class="hint" style="margin-bottom:10px">Runs the real weighted draw so you can see what customers would win. Nothing is saved.</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn btn-primary btn-sm" onclick="testSpin(1)">Spin once</button>
+            <button class="btn btn-ghost btn-sm" onclick="testSpin(100)">Spin ×100 (see odds)</button>
+            <button class="btn btn-ghost btn-sm" onclick="testSpin(1000)">Spin ×1000</button>
+          </div>
+          <div id="sp-testout" style="margin-top:12px"></div>
+        </div>
+
+        <div class="card" style="margin-top:14px">
           <div class="card-title" style="display:flex;justify-content:space-between;align-items:center">
             <span>Winners — confirm to activate their prize</span>
             <button class="btn btn-ghost btn-sm" onclick="loadWins()">↻ Refresh</button>
@@ -3301,6 +3312,26 @@ async function rejectWin(id){
   if(!confirm('Reject this prize?'))return;
   try{ await sb(`gl_spin_wins?id=eq.${id}`,{method:"PATCH",headers:H(),body:JSON.stringify({status:'rejected'})}); loadWins(); }
   catch(e){ alert('Reject failed: '+e); }
+}
+async function testSpin(n){
+  const out=document.getElementById('sp-testout');
+  out.innerHTML='<div class="hint">Spinning '+n+'…</div>';
+  const tally={};
+  try{
+    for(let i=0;i<n;i++){
+      const r=await sb("rpc/gl_spin_draw",{method:"POST",headers:H(),body:"{}"});
+      const d=await r.json();
+      const prize=Array.isArray(d)?d[0]:d;
+      const label=prize&&prize.label?prize.label:'(none)';
+      tally[label]=(tally[label]||0)+1;
+    }
+  }catch(e){ out.innerHTML='<div class="empty">Test failed: '+e+'</div>'; return; }
+  const rows=Object.entries(tally).sort((a,b)=>b[1]-a[1]).map(([label,cnt])=>{
+    const pct=((cnt/n)*100).toFixed(n>=100?2:0);
+    return `<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px dashed var(--line,#333)">
+      <span>${label}</span><span><b>${cnt}</b> · ${pct}%</span></div>`;
+  }).join('');
+  out.innerHTML=`<div class="card" style="margin-top:4px"><div style="font-size:12px;color:var(--muted);margin-bottom:6px">Results of ${n} spin${n>1?'s':''}:</div>${rows}</div>`;
 }
 
 /* ---------- WALLET editing ---------- */
