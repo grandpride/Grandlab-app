@@ -4672,7 +4672,14 @@ async function runAppSpin(){
   document.getElementById('appWheel').style.transform=`rotate(${target}deg)`;
   setTimeout(()=>{
     const res=document.getElementById('appSpinResult');
-    if(res) res.innerHTML=`🎉 You won:<br><span style="font-size:20px">${prize.label}</span><br><span style="font-size:12px;color:#bbb">Ref ${ref} · show Mia to claim</span>`;
+    const isNone = prize.kind==='none' || /try\s*again/i.test(prize.label||'');
+    if(res){
+      if(isNone){
+        res.innerHTML=`😊 <b>Aw, not this time!</b><br><span style="font-size:13px;color:#bbb">No prize on this spin — thanks for playing! Try again next time. 🍀</span>`;
+      } else {
+        res.innerHTML=`🎉 Congratulations!<br>You won <span style="font-size:20px">${prize.label}</span><br><span style="font-size:12px;color:#bbb">Ref ${ref} · show Mia to claim</span>`;
+      }
+    }
     const cl=document.getElementById('appSpinClose'); if(cl) cl.style.display='inline-block';
   },6600);
 }

@@ -290,9 +290,20 @@ async function doSpin(){
 function showResult(ref){
   $('wheelStep').classList.add('hidden'); $('resultStep').classList.remove('hidden');
   const kindTxt={service:'Service',discount:'Discount',credit:'Free Credit',points:'Free Points',none:''}[WON.kind]||'';
-  $('wonLabel').textContent='🎉 '+(WON.label||'You won!');
-  $('wonSub').textContent=WON.kind==='none'?'Better luck — thanks for playing!':(kindTxt+(WON.value?(' · '+WON.value):'')+' — claim it with Mia!');
-  $('wonRef').textContent=ref;
+  const isNone = WON.kind==='none' || /try\s*again/i.test(WON.label||'');
+  if(isNone){
+    $('wonLabel').textContent='😊 Aw, not this time!';
+    $('wonSub').textContent='No prize on this spin — thanks for playing! We hope to see you at Grandlab soon.';
+    // hide ref + claim button for no-prize
+    $('wonRef').textContent='';
+    const rb=document.querySelector('#resultStep .lbl'); if(rb) rb.style.display='none';
+    const claimBtn=document.querySelector('#resultStep .btn-wa'); if(claimBtn) claimBtn.style.display='none';
+    const note=document.querySelector('#resultStep .tnc'); if(note) note.textContent='Better luck next time! 🍀';
+  } else {
+    $('wonLabel').textContent='🎉 Congratulations! You won '+(WON.label||'a prize')+'!';
+    $('wonSub').textContent=(kindTxt?(kindTxt+(WON.value?(' · '+WON.value):'')+' — '):'')+'claim it with Mia!';
+    $('wonRef').textContent=ref;
+  }
   WON._ref=ref;
 }
 function claimPrize(){
