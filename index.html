@@ -2338,7 +2338,7 @@ async function renderHome(){
     catTiles.push(`<div class="svc-tile" onclick="openMysteryBox()">${tileInner(MYSTERY.image_url,'🎁',MYSTERY.title||'Mystery Box')}</div>`);
   }
   catTiles.push(`<div class="svc-tile" onclick="openWarranty()">${tileInner(STYLE.warrantyImg,'🛡️','AX Film E-Warranty')}</div>`);
-  catTiles.push(`<div class="svc-tile" onclick="openSpinTasks()">${tileInner('','🎡','Spin &amp; Win')}</div>`);
+  catTiles.push(`<div class="svc-tile" onclick="openSpinTasks()">${tileInner('','🎡','Spin & Win')}</div>`);
   const grid = catTiles.join('') || '<div class="guest-banner" style="grid-column:1/-1">No services yet. Add them in the admin.</div>';
 
   appRoot.innerHTML=`
