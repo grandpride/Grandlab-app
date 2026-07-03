@@ -151,18 +151,19 @@ async function checkPhone(){
 async function autoFillFromPhone(phone){
   const oldPick=$('carPick'); if(oldPick) oldPick.remove();
   try{
-    const {data:c}=await sb.rpc('gl_lookup_customer',{p_phone:phone});
+    const {data:c, error:ce}=await sb.rpc('gl_lookup_customer',{p_phone:phone});
     const cust=Array.isArray(c)?c[0]:c;
+    const {data:cars, error:care}=await sb.rpc('gl_lookup_cars',{p_phone:phone});
+    $('phoneMsg').style.color='#F5C518'; $('phoneMsg').textContent='DEBUG cust='+JSON.stringify(cust)+' cars='+JSON.stringify(cars)+' err='+JSON.stringify(ce||care||null);
     if(cust){
       if(cust.name) $('name').value=cust.name;
       if(cust.email && !$('email').value.trim()) $('email').value=cust.email;
     }
-    const {data:cars}=await sb.rpc('gl_lookup_cars',{p_phone:phone});
     const list=(cars||[]).filter(x=>x.plate||x.model);
     if(!cust && !list.length) return;
     if(list.length<=1){ if(list[0]) applyCar(list[0]); }
     else { showCarPicker(list); }
-  }catch(e){}
+  }catch(e){ $('phoneMsg').style.color='#ff8a8a'; $('phoneMsg').textContent='DEBUG catch: '+(e.message||e); }
 }
 function applyCar(rec){
   if(!rec) return;

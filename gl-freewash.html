@@ -162,26 +162,25 @@ async function lookupPhone(){
   if(phone.length<8) return;
   try{
     // name + email
-    const {data:c}=await sb.rpc('gl_lookup_customer',{p_phone:phone});
+    const {data:c, error:ce}=await sb.rpc('gl_lookup_customer',{p_phone:phone});
     const cust=Array.isArray(c)?c[0]:c;
+    // cars
+    const {data:cars, error:care}=await sb.rpc('gl_lookup_cars',{p_phone:phone});
+    // DEBUG — remove later
+    if(fnd){ fnd.style.color='#F5C518'; fnd.textContent='DEBUG cust='+JSON.stringify(cust)+' cars='+JSON.stringify(cars)+' err='+JSON.stringify(ce||care||null); }
     if(cust){
       if(cust.name) $('name').value=cust.name;
       if(cust.email && !$('email').value.trim()) $('email').value=cust.email;
     }
-    // cars
-    const {data:cars}=await sb.rpc('gl_lookup_cars',{p_phone:phone});
     const list=(cars||[]).filter(x=>x.plate||x.model);
     if(!cust && !list.length) return;
     if(list.length<=1){
       const rec=list[0];
       if(rec){ applyCar(rec); }
-      if(fnd){ fnd.style.color='#7ee29a'; fnd.textContent='✓ Welcome back! We filled in your details — please check they\'re correct.'; }
     } else {
-      // multiple cars -> show a picker
       showCarPicker(list);
-      if(fnd){ fnd.style.color='#F5C518'; fnd.textContent='✓ Welcome back! You have '+list.length+' cars — please choose one below.'; }
     }
-  }catch(e){}
+  }catch(e){ if(fnd){ fnd.style.color='#ff8a8a'; fnd.textContent='DEBUG catch: '+(e.message||e); } }
 }
 function applyCar(rec){
   if(!rec) return;
