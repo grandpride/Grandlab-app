@@ -400,6 +400,18 @@ button,input{font-family:inherit}
   </div>
 </div>
 
+<!-- spin prize modal -->
+<div class="modal" id="spinModal">
+  <div class="dialog">
+    <div class="dialog-h"><h3>🎡 Redeem spin prize</h3><button class="closex" onclick="closeModal('spinModal')">×</button></div>
+    <div class="dialog-b">
+      <div class="fld"><label>Search by reference code, phone, or plate</label>
+        <input id="spinSearch" placeholder="e.g. SP-4K2P / 60169618299 / BQM6833" oninput="spinFindDebounced()" autocomplete="off"></div>
+      <div id="spinResults" style="margin-top:8px"><div style="color:var(--ink3);font-size:13px">Type to search a customer's prize…</div></div>
+    </div>
+  </div>
+</div>
+
 <div class="modal" id="catModal">
   <div class="dialog">
     <div class="dialog-h"><h3>Add service / product</h3><button class="closex" onclick="closeModal('catModal')">×</button></div>
@@ -1004,7 +1016,7 @@ function openWalkin(){
 async function startCheckout(job, gross){
   PAY={ gross, discount:0, discountOk:false, discountBy:null, _pendingDisc:0,
         depositUsed:Number(job.dep_amt)||0, packageUsed:false,
-        walletUsed:0, pointsUsed:0, voucher:null, method:null, quick:null,
+        walletUsed:0, pointsUsed:0, voucher:null, spinPrize:null, method:null, quick:null,
         custWallet:0, custPoints:0, hasProfile:false, pkgList:[], pkgUse:null,
         split1Method:null, split2Method:null, split1Amt:0 };
   if(job.customer_id){
@@ -1047,7 +1059,7 @@ function netDue(){
   // if using a package visit, the covered service is free -> charge 0 for it.
   // Simple model: a package visit covers the whole order (typical for coating maintenance / wash packages).
   if(PAY.pkgUse) return 0;
-  let n=PAY.gross - PAY.discount - PAY.depositUsed - PAY.walletUsed - (PAY.pointsUsed*POINTS_RATE) - (PAY.voucher?Number(PAY.voucher.value||0):0);
+  let n=PAY.gross - PAY.discount - PAY.depositUsed - PAY.walletUsed - (PAY.pointsUsed*POINTS_RATE) - (PAY.voucher?Number(PAY.voucher.value||0):0) - (PAY.spinPrize?Number(PAY.spinPrize._discount||0):0);
   return Math.max(0, Math.round(n*100)/100);
 }
 function cleanPkgName(s){ return (s||'').replace(/^\s*\d+\s*x?\s*(times?\s*)?/i,'').trim(); }
@@ -1092,6 +1104,12 @@ function renderCheckout(){
       <span class="lab"><i class="ti ti-ticket"></i> Voucher / package barcode</span>
       ${PAY.voucher?`<span class="val">${esc(PAY.voucher.label||'Applied')}${PAY.voucher.value?` −${RM(PAY.voucher.value)}`:''} <a onclick="removeVoucher()" style="cursor:pointer;color:var(--ink3)">✕</a></span>`
         :`<button class="btn-mini" onclick="openVoucher()"><i class="ti ti-scan"></i> Scan</button>`}
+    </div>
+
+    <div class="adj">
+      <span class="lab">🎡 Spin prize</span>
+      ${PAY.spinPrize?`<span class="val">${esc(PAY.spinPrize.prize_label||'Prize')}${PAY.spinPrize._discount?` −${RM(PAY.spinPrize._discount)}`:''} <a onclick="removeSpinPrize()" style="cursor:pointer;color:var(--ink3)">✕</a></span>`
+        :`<button class="btn-mini" onclick="openSpinPrize()"><i class="ti ti-gift"></i> Redeem</button>`}
     </div>
 
     <div class="adj">
@@ -1158,6 +1176,7 @@ function renderCheckout(){
       <div class="row"><span>Subtotal</span><span>${RM(PAY.gross)}</span></div>
       ${PAY.discount>0?`<div class="row"><span>Discount</span><span class="rd">−${RM(PAY.discount)}</span></div>`:''}
       ${PAY.voucher&&PAY.voucher.value?`<div class="row"><span>Voucher</span><span class="rd">−${RM(PAY.voucher.value)}</span></div>`:''}
+      ${PAY.spinPrize&&PAY.spinPrize._discount?`<div class="row"><span>🎡 ${esc(PAY.spinPrize.prize_label||'Spin prize')}</span><span class="rd">−${RM(PAY.spinPrize._discount)}</span></div>`:''}
       ${PAY.depositUsed>0?`<div class="row"><span>Deposit</span><span class="rd">−${RM(PAY.depositUsed)}</span></div>`:''}
       ${PAY.walletUsed>0?`<div class="row"><span>App credit</span><span class="rd">−${RM(PAY.walletUsed)}</span></div>`:''}
       ${PAY.pointsUsed>0?`<div class="row"><span>Points (${PAY.pointsUsed})</span><span class="rd">−${RM(PAY.pointsUsed*POINTS_RATE)}</span></div>`:''}
@@ -1412,6 +1431,55 @@ async function redeemVoucher(){
   }catch(e){ $('vchStatus').textContent='Error: '+e.message; }
 }
 function removeVoucher(){ PAY.voucher=null; renderCheckout(); }
+
+/* ---------- spin prize redemption ---------- */
+let SPIN_FIND_T=null;
+function openSpinPrize(){ document.getElementById('spinModal').classList.add('show'); document.getElementById('spinResults').innerHTML='<div style="color:var(--ink3);font-size:13px">Type to search a customer\'s prize…</div>'; const s=document.getElementById('spinSearch'); if(s){ s.value=''; setTimeout(()=>s.focus(),100); } }
+function spinFindDebounced(){ clearTimeout(SPIN_FIND_T); SPIN_FIND_T=setTimeout(spinFind,400); }
+async function spinFind(){
+  const q=document.getElementById('spinSearch').value.trim();
+  const box=document.getElementById('spinResults');
+  if(q.length<3){ box.innerHTML='<div style="color:var(--ink3);font-size:13px">Type at least 3 characters…</div>'; return; }
+  box.innerHTML='<div style="color:var(--ink3);font-size:13px">Searching…</div>';
+  try{
+    const {data}=await sb.rpc('gl_spin_find',{p_q:q});
+    const list=data||[];
+    if(!list.length){ box.innerHTML='<div style="color:var(--ink3);font-size:13px">No unredeemed prize found for that search.</div>'; return; }
+    box.innerHTML=list.map(w=>{
+      const kindTxt={service:'Free service',discount:'Discount',credit:'Credit',points:'Points',none:'No prize'}[w.prize_kind]||w.prize_kind||'';
+      return `<div style="border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:8px">
+        <div style="font-weight:700">${esc(w.prize_label||'Prize')}</div>
+        <div style="font-size:12px;color:var(--ink3)">${esc(w.name||'')} · ${esc(w.phone||'')} · ${esc(w.plate||'')}</div>
+        <div style="font-size:12px;color:var(--ink3)">${kindTxt}${w.prize_value?(' · '+w.prize_value):''} · ${esc(w.ref_code||'')} · <b style="color:${w.status==='confirmed'?'#1a8f4c':'#c98a00'}">${w.status}</b></div>
+        <button class="btn-mini" style="margin-top:8px" onclick='applySpinPrize(${JSON.stringify(w).replace(/'/g,"&#39;")})'><i class="ti ti-check"></i> Confirm &amp; Redeem</button>
+      </div>`;
+    }).join('');
+  }catch(e){ box.innerHTML='<div style="color:#c0392b;font-size:13px">Error: '+esc(e.message||e)+'</div>'; }
+}
+async function applySpinPrize(w){
+  // redeem server-side (marks used, one-step confirm+redeem)
+  try{
+    const {data:ok,error}=await sb.rpc('gl_spin_redeem',{p_id:w.id});
+    if(error||ok!==true){ alert('Could not redeem — it may already be used.'); return; }
+  }catch(e){ alert('Redeem failed: '+(e.message||e)); return; }
+  // compute the effect on the bill
+  let disc=0;
+  if(w.prize_kind==='discount'){
+    const v=Number(w.prize_value||0);
+    // value <=100 treated as a percentage, else RM amount
+    disc = v>0 && v<=100 ? Math.round(PAY.gross*(v/100)*100)/100 : v;
+  } else if(w.prize_kind==='credit'){
+    disc = Number(w.prize_value||0);
+  } else if(w.prize_kind==='service'){
+    // free service — apply as a discount equal to the current gross (covers the service)
+    disc = PAY.gross;
+  }
+  PAY.spinPrize = { id:w.id, prize_label:w.prize_label, prize_kind:w.prize_kind, _discount:disc, ref_code:w.ref_code };
+  closeModal('spinModal');
+  renderCheckout();
+  toast('🎡 Prize redeemed: '+(w.prize_label||''));
+}
+function removeSpinPrize(){ PAY.spinPrize=null; renderCheckout(); }
 
 /* ---------- add / search customer (walk-in) ---------- */
 function openCustomer(){
