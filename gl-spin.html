@@ -73,12 +73,19 @@
 
     <!-- STEP 2: wheel -->
     <div id="wheelStep" class="hidden">
-      <div class="wheel-wrap">
-        <div class="pointer"></div>
-        <div class="hub">🎯</div>
-        <canvas id="wheel" class="wheel" width="300" height="300"></canvas>
+      <div style="position:relative;width:320px;height:320px;margin:6px auto 22px">
+        <div style="position:absolute;inset:0;border-radius:50%;background:radial-gradient(circle,#F5C518,#c99806);box-shadow:0 0 26px rgba(245,197,24,.4)"></div>
+        <div id="wheelDots" style="position:absolute;inset:0;z-index:3"></div>
+        <div style="position:absolute;top:8px;left:50%;transform:translateX(-50%);z-index:6;filter:drop-shadow(0 2px 3px rgba(0,0,0,.5))">
+          <svg width="30" height="36" viewBox="0 0 30 36"><path d="M15 36 L3 8 Q15 0 27 8 Z" fill="#fff"/><circle cx="15" cy="11" r="5" fill="#F5C518"/></svg>
+        </div>
+        <canvas id="wheel" width="292" height="292" style="position:absolute;top:14px;left:14px;z-index:2;border-radius:50%;transition:transform 6.4s cubic-bezier(.1,.7,.03,1)"></canvas>
+        <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:62px;height:62px;border-radius:50%;background:#0a0a0a;border:4px solid #F5C518;z-index:5;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 10px rgba(0,0,0,.5);overflow:hidden">
+          <img src="grandlab-logo-icon.png" alt="" style="width:40px;height:40px;object-fit:contain" onerror="this.style.display='none'">
+        </div>
       </div>
-      <button class="btn btn-gold" id="spinBtn" onclick="doSpin()">SPIN NOW 🎡</button>
+      <button class="btn btn-gold" id="spinBtn" onclick="doSpin()">SPIN NOW</button>
+      <div style="margin-top:10px;font-size:11px;color:#666">🎁 1,499+ customers have played</div>
     </div>
 
     <!-- STEP 3: result -->
@@ -147,20 +154,39 @@ async function loadPrizes(){
     PRIZES=data||[]; }catch(e){ PRIZES=[]; }
 }
 function drawWheel(){
-  const c=$('wheel'), ctx=c.getContext('2d'), n=PRIZES.length||1, cx=150, cy=150, rad=150;
+  const c=$('wheel'), ctx=c.getContext('2d'), n=PRIZES.length||1, cx=146, cy=146, r=146;
   const arc=2*Math.PI/n;
-  ctx.clearRect(0,0,300,300);
+  ctx.clearRect(0,0,292,292);
   PRIZES.forEach((p,i)=>{
     const a0=i*arc - Math.PI/2, a1=a0+arc;
-    ctx.beginPath(); ctx.moveTo(cx,cy); ctx.arc(cx,cy,rad,a0,a1); ctx.closePath();
-    ctx.fillStyle=p.color||(i%2?'#F5C518':'#1a1a1a'); ctx.fill();
-    ctx.strokeStyle='#0a0a0a'; ctx.lineWidth=2; ctx.stroke();
-    // label
-    ctx.save(); ctx.translate(cx,cy); ctx.rotate(a0+arc/2);
-    ctx.textAlign='right'; ctx.fillStyle=(p.color==='#F5C518'||i%2)?'#111':'#fff';
-    ctx.font='bold 12px -apple-system,sans-serif';
-    const lbl=(p.label||'').slice(0,14); ctx.fillText(lbl, rad-14, 4); ctx.restore();
+    const mega=!!p.is_mega;
+    ctx.beginPath(); ctx.moveTo(cx,cy); ctx.arc(cx,cy,r,a0,a1); ctx.closePath();
+    if(mega){ const g=ctx.createRadialGradient(cx,cy,30,cx,cy,r); g.addColorStop(0,'#e0202a'); g.addColorStop(1,'#8a0d13'); ctx.fillStyle=g; }
+    else { ctx.fillStyle=p.color||(i%2?'#F5C518':'#fff5cc'); }
+    ctx.fill();
+    ctx.strokeStyle=mega?'#ffd700':'#F5C518'; ctx.lineWidth=mega?2.5:1.5; ctx.stroke();
+    ctx.save(); ctx.translate(cx,cy); ctx.rotate(a0+arc/2); ctx.textAlign='right';
+    if(mega){
+      ctx.font="800 8.5px -apple-system,sans-serif"; ctx.fillStyle="#ffe08a"; ctx.fillText("★ MEGA PRIZE ★", r-14, -5);
+      ctx.font="800 11px -apple-system,sans-serif"; ctx.fillStyle="#fff";
+      ctx.fillText((p.label||'').replace(/mega/i,'').replace(/[★F.O.C]/g,'').trim().slice(0,16)||'Grand Prize', r-14, 9);
+    } else {
+      const light=(p.color==='#fff5cc'||!p.color||p.color==='#F5C518');
+      ctx.fillStyle = light ? '#8a6d00' : '#fff';
+      ctx.font="700 11.5px -apple-system,sans-serif";
+      ctx.fillText((p.label||'').slice(0,16), r-14, 4);
+    }
+    ctx.restore();
   });
+  // rim dots
+  const dc=$('wheelDots'); if(dc){ dc.innerHTML='';
+    for(let i=0;i<n*2;i++){ const ang=(i/(n*2))*2*Math.PI - Math.PI/2;
+      const dx=160+150*Math.cos(ang), dy=160+150*Math.sin(ang);
+      const d=document.createElement('div');
+      d.style.cssText='position:absolute;width:6px;height:6px;border-radius:50%;background:#fff;left:'+(dx-3)+'px;top:'+(dy-3)+'px;box-shadow:0 0 4px #fff';
+      dc.appendChild(d);
+    }
+  }
 }
 
 // ---- STEP 1: submit ----
@@ -204,7 +230,7 @@ async function doSpin(){
   // spin animation to land on the prize
   const idx=Math.max(0,PRIZES.findIndex(p=>p.id===prize.id));
   const n=PRIZES.length, seg=360/n;
-  const target=360*6 + (360 - (idx*seg + seg/2)); // land pointer (top) on segment center
+  const target=360*8 + (360 - (idx*seg + seg/2)); // land pointer (top) on segment center
   $('wheel').style.transform=`rotate(${target}deg)`;
   // save the win
   const ref='SP-'+Math.random().toString(36).slice(2,6).toUpperCase();
@@ -216,7 +242,7 @@ async function doSpin(){
       prize_id:prize.id, prize_label:prize.label, prize_kind:prize.kind, prize_value:prize.value, status:'won'
     });
   }catch(e){}
-  setTimeout(()=>{ showResult(ref); }, 5200);
+  setTimeout(()=>{ showResult(ref); }, 6600);
 }
 function showResult(ref){
   $('wheelStep').classList.add('hidden'); $('resultStep').classList.remove('hidden');

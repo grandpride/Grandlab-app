@@ -2338,6 +2338,7 @@ async function renderHome(){
     catTiles.push(`<div class="svc-tile" onclick="openMysteryBox()">${tileInner(MYSTERY.image_url,'🎁',MYSTERY.title||'Mystery Box')}</div>`);
   }
   catTiles.push(`<div class="svc-tile" onclick="openWarranty()">${tileInner(STYLE.warrantyImg,'🛡️','AX Film E-Warranty')}</div>`);
+  catTiles.push(`<div class="svc-tile" onclick="openSpinTasks()">${tileInner('','🎡','Spin &amp; Win')}</div>`);
   const grid = catTiles.join('') || '<div class="guest-banner" style="grid-column:1/-1">No services yet. Add them in the admin.</div>';
 
   appRoot.innerHTML=`
@@ -4520,83 +4521,147 @@ async function sendGiftCard(amount){
 }
 // ============== END WALLET ==============
 
-/* ===== IN-APP SPIN (2-week free spin, review-unlocked) ===== */
-let SPIN_STATUS=null, SPIN_PRIZES=[];
+/* ===== IN-APP SPIN (tasks + 2-week recurring) ===== */
+let SPIN_STATUS=null, SPIN_PRIZES=[], SPIN_URLS={};
 async function fetchSpinStatus(){
   try{
     const r=await fetch(`${SUPA_URL}/rest/v1/rpc/gl_app_spin_status`,{method:"POST",headers:authHeaders(),body:"{}"});
     const d=await r.json(); SPIN_STATUS=Array.isArray(d)?d[0]:d;
   }catch(e){ SPIN_STATUS=null; }
+  try{
+    const r2=await fetch(`${SUPA_URL}/rest/v1/gl_spin_settings?id=eq.1`,{headers:authHeaders()});
+    const s=r2.ok?await r2.json():[]; SPIN_URLS=s[0]||{};
+  }catch(e){ SPIN_URLS={}; }
 }
-async function renderSpinCard(){
+async function openSpinTasks(){
+  if(!SESSION||!SESSION.user){ alert('Please sign in to spin.'); return; }
   await fetchSpinStatus();
-  if(!SPIN_STATUS) return '';
-  const s=SPIN_STATUS;
-  // not yet unlocked -> show review-to-unlock
-  if(!s.review_approved){
-    return `<div class="sec-title" style="margin-top:14px">🎡 Spin &amp; Win</div>
-      <div style="margin:0 16px;background:linear-gradient(135deg,#1a1608,#141414);border:1.5px solid #F5C518;border-radius:14px;padding:16px;text-align:center">
-        <div style="font-size:15px;font-weight:800;color:#F5C518;margin-bottom:6px">Unlock your first spin ✨</div>
-        <div style="font-size:13px;color:#bbb;margin-bottom:12px">Leave us a Google review, upload a screenshot, and we'll unlock your free spin! You'll get a new spin every 2 weeks after that.</div>
-        <a href="https://search.google.com/local/writereview?placeid=YOUR_PLACE_ID" target="_blank" style="display:inline-block;background:#fff;color:#111;border-radius:20px;padding:9px 16px;font-weight:700;font-size:13px;text-decoration:none;margin-bottom:10px">⭐ Write a Google review</a>
-        <div><label style="display:inline-block;background:#F5C518;color:#111;border-radius:20px;padding:9px 16px;font-weight:700;font-size:13px;cursor:pointer">📷 Upload review screenshot
-          <input type="file" accept="image/*" style="display:none" onchange="uploadReviewProof(this)"></label></div>
-        <div id="reviewProofMsg" style="font-size:12px;color:#9a9a9a;margin-top:8px"></div>
-      </div>`;
-  }
-  // unlocked: spins available?
-  if((s.spins_available||0) > 0){
-    return `<div class="sec-title" style="margin-top:14px">🎡 Spin &amp; Win</div>
-      <div style="margin:0 16px;background:linear-gradient(135deg,#1a1608,#141414);border:1.5px solid #F5C518;border-radius:14px;padding:18px;text-align:center">
-        <div style="font-size:16px;font-weight:800;color:#F5C518;margin-bottom:4px">🎉 You have a FREE spin!</div>
-        <div style="font-size:12px;color:#bbb;margin-bottom:12px">Tap to spin the wheel and win a prize.</div>
-        <button onclick="openAppSpin()" style="background:#F5C518;color:#111;border:none;border-radius:22px;padding:12px 28px;font-weight:800;font-size:15px;cursor:pointer">SPIN NOW 🎡</button>
-      </div>`;
-  }
-  // no spin yet — show countdown to next
-  let when='';
-  if(s.next_spin_at){ const d=new Date(s.next_spin_at); const days=Math.max(0,Math.ceil((d-new Date())/86400000));
-    when= days<=0?'available soon':`in ${days} day${days===1?'':'s'}`; }
-  return `<div class="sec-title" style="margin-top:14px">🎡 Spin &amp; Win</div>
-    <div style="margin:0 16px;background:#141414;border:1px solid #2a2a2a;border-radius:14px;padding:16px;text-align:center">
-      <div style="font-size:14px;font-weight:700;margin-bottom:4px">Next free spin ${when}</div>
-      <div style="font-size:12px;color:#9a9a9a">You get a free spin every 2 weeks 🎁</div>
+  const s=SPIN_STATUS||{};
+  const spins=s.spins_available||0;
+  const tasks=[
+    {key:'google',   label:'Leave a Google review',   url:SPIN_URLS.google_url,   done:s.task_google},
+    {key:'fbreview', label:'Leave a Facebook review', url:SPIN_URLS.fbreview_url, done:s.task_fbreview},
+    {key:'fbfollow', label:'Follow us on Facebook',    url:SPIN_URLS.fbfollow_url, done:s.task_fbfollow},
+    {key:'igfollow', label:'Follow us on Instagram',   url:SPIN_URLS.igfollow_url, done:s.task_igfollow}
+  ];
+  const taskRows=tasks.map(t=>`
+    <div style="background:#141414;border:1px solid #2a2a2a;border-radius:12px;padding:12px 14px;margin-bottom:8px">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+        <div style="font-size:14px;font-weight:700">${t.label}</div>
+        ${t.done?'<span style="color:#1db954;font-size:12px;font-weight:700">✓ Done</span>':'<span style="color:#F5C518;font-size:12px;font-weight:700">+1 spin</span>'}
+      </div>
+      ${t.done?'':`<div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
+        ${t.url?`<a href="${t.url}" target="_blank" style="flex:1;text-align:center;background:#fff;color:#111;border-radius:18px;padding:8px;font-size:12px;font-weight:700;text-decoration:none">Open</a>`:''}
+        <label style="flex:1;text-align:center;background:#F5C518;color:#111;border-radius:18px;padding:8px;font-size:12px;font-weight:700;cursor:pointer">Upload proof
+          <input type="file" accept="image/*" style="display:none" onchange="uploadTaskProof(this,'${t.key}')"></label>
+      </div>`}
+    </div>`).join('');
+  const ov=document.createElement('div');
+  ov.id='spinTasksOv';
+  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.94);z-index:9998;overflow-y:auto;padding:24px 18px';
+  ov.innerHTML=`
+    <div style="max-width:440px;margin:0 auto">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+        <div style="font-size:22px;font-weight:900;color:#F5C518">🎡 Spin &amp; Win</div>
+        <button onclick="document.getElementById('spinTasksOv').remove()" style="background:none;border:1px solid #444;color:#aaa;border-radius:50%;width:34px;height:34px;font-size:16px;cursor:pointer">✕</button>
+      </div>
+      <div style="background:linear-gradient(135deg,#1a1608,#141414);border:1.5px solid #F5C518;border-radius:14px;padding:16px;text-align:center;margin-bottom:16px">
+        <div style="font-size:13px;color:#bbb">You have</div>
+        <div style="font-size:34px;font-weight:900;color:#F5C518;line-height:1.1">${spins}</div>
+        <div style="font-size:13px;color:#bbb;margin-bottom:${spins>0?'12px':'0'}">free spin${spins===1?'':'s'}</div>
+        ${spins>0?`<button onclick="document.getElementById('spinTasksOv').remove();openAppSpin()" style="background:linear-gradient(180deg,#F5C518,#d9a800);color:#111;border:none;border-radius:24px;padding:13px 40px;font-weight:800;font-size:15px;cursor:pointer">SPIN NOW 🎡</button>`:''}
+      </div>
+      <div style="font-size:13px;font-weight:700;color:#9a9a9a;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Earn more spins</div>
+      <div style="font-size:12px;color:#888;margin-bottom:10px">Complete a task, upload a screenshot as proof, and we'll add a free spin once approved. After all tasks, get a free spin every 2 weeks!</div>
+      ${taskRows}
+      <div id="taskMsg" style="font-size:13px;color:#7ee29a;text-align:center;margin-top:10px"></div>
     </div>`;
+  document.body.appendChild(ov);
 }
-async function uploadReviewProof(input){
+async function uploadTaskProof(input, task){
   const file=input.files&&input.files[0]; if(!file) return;
-  const msg=document.getElementById('reviewProofMsg'); if(msg) msg.textContent='Uploading…';
+  const msg=document.getElementById('taskMsg'); if(msg){ msg.style.color='#bbb'; msg.textContent='Uploading…'; }
   try{
     const uid=SESSION.user.id;
-    const path=`${uid}/${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g,'')}`;
-    // upload to private bucket
-    const up=await fetch(`${SUPA_URL}/storage/v1/object/gl-review-proofs/${path}`,{
-      method:"POST", headers:Object.assign(authHeaders(),{}), body:file
-    });
-    if(!up.ok){ if(msg) msg.textContent='Upload failed. Please try again.'; return; }
+    const path=`${uid}/${task}_${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g,'')}`;
+    const up=await fetch(`${SUPA_URL}/storage/v1/object/gl-review-proofs/${path}`,{method:"POST",headers:authHeaders(),body:file});
+    if(!up.ok){ if(msg){msg.style.color='#ff8a8a';msg.textContent='Upload failed. Try again.';} return; }
     const image_url=`${SUPA_URL}/storage/v1/object/gl-review-proofs/${path}`;
-    // record the proof (pending approval)
     await fetch(`${SUPA_URL}/rest/v1/gl_spin_review_proofs`,{
       method:"POST", headers:Object.assign(authHeaders(),{Prefer:"return=minimal"}),
-      body:JSON.stringify({owner_id:uid, name:(PROFILE&&PROFILE.name)||'', phone:(PROFILE&&PROFILE.phone)||'', image_url, status:'pending'})
+      body:JSON.stringify({owner_id:uid, task, name:(PROFILE&&PROFILE.name)||'', phone:(PROFILE&&PROFILE.phone)||'', image_url, status:'pending'})
     });
-    if(msg){ msg.style.color='#7ee29a'; msg.textContent='✓ Screenshot received! We\'ll review it and unlock your spin soon.'; }
-  }catch(e){ if(msg) msg.textContent='Upload error. Please try again.'; }
+    if(msg){ msg.style.color='#7ee29a'; msg.textContent='✓ Screenshot received! We\'ll approve it and add your spin soon.'; }
+  }catch(e){ if(msg){msg.style.color='#ff8a8a';msg.textContent='Upload error. Try again.';} }
 }
 async function openAppSpin(){
   // load prizes
   try{ const r=await fetch(`${SUPA_URL}/rest/v1/gl_spin_prizes?active=eq.true&order=sort_order.asc`,{headers:authHeaders()});
     SPIN_PRIZES=r.ok?await r.json():[]; }catch(e){ SPIN_PRIZES=[]; }
   if(!SPIN_PRIZES.length){ alert('No prizes available right now.'); return; }
+  // build the wheel overlay
+  const ov=document.createElement('div');
+  ov.id='spinOverlay';
+  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px';
+  const n=SPIN_PRIZES.length;
+  ov.innerHTML=`
+    <div style="font-size:20px;font-weight:900;color:#F5C518;margin-bottom:16px">🎡 Spin &amp; Win!</div>
+    <div style="position:relative;width:320px;height:320px;margin-bottom:20px">
+      <div style="position:absolute;inset:0;border-radius:50%;background:radial-gradient(circle,#F5C518,#c99806);box-shadow:0 0 26px rgba(245,197,24,.4)"></div>
+      <div id="appWheelDots" style="position:absolute;inset:0;z-index:3"></div>
+      <div style="position:absolute;top:8px;left:50%;transform:translateX(-50%);z-index:6;filter:drop-shadow(0 2px 3px rgba(0,0,0,.5))">
+        <svg width="30" height="36" viewBox="0 0 30 36"><path d="M15 36 L3 8 Q15 0 27 8 Z" fill="#fff"/><circle cx="15" cy="11" r="5" fill="#F5C518"/></svg>
+      </div>
+      <canvas id="appWheel" width="292" height="292" style="position:absolute;top:14px;left:14px;z-index:2;border-radius:50%;transition:transform 6.4s cubic-bezier(.1,.7,.03,1)"></canvas>
+      <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:62px;height:62px;border-radius:50%;background:#0a0a0a;border:4px solid #F5C518;z-index:5;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 10px rgba(0,0,0,.5);overflow:hidden">
+        <img src="grandlab-logo-icon.png" alt="" style="width:40px;height:40px;object-fit:contain" onerror="this.style.display='none'">
+      </div>
+    </div>
+    <button id="appSpinBtn" style="background:linear-gradient(180deg,#F5C518,#d9a800);color:#111;border:none;border-radius:26px;padding:14px 44px;font-weight:800;font-size:16px;letter-spacing:1px;cursor:pointer;box-shadow:0 4px 14px rgba(245,197,24,.4)">SPIN NOW</button>
+    <div id="appSpinResult" style="color:#F5C518;font-weight:800;font-size:17px;margin-top:16px;text-align:center;min-height:24px;padding:0 12px"></div>
+    <button id="appSpinClose" style="background:none;border:1px solid #444;color:#aaa;border-radius:20px;padding:9px 20px;font-size:13px;margin-top:14px;cursor:pointer;display:none">Close</button>`;
+  document.body.appendChild(ov);
+  // draw wheel — Lazada style (cream + gold, mega red)
+  const cv=document.getElementById('appWheel'), ctx=cv.getContext('2d'), cx=146, cy=146, rad=146, arc=2*Math.PI/n;
+  SPIN_PRIZES.forEach((p,i)=>{
+    const a0=i*arc-Math.PI/2, a1=a0+arc, mega=!!p.is_mega;
+    ctx.beginPath(); ctx.moveTo(cx,cy); ctx.arc(cx,cy,rad,a0,a1); ctx.closePath();
+    if(mega){ const g=ctx.createRadialGradient(cx,cy,30,cx,cy,rad); g.addColorStop(0,'#e0202a'); g.addColorStop(1,'#8a0d13'); ctx.fillStyle=g; }
+    else ctx.fillStyle=p.color||(i%2?'#F5C518':'#fff5cc');
+    ctx.fill(); ctx.strokeStyle=mega?'#ffd700':'#F5C518'; ctx.lineWidth=mega?2.5:1.5; ctx.stroke();
+    ctx.save(); ctx.translate(cx,cy); ctx.rotate(a0+arc/2); ctx.textAlign='right';
+    if(mega){
+      ctx.font="800 8.5px -apple-system,sans-serif"; ctx.fillStyle="#ffe08a"; ctx.fillText("★ MEGA PRIZE ★", rad-14, -5);
+      ctx.font="800 11px -apple-system,sans-serif"; ctx.fillStyle="#fff"; ctx.fillText("Grand Prize", rad-14, 9);
+    } else {
+      const light=(p.color==='#fff5cc'||!p.color||p.color==='#F5C518');
+      ctx.fillStyle=light?'#8a6d00':'#fff'; ctx.font="700 11.5px -apple-system,sans-serif";
+      ctx.fillText((p.label||'').slice(0,16), rad-14, 4);
+    }
+    ctx.restore();
+  });
+  const dc=document.getElementById('appWheelDots');
+  for(let i=0;i<n*2;i++){ const ang=(i/(n*2))*2*Math.PI - Math.PI/2;
+    const dx=160+150*Math.cos(ang), dy=160+150*Math.sin(ang);
+    const d=document.createElement('div');
+    d.style.cssText='position:absolute;width:6px;height:6px;border-radius:50%;background:#fff;left:'+(dx-3)+'px;top:'+(dy-3)+'px;box-shadow:0 0 4px #fff';
+    dc.appendChild(d);
+  }
+  document.getElementById('appSpinClose').onclick=()=>{ ov.remove(); routeTab('rewards'); };
+  document.getElementById('appSpinBtn').onclick=()=>runAppSpin();
+}
+async function runAppSpin(){
+  const btn=document.getElementById('appSpinBtn'); if(!btn||btn.disabled) return;
+  btn.disabled=true; btn.textContent='Spinning…';
   // draw server-side
   let prize=null;
   try{ const r=await fetch(`${SUPA_URL}/rest/v1/rpc/gl_spin_draw`,{method:"POST",headers:authHeaders(),body:"{}"});
     const d=await r.json(); prize=Array.isArray(d)?d[0]:d; }catch(e){}
   if(!prize){ const tot=SPIN_PRIZES.reduce((s,p)=>s+Number(p.weight||1),0); let x=Math.random()*tot,a=0;
     prize=SPIN_PRIZES.find(p=>{a+=Number(p.weight||1);return x<=a;})||SPIN_PRIZES[0]; }
-  // consume the spin (server decrements + sets last_spin_at)
+  // consume the spin server-side
   try{ await fetch(`${SUPA_URL}/rest/v1/rpc/gl_app_spin_consume`,{method:"POST",headers:authHeaders(),body:"{}"}); }catch(e){}
-  // record the win (tied to account, pending Mia confirm)
+  // record the win
   const ref='SP-'+Math.random().toString(36).slice(2,6).toUpperCase();
   try{
     await fetch(`${SUPA_URL}/rest/v1/gl_spin_wins`,{
@@ -4606,8 +4671,15 @@ async function openAppSpin(){
         status:'won', owner_id:SESSION.user.id})
     });
   }catch(e){}
-  alert('🎉 You won: '+prize.label+'!\n\nReference: '+ref+'\n\nShow this at reception or message Mia to claim. Your prize is now in your Rewards.');
-  routeTab('rewards'); // refresh
+  // animate the wheel to land on the prize
+  const n=SPIN_PRIZES.length, idx=Math.max(0,SPIN_PRIZES.findIndex(p=>p.id===prize.id)), seg=360/n;
+  const target=360*8 + (360 - (idx*seg + seg/2));
+  document.getElementById('appWheel').style.transform=`rotate(${target}deg)`;
+  setTimeout(()=>{
+    const res=document.getElementById('appSpinResult');
+    if(res) res.innerHTML=`🎉 You won:<br><span style="font-size:20px">${prize.label}</span><br><span style="font-size:12px;color:#bbb">Ref ${ref} · show Mia to claim</span>`;
+    const cl=document.getElementById('appSpinClose'); if(cl) cl.style.display='inline-block';
+  },6600);
 }
 
 async function renderRewards(){
@@ -4675,8 +4747,6 @@ async function renderRewards(){
         <div class="earn-row"><span class="earn-ic">🚗</span> Every service at our outlet</div>
         <div class="earn-row"><span class="earn-ic">👥</span> Refer friends</div>
       </div>
-
-      ${await renderSpinCard()}
 
       ${spinHtml}
 
