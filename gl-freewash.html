@@ -60,7 +60,8 @@
     </div>
     <div class="field">
       <label>Phone Number</label>
-      <input id="phone" type="tel" inputmode="numeric" placeholder="e.g. 60123456789" autocomplete="tel">
+      <input id="phone" type="tel" inputmode="numeric" placeholder="e.g. 60123456789" autocomplete="tel" oninput="onPhoneLookup()">
+      <div id="phoneFound" style="font-size:12px;color:#7ee29a;margin-top:6px"></div>
     </div>
     <div class="row">
       <div class="field">
@@ -150,6 +151,49 @@ function onModel(){
 // ---- plate lock check ----
 let plateTimer=null;
 function onPlate(){ clearTimeout(plateTimer); plateTimer=setTimeout(checkPlate,500); }
+
+// ---- phone auto-fill from existing customer ----
+let phoneTimer=null, autoFilled=false;
+function onPhoneLookup(){ clearTimeout(phoneTimer); phoneTimer=setTimeout(lookupPhone,600); }
+async function lookupPhone(){
+  const phone=normPhone($('phone').value);
+  const fnd=$('phoneFound'); if(fnd) fnd.textContent='';
+  if(phone.length<8) return;
+  // try both +60... and 60... formats
+  const variants=['+'+phone, phone, '+'+phone.replace(/^0/,''), phone.replace(/^60/,'0')];
+  try{
+    // gl_walkin first (has car + plate)
+    let rec=null;
+    for(const v of variants){
+      const {data}=await sb.from('gl_walkin').select('name,phone,plate,model,car_type').eq('phone',v).limit(1).maybeSingle();
+      if(data){ rec=data; break; }
+    }
+    // fallback: gl_profiles (name + email)
+    let prof=null;
+    for(const v of variants){
+      const {data}=await sb.from('gl_profiles').select('name,phone,email').eq('phone',v).limit(1).maybeSingle();
+      if(data){ prof=data; break; }
+    }
+    if(!rec && !prof){ return; } // not found — customer fills manually
+    // auto-fill (only empty fields, so we don't overwrite what they typed)
+    if((rec&&rec.name)||(prof&&prof.name)){ if(!$('name').value.trim()) $('name').value=(rec&&rec.name)||prof.name; }
+    if(prof&&prof.email && !$('email').value.trim()) $('email').value=prof.email;
+    if(rec){
+      if(rec.plate && !$('plate').value.trim()){ $('plate').value=rec.plate; onPlate(); }
+      if(rec.model){ // set model as free text into a matching option if exists, else leave brand/model
+        const opt=[...$('model').options].find(o=>o.value.toLowerCase()===String(rec.model).toLowerCase());
+        if(opt){ $('model').value=opt.value; onModel(); }
+        else { // model not in current brand list — show it by adding a temp option
+          const o=document.createElement('option'); o.value=rec.model; o.textContent=rec.model; o.dataset.type=rec.car_type||''; $('model').appendChild(o); $('model').value=rec.model; onModel();
+        }
+      }
+      if(rec.car_type && !$('ctype').value){ const t=[...$('ctype').options].find(x=>x.value.toLowerCase()===String(rec.car_type).toLowerCase()); if(t) $('ctype').value=t.value; }
+    }
+    autoFilled=true;
+    if(fnd){ fnd.style.color='#7ee29a'; fnd.textContent='✓ Welcome back! We filled in your details — please check they\'re correct.'; }
+  }catch(e){ /* ignore, manual fill */ }
+}
+
 async function checkPlate(){
   const plate=$('plate').value.trim().toUpperCase().replace(/\s+/g,'');
   $('plateMsg').textContent=''; $('plateMsg').className='lookup'; plateOk=true;
