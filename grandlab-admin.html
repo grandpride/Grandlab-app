@@ -212,6 +212,7 @@
         <button class="tab" data-tab="referrals" onclick="switchTab('referrals')">Referrals</button>
         <button class="tab" data-tab="maintenance" onclick="switchTab('maintenance')">Maintenance</button>
         <button class="tab" data-tab="packages" onclick="switchTab('packages')">Packages / Balance</button>
+        <button class="tab" data-tab="spin" onclick="switchTab('spin')">🎡 Spin Wheel</button>
       </div>
 
       <!-- OTP PAGE -->
@@ -682,6 +683,58 @@
           <button class="btn btn-ghost btn-sm" onclick="loadBalances()">↻ Refresh</button>
         </div>
         <div id="bal-list"><div class="empty">Click Refresh to load.</div></div>
+      </div>
+
+      <!-- SPIN WHEEL -->
+      <div class="panel" id="panel-spin">
+        <div class="hint">Configure the spin-the-wheel prizes. Type a <b>weight</b> for each prize — bigger weight = more likely. Set <b>one mega prize</b> with a fixed % (e.g. 0.01). The system auto-splits the remaining % across the others by weight. Win chances update live below.</div>
+
+        <div class="card" style="margin-top:14px">
+          <div class="card-title" style="margin-bottom:10px">Add a prize</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <div><label>Label (shown on wheel)</label><input id="sp-label" placeholder="e.g. Free Tint"></div>
+            <div><label>Kind</label>
+              <select id="sp-kind">
+                <option value="service">Service (free/discounted service)</option>
+                <option value="discount">Discount (% or RM off)</option>
+                <option value="credit">Free credit (RM)</option>
+                <option value="points">Free points</option>
+                <option value="none">Try again / no prize</option>
+              </select>
+            </div>
+            <div><label>Value (RM, % or points — optional)</label><input id="sp-value" type="number" step="0.01" placeholder="e.g. 50"></div>
+            <div><label>Weight (chance)</label><input id="sp-weight" type="number" step="1" placeholder="e.g. 10" value="10"></div>
+            <div><label>Segment color</label><input id="sp-color" type="color" value="#F5C518" style="height:40px;padding:2px"></div>
+            <div><label>Mega prize?</label>
+              <select id="sp-mega" onchange="document.getElementById('sp-megawrap').style.display=this.value==='1'?'block':'none'">
+                <option value="0">No — normal prize</option>
+                <option value="1">Yes — mega (fixed %)</option>
+              </select>
+            </div>
+          </div>
+          <div id="sp-megawrap" style="display:none;margin-top:8px">
+            <label>Mega win % (e.g. 0.01 or 0.1)</label>
+            <input id="sp-megapct" type="number" step="0.001" placeholder="0.01">
+          </div>
+          <button class="btn btn-primary btn-sm" style="margin-top:12px" onclick="addPrize()">+ Add prize</button>
+        </div>
+
+        <div class="card" style="margin-top:14px">
+          <div class="card-title" style="display:flex;justify-content:space-between;align-items:center">
+            <span>Prizes &amp; live win chances</span>
+            <button class="btn btn-ghost btn-sm" onclick="loadPrizes()">↻ Refresh</button>
+          </div>
+          <div id="sp-list"><div class="empty">Click Refresh to load.</div></div>
+        </div>
+
+        <div class="card" style="margin-top:14px">
+          <div class="card-title" style="display:flex;justify-content:space-between;align-items:center">
+            <span>Winners — confirm to activate their prize</span>
+            <button class="btn btn-ghost btn-sm" onclick="loadWins()">↻ Refresh</button>
+          </div>
+          <input id="sp-winsearch" placeholder="Search ref / phone / plate" oninput="renderWins()" style="margin-bottom:10px">
+          <div id="sp-wins"><div class="empty">Click Refresh to load.</div></div>
+        </div>
       </div>
 
       <!-- ONBOARDING -->
@@ -3132,6 +3185,122 @@ function switchTab(t){
   else if(t==='referrals')loadReferrals();
   else if(t==='maintenance')loadMaintenance();
   else if(t==='packages')fillPackagesTab();
+  else if(t==='spin'){loadPrizes();loadWins();}
+}
+
+/* ---------- SPIN WHEEL prize config ---------- */
+let PRIZES=[];
+async function loadPrizes(){
+  try{
+    const r=await sb("gl_spin_prizes?select=*&order=sort_order.asc,created_at.asc",{headers:H()});
+    PRIZES=await r.json();
+    renderPrizes();
+  }catch(e){ document.getElementById('sp-list').innerHTML='<div class="empty">Error: '+e+'</div>'; }
+}
+function computeChances(){
+  // mega uses fixed %; the rest split the remaining % by weight
+  const mega=PRIZES.find(p=>p.is_mega && p.active);
+  const megaPct=mega?Number(mega.mega_pct||0):0;
+  const normals=PRIZES.filter(p=>p.active && !p.is_mega);
+  const totW=normals.reduce((s,p)=>s+Number(p.weight||0),0);
+  const remain=Math.max(0,100-megaPct);
+  const map={};
+  if(mega) map[mega.id]=megaPct;
+  normals.forEach(p=>{ map[p.id]= totW>0 ? (Number(p.weight||0)/totW)*remain : 0; });
+  return map;
+}
+function renderPrizes(){
+  const el=document.getElementById('sp-list');
+  if(!PRIZES.length){ el.innerHTML='<div class="empty">No prizes yet. Add some above.</div>'; return; }
+  const chance=computeChances();
+  el.innerHTML=PRIZES.map(p=>{
+    const pct=(chance[p.id]||0);
+    const pctTxt=pct<0.01?pct.toFixed(3):pct.toFixed(2);
+    return `<div class="card" style="margin-top:10px;border-left:4px solid ${p.color||'#F5C518'}">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
+        <div>
+          <b>${p.label||'(no label)'}</b> ${p.is_mega?'<span style="color:#e0b000">★ MEGA</span>':''}
+          <div style="font-size:12px;color:var(--muted)">${p.kind}${p.value?(' · '+p.value):''} · weight ${p.weight}${!p.active?' · <span style="color:#c0392b">inactive</span>':''}</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:18px;font-weight:800;color:var(--accent)">${pctTxt}%</div>
+          <div style="font-size:11px;color:var(--muted)">win chance</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">
+        <input type="number" step="1" value="${p.weight}" title="weight" style="width:80px" onchange="updPrize('${p.id}','weight',this.value)">
+        ${p.is_mega?`<input type="number" step="0.001" value="${p.mega_pct||0}" title="mega %" style="width:90px" onchange="updPrize('${p.id}','mega_pct',this.value)">`:''}
+        <button class="btn btn-ghost btn-sm" onclick="updPrize('${p.id}','active',${p.active?'false':'true'})">${p.active?'Disable':'Enable'}</button>
+        <button class="btn btn-ghost btn-sm" style="color:#c0392b" onclick="delPrize('${p.id}')">Delete</button>
+      </div>
+    </div>`;
+  }).join('')
+    + `<div style="margin-top:12px;font-size:12px;color:var(--muted)">Total: ${Object.values(chance).reduce((a,b)=>a+b,0).toFixed(2)}% (auto-balanced)</div>`;
+}
+async function addPrize(){
+  const label=document.getElementById('sp-label').value.trim();
+  if(!label){ alert('Enter a prize label.'); return; }
+  const isMega=document.getElementById('sp-mega').value==='1';
+  const body={
+    label, kind:document.getElementById('sp-kind').value,
+    value:Number(document.getElementById('sp-value').value||0),
+    weight:Number(document.getElementById('sp-weight').value||1),
+    color:document.getElementById('sp-color').value,
+    is_mega:isMega, mega_pct:isMega?Number(document.getElementById('sp-megapct').value||0):0,
+    active:true, sort_order:PRIZES.length
+  };
+  if(isMega && PRIZES.some(p=>p.is_mega)){ alert('There is already a mega prize. Delete it first or make this a normal prize.'); return; }
+  try{
+    await sb("gl_spin_prizes",{method:"POST",headers:H({Prefer:"return=representation"}),body:JSON.stringify(body)});
+    document.getElementById('sp-label').value=''; document.getElementById('sp-value').value='';
+    loadPrizes();
+  }catch(e){ alert('Add failed: '+e); }
+}
+async function updPrize(id,field,val){
+  const body={}; body[field]= (field==='active')?(val===true||val==='true') : (field==='weight'||field==='mega_pct'||field==='value')?Number(val):val;
+  try{ await sb(`gl_spin_prizes?id=eq.${id}`,{method:"PATCH",headers:H(),body:JSON.stringify(body)}); loadPrizes(); }
+  catch(e){ alert('Update failed: '+e); }
+}
+async function delPrize(id){
+  if(!confirm('Delete this prize?'))return;
+  try{ await sb(`gl_spin_prizes?id=eq.${id}`,{method:"DELETE",headers:H()}); loadPrizes(); }
+  catch(e){ alert('Delete failed: '+e); }
+}
+let WINS=[];
+async function loadWins(){
+  try{
+    const r=await sb("gl_spin_wins?select=*&order=created_at.desc&limit=200",{headers:H()});
+    WINS=await r.json(); renderWins();
+  }catch(e){ document.getElementById('sp-wins').innerHTML='<div class="empty">Error: '+e+'</div>'; }
+}
+function renderWins(){
+  const q=(document.getElementById('sp-winsearch').value||'').toLowerCase().trim();
+  const list=WINS.filter(w=>!q||[w.ref_code,w.phone,w.plate,w.name,w.prize_label].some(v=>String(v||'').toLowerCase().includes(q)));
+  const el=document.getElementById('sp-wins');
+  if(!list.length){ el.innerHTML='<div class="empty">No winners.</div>'; return; }
+  el.innerHTML=list.map(w=>{
+    const conf=w.status==='confirmed'||w.status==='claimed';
+    return `<div class="card" style="margin-top:8px">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
+        <div>
+          <b>${w.prize_label||'Prize'}</b> <span style="color:var(--muted);font-size:12px">${w.ref_code||''}</span>
+          <div style="font-size:12px;color:var(--muted)">${w.name||''} · ${w.phone||''} · ${w.plate||''}</div>
+          <div style="font-size:11px;color:${conf?'#1db954':'#e0a000'}">${conf?'✓ '+w.status:'⏳ '+w.status}${w.owner_id?' · in app':''}</div>
+        </div>
+        <div>${conf?'':`<button class="btn btn-primary btn-sm" onclick="confirmWin('${w.id}')">Confirm</button>`}
+          <button class="btn btn-ghost btn-sm" style="color:#c0392b" onclick="rejectWin('${w.id}')">Reject</button></div>
+      </div>
+    </div>`;
+  }).join('');
+}
+async function confirmWin(id){
+  try{ await sb(`gl_spin_wins?id=eq.${id}`,{method:"PATCH",headers:H(),body:JSON.stringify({status:'confirmed',confirmed_at:new Date().toISOString()})}); loadWins(); }
+  catch(e){ alert('Confirm failed: '+e); }
+}
+async function rejectWin(id){
+  if(!confirm('Reject this prize?'))return;
+  try{ await sb(`gl_spin_wins?id=eq.${id}`,{method:"PATCH",headers:H(),body:JSON.stringify({status:'rejected'})}); loadWins(); }
+  catch(e){ alert('Reject failed: '+e); }
 }
 
 /* ---------- WALLET editing ---------- */

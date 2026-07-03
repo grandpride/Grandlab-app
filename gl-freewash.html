@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Free Car Wash · Grandlab Detailing</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{ --gold:#F5C518; --gold-deep:#c99a06; --bg:#0a0a0a; --card:#141414; --border:#2a2a2a; --text:#f5f5f5; --muted:#9a9a9a; --green:#1db954; }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;padding:0 0 40px}
+  .hero{background:linear-gradient(160deg,#1a1608,#0a0a0a);padding:28px 20px 22px;text-align:center;border-bottom:1px solid var(--border)}
+  .brand{font-size:20px;font-weight:900;letter-spacing:1px}.brand span{color:var(--gold)}
+  .hero h1{font-size:26px;font-weight:900;margin:14px 0 6px;line-height:1.2}
+  .hero h1 .free{color:var(--gold)}
+  .hero p{color:var(--muted);font-size:13px}
+  .wrap{max-width:460px;margin:0 auto;padding:20px}
+  .field{margin-bottom:14px}
+  label{display:block;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:6px}
+  input,select{width:100%;background:var(--card);border:1px solid var(--border);border-radius:12px;color:var(--text);padding:13px 14px;font-size:15px;font-family:inherit;outline:none}
+  input:focus,select:focus{border-color:var(--gold)}
+  .row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .slots{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:6px}
+  .slot{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px 6px;text-align:center;cursor:pointer;transition:.12s}
+  .slot.sel{background:var(--gold);border-color:var(--gold);color:#111}
+  .slot.full{opacity:.4;pointer-events:none}
+  .slot .t{font-size:13px;font-weight:700}.slot .l{font-size:10px;color:var(--muted);margin-top:2px}
+  .slot.sel .l{color:#333}
+  .btn{width:100%;border:none;border-radius:14px;padding:16px;font-size:16px;font-weight:800;font-family:inherit;cursor:pointer;margin-top:8px}
+  .btn-wa{background:var(--green);color:#fff}
+  .btn-wa:active{transform:scale(.98)}
+  .note{font-size:12px;color:var(--muted);text-align:center;margin-top:14px;line-height:1.5}
+  .status{text-align:center;font-size:14px;padding:12px;border-radius:10px;margin-bottom:14px}
+  .status.err{background:#3a1414;color:#ff8a8a;border:1px solid #5a2020}
+  .status.ok{background:#0f2e18;color:#7ee29a;border:1px solid #1e5a30}
+  .lookup{font-size:12px;color:var(--muted);margin-top:6px}
+  .lookup.taken{color:#ff8a8a;font-weight:700}
+  .tnc{font-size:11px;color:#666;margin-top:20px;line-height:1.6;border-top:1px solid var(--border);padding-top:14px}
+  .tnc b{color:var(--muted)}
+  .hidden{display:none}
+  .refbox{background:linear-gradient(135deg,#1a1608,#141414);border:1.5px solid var(--gold);border-radius:14px;padding:16px;text-align:center;margin:8px 0 12px}
+  .refbox .lbl{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+  .refbox .code{font-size:26px;font-weight:900;color:var(--gold);letter-spacing:2px;margin:4px 0}
+  .refbox .sub{font-size:12px;color:var(--muted)}
+</style>
+</head>
+<body>
+  <div class="hero">
+    <div class="brand">GRAND<span>LAB</span> DETAILING</div>
+    <h1>Get a <span class="free">FREE</span> Car Wash 🚗✨</h1>
+    <p>Book below · one free wash per car</p>
+  </div>
+
+  <div class="wrap">
+    <div id="status" class="status hidden"></div>
+
+    <div class="field">
+      <label>Your Name</label>
+      <input id="name" placeholder="Full name" autocomplete="name">
+    </div>
+    <div class="field">
+      <label>Phone Number</label>
+      <input id="phone" type="tel" inputmode="numeric" placeholder="e.g. 60123456789" autocomplete="tel">
+    </div>
+    <div class="row">
+      <div class="field">
+        <label>Car Brand</label>
+        <select id="brand" onchange="onBrand()"><option value="">— select —</option></select>
+      </div>
+      <div class="field">
+        <label>Car Model</label>
+        <select id="model" onchange="onModel()"><option value="">— select —</option></select>
+      </div>
+    </div>
+    <div class="row">
+      <div class="field">
+        <label>Car Type</label>
+        <select id="ctype"><option value="">—</option></select>
+      </div>
+      <div class="field">
+        <label>Car Plate</label>
+        <input id="plate" placeholder="e.g. ABC1234" oninput="onPlate()" style="text-transform:uppercase">
+      </div>
+    </div>
+    <div id="plateMsg" class="lookup"></div>
+
+    <div class="field">
+      <label>Email</label>
+      <input id="email" type="email" placeholder="you@email.com" autocomplete="email">
+    </div>
+
+    <div class="note" style="text-align:left;color:var(--muted);background:var(--card);border:1px solid var(--border);border-radius:12px;padding:13px 14px;margin-top:4px">📅 <b style="color:var(--text)">Book your date & time with our customer service Mia</b> after you submit — she'll share the available slots with you on WhatsApp.<br><br>⭐ <b style="color:var(--gold)">A Google review is required after your car wash</b> to complete the free wash.</div>
+
+    <button class="btn" id="submitBtn" onclick="submitFreeWash()" style="background:var(--gold);color:#111">✓ Submit my details</button>
+
+    <div id="afterSubmit" class="hidden">
+      <div class="refbox" id="refBox"></div>
+      <button class="btn btn-wa" id="sendBtn" onclick="sendToMia()">📲 Send to Mia to book my time slot</button>
+    </div>
+
+    <div class="tnc">
+      <b>Terms &amp; Conditions:</b><br>
+      • One free car wash per car plate. Limited to one redemption only.<br>
+      • The same car plate cannot be claimed again with a different phone number.<br>
+      • A Google review is required after the car wash to complete the free wash.<br>
+      • Booking is subject to confirmation by Grandlab customer service.<br>
+      • Grandlab reserves the right to verify details and refuse duplicate or invalid claims.
+    </div>
+  </div>
+
+<script>
+const SUPABASE_URL="https://eychljpzorzmaveixlnu.supabase.co";
+const SUPABASE_ANON="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV5Y2hsanB6b3J6bWF2ZWl4bG51Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2NDk2NjQsImV4cCI6MjA5NzIyNTY2NH0.6dA1zhz5ZIwf8byFB8vhfOzPI-uPPdPihEr1b8GG_oA";
+const CS_WHATSAPP="60129384313"; // Grandlab customer service (Mia)
+const SLOT_TIMES=["9:00 AM","10:00 AM","11:00 AM","1:30 PM","3:00 PM"];
+const SLOTS_PER_TIME=2;
+const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON,{auth:{persistSession:false}});
+const $=id=>document.getElementById(id);
+const esc=s=>(s||'').toString().replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const normPhone=p=>(p||'').replace(/[^0-9]/g,'');
+let BRANDS=[], MODELS=[], selectedSlot=null, takenCounts={}, plateOk=true;
+
+function showStatus(msg,type){ const el=$('status'); el.textContent=msg; el.className='status '+type; el.classList.remove('hidden'); if(type==='ok') el.scrollIntoView({behavior:'smooth'}); }
+function hideStatus(){ $('status').classList.add('hidden'); }
+
+// ---- car brands / models / type ----
+async function loadCars(){
+  try{
+    const {data:b}=await sb.from('gl_car_brands').select('id,name').eq('active',true).order('sort_order',{ascending:true});
+    BRANDS=b||[];
+    $('brand').innerHTML='<option value="">— select —</option>'+BRANDS.map(x=>`<option value="${x.id}">${esc(x.name)}</option>`).join('');
+    const {data:m}=await sb.from('gl_car_models').select('brand_id,name,type').eq('active',true).order('sort_order',{ascending:true});
+    MODELS=m||[];
+    // car type options from distinct model types
+    const types=[...new Set(MODELS.map(r=>(r.type||'').trim()).filter(Boolean))];
+    $('ctype').innerHTML='<option value="">—</option>'+types.map(t=>`<option value="${esc(t)}">${esc(t)}</option>`).join('');
+  }catch(e){ console.log('car load',e); }
+}
+function onBrand(){
+  const bid=$('brand').value;
+  const list=MODELS.filter(m=>String(m.brand_id)===String(bid));
+  $('model').innerHTML='<option value="">— select —</option>'+list.map(m=>`<option value="${esc(m.name)}" data-type="${esc(m.type||'')}">${esc(m.name)}</option>`).join('');
+  $('model').value='';
+}
+function onModel(){
+  const o=$('model').selectedOptions[0];
+  if(o && o.dataset.type){ const t=[...$('ctype').options].find(x=>x.value.toLowerCase()===o.dataset.type.toLowerCase()); $('ctype').value=t?t.value:o.dataset.type; }
+}
+
+// ---- plate lock check ----
+let plateTimer=null;
+function onPlate(){ clearTimeout(plateTimer); plateTimer=setTimeout(checkPlate,500); }
+async function checkPlate(){
+  const plate=$('plate').value.trim().toUpperCase().replace(/\s+/g,'');
+  $('plateMsg').textContent=''; $('plateMsg').className='lookup'; plateOk=true;
+  if(plate.length<3) return;
+  try{
+    const {data}=await sb.rpc('gl_freewash_plate_taken',{p_plate:plate});
+    if(data===true){ plateOk=false; $('plateMsg').textContent='⚠️ This car plate has already claimed a free wash. Only one per car.'; $('plateMsg').className='lookup taken'; }
+    else { $('plateMsg').textContent='✓ Eligible for a free wash'; $('plateMsg').className='lookup'; $('plateMsg').style.color='#7ee29a'; }
+  }catch(e){ /* if RPC missing, allow — server unique index still blocks dup */ }
+}
+
+function fmtDate(v){ if(!v) return ""; const[y,m,d]=v.split("-"); return `${+d}/${+m}/${y}`; }
+function dayName(v){ if(!v) return ""; try{ return new Date(v+'T00:00:00').toLocaleDateString('en-US',{weekday:'long'}); }catch(e){ return ""; } }
+function genRef(){ return 'FW-'+Math.random().toString(36).slice(2,6).toUpperCase(); }
+let SUBMITTED=null; // holds the saved claim data for the WhatsApp step
+
+// ---- STEP 1: submit & save ----
+async function submitFreeWash(){
+  hideStatus();
+  const name=$('name').value.trim(), phone=normPhone($('phone').value),
+    brandName=($('brand').selectedOptions[0]||{}).text||'', model=$('model').value.trim(),
+    ctype=$('ctype').value, plate=$('plate').value.trim().toUpperCase().replace(/\s+/g,''),
+    email=$('email').value.trim();
+  // validation
+  if(!name){ showStatus('Please enter your name.','err'); return; }
+  if(phone.length<8){ showStatus('Please enter a valid phone number.','err'); return; }
+  if(!model){ showStatus('Please select your car model.','err'); return; }
+  if(!plate || plate.length<3){ showStatus('Please enter your car plate.','err'); return; }
+  if(!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){ showStatus('Please enter a valid email.','err'); return; }
+  if(!plateOk){ showStatus('This car plate has already claimed a free wash.','err'); return; }
+
+  $('submitBtn').disabled=true; $('submitBtn').textContent='Submitting…';
+  const ref=genRef();
+  try{
+    // plate lock: insert the claim (unique index blocks duplicate plate at DB level)
+    const {data:fw,error:fwErr}=await sb.from('gl_free_wash').insert({
+      ref_code:ref, name, phone:'+'+phone, plate, car_brand:brandName==='— select —'?'':brandName,
+      car_model:model, car_type:ctype||null, email, status:'new'
+    }).select('id').single();
+    if(fwErr){
+      if(String(fwErr.message||'').match(/duplicate|unique/i)){ showStatus('This car plate has already claimed a free wash. Only one per car. 🚗','err'); }
+      else { showStatus('Could not submit: '+fwErr.message,'err'); }
+      $('submitBtn').disabled=false; $('submitBtn').textContent='✓ Submit my details'; return;
+    }
+    // create/update gl_walkin (customer record)
+    try{
+      const {data:ex}=await sb.from('gl_walkin').select('id').ilike('plate',plate).limit(1).maybeSingle();
+      const wk={name, phone:'+'+phone, plate, model, car_type:ctype||null};
+      if(ex) await sb.from('gl_walkin').update(wk).eq('id',ex.id);
+      else await sb.from('gl_walkin').insert(wk);
+    }catch(e){}
+    // create gl_bookings (no date yet — Mia sets it; kept pending for reception)
+    const notes=`Name: ${name}\nPhone: ${'+'+phone}\nCar: ${model}\nPlate: ${plate}\nEmail: ${email}\nFREE WASH (${ref}) — date/time TBC with Mia`;
+    try{
+      const {data:bk}=await sb.from('gl_bookings').insert({
+        service_name:'FREE Car Wash', status:'pending', source:'freewash', notes
+      }).select('id').single();
+      if(bk) await sb.from('gl_free_wash').update({booking_id:bk.id}).eq('id',fw.id);
+    }catch(e){}
+
+    // save for the WhatsApp step + reveal it
+    SUBMITTED={ref,name,phone,brandName,model,ctype,plate,email};
+    $('refBox').innerHTML='<div class="lbl">Your reference code</div><div class="code">'+ref+'</div><div class="sub">Show this to Mia. Tap below to book your slot.</div>';
+    $('submitBtn').classList.add('hidden');
+    $('afterSubmit').classList.remove('hidden');
+    ['name','phone','brand','model','ctype','plate','email'].forEach(id=>{ if($(id)) $(id).disabled=true; });
+    showStatus('✓ Saved! Reference '+ref+'. Now message Mia to book your date & time.','ok');
+  }catch(e){
+    showStatus('Something went wrong: '+(e.message||e),'err');
+    $('submitBtn').disabled=false; $('submitBtn').textContent='✓ Submit my details';
+  }
+}
+
+// ---- STEP 2: send to Mia on WhatsApp ----
+function sendToMia(){
+  if(!SUBMITTED) return;
+  const s=SUBMITTED;
+  const msg=`🚗 *FREE CAR WASH BOOKING*\n\nHi Mia 🙏\n\n*Ref: ${s.ref}*\nName: ${s.name}\nPhone: +${s.phone}\nCar: ${s.brandName!=='— select —'?s.brandName+' ':''}${s.model}\nType: ${s.ctype||'-'}\nPlate: ${s.plate}\nEmail: ${s.email}\n\nI want to book a car wash slot now. Can you give me the availability date and time? Thank you!`;
+  const isMobile=/Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+  const url=isMobile ? 'https://wa.me/'+CS_WHATSAPP+'?text='+encodeURIComponent(msg)
+                     : 'https://web.whatsapp.com/send?phone='+CS_WHATSAPP+'&text='+encodeURIComponent(msg);
+  if(isMobile) location.href=url; else window.open(url,'_blank');
+}
+
+// init
+(function(){
+  loadCars();
+})();
+</script>
+</body>
+</html>

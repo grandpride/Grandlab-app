@@ -15,6 +15,24 @@
   .brand{font-weight:900;letter-spacing:1px;font-size:20px;display:flex;align-items:center;justify-content:space-between}
   .brand b{color:var(--gold)}.brand small{font-size:11px;color:var(--muted);letter-spacing:2px;font-weight:700}
   .body{padding:18px 16px}
+  .bktabs{display:flex;gap:8px;padding:12px 16px 0;background:var(--black)}
+  .bktab{flex:1;background:var(--card,#141414);border:1px solid var(--line);border-radius:12px 12px 0 0;color:var(--muted);padding:11px 8px;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer}
+  .bktab.on{background:var(--gold);color:#111;border-color:var(--gold)}
+  .pendbadge{display:inline-block;background:#c0392b;color:#fff;border-radius:10px;font-size:11px;padding:1px 7px;margin-left:4px}
+  .bktab.on .pendbadge{background:#111;color:var(--gold)}
+  .pend-row{background:var(--card,#141414);border:1px solid var(--line);border-radius:12px;margin-bottom:8px;overflow:hidden}
+  .pend-head{padding:12px 14px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:10px}
+  .pend-head .nm{font-weight:700;font-size:14px}
+  .pend-head .mt{font-size:12px;color:var(--muted);margin-top:2px}
+  .pend-head .chev{color:var(--muted);font-size:12px}
+  .pend-detail{padding:0 14px 14px;border-top:1px solid var(--line);display:none}
+  .pend-row.open .pend-detail{display:block}
+  .pend-detail .drow{display:flex;justify-content:space-between;font-size:13px;padding:6px 0;border-bottom:1px dashed var(--line)}
+  .pend-detail .drow b{color:var(--muted);font-weight:600}
+  .pend-btns{display:flex;gap:8px;margin-top:12px}
+  .pend-btns button{flex:1;border:none;border-radius:10px;padding:11px;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer}
+  .pb-book{background:var(--gold);color:#111}
+  .pb-wa{background:#1db954;color:#fff}
   .field{margin-bottom:14px}
   label{display:block;font-size:12px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);font-weight:700;margin-bottom:6px}
   input,select{width:100%;background:var(--field);border:1px solid var(--line);border-radius:12px;color:#fff;padding:13px 14px;font-size:16px;font-family:inherit;appearance:none}
@@ -82,7 +100,12 @@
     <div class="brand"><span>GRAND<b>LAB</b></span><small>STAFF BOOKING</small></div>
   </div>
 
-  <div class="body">
+  <div class="bktabs">
+    <button class="bktab on" id="tabNew" onclick="showBkTab('new')">＋ New Booking</button>
+    <button class="bktab" id="tabPending" onclick="showBkTab('pending')">🧾 FOC Pending <span id="pendCount" class="pendbadge">0</span></button>
+  </div>
+
+  <div class="body" id="bodyNew">
     <div class="banner hidden" id="noKeys">⚠️ Supabase not connected. Messages still build, but lookup, slots & saving need your keys (top of code file).</div>
 
     <div class="field"><label>Contact No (type to find customer)</label>
@@ -115,6 +138,8 @@
         <select id="svc" style="flex:1"><option value="">— Loading… —</option></select>
         <button type="button" id="svcBrowseBtn" onclick="openSvcPicker()" style="flex:0 0 auto;background:#1e1e1a;border:1px solid var(--border);border-radius:10px;color:var(--gold);padding:0 14px;cursor:pointer;font-size:13px;font-weight:600">Search</button>
       </div>
+      <button type="button" onclick="addService()" style="margin-top:8px;background:#1e1e1a;border:1px dashed var(--gold);border-radius:10px;color:var(--gold);padding:9px 14px;cursor:pointer;font-size:13px;font-weight:600;width:100%">+ Add another service</button>
+      <div id="svcList" style="margin-top:8px;display:flex;flex-direction:column;gap:6px"></div>
     </div>
 
     <div class="field"><label>Date</label><input id="date" type="date"></div>
@@ -141,6 +166,12 @@
       <button class="btn btn-primary" id="save">💾 Save booking</button>
       <button class="btn btn-ghost" id="clear">Clear form</button>
     </div>
+  </div>
+
+  <div class="body hidden" id="bodyPending">
+    <div class="field"><label>Search plate / phone / name</label>
+      <input id="pendSearch" placeholder="Type to filter…" oninput="renderPending()"></div>
+    <div id="pendList"><div class="lookup">Loading…</div></div>
   </div>
 </div>
 
@@ -171,6 +202,28 @@ const $=id=>document.getElementById(id);
 let sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON,{auth:{persistSession:true,autoRefreshToken:true,storageKey:'gl_auth'}});
 let SERVICES=[], foundProfile=null, profileCars=[], selectedSlot=null, takenCounts={};
 let selectedServiceObj=null;
+let EXTRA_SVCS=[];  // additional service names beyond the main one
+function addService(){
+  const nm=serviceName();
+  if(!nm){ toast&&toast('Pick a service first'); return; }
+  if(EXTRA_SVCS.indexOf(nm)<0 && !allServiceNames_().includes(nm)) EXTRA_SVCS.push(nm);
+  else if(!EXTRA_SVCS.includes(nm)) EXTRA_SVCS.push(nm);
+  renderSvcList(); build();
+}
+function removeService(i){ EXTRA_SVCS.splice(i,1); renderSvcList(); build(); }
+function renderSvcList(){
+  const el=$('svcList'); if(!el) return;
+  el.innerHTML=EXTRA_SVCS.map((s,i)=>`<div style="display:flex;align-items:center;gap:8px;background:#1a1a17;border:1px solid var(--border);border-radius:9px;padding:8px 10px">
+    <span style="flex:1;font-size:13px">${esc(s)}</span>
+    <button type="button" onclick="removeService(${i})" style="background:none;border:none;color:#c0392b;cursor:pointer;font-size:16px">✕</button></div>`).join('');
+}
+// all service names in order: main selected + extras (deduped)
+function allServiceNames_(){
+  const list=[]; const main=serviceName();
+  if(main) list.push(main);
+  EXTRA_SVCS.forEach(s=>{ if(list.indexOf(s)<0) list.push(s); });
+  return list;
+}
 let connected = false;
 
 // show the login gate or boot the app (reception login, like the job card)
@@ -193,7 +246,94 @@ async function submitKey(){
   if(error){ document.getElementById('keyErr').textContent='Login failed: '+error.message; return; }
   document.getElementById('keyErr').textContent='';
   document.getElementById('keyGate').classList.add('hidden');
-  connected=true; loadServices(); bkLoadBrands();
+  connected=true; loadServices(); bkLoadBrands(); loadPending();
+}
+
+/* ---------- FOC Car Wash pending list ---------- */
+const CS_WA="60129384313"; // Mia
+let PENDING=[];
+function showBkTab(t){
+  $('tabNew').classList.toggle('on',t==='new');
+  $('tabPending').classList.toggle('on',t==='pending');
+  $('bodyNew').classList.toggle('hidden',t!=='new');
+  $('bodyPending').classList.toggle('hidden',t!=='pending');
+  if(t==='pending') loadPending();
+}
+async function loadPending(){
+  if(!connected) return;
+  try{
+    // pending = free wash claims not yet booked/done
+    const {data}=await sb.from('gl_free_wash').select('*').in('status',['new','pending']).order('created_at',{ascending:false});
+    PENDING=data||[];
+    if($('pendCount')) $('pendCount').textContent=PENDING.length;
+    renderPending();
+  }catch(e){ if($('pendList')) $('pendList').innerHTML='<div class="lookup">Error: '+esc(e.message||e)+'</div>'; }
+}
+function renderPending(){
+  const q=($('pendSearch')?.value||'').toLowerCase().trim();
+  const list=PENDING.filter(r=>{ if(!q) return true;
+    return [r.name,r.phone,r.plate,r.car_model].some(v=>String(v||'').toLowerCase().includes(q)); });
+  if(!list.length){ $('pendList').innerHTML='<div class="lookup">No pending free-wash requests.</div>'; return; }
+  $('pendList').innerHTML=list.map((r,i)=>{
+    window['_pw'+i]=r;
+    return `<div class="pend-row" id="pwrow${i}">
+      <div class="pend-head" onclick="togglePend(${i})">
+        <div><div class="nm">${esc(r.name||'Customer')}</div><div class="mt">${esc(r.phone||'')} · ${esc(r.car_model||'')} · ${esc(r.plate||'')}</div></div>
+        <div class="chev">▼</div>
+      </div>
+      <div class="pend-detail">
+        <div class="drow"><b>Ref</b><span>${esc(r.ref_code||'-')}</span></div>
+        <div class="drow"><b>Car</b><span>${esc([r.car_brand,r.car_model].filter(Boolean).join(' ')||'-')}</span></div>
+        <div class="drow"><b>Type</b><span>${esc(r.car_type||'-')}</span></div>
+        <div class="drow"><b>Plate</b><span>${esc(r.plate||'-')}</span></div>
+        <div class="drow"><b>Email</b><span>${esc(r.email||'-')}</span></div>
+        <div class="drow"><b>Submitted</b><span>${r.created_at?new Date(r.created_at).toLocaleDateString('en-GB'):'-'}</span></div>
+        <div class="pend-btns">
+          <button class="pb-wa" onclick="chasePend(${i})">💬 WhatsApp</button>
+          <button class="pb-book" onclick="bookPend(${i})">📅 Book now</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+function togglePend(i){ const el=$('pwrow'+i); if(el) el.classList.toggle('open'); }
+function chasePend(i){
+  const r=window['_pw'+i]; if(!r) return;
+  const phone=(r.phone||'').replace(/[^0-9]/g,'');
+  const msg=`Hi ${r.name||''}! 👋 This is Grandlab Detailing. You signed up for a FREE car wash (Ref: ${r.ref_code||''}). When would you like to come in? We'd love to get your ${r.car_model||'car'} sparkling ✨🚗`;
+  const isMobile=/Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+  const url=isMobile?'https://wa.me/'+phone+'?text='+encodeURIComponent(msg):'https://web.whatsapp.com/send?phone='+phone+'&text='+encodeURIComponent(msg);
+  if(isMobile) location.href=url; else window.open(url,'_blank');
+}
+function bookPend(i){
+  const r=window['_pw'+i]; if(!r) return;
+  window._bookingFromPending=r; // mark so 'save' can flip its status
+  // prefill the New Booking form
+  showBkTab('new');
+  $('contact').value=(r.phone||'').replace(/^\+/,'');
+  $('name').value=r.name||'';
+  $('car').value=r.car_model||'';
+  $('plate').value=r.plate||'';
+  if($('bkType') && r.car_type){ const o=[...$('bkType').options].find(x=>x.value.toLowerCase()===String(r.car_type).toLowerCase()); $('bkType').value=o?o.value:r.car_type; }
+  else if(r.car_model){ try{ resolveTypeFromModel_(r.car_model); }catch(e){} }
+  // auto-select the FOC service ("QR F.O.C Bathe Essence") if it exists
+  selectFocService_();
+  toast('Loaded '+(r.name||'customer')+' — service set, pick date & time then Save');
+}
+// select the FOC free-wash service in the service dropdown (flexible match)
+function selectFocService_(){
+  const sel=$('svc'); if(!sel) return;
+  const norm=s=>String(s||'').toLowerCase().replace(/[^a-z0-9]/g,'');
+  const target=norm('QR F.O.C Bathe Essence');
+  const opt=[...sel.options].find(o=>{
+    const n=norm(o.dataset.name||o.text||o.value);
+    return n===target || n.includes('qrfoc') || (n.includes('foc')&&n.includes('bathe'));
+  });
+  if(opt){
+    sel.value=opt.value;
+    selectedServiceObj={id:opt.value,name:opt.dataset.name||opt.text,is_coating:opt.dataset.coat==='1'};
+    build();
+  }
 }
 
 /* ---------- car brand/model/type picker (same as plate scanner) ---------- */
@@ -385,7 +525,28 @@ function fillFromWalkin_(wk){
   if(wk.plate) $('plate').value=wk.plate;
   if(wk.model) $('car').value=wk.model;
   if(wk.car_type){ const t=$('bkType'); if(t){ const o=[...t.options].find(x=>x.value.toLowerCase()===String(wk.car_type).toLowerCase()); t.value=o?o.value:wk.car_type; } }
+  else if(wk.model){ resolveTypeFromModel_(wk.model); }
   CAR_PACKAGES=[]; renderPkgChips();
+}
+/* look up a car type from the model name in gl_car_models and auto-select it.
+   handles free-text models (e.g. "TESLA MODEL Y") that weren't picked from the dropdown. */
+async function resolveTypeFromModel_(modelText){
+  const sel=$('bkType'); if(!sel || sel.value) return; // don't override an existing choice
+  const m=String(modelText||'').trim(); if(!m) return;
+  try{
+    // match the model name within the free text (models table has short names like "Model Y")
+    const {data}=await sb.from('gl_car_models').select('name,type').eq('active',true);
+    if(!data) return;
+    const low=m.toLowerCase();
+    // best match: model name contained in the typed text (longest name wins)
+    let best=null;
+    data.forEach(r=>{ const nm=(r.name||'').toLowerCase().trim();
+      if(nm && low.includes(nm) && (!best||nm.length>best.name.length)) best={name:nm,type:r.type}; });
+    if(best && best.type){
+      const o=[...sel.options].find(x=>x.value.toLowerCase()===String(best.type).toLowerCase());
+      sel.value=o?o.value:best.type;
+    }
+  }catch(e){}
 }
 $('carSelect').addEventListener('change',onCarSelect);
 async function onCarSelect(){
@@ -489,7 +650,8 @@ $('plate').addEventListener('input',()=>{
         const label=[c.make,c.model].filter(Boolean).join(' ')||'(car)';
         return `<option value="${c.id}"${c.plate===plate?' selected':''}>${esc(label)} · ${esc(c.plate||'')}</option>`;
       }).join('')+'<option value="__new__">+ Add new car</option>';
-      if(data.model && !$('car').value) $('car').value=[data.make,data.model].filter(Boolean).join(' ');
+      if(data.model && !$('car').value){ $('car').value=[data.make,data.model].filter(Boolean).join(' '); }
+      if(!$('bkType').value && data.model){ resolveTypeFromModel_([data.make,data.model].filter(Boolean).join(' ')); }
       autoBalance(plate);
     }else{
       // not in profiles — check gl_walkin by plate
@@ -504,15 +666,21 @@ $('plate').addEventListener('input',()=>{
 function isCoating(){ return !!(selectedServiceObj&&selectedServiceObj.is_coating); }
 function serviceName(){ return selectedServiceObj?selectedServiceObj.name:''; }
 function fmtDate(v){if(!v)return"";const[y,m,d]=v.split("-");return `${+d}/${+m}/${y}`;}
+function dayName_(v){ if(!v) return ""; try{ const dt=new Date(v+'T00:00:00'); return dt.toLocaleDateString('en-US',{weekday:'long'}); }catch(e){ return ""; } }
 function build(){
   // show the balance field if a coating service OR any active package is on this car
   const hasPkg=(typeof CAR_PACKAGES!=='undefined' && CAR_PACKAGES && CAR_PACKAGES.length>0);
   $('balwrap').classList.toggle('show', isCoating()||hasPkg);
-  const s=serviceName(),date=fmtDate($('date').value),time=$('time').value.trim(),
+  const svcs=allServiceNames_(), date=fmtDate($('date').value), dow=dayName_($('date').value), time=$('time').value.trim(),
     name=$('name').value.trim(),contact=$('contact').value.trim(),
     car=$('car').value.trim(),plate=$('plate').value.trim(),bal=$('bal').value.trim();
-  if(!s&&!name&&!date){$('preview').innerHTML='<span class="ph">Fill the form to see the message…</span>';return"";}
-  let m=`${s||"(service)"} ✅\nDate : ${date||"(date)"}\nTime : ${time||"(time)"}\n\n`;
+  if(!svcs.length&&!name&&!date){$('preview').innerHTML='<span class="ph">Fill the form to see the message…</span>';return"";}
+  // services: single = one line; multiple = numbered 1) 2) 3)
+  let svcBlock;
+  if(svcs.length<=1){ svcBlock=(svcs[0]||"(service)")+" ✅"; }
+  else { svcBlock="Services ✅\n"+svcs.map((s,i)=>`${i+1}) ${s}`).join("\n"); }
+  const dateLine = date ? (date+(dow?` (${dow})`:"")) : "(date)";
+  let m=`${svcBlock}\nDate : ${dateLine}\nTime : ${time||"(time)"}\n\n`;
   m+=`Full Name: ${name||"(name)"}\nContact no: ${contact||"(contact)"}\nCar model: ${car||"(car)"}\nNumber plate: ${plate||"(plate)"}\n`;
   if(bal)m+=`\nmaintenance / package balance : ${bal}\n`;
   const dep=parseFloat($('deposit').value);
@@ -527,12 +695,21 @@ async function copyMsg(){const m=build();if(!m.trim()){toast('Fill the form firs
 $('send').onclick=async()=>{const m=await copyMsg();if(!m)return;
   const phone=normPhone($('contact').value);
   toast('Copied! Opening WhatsApp…');
-  const url=phone
-    ? 'https://web.whatsapp.com/send?phone='+phone+'&text='+encodeURIComponent(m)
-    : 'https://web.whatsapp.com/';
-  setTimeout(()=>window.open(url,'_blank'),400);
+  // phone → open the WhatsApp app (wa.me/app scheme); PC → WhatsApp Web
+  const isMobile=/Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+  let url;
+  if(isMobile){
+    url = phone ? 'https://wa.me/'+phone+'?text='+encodeURIComponent(m)
+                : 'https://wa.me/?text='+encodeURIComponent(m);
+    setTimeout(()=>{ location.href=url; }, 300);
+  } else {
+    url = phone ? 'https://web.whatsapp.com/send?phone='+phone+'&text='+encodeURIComponent(m)
+                : 'https://web.whatsapp.com/';
+    setTimeout(()=>window.open(url,'_blank'),400);
+  }
 };
 $('clear').onclick=()=>{document.querySelectorAll('input').forEach(i=>i.value="");$('svc').selectedIndex=0;selectedServiceObj=null;
+  EXTRA_SVCS=[];renderSvcList();
   $('lookup').className='lookup';foundProfile=null;profileCars=[];selectedSlot=null;$('carEntry').style.display='flex';
   CAR_PACKAGES=[];renderPkgChips();
   $('slots').innerHTML='<div style="grid-column:1/-1;color:var(--muted);font-size:13px">Pick a date to see slots…</div>';build();};
@@ -606,6 +783,12 @@ $('save').onclick=async()=>{
     }
     const {error}=await sb.from('gl_bookings').insert(booking);
     if(error)throw error;
+    // if this booking came from a FOC pending request, mark it booked so it drops off the list
+    if(window._bookingFromPending && window._bookingFromPending.id){
+      try{ await sb.from('gl_free_wash').update({status:'booked', prefer_date:$('date').value, prefer_time:timeLabel}).eq('id',window._bookingFromPending.id); }catch(e){}
+      window._bookingFromPending=null;
+      loadPending();
+    }
     toast('Booking saved ✓'); loadSlots();
   }catch(e){ toast('Save failed: '+(e.message||e),true); }
 };
