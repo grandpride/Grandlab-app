@@ -4520,6 +4520,96 @@ async function sendGiftCard(amount){
 }
 // ============== END WALLET ==============
 
+/* ===== IN-APP SPIN (2-week free spin, review-unlocked) ===== */
+let SPIN_STATUS=null, SPIN_PRIZES=[];
+async function fetchSpinStatus(){
+  try{
+    const r=await fetch(`${SUPA_URL}/rest/v1/rpc/gl_app_spin_status`,{method:"POST",headers:authHeaders(),body:"{}"});
+    const d=await r.json(); SPIN_STATUS=Array.isArray(d)?d[0]:d;
+  }catch(e){ SPIN_STATUS=null; }
+}
+async function renderSpinCard(){
+  await fetchSpinStatus();
+  if(!SPIN_STATUS) return '';
+  const s=SPIN_STATUS;
+  // not yet unlocked -> show review-to-unlock
+  if(!s.review_approved){
+    return `<div class="sec-title" style="margin-top:14px">🎡 Spin &amp; Win</div>
+      <div style="margin:0 16px;background:linear-gradient(135deg,#1a1608,#141414);border:1.5px solid #F5C518;border-radius:14px;padding:16px;text-align:center">
+        <div style="font-size:15px;font-weight:800;color:#F5C518;margin-bottom:6px">Unlock your first spin ✨</div>
+        <div style="font-size:13px;color:#bbb;margin-bottom:12px">Leave us a Google review, upload a screenshot, and we'll unlock your free spin! You'll get a new spin every 2 weeks after that.</div>
+        <a href="https://search.google.com/local/writereview?placeid=YOUR_PLACE_ID" target="_blank" style="display:inline-block;background:#fff;color:#111;border-radius:20px;padding:9px 16px;font-weight:700;font-size:13px;text-decoration:none;margin-bottom:10px">⭐ Write a Google review</a>
+        <div><label style="display:inline-block;background:#F5C518;color:#111;border-radius:20px;padding:9px 16px;font-weight:700;font-size:13px;cursor:pointer">📷 Upload review screenshot
+          <input type="file" accept="image/*" style="display:none" onchange="uploadReviewProof(this)"></label></div>
+        <div id="reviewProofMsg" style="font-size:12px;color:#9a9a9a;margin-top:8px"></div>
+      </div>`;
+  }
+  // unlocked: spins available?
+  if((s.spins_available||0) > 0){
+    return `<div class="sec-title" style="margin-top:14px">🎡 Spin &amp; Win</div>
+      <div style="margin:0 16px;background:linear-gradient(135deg,#1a1608,#141414);border:1.5px solid #F5C518;border-radius:14px;padding:18px;text-align:center">
+        <div style="font-size:16px;font-weight:800;color:#F5C518;margin-bottom:4px">🎉 You have a FREE spin!</div>
+        <div style="font-size:12px;color:#bbb;margin-bottom:12px">Tap to spin the wheel and win a prize.</div>
+        <button onclick="openAppSpin()" style="background:#F5C518;color:#111;border:none;border-radius:22px;padding:12px 28px;font-weight:800;font-size:15px;cursor:pointer">SPIN NOW 🎡</button>
+      </div>`;
+  }
+  // no spin yet — show countdown to next
+  let when='';
+  if(s.next_spin_at){ const d=new Date(s.next_spin_at); const days=Math.max(0,Math.ceil((d-new Date())/86400000));
+    when= days<=0?'available soon':`in ${days} day${days===1?'':'s'}`; }
+  return `<div class="sec-title" style="margin-top:14px">🎡 Spin &amp; Win</div>
+    <div style="margin:0 16px;background:#141414;border:1px solid #2a2a2a;border-radius:14px;padding:16px;text-align:center">
+      <div style="font-size:14px;font-weight:700;margin-bottom:4px">Next free spin ${when}</div>
+      <div style="font-size:12px;color:#9a9a9a">You get a free spin every 2 weeks 🎁</div>
+    </div>`;
+}
+async function uploadReviewProof(input){
+  const file=input.files&&input.files[0]; if(!file) return;
+  const msg=document.getElementById('reviewProofMsg'); if(msg) msg.textContent='Uploading…';
+  try{
+    const uid=SESSION.user.id;
+    const path=`${uid}/${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g,'')}`;
+    // upload to private bucket
+    const up=await fetch(`${SUPA_URL}/storage/v1/object/gl-review-proofs/${path}`,{
+      method:"POST", headers:Object.assign(authHeaders(),{}), body:file
+    });
+    if(!up.ok){ if(msg) msg.textContent='Upload failed. Please try again.'; return; }
+    const image_url=`${SUPA_URL}/storage/v1/object/gl-review-proofs/${path}`;
+    // record the proof (pending approval)
+    await fetch(`${SUPA_URL}/rest/v1/gl_spin_review_proofs`,{
+      method:"POST", headers:Object.assign(authHeaders(),{Prefer:"return=minimal"}),
+      body:JSON.stringify({owner_id:uid, name:(PROFILE&&PROFILE.name)||'', phone:(PROFILE&&PROFILE.phone)||'', image_url, status:'pending'})
+    });
+    if(msg){ msg.style.color='#7ee29a'; msg.textContent='✓ Screenshot received! We\'ll review it and unlock your spin soon.'; }
+  }catch(e){ if(msg) msg.textContent='Upload error. Please try again.'; }
+}
+async function openAppSpin(){
+  // load prizes
+  try{ const r=await fetch(`${SUPA_URL}/rest/v1/gl_spin_prizes?active=eq.true&order=sort_order.asc`,{headers:authHeaders()});
+    SPIN_PRIZES=r.ok?await r.json():[]; }catch(e){ SPIN_PRIZES=[]; }
+  if(!SPIN_PRIZES.length){ alert('No prizes available right now.'); return; }
+  // draw server-side
+  let prize=null;
+  try{ const r=await fetch(`${SUPA_URL}/rest/v1/rpc/gl_spin_draw`,{method:"POST",headers:authHeaders(),body:"{}"});
+    const d=await r.json(); prize=Array.isArray(d)?d[0]:d; }catch(e){}
+  if(!prize){ const tot=SPIN_PRIZES.reduce((s,p)=>s+Number(p.weight||1),0); let x=Math.random()*tot,a=0;
+    prize=SPIN_PRIZES.find(p=>{a+=Number(p.weight||1);return x<=a;})||SPIN_PRIZES[0]; }
+  // consume the spin (server decrements + sets last_spin_at)
+  try{ await fetch(`${SUPA_URL}/rest/v1/rpc/gl_app_spin_consume`,{method:"POST",headers:authHeaders(),body:"{}"}); }catch(e){}
+  // record the win (tied to account, pending Mia confirm)
+  const ref='SP-'+Math.random().toString(36).slice(2,6).toUpperCase();
+  try{
+    await fetch(`${SUPA_URL}/rest/v1/gl_spin_wins`,{
+      method:"POST", headers:Object.assign(authHeaders(),{Prefer:"return=minimal"}),
+      body:JSON.stringify({ref_code:ref, name:(PROFILE&&PROFILE.name)||'', phone:(PROFILE&&PROFILE.phone)||'',
+        prize_id:prize.id, prize_label:prize.label, prize_kind:prize.kind, prize_value:prize.value,
+        status:'won', owner_id:SESSION.user.id})
+    });
+  }catch(e){}
+  alert('🎉 You won: '+prize.label+'!\n\nReference: '+ref+'\n\nShow this at reception or message Mia to claim. Your prize is now in your Rewards.');
+  routeTab('rewards'); // refresh
+}
+
 async function renderRewards(){
   const p=PROFILE||{};
   const coins = p.points||0;
@@ -4585,6 +4675,8 @@ async function renderRewards(){
         <div class="earn-row"><span class="earn-ic">🚗</span> Every service at our outlet</div>
         <div class="earn-row"><span class="earn-ic">👥</span> Refer friends</div>
       </div>
+
+      ${await renderSpinCard()}
 
       ${spinHtml}
 

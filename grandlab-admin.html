@@ -746,6 +746,14 @@
           <input id="sp-winsearch" placeholder="Search ref / phone / plate" oninput="renderWins()" style="margin-bottom:10px">
           <div id="sp-wins"><div class="empty">Click Refresh to load.</div></div>
         </div>
+
+        <div class="card" style="margin-top:14px">
+          <div class="card-title" style="display:flex;justify-content:space-between;align-items:center">
+            <span>Review proofs — approve to unlock app spin</span>
+            <button class="btn btn-ghost btn-sm" onclick="loadReviewProofs()">↻ Refresh</button>
+          </div>
+          <div id="sp-proofs"><div class="empty">Click Refresh to load.</div></div>
+        </div>
       </div>
 
       <!-- ONBOARDING -->
@@ -3196,7 +3204,7 @@ function switchTab(t){
   else if(t==='referrals')loadReferrals();
   else if(t==='maintenance')loadMaintenance();
   else if(t==='packages')fillPackagesTab();
-  else if(t==='spin'){loadPrizes();loadWins();}
+  else if(t==='spin'){loadPrizes();loadWins();loadReviewProofs();}
 }
 
 /* ---------- SPIN WHEEL prize config ---------- */
@@ -3311,6 +3319,45 @@ async function confirmWin(id){
 async function rejectWin(id){
   if(!confirm('Reject this prize?'))return;
   try{ await sb(`gl_spin_wins?id=eq.${id}`,{method:"PATCH",headers:H(),body:JSON.stringify({status:'rejected'})}); loadWins(); }
+  catch(e){ alert('Reject failed: '+e); }
+}
+let PROOFS=[];
+async function loadReviewProofs(){
+  try{
+    const r=await sb("gl_spin_review_proofs?select=*&order=created_at.desc&limit=100",{headers:H()});
+    PROOFS=await r.json(); renderProofs();
+  }catch(e){ document.getElementById('sp-proofs').innerHTML='<div class="empty">Error: '+e+'</div>'; }
+}
+function renderProofs(){
+  const el=document.getElementById('sp-proofs');
+  if(!PROOFS.length){ el.innerHTML='<div class="empty">No review proofs yet.</div>'; return; }
+  el.innerHTML=PROOFS.map(p=>{
+    const done=p.status!=='pending';
+    return `<div class="card" style="margin-top:8px">
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+        <a href="${p.image_url}" target="_blank" style="flex:0 0 auto"><img src="${p.image_url}" style="width:56px;height:56px;object-fit:cover;border-radius:8px;border:1px solid var(--line,#333)" onerror="this.style.display='none'"></a>
+        <div style="flex:1;min-width:120px">
+          <b>${p.name||'Customer'}</b><div style="font-size:12px;color:var(--muted)">${p.phone||''}</div>
+          <div style="font-size:11px;color:${done?(p.status==='approved'?'#1db954':'#c0392b'):'#e0a000'}">${done?p.status:'⏳ pending'}</div>
+        </div>
+        <div>${done?'':`<button class="btn btn-primary btn-sm" onclick="approveProof('${p.id}','${p.owner_id}')">Approve</button>
+          <button class="btn btn-ghost btn-sm" style="color:#c0392b" onclick="rejectProof('${p.id}')">Reject</button>`}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+async function approveProof(id, ownerId){
+  try{
+    // mark proof approved
+    await sb(`gl_spin_review_proofs?id=eq.${id}`,{method:"PATCH",headers:H(),body:JSON.stringify({status:'approved',reviewed_at:new Date().toISOString()})});
+    // unlock their app spin (upsert the spin-state row)
+    await sb("gl_app_spins",{method:"POST",headers:H({Prefer:"resolution=merge-duplicates"}),body:JSON.stringify({owner_id:ownerId, review_approved:true})});
+    loadReviewProofs();
+  }catch(e){ alert('Approve failed: '+e); }
+}
+async function rejectProof(id){
+  if(!confirm('Reject this review proof?'))return;
+  try{ await sb(`gl_spin_review_proofs?id=eq.${id}`,{method:"PATCH",headers:H(),body:JSON.stringify({status:'rejected',reviewed_at:new Date().toISOString()})}); loadReviewProofs(); }
   catch(e){ alert('Reject failed: '+e); }
 }
 async function testSpin(n){
