@@ -440,7 +440,9 @@ button,input{font-family:inherit}
     <div class="dialog-b">
       <div style="font-size:13px;color:var(--ink2);margin-bottom:12px" id="etxWho"></div>
       <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px">Payment method</label>
-      <input id="etxMethod" class="cat-search" placeholder="e.g. Cash / TnG" style="margin-bottom:12px">
+      <div id="etxMethodTiles" class="methods" style="margin-bottom:12px"></div>
+      <input id="etxMethod" type="hidden">
+      <div style="font-size:11px;color:var(--ink3);margin:-6px 0 12px">Tap to change · updates the sheet automatically.</div>
       <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px">Amount (RM)</label>
       <input id="etxAmount" class="cat-search" type="number" step="0.01" min="0" style="margin-bottom:12px">
       <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px">Sale date <span style="color:var(--ink3);font-weight:400">(backdate if keyed late)</span></label>
@@ -778,12 +780,27 @@ function openEditTx(i){
   const r=DASH_TX[i]; if(!r) return;
   window._editTx=r;
   $('etxWho').textContent=(r.customer_name||'—')+' · '+(r.plate||'—');
-  $('etxMethod').value=r.method||'';
+  renderEtxMethodTiles(r.method||'');
   $('etxAmount').value=Number(r.net_paid)||0;
   // sale date: use sale_date if set, else the date part of paid_at
   const sd = r.sale_date || (r.paid_at? new Date(r.paid_at).toISOString().slice(0,10) : new Date().toISOString().slice(0,10));
   $('etxDate').value = String(sd).slice(0,10);
   $('etxModal').classList.add('show');
+}
+// tiles for the edit-transaction method picker (keeps codes consistent w/ reports + sheet)
+function renderEtxMethodTiles(current){
+  const cur=String(current||'').trim().toLowerCase();
+  const opts=METHODS.concat([{k:'voucher',label:'Voucher',icon:'ticket'}]);
+  $('etxMethodTiles').innerHTML=opts.map(m=>
+    `<div class="method${m.k===cur?' sel':''}" data-k="${m.k}" onclick="pickEtxMethod('${m.k}')">`+
+    `<i class="ti ti-${m.icon} mi"></i>${esc(m.label)}</div>`).join('');
+  $('etxMethod').value=cur;
+}
+function pickEtxMethod(k){
+  $('etxMethod').value=k;
+  document.querySelectorAll('#etxMethodTiles .method').forEach(el=>{
+    el.classList.toggle('sel', el.getAttribute('data-k')===k);
+  });
 }
 async function saveEditTx(){
   const r=window._editTx; if(!r) return;
@@ -792,11 +809,10 @@ async function saveEditTx(){
   if(isNaN(amt)||amt<0){ alert('Enter a valid amount.'); return; }
   const saleDate=$('etxDate').value || null;
   const upd={method:method||null, net_paid:amt};
-  if(saleDate){
-    upd.sale_date=saleDate;
-    // bump a watched timestamp so the sheet mirror re-scans and moves the row
-    upd.sql_keyed_at=new Date().toISOString();
-  }
+  if(saleDate) upd.sale_date=saleDate;
+  // always bump a watched timestamp so the sheet mirror re-scans this row
+  // (re-writes PAY BY / amount, and moves the row if the date changed)
+  upd.sql_keyed_at=new Date().toISOString();
   const {error}=await sb.from('gl_payments').update(upd).eq('id',r.id);
   if(error){ alert('Update failed: '+error.message); return; }
   toast('Transaction updated ✓');
