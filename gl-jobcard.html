@@ -167,6 +167,8 @@ html,body{height:100%;background:var(--bg);font-family:-apple-system,BlinkMacSys
         </div>
         <div class="ff" id="staffWrap"><label>Technician(s) — tap to assign</label>
           <div id="techChips" style="display:flex;flex-wrap:wrap;gap:6px"></div></div>
+        <div class="ff"><label>Attended by (front desk)</label>
+          <select id="f_attendee"><option value="">— select —</option></select></div>
         <div class="ff"><label>Time slot</label>
           <select id="f_slot" onchange="onSlotChange()">
             <option value="">— select time —</option>
@@ -534,6 +536,7 @@ let SVCS=[], DEFS=[];
 function newJob(){
   EDITING=null; CUR_TYPE='walkin'; foundProfile=null; CAR_PACKAGES=[]; CUST_CARS=[]; PHOTOS=[]; SEL_TECHS=[];
   if($('f_slot')){ $('f_slot').value=''; } if($('f_slot_other')){ $('f_slot_other').value=''; $('f_slot_other').style.display='none'; }
+  if($('f_attendee')) $('f_attendee').value='';
   ['f_name','f_model','f_plate','f_hp','f_hp2','f_email','f_sentby','f_depamt','f_depdate'].forEach(i=>{if($(i))$(i).value='';});
   if($('f_brand'))$('f_brand').value=''; if($('f_cartype'))$('f_cartype').value='';
   if($('f_modelsel')){ $('f_modelsel').style.display='none'; } if($('f_model'))$('f_model').style.display='block';
@@ -596,7 +599,14 @@ function onBossSel(){
   if(cars.length){ onCarSel(); } else { $('f_model').value=''; $('f_plate').value=''; }
 }
 let SEL_TECHS=[];
-function populateStaffDropdown(){ renderTechChips(); }
+function populateStaffDropdown(){
+  renderTechChips();
+  const sel=$('f_attendee'); if(sel){
+    const cur=sel.value;
+    sel.innerHTML='<option value="">— select —</option>'+(CFG.staff_list||[]).map(n=>`<option value="${esc(n)}">${esc(n)}</option>`).join('');
+    if(cur) sel.value=cur;
+  }
+}
 function renderTechChips(){
   const el=$('techChips'); if(!el)return;
   if(!(CFG.technicians||[]).length){ el.innerHTML='<span style="font-size:12px;color:var(--text3)">Add technicians in Settings first</span>'; return; }
@@ -702,22 +712,31 @@ async function _doLookup(){
   const digits=($('f_hp').value||'').replace(/[^0-9]/g,'');
   $('f_carsel').innerHTML='<option value="__new__">+ Add new car</option>';
   if(digits.length<7){ $('custFound').textContent=''; return; }
-  const {data}=await sb.from('gl_profiles').select('id,name,phone,email,tier, gl_vehicles(id,make,model,plate)').or(`phone.eq.+${digits},phone.eq.${digits}`).limit(1).maybeSingle();
+  // core = drop leading 60 (country) or 0, so 0169618299 / 60169618299 / +60169618299 all match
+  const core=digits.replace(/^60/,'').replace(/^0/,'');
+  // try profiles: match any stored format by comparing the core digits
+  const {data:profs}=await sb.from('gl_profiles').select('id,name,phone,email,tier, gl_vehicles(id,make,model,plate)').ilike('phone','%'+core);
+  const data=(profs||[]).find(p=>String(p.phone||'').replace(/[^0-9]/g,'').replace(/^60/,'').replace(/^0/,'')===core) || null;
   if(data){
     foundProfile=data;
     $('custFound').innerHTML=`<span style="color:#16A34A">✓ ${esc(data.name||'')}</span>${data.tier?' · '+esc(data.tier):''}`;
     if(data.name&&!$('f_name').value)$('f_name').value=data.name;
-    if(data.email&&!$('f_email').value)$('f_email').value=data.email;  // email auto-fill
+    if(data.email&&!$('f_email').value)$('f_email').value=data.email;
     $('f_hp2').value=digits;
-    // populate car dropdown
     CUST_CARS=data.gl_vehicles||[];
     $('f_carsel').innerHTML=CUST_CARS.map(c=>`<option value="${c.id}">${esc([c.make,c.model].filter(Boolean).join(' '))} · ${esc(c.plate||'')}</option>`).join('')+'<option value="__new__">+ Add new car</option>';
-    if(CUST_CARS.length){ onCarSel(); } // auto-pick first car
+    if(CUST_CARS.length){ onCarSel(); }
     loadCustPackages();
   }else{
-    // not in profiles — check gl_walkin (shop/Mochi customers)
-    const digits2=($('f_hp').value||'').replace(/[^0-9]/g,'');
-    const {data:wk}=await sb.from('gl_walkin').select('*').or(`phone.eq.+${digits2},phone.eq.${digits2}`).limit(1).maybeSingle();
+    // not in profiles — check gl_walkin via the security-definer RPC (handles any format)
+    let wk=null;
+    try{
+      const {data:c}=await sb.rpc('gl_lookup_customer',{p_phone:digits});
+      const cust=Array.isArray(c)?c[0]:c;
+      const {data:cars}=await sb.rpc('gl_lookup_cars',{p_phone:digits});
+      const car=(cars||[]).find(x=>x.plate||x.model);
+      if(cust||car){ wk={name:cust?cust.name:'', email:cust?cust.email:'', phone:digits, plate:car?car.plate:'', model:car?car.model:'', car_type:car?car.car_type:''}; }
+    }catch(e){}
     if(wk){ fillFromWalkin_(wk); }
     else $('custFound').innerHTML='<span style="color:var(--warn-text)">New customer</span>';
   }
@@ -871,6 +890,7 @@ function collectJob(){
     cust_type:CUR_TYPE, tier:foundProfile?foundProfile.tier:null, is_new:!foundProfile,
     services:SVCS.filter(s=>s.desc), defects:DEFS.filter(d=>d.note),
     intro:CUR_TYPE==='walkin'?'walk-in':'', staff:SEL_TECHS.join(', '), techs:SEL_TECHS,
+    attendee:($('f_attendee')?$('f_attendee').value:'')||'',
     slot_time:(($('f_slot')&&$('f_slot').value==='__other__')?($('f_slot_other')?$('f_slot_other').value.trim():''):($('f_slot')?$('f_slot').value:'')),
     ready_at:EDITING&&EDITING.ready_at?EDITING.ready_at:null,
     collected:EDITING&&EDITING.collected?EDITING.collected:false,
@@ -978,6 +998,7 @@ function editJob(id){
   $('f_name').value=j.name||''; $('f_model').value=j.model||''; $('f_plate').value=j.plate||'';
   $('f_hp').value=j.hp||''; $('f_hp2').value=j.hp||''; $('f_email').value=j.email||'';
   populateStaffDropdown(); SEL_TECHS=Array.isArray(j.techs)?j.techs.slice():(j.staff?j.staff.split(',').map(s=>s.trim()).filter(Boolean):[]); renderTechChips();
+  if($('f_attendee')) $('f_attendee').value=j.attendee||'';
   // restore time slot
   if($('f_slot')){
     const st=j.slot_time||'';
