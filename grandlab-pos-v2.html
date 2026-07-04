@@ -442,7 +442,9 @@ button,input{font-family:inherit}
       <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px">Payment method</label>
       <input id="etxMethod" class="cat-search" placeholder="e.g. Cash / TnG" style="margin-bottom:12px">
       <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px">Amount (RM)</label>
-      <input id="etxAmount" class="cat-search" type="number" step="0.01" min="0" style="margin-bottom:16px">
+      <input id="etxAmount" class="cat-search" type="number" step="0.01" min="0" style="margin-bottom:12px">
+      <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px">Sale date <span style="color:var(--ink3);font-weight:400">(backdate if keyed late)</span></label>
+      <input id="etxDate" class="cat-search" type="date" style="margin-bottom:16px">
       <button class="btn btn-blue" onclick="saveEditTx()"><i class="ti ti-device-floppy"></i> Save changes</button>
     </div>
   </div>
@@ -684,18 +686,20 @@ async function loadDashboard(){
 
   // this year's payments for the totals; this month's full rows for chart + table
   const [{data:yRows,error:e1},{data:mRows,error:e2},{data:unpaidRows},{data:depRows}] = await Promise.all([
-    sb.from('gl_payments').select('net_paid,method,paid_at,voided').gte('paid_at',startYear.toISOString()),
-    sb.from('gl_payments').select('id,job_id,invoice_no,customer_name,plate,net_paid,method,paid_at,voided,sql_invoice_no,sql_payment_no,pkg_used_id').gte('paid_at',startMonth.toISOString()).order('paid_at',{ascending:false}),
+    sb.from('gl_payments').select('net_paid,method,paid_at,sale_date,voided').gte('paid_at',startYear.toISOString()),
+    sb.from('gl_payments').select('id,job_id,invoice_no,customer_name,plate,net_paid,method,paid_at,sale_date,voided,sql_invoice_no,sql_payment_no,pkg_used_id').gte('paid_at',startMonth.toISOString()).order('paid_at',{ascending:false}),
     sb.from('gl_unpaid').select('amount').then(r=>r).catch(()=>({data:[]})),
     sb.from('gl_jobs').select('dep_amt,status').gte('dep_amt',0.01).then(r=>r).catch(()=>({data:[]}))
   ]);
   if(e1){ $('dashList').innerHTML='<div class="status">Error: '+esc(e1.message)+'</div>'; return; }
 
+  // effective business date = sale_date if set, else paid_at
+  const effDate=r=> r.sale_date ? new Date(r.sale_date+'T00:00:00') : new Date(r.paid_at);
   const rows=(yRows||[]).filter(r=>!r.voided);
   let tToday=0,tWeek=0,tMonth=0,tYear=0,cToday=0;
   const methodTotals={};
   rows.forEach(r=>{
-    const amt=Number(r.net_paid)||0, when=new Date(r.paid_at);
+    const amt=Number(r.net_paid)||0, when=effDate(r);
     tYear+=amt;
     if(when>=startMonth) tMonth+=amt;
     if(when>=startWeek)  tWeek+=amt;
@@ -711,7 +715,7 @@ async function loadDashboard(){
   DASH_TX=(mRows||[]).filter(r=>!r.voided);
   const daysInMonth=new Date(now.getFullYear(),now.getMonth()+1,0).getDate();
   const perDay=new Array(daysInMonth+1).fill(0);
-  DASH_TX.forEach(r=>{ const d=new Date(r.paid_at).getDate(); perDay[d]+=Number(r.net_paid)||0; });
+  DASH_TX.forEach(r=>{ const d=(r.sale_date?new Date(r.sale_date+'T00:00:00'):new Date(r.paid_at)).getDate(); perDay[d]+=Number(r.net_paid)||0; });
   const maxDay=Math.max(1,...perDay);
 
   const methodRows=Object.keys(methodTotals).sort((a,b)=>methodTotals[b]-methodTotals[a]);
@@ -747,7 +751,7 @@ async function loadDashboard(){
     <div class="dash-tx-wrap">
       ${DASH_TX.length?`<table class="dash-tx"><thead><tr><th>Date</th><th>Customer</th><th>Plate</th><th>Method</th><th style="text-align:right">Amount</th><th></th></tr></thead><tbody>
       ${DASH_TX.map((r,i)=>`<tr>
-        <td>${new Date(r.paid_at).toLocaleDateString('en-MY',{day:'2-digit',month:'short'})}</td>
+        <td>${(r.sale_date?new Date(r.sale_date+'T00:00:00'):new Date(r.paid_at)).toLocaleDateString('en-MY',{day:'2-digit',month:'short'})}</td>
         <td>${esc(titleCase(r.customer_name||'—'))}</td>
         <td>${esc(r.plate||'—')}</td>
         <td>${esc(r.method||'')}</td>
@@ -776,6 +780,9 @@ function openEditTx(i){
   $('etxWho').textContent=(r.customer_name||'—')+' · '+(r.plate||'—');
   $('etxMethod').value=r.method||'';
   $('etxAmount').value=Number(r.net_paid)||0;
+  // sale date: use sale_date if set, else the date part of paid_at
+  const sd = r.sale_date || (r.paid_at? new Date(r.paid_at).toISOString().slice(0,10) : new Date().toISOString().slice(0,10));
+  $('etxDate').value = String(sd).slice(0,10);
   $('etxModal').classList.add('show');
 }
 async function saveEditTx(){
@@ -783,7 +790,14 @@ async function saveEditTx(){
   const method=$('etxMethod').value.trim();
   const amt=parseFloat($('etxAmount').value);
   if(isNaN(amt)||amt<0){ alert('Enter a valid amount.'); return; }
-  const {error}=await sb.from('gl_payments').update({method:method||null, net_paid:amt}).eq('id',r.id);
+  const saleDate=$('etxDate').value || null;
+  const upd={method:method||null, net_paid:amt};
+  if(saleDate){
+    upd.sale_date=saleDate;
+    // bump a watched timestamp so the sheet mirror re-scans and moves the row
+    upd.sql_keyed_at=new Date().toISOString();
+  }
+  const {error}=await sb.from('gl_payments').update(upd).eq('id',r.id);
   if(error){ alert('Update failed: '+error.message); return; }
   toast('Transaction updated ✓');
   closeModal('etxModal'); loadDashboard(); loadTakings();
@@ -907,14 +921,14 @@ function downloadDashReport(monthMode){
     const dv=$('dashRepDate')?$('dashRepDate').value:'';
     const day=dv?new Date(dv+'T00:00:00'):dayStart_(now);
     const dayEnd=new Date(day); dayEnd.setDate(dayEnd.getDate()+1);
-    list=list.filter(r=>{ const t=new Date(r.paid_at); return t>=day && t<dayEnd; });
+    list=list.filter(r=>{ const t=r.sale_date?new Date(r.sale_date+'T00:00:00'):new Date(r.paid_at); return t>=day && t<dayEnd; });
     periodLabel=day.toLocaleDateString('en-GB',{weekday:'long',day:'2-digit',month:'short',year:'numeric'});
   }
   if(!list.length){ alert('No transactions for '+periodLabel+'.'); return; }
   const total=list.reduce((a,r)=>a+(Number(r.net_paid)||0),0);
   const rowsHtml=list.slice().reverse().map((r,i)=>'<tr>'
     +'<td style="border:1px solid #000;padding:4px 6px;text-align:center">'+(i+1)+'</td>'
-    +'<td style="border:1px solid #000;padding:4px 6px">'+new Date(r.paid_at).toLocaleDateString('en-GB')+'</td>'
+    +'<td style="border:1px solid #000;padding:4px 6px">'+(r.sale_date?new Date(r.sale_date+'T00:00:00'):new Date(r.paid_at)).toLocaleDateString('en-GB')+'</td>'
     +'<td style="border:1px solid #000;padding:4px 6px">'+esc(r.invoice_no||'')+'</td>'
     +'<td style="border:1px solid #000;padding:4px 6px">'+esc(r.customer_name||'')+'</td>'
     +'<td style="border:1px solid #000;padding:4px 6px">'+esc(r.plate||'')+'</td>'
