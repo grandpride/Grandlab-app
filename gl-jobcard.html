@@ -165,6 +165,21 @@ html,body{height:100%;background:var(--bg);font-family:-apple-system,BlinkMacSys
         </div>
         <div class="ff" id="staffWrap"><label>Technician(s) — tap to assign</label>
           <div id="techChips" style="display:flex;flex-wrap:wrap;gap:6px"></div></div>
+        <div class="ff"><label>Time slot</label>
+          <select id="f_slot" onchange="onSlotChange()">
+            <option value="">— select time —</option>
+            <option value="9:00 AM">9:00 AM</option>
+            <option value="10:00 AM">10:00 AM</option>
+            <option value="11:00 AM">11:00 AM</option>
+            <option value="12:00 PM">12:00 PM</option>
+            <option value="2:00 PM">2:00 PM</option>
+            <option value="3:00 PM">3:00 PM</option>
+            <option value="4:00 PM">4:00 PM</option>
+            <option value="5:00 PM">5:00 PM</option>
+            <option value="__other__">Others (custom time)</option>
+          </select>
+          <input id="f_slot_other" placeholder="e.g. 6:30 PM" style="display:none;margin-top:6px;width:100%;padding:8px;border:1px solid var(--border);border-radius:7px;background:var(--bg);color:var(--text)">
+        </div>
       </div>
 
       <div class="card">
@@ -516,6 +531,7 @@ function convertAppt(a){
 let SVCS=[], DEFS=[];
 function newJob(){
   EDITING=null; CUR_TYPE='walkin'; foundProfile=null; CAR_PACKAGES=[]; CUST_CARS=[]; PHOTOS=[]; SEL_TECHS=[];
+  if($('f_slot')){ $('f_slot').value=''; } if($('f_slot_other')){ $('f_slot_other').value=''; $('f_slot_other').style.display='none'; }
   ['f_name','f_model','f_plate','f_hp','f_hp2','f_email','f_sentby','f_depamt','f_depdate'].forEach(i=>{if($(i))$(i).value='';});
   if($('f_brand'))$('f_brand').value=''; if($('f_cartype'))$('f_cartype').value='';
   if($('f_modelsel')){ $('f_modelsel').style.display='none'; } if($('f_model'))$('f_model').style.display='block';
@@ -590,6 +606,10 @@ function toggleTech(n){
   const i=SEL_TECHS.indexOf(n);
   if(i>=0)SEL_TECHS.splice(i,1); else SEL_TECHS.push(n);
   renderTechChips();
+}
+function onSlotChange(){
+  const sel=$('f_slot'), oth=$('f_slot_other');
+  if(sel&&oth){ oth.style.display = sel.value==='__other__' ? 'block':'none'; }
 }
 
 function renderSvcs(){
@@ -839,6 +859,7 @@ function collectJob(){
     cust_type:CUR_TYPE, tier:foundProfile?foundProfile.tier:null, is_new:!foundProfile,
     services:SVCS.filter(s=>s.desc), defects:DEFS.filter(d=>d.note),
     intro:CUR_TYPE==='walkin'?'walk-in':'', staff:SEL_TECHS.join(', '), techs:SEL_TECHS,
+    slot_time:(($('f_slot')&&$('f_slot').value==='__other__')?($('f_slot_other')?$('f_slot_other').value.trim():''):($('f_slot')?$('f_slot').value:'')),
     ready_at:EDITING&&EDITING.ready_at?EDITING.ready_at:null,
     collected:EDITING&&EDITING.collected?EDITING.collected:false,
     workshop_name:(CUR_TYPE==='workshop'||CUR_TYPE==='showroom')?$('f_org').value:(CUR_TYPE==='boss'?($('f_boss')?$('f_boss').value:''):''),
@@ -945,6 +966,14 @@ function editJob(id){
   $('f_name').value=j.name||''; $('f_model').value=j.model||''; $('f_plate').value=j.plate||'';
   $('f_hp').value=j.hp||''; $('f_hp2').value=j.hp||''; $('f_email').value=j.email||'';
   populateStaffDropdown(); SEL_TECHS=Array.isArray(j.techs)?j.techs.slice():(j.staff?j.staff.split(',').map(s=>s.trim()).filter(Boolean):[]); renderTechChips();
+  // restore time slot
+  if($('f_slot')){
+    const st=j.slot_time||'';
+    const opts=[...$('f_slot').options].map(o=>o.value);
+    if(st && opts.includes(st)){ $('f_slot').value=st; if($('f_slot_other'))$('f_slot_other').style.display='none'; }
+    else if(st){ $('f_slot').value='__other__'; if($('f_slot_other')){ $('f_slot_other').value=st; $('f_slot_other').style.display='block'; } }
+    else { $('f_slot').value=''; }
+  }
   if(j.deposit){ $('f_deposit').value='yes'; toggleDep(); $('f_depamt').value=j.dep_amt||''; if($('f_depdate'))$('f_depdate').value=j.dep_date||''; }
   SVCS=(j.services&&j.services.length)?JSON.parse(JSON.stringify(j.services)):[{staff:'',desc:'',price:''}];
   DEFS=j.defects?JSON.parse(JSON.stringify(j.defects)):[];
