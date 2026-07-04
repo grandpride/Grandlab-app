@@ -361,7 +361,24 @@ async function loadConfig(){
     CFG.bosses     = Array.isArray(data.bosses)?data.bosses:(data.bosses?JSON.parse(data.bosses):[]);
     CFG.imgbb_key  = data.imgbb_key||'';
   }
+  await loadSlotTimes_();
   renderSettings();
+}
+/* load the same booking time slots the sheet uses, so job card and sheet always match */
+async function loadSlotTimes_(){
+  let times=["9:00 AM","10:00 AM","11:00 AM","12:00 PM","2:00 PM","3:00 PM","4:00 PM","5:00 PM"];
+  try{
+    const {data}=await sb.from('gl_settings').select('data').eq('id','booking').maybeSingle();
+    if(data&&data.data&&Array.isArray(data.data.times)&&data.data.times.length){
+      times=data.data.times.map(t=>String(t).trim());
+    }
+  }catch(e){}
+  const sel=$('f_slot'); if(!sel) return;
+  const cur=sel.value;
+  sel.innerHTML='<option value="">— select time —</option>'+
+    times.map(t=>`<option value="${esc(t)}">${esc(t)}</option>`).join('')+
+    '<option value="__other__">Others (custom time)</option>';
+  if(cur) sel.value=cur;
 }
 async function loadServicesCat(){
   const {data}=await sb.from('gl_services').select('name,category,base_price').order('category');
