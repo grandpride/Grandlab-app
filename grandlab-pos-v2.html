@@ -440,9 +440,7 @@ button,input{font-family:inherit}
     <div class="dialog-b">
       <div style="font-size:13px;color:var(--ink2);margin-bottom:12px" id="etxWho"></div>
       <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px">Payment method</label>
-      <div id="etxMethodTiles" class="methods" style="margin-bottom:12px"></div>
-      <input id="etxMethod" type="hidden">
-      <div style="font-size:11px;color:var(--ink3);margin:-6px 0 12px">Tap to change · updates the sheet automatically.</div>
+      <input id="etxMethod" class="cat-search" placeholder="e.g. Cash / TnG" style="margin-bottom:12px">
       <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px">Amount (RM)</label>
       <input id="etxAmount" class="cat-search" type="number" step="0.01" min="0" style="margin-bottom:12px">
       <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px">Sale date <span style="color:var(--ink3);font-weight:400">(backdate if keyed late)</span></label>
@@ -780,27 +778,12 @@ function openEditTx(i){
   const r=DASH_TX[i]; if(!r) return;
   window._editTx=r;
   $('etxWho').textContent=(r.customer_name||'—')+' · '+(r.plate||'—');
-  renderEtxMethodTiles(r.method||'');
+  $('etxMethod').value=r.method||'';
   $('etxAmount').value=Number(r.net_paid)||0;
   // sale date: use sale_date if set, else the date part of paid_at
   const sd = r.sale_date || (r.paid_at? new Date(r.paid_at).toISOString().slice(0,10) : new Date().toISOString().slice(0,10));
   $('etxDate').value = String(sd).slice(0,10);
   $('etxModal').classList.add('show');
-}
-// tiles for the edit-transaction method picker (keeps codes consistent w/ reports + sheet)
-function renderEtxMethodTiles(current){
-  const cur=String(current||'').trim().toLowerCase();
-  const opts=METHODS.concat([{k:'voucher',label:'Voucher',icon:'ticket'}]);
-  $('etxMethodTiles').innerHTML=opts.map(m=>
-    `<div class="method${m.k===cur?' sel':''}" data-k="${m.k}" onclick="pickEtxMethod('${m.k}')">`+
-    `<i class="ti ti-${m.icon} mi"></i>${esc(m.label)}</div>`).join('');
-  $('etxMethod').value=cur;
-}
-function pickEtxMethod(k){
-  $('etxMethod').value=k;
-  document.querySelectorAll('#etxMethodTiles .method').forEach(el=>{
-    el.classList.toggle('sel', el.getAttribute('data-k')===k);
-  });
 }
 async function saveEditTx(){
   const r=window._editTx; if(!r) return;
@@ -809,10 +792,11 @@ async function saveEditTx(){
   if(isNaN(amt)||amt<0){ alert('Enter a valid amount.'); return; }
   const saleDate=$('etxDate').value || null;
   const upd={method:method||null, net_paid:amt};
-  if(saleDate) upd.sale_date=saleDate;
-  // always bump a watched timestamp so the sheet mirror re-scans this row
-  // (re-writes PAY BY / amount, and moves the row if the date changed)
-  upd.sql_keyed_at=new Date().toISOString();
+  if(saleDate){
+    upd.sale_date=saleDate;
+    // bump a watched timestamp so the sheet mirror re-scans and moves the row
+    upd.sql_keyed_at=new Date().toISOString();
+  }
   const {error}=await sb.from('gl_payments').update(upd).eq('id',r.id);
   if(error){ alert('Update failed: '+error.message); return; }
   toast('Transaction updated ✓');
@@ -1303,7 +1287,7 @@ let CATALOG=[];
 async function loadCatalog(){
   if(CATALOG.length) return;
   const {data}=await sb.from('gl_services')
-    .select('id,name,category,base_price,price_by_type,media,rebate_kind,stock,track_stock,is_package,subtitle,active,sort_order,hidden')
+    .select('id,name,category,base_price,price_by_type,media,rebate_kind,stock,track_stock,is_package,pkg_uses,subtitle,active,sort_order,hidden')
     .eq('active',true).order('sort_order',{ascending:true});
   CATALOG=(data||[]).filter(s=>!s.hidden);
 }
@@ -1414,6 +1398,66 @@ function addCustomItem(){
   _addLine(desc,price,null);
   closeModal('catModal');
 }
+/* write a package purchase to gl_packages (the shared source of truth that
+   the plate scanner, job card, booking and POS all read). Finds package
+   lines in the current order and, per package, updates an existing active
+   same-service package on this plate (adds the uses) or inserts a new one
+   with a barcode. Also mirrors to gl_pending for app-signup auto-claim.
+   Matches the plate scanner's format exactly.                            */
+function genBarcodeValue_(){
+  const t=Date.now().toString(36).toUpperCase();
+  const r=Math.random().toString(36).slice(2,7).toUpperCase();
+  return ('GL'+t+r).replace(/[^A-Z0-9]/g,'');
+}
+async function writePackageBalance_(){
+  const lines=jobServices(CUR).filter(x=>x._isPackage && (Number(x._pkgUses)||0)>0);
+  if(!lines.length) return;
+  const plate=(CUR.plate||'').trim();
+  if(!plate) return; // gl_packages is keyed by plate (vehicle_label)
+  const ownerId=CUR.customer_id||null;
+  const phone=(CUR.hp||CUR.phone||'').trim();
+  const name=CUR.name||'';
+  for(const ln of lines){
+    const svcName=ln._pkgName || 'Package';
+    const addUses=Number(ln._pkgUses)||0;
+    if(addUses<=0) continue;
+    const isCoat=/coat|maintenance|mohs|cancoat|infinite|matte/i.test(svcName);
+    // existing active same-service package on this plate -> add the uses
+    const {data:ex}=await sb.from('gl_packages')
+      .select('id,total_uses,used_uses').ilike('vehicle_label',plate)
+      .eq('service_name',svcName).eq('status','active').limit(1).maybeSingle();
+    if(ex){
+      await sb.from('gl_packages').update({
+        total_uses:(Number(ex.total_uses)||0)+addUses
+      }).eq('id',ex.id);
+    }else{
+      await sb.from('gl_packages').insert({
+        owner_id:ownerId, vehicle_id:null, vehicle_label:plate,
+        service_name:svcName, pkg_type:isCoat?'coating_maintenance':'package',
+        total_uses:addUses, used_uses:0, status:'active', source:'pos',
+        barcode:genBarcodeValue_()
+      });
+    }
+    // mirror to gl_pending so it auto-links on app signup (needs a phone)
+    if(phone){
+      try{
+        const {data:exP}=await sb.from('gl_pending')
+          .select('id,remaining').eq('phone',phone).eq('plate',plate)
+          .eq('service_name',svcName).eq('claimed',false).limit(1).maybeSingle();
+        if(exP){
+          await sb.from('gl_pending').update({
+            remaining:(Number(exP.remaining)||0)+addUses
+          }).eq('id',exP.id);
+        }else{
+          await sb.from('gl_pending').insert({
+            phone, name, plate, service_name:svcName, remaining:addUses,
+            is_coating:isCoat, source:'pos', claimed:false
+          });
+        }
+      }catch(e){ /* gl_pending mirror is non-fatal */ }
+    }
+  }
+}
 function _addLine(desc,price,svc){
   let arr=jobServices(CUR);
   // preserve original job total if line items don't already sum to it
@@ -1423,6 +1467,12 @@ function _addLine(desc,price,svc){
   const line={desc,price,_added:true};
   // tag product line so we can decrement stock on payment
   if(svc && svc.rebate_kind==='product' && svc.track_stock){ line._prodId=svc.id; }
+  // tag package purchase so checkout can write the balance to gl_walkin
+  if(svc && svc.is_package){
+    line._isPackage=true;
+    line._pkgUses=Number(svc.pkg_uses)||0;
+    line._pkgName=cleanPkgName(svc.name);
+  }
   arr.push(line);
   CUR.services=arr;
   PAY.gross=arr.reduce((s,x)=>s+svcPrice(x),0);
@@ -1719,6 +1769,9 @@ async function confirmPay(){
       items:JSON.stringify(jobServices(CUR).map(s=>({desc:svcDesc(s),price:svcPrice(s),qty:s.qty||1,code:s.code||''})))
     });
     if(payErr) throw new Error('Payment: '+payErr.message);
+    // if this order included a package purchase, record the balance on the
+    // customer's gl_walkin row so the sheet mirror + future checkouts see it.
+    try{ await writePackageBalance_(); }catch(e){ console.warn('pkg balance write skipped:',e); }
     if(!CUR._walkin){
       await sb.from('gl_jobs').update({status:'paid', payment:methodLabel, collected:true, total:PAY.gross, on_hold:false}).eq('id',CUR.id);
       JOBS=JOBS.filter(j=>j.id!==CUR.id);
