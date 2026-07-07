@@ -277,7 +277,11 @@ async function doSearch(raw){
 
   if(!veh || !veh.gl_profiles){
     // fallback: look in gl_walkin (shop/Mochi customers not yet registered)
-    const {data:wk}=await sb.from('gl_walkin').select('*').ilike('plate',plate).limit(1).maybeSingle();
+    const {data:wkAll}=await sb.from('gl_walkin').select('*').ilike('plate',plate).limit(20);
+    // prefer the row that actually has a phone (dedupe leftovers can be blank)
+    const wk=(wkAll||[]).sort((a,b)=>
+      (String(b.phone||'').replace(/\D/g,'').length) - (String(a.phone||'').replace(/\D/g,'').length)
+    )[0] || null;
     if(wk){
       $('status').textContent='';
       CUR={src:'walkin', walkinId:wk.id, name:wk.name||'', phone:wk.phone||'', plate:wk.plate||plate, model:wk.model||'', car_type:wk.car_type||'', pkg_name:wk.pkg_name||'', pkg_total:wk.pkg_total||0, pkg_used:wk.pkg_used||0};
@@ -330,7 +334,8 @@ async function doSearch(raw){
 async function loadCustomerCars(phone, currentPlate){
   const wrap=$('carsWrap'); if(!wrap) return;
   const core=(phone||'').replace(/\D/g,'').replace(/^(60|0)/,'');
-  if(!core){ wrap.innerHTML=''; return; }
+  const curName=String((CUR&&CUR.name)||'').trim().toUpperCase();
+  if(!core && !curName){ wrap.innerHTML=''; return; }
   const cars=[]; const seen=new Set();
   const add=(plate,model)=>{
     const p=(plate||'').trim().toUpperCase(); if(!p||seen.has(p)) return;
@@ -339,16 +344,25 @@ async function loadCustomerCars(phone, currentPlate){
   // current car first
   add(currentPlate, (CUR&&CUR.model)||'');
   try{
-    // walk-in cars with same phone-core
-    const {data:wk}=await sb.from('gl_walkin').select('plate,model,phone').limit(1000);
-    (wk||[]).forEach(r=>{ if(String(r.phone||'').replace(/\D/g,'').replace(/^(60|0)/,'')===core) add(r.plate,r.model); });
+    // walk-in cars: match same phone-core OR (if no phone) same name
+    const {data:wk}=await sb.from('gl_walkin').select('plate,model,phone,name').limit(2000);
+    (wk||[]).forEach(r=>{
+      const rc=String(r.phone||'').replace(/\D/g,'').replace(/^(60|0)/,'');
+      const rn=String(r.name||'').trim().toUpperCase();
+      const phoneMatch = core && rc===core;
+      const nameMatch  = curName && rn===curName && rn!=='';
+      if(phoneMatch || nameMatch) add(r.plate,r.model);
+    });
   }catch(e){}
   try{
     // app-member cars via profile phone
-    const {data:prof}=await sb.from('gl_profiles').select('id,phone, gl_vehicles(make,model,plate)').limit(1000);
+    const {data:prof}=await sb.from('gl_profiles').select('id,phone,name, gl_vehicles(make,model,plate)').limit(2000);
     (prof||[]).forEach(pr=>{
-      if(String(pr.phone||'').replace(/\D/g,'').replace(/^(60|0)/,'')!==core) return;
-      (pr.gl_vehicles||[]).forEach(v=>add(v.plate,[v.make,v.model].filter(Boolean).join(' ')));
+      const rc=String(pr.phone||'').replace(/\D/g,'').replace(/^(60|0)/,'');
+      const rn=String(pr.name||'').trim().toUpperCase();
+      if((core && rc===core) || (curName && rn===curName && rn!=='')){
+        (pr.gl_vehicles||[]).forEach(v=>add(v.plate,[v.make,v.model].filter(Boolean).join(' ')));
+      }
     });
   }catch(e){}
   if(cars.length<=1){ wrap.innerHTML=''; return; }  // nothing to switch between
