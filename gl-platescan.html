@@ -296,7 +296,7 @@ async function doSearch(raw){
       $('cName').textContent=(wk.name||'—');
       $('cPhone').textContent=wk.phone||'—';
       $('cTier').textContent='Non-Member (walk-in)';
-      $('bookBtn').href=JOBCARD_URL+'?plate='+encodeURIComponent(wk.plate||plate)+'&phone='+encodeURIComponent((wk.phone||'').replace(/^\+/,''));
+      $('bookBtn').href=JOBCARD_URL+'?plate='+encodeURIComponent(wk.plate||plate)+'&phone='+encodeURIComponent((wk.phone||'').replace(/^\+/,''))+(wk.model?('&model='+encodeURIComponent(wk.model)):'');
       // package balances — shared helper (coating per-car, others per-customer)
       await loadPackages(wk.phone||'', wk.plate||plate);
       // legacy fallback: if RPC/gl_packages returned nothing, show old walkin field
@@ -399,7 +399,7 @@ function selectCar(plate, model){
   if(plate===cur){
     // already selected -> create a job for this car now
     const phone=((CUR&&CUR.phone)||'').replace(/^\+/,'');
-    location.href=JOBCARD_URL+'?plate='+encodeURIComponent(plate)+(phone?('&phone='+encodeURIComponent(phone)):'');
+    location.href=JOBCARD_URL+'?plate='+encodeURIComponent(plate)+(phone?('&phone='+encodeURIComponent(phone)):'')+(model?('&model='+encodeURIComponent(model)):'');
     return;
   }
   // switch active car
@@ -419,7 +419,7 @@ function selectCar(plate, model){
   $('cPlate').textContent=plate;
   $('cModel').textContent=model||'—';
   const phone=((CUR&&CUR.phone)||'').replace(/^\+/,'');
-  $('bookBtn').href=JOBCARD_URL+'?plate='+encodeURIComponent(plate)+(phone?('&phone='+encodeURIComponent(phone)):'');
+  $('bookBtn').href=JOBCARD_URL+'?plate='+encodeURIComponent(plate)+(phone?('&phone='+encodeURIComponent(phone)):'')+(model?('&model='+encodeURIComponent(model)):'');
   // refresh balances + history for the newly selected car
   loadPackages((CUR&&CUR.phone)||'', plate);
   if(CUR&&CUR.ownerId) loadHistory(CUR.ownerId, plate); else loadWalkinHistory((CUR&&CUR.walkinId)||null, plate);

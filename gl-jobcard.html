@@ -341,13 +341,19 @@ async function start(){
   await loadJobs();
   sb.channel('jobs-rt').on('postgres_changes',{event:'*',schema:'public',table:'gl_jobs'},()=>loadJobs()).subscribe();
   loadAppointments();
-  // prefill from plate scanner (?plate=...&phone=...)
+  // prefill from plate scanner (?plate=...&phone=...&model=...)
   const qs=new URLSearchParams(location.search);
-  const qp=qs.get('plate'), qph=qs.get('phone');
+  const qp=qs.get('plate'), qph=qs.get('phone'), qmodel=qs.get('model');
   if(qp||qph){
     showView('form'); newJob(); setType('walkin');
     if(qph){ $('f_hp').value=qph; if(typeof _doLookup==='function') await _doLookup(); }
-    if(qp){ $('f_plate').value=qp.toUpperCase(); if(!foundProfile && typeof _doPlateLookup==='function') await _doPlateLookup(); }
+    if(qp){ $('f_plate').value=qp.toUpperCase(); }
+    // if the scanner passed the exact car's model, use it directly (don't let
+    // a plate lookup pick the wrong car for a multi-car customer)
+    if(qmodel){ $('f_model').value=qmodel; if(typeof jcTypeFromModel==='function') jcTypeFromModel(qmodel); }
+    if(qp && !qmodel && !foundProfile && typeof _doPlateLookup==='function') await _doPlateLookup();
+    // load packages for this customer regardless (RPC is phone-scoped)
+    if(typeof loadCustPackages==='function') await loadCustPackages();
   }
 }
 async function loadConfig(){
@@ -712,9 +718,12 @@ function renderDefs(){
     </div>`).join('');
 }
 function addDef(){ DEFS.push({note:'',status:'noted'}); renderDefs(); }
-function usePkg(pid){
-  const p=CAR_PACKAGES.find(x=>String(x.id)===String(pid)); if(!p)return;
-  const line={staff:'',desc:p.service_name+' (package use)',price:'0',pkg_id:p.id};
+function usePkg(pid, svcName){
+  // per-customer packages have no single id -> match by name; else by id
+  const p = (pid && CAR_PACKAGES.find(x=>String(x.id)===String(pid)))
+         || CAR_PACKAGES.find(x=>String(x.service_name)===String(svcName));
+  if(!p)return;
+  const line={staff:'',desc:(p.service_name||'Package')+' (package use)',price:'0',pkg_id:p.id||null};
   // if the only row is an empty placeholder, replace it; else add on top
   if(SVCS.length===1 && !SVCS[0].desc){ SVCS[0]=line; } else { SVCS.unshift(line); }
   renderSvcs(); toast('Added from package · '+p.remaining+' left');
@@ -830,17 +839,36 @@ function onCarSel(){
 }
 async function loadCustPackages(){
   const plate=($('f_plate').value||'').trim().toUpperCase();
-  const owner=foundProfile?foundProfile.id:null;
-  if(!plate && !owner){ $('pkgChips').innerHTML=''; CAR_PACKAGES=[]; return; }
-  let q=sb.from('gl_packages').select('*').eq('status','active');
-  if(plate && owner) q=q.or(`vehicle_label.ilike.${plate},owner_id.eq.${owner}`);
-  else if(plate) q=q.ilike('vehicle_label',plate);
-  else q=q.eq('owner_id',owner);
-  const {data}=await q;
-  let pk=(data||[]).map(p=>({...p,remaining:(p.total_uses||0)-(p.used_uses||0)})).filter(p=>p.remaining>0);
+  const phone=($('f_hp2').value.trim()||$('f_hp').value.trim()||'');
+  if(!plate && !phone){ $('pkgChips').innerHTML=''; CAR_PACKAGES=[]; return; }
+  let pk=[];
+  // primary: customer-scoped RPC (coating per-car, Bathe Essence shared).
+  try{
+    const {data,error}=await sb.rpc('gl_customer_packages',{p_phone:phone||'',p_plate:plate||''});
+    if(!error && data){
+      pk=data.map(r=>({
+        // note: per-customer rows have no single id; keep service_name for deduction-by-name
+        id:null, service_name:r.out_service_name, remaining:Number(r.out_balance)||0,
+        scope:r.out_scope, vehicle_label:r.out_vehicle_label
+      })).filter(p=>p.remaining>0);
+    }
+  }catch(e){ /* fall back below */ }
+  // fallback: legacy plate/owner read if RPC unavailable
+  if(!pk.length){
+    const owner=foundProfile?foundProfile.id:null;
+    let q=sb.from('gl_packages').select('*').eq('status','active');
+    if(plate && owner) q=q.or(`vehicle_label.ilike.${plate},owner_id.eq.${owner}`);
+    else if(plate) q=q.ilike('vehicle_label',plate);
+    else if(owner) q=q.eq('owner_id',owner);
+    const {data}=await q;
+    pk=(data||[]).map(p=>({...p,remaining:(p.total_uses||0)-(p.used_uses||0)})).filter(p=>p.remaining>0);
+  }
   CAR_PACKAGES=pk;
   if(!CAR_PACKAGES.length){ $('pkgChips').innerHTML=''; return; }
-  $('pkgChips').innerHTML=CAR_PACKAGES.map((p,i)=>`<div class="chip" onclick="usePkg('${p.id}')">🎟️ ${esc(p.service_name)} · ${p.remaining} left</div>`).join('');
+  $('pkgChips').innerHTML=CAR_PACKAGES.map((p,i)=>{
+    const allcars = p.scope==='customer' ? ' <span style="font-size:9px;color:var(--gold-deep,#b8860b);border:1px solid currentColor;border-radius:6px;padding:0 4px">ALL CARS</span>' : '';
+    return `<div class="chip" onclick="usePkg('${p.id||''}','${esc((p.service_name||'').replace(/'/g,''))}')">🎟️ ${esc(p.service_name)}${allcars} · ${p.remaining} left</div>`;
+  }).join('');
 }
 
 /* ---------- PHOTOS (ImgBB -> Supabase urls) ---------- */
