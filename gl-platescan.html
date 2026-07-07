@@ -176,8 +176,9 @@ html,body{height:100%;background:var(--bg);font-family:-apple-system,BlinkMacSys
 
     <div class="sec-h">Vehicle</div>
     <div class="fld"><label>Plate</label><input id="ePlate" style="text-transform:uppercase" placeholder="ABC1234"></div>
-    <div class="fld"><label>Brand</label>
-      <select id="eBrand" onchange="onBrandChange()"><option value="">— select brand —</option></select>
+    <div class="fld"><label>Brand <span style="font-weight:400;color:var(--text2)">— type to search</span></label>
+      <input id="eBrand" list="eBrandList" placeholder="e.g. Honda" oninput="onBrandChange()" autocomplete="off">
+      <datalist id="eBrandList"></datalist>
     </div>
     <div class="fld"><label>Model</label>
       <select id="eModelSel" onchange="onModelChange()" style="display:none"><option value="">— select model —</option></select>
@@ -590,9 +591,9 @@ async function openEdit(isNew){
   if($('ePkgBal')) $('ePkgBal').value='';
   // show current balances for this car (with delete), from all sources
   EXIST_PKGS=[]; renderExistingPkgs(); loadExistingPkgs();
-  // car picker: show manual model field with existing value; brand resets to prompt
+  // car picker: brand is a searchable datalist now; ensure it's populated
   if(!BRANDS.length) loadBrands();
-  else { const sel=$('eBrand'); if(sel) sel.innerHTML='<option value="">— select brand —</option>'+BRANDS.map(b=>`<option value="${b.id}">${esc(b.name)}</option>`).join('')+'<option value="__other">Other / not listed</option>'; loadCarTypes(); }
+  else { const dl=$('eBrandList'); if(dl) dl.innerHTML=BRANDS.map(b=>`<option value="${esc(b.name)}">`).join(''); loadCarTypes(); }
   $('eBrand').value='';
   $('eModelSel').style.display='none';
   $('eModel').style.display='block';
@@ -730,8 +731,12 @@ let BRANDS=[], MODELS_CACHE={};
 async function loadBrands(){
   const {data}=await sb.from('gl_car_brands').select('id,name,active,sort_order').eq('active',true).order('sort_order',{ascending:true});
   BRANDS=data||[];
-  const sel=$('eBrand');
-  if(sel) sel.innerHTML='<option value="">— select brand —</option>'+BRANDS.map(b=>`<option value="${b.id}">${esc(b.name)}</option>`).join('')+'<option value="__other">Other / not listed</option>';
+  // Edit modal brand is now a searchable datalist input
+  const dl=$('eBrandList');
+  if(dl) dl.innerHTML=BRANDS.map(b=>`<option value="${esc(b.name)}">`).join('');
+  // Add-car modal datalist too (if present)
+  const dl2=$('acBrandList');
+  if(dl2) dl2.innerHTML=BRANDS.map(b=>`<option value="${esc(b.name)}">`).join('');
   loadCarTypes();
 }
 let CAR_TYPES=[], PENDING_TYPE=null;
@@ -861,12 +866,16 @@ function fillTypeSelect(){
   PENDING_TYPE=null;
 }
 async function onBrandChange(){
-  const bid=$('eBrand').value;
+  const typed=$('eBrand').value.trim();
   const modelSel=$('eModelSel'), modelInput=$('eModel');
-  if(!bid || bid==='__other'){
-    modelSel.style.display='none'; modelInput.style.display='block'; modelInput.value='';
+  // resolve the typed brand name -> brand record
+  const brand=BRANDS.find(b=>String(b.name||'').toLowerCase()===typed.toLowerCase());
+  if(!typed || !brand){
+    // unknown / cleared brand -> free-text model
+    modelSel.style.display='none'; modelInput.style.display='block';
     return;
   }
+  const bid=brand.id;
   modelSel.style.display='block'; modelInput.style.display='none';
   modelSel.innerHTML='<option>Loading…</option>';
   let models=MODELS_CACHE[bid];
@@ -874,11 +883,11 @@ async function onBrandChange(){
     const {data}=await sb.from('gl_car_models').select('name,type').eq('brand_id',bid).eq('active',true).order('sort_order',{ascending:true});
     models=data||[]; MODELS_CACHE[bid]=models;
   }
-  const brandName=(BRANDS.find(b=>String(b.id)===String(bid))||{}).name||'';
+  if(!models.length){ modelSel.style.display='none'; modelInput.style.display='block'; return; }
   modelSel.innerHTML='<option value="">— select model —</option>'+
     models.map(m=>`<option value="${esc(m.name)}" data-type="${esc(m.type||'')}">${esc(m.name)}</option>`).join('')+
     '<option value="__other">Other / not listed</option>';
-  modelSel.dataset.brand=brandName;
+  modelSel.dataset.brand=brand.name;
 }
 function onModelChange(){
   const sel=$('eModelSel'), modelInput=$('eModel');
