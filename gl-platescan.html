@@ -481,7 +481,17 @@ async function loadPackages(phone, plate){
   let rows=null;
   try{
     const {data,error}=await sb.rpc('gl_customer_packages',{p_phone:phone||'',p_plate:plate||''});
-    if(!error) rows=data;
+    if(!error && data){
+      // RPC returns out_* column names -> map to the shape the renderer uses
+      rows=data.map(r=>({
+        service_name: r.out_service_name,
+        total_uses:   r.out_total_uses,
+        used_uses:    r.out_used_uses,
+        balance:      r.out_balance,
+        scope:        r.out_scope,
+        vehicle_label:r.out_vehicle_label
+      }));
+    }
   }catch(e){ /* RPC missing -> fallback below */ }
 
   if(!rows){
