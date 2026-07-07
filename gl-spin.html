@@ -153,7 +153,7 @@ async function checkTaken(){
   if(phone.length<8 || !plate){ phoneOk=true; return; }
   try{
     const {data}=await sb.rpc('gl_spin_phone_taken',{p_phone:phone,p_plate:plate});
-    if(data===true){ phoneOk=false; $('phoneMsg').textContent='⚠️ This car ('+plate+') has already spun. One spin per car.'; $('phoneMsg').className='lookup taken'; }
+    if(data===true){ phoneOk=false; $('phoneMsg').textContent='⚠️ This car ('+plate+') has already spun. One spin per car.'; $('phoneMsg').className='lookup taken'; $('phoneMsg').style.color='#ff8a8a'; }
     else { phoneOk=true; $('phoneMsg').textContent='✓ Ready to spin!'; $('phoneMsg').className='lookup'; $('phoneMsg').style.color='#7ee29a'; }
   }catch(e){}
 }
