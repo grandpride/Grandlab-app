@@ -35,6 +35,9 @@ button,input{font-family:inherit}
 .wrap{max-width:1240px;margin:0 auto;padding:16px}
 .cols{display:grid;grid-template-columns:1fr;gap:16px}
 @media(min-width:880px){ .cols{grid-template-columns:minmax(360px,1fr) minmax(420px,560px)} }
+/* when viewing the Dashboard, give it the full width + hide checkout */
+.cols.dash-full{grid-template-columns:1fr !important}
+.cols.dash-full #rightCol{display:none}
 
 .panel{background:var(--surface);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow)}
 .panel-h{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--line2)}
@@ -366,7 +369,7 @@ button,input{font-family:inherit}
     </div>
 
     <!-- RIGHT: checkout -->
-    <div>
+    <div id="rightCol">
       <div class="panel">
         <div class="panel-h">
           <span class="ttl"><i class="ti ti-cash-register"></i> Checkout</span>
@@ -639,6 +642,9 @@ function switchTab(t){
   $('walkinBtn').style.display=t==='hold'?'none':'inline-flex';
   $('takings').style.display=(t==='ready')?'flex':'none';
   const dashMode=(t==='dash'), sqlMode=(t==='sql');
+  // Dashboard uses the full width (hide checkout) so the sales table fits
+  const cols=document.querySelector('.cols');
+  if(cols) cols.classList.toggle('dash-full', dashMode);
   $('dashList').style.display=dashMode?'block':'none';
   $('jobs').style.display=(dashMode||sqlMode)?'none':'block';
   $('empty').style.display='none';
