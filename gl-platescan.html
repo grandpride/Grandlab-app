@@ -403,7 +403,19 @@ function selectCar(plate, model){
     return;
   }
   // switch active car
-  if(CUR){ CUR.plate=plate; CUR.model=model; }
+  if(CUR){ CUR.plate=plate; CUR.model=model; CUR.walkinId=null; }
+  // re-resolve the walk-in row id for the newly selected car (so an Edit/Save
+  // updates THIS car's row, not the previously searched one)
+  (async()=>{
+    try{
+      const {data:rows}=await sb.from('gl_walkin').select('id,plate,phone').ilike('plate','%'+plate+'%').limit(20);
+      const norm=s=>String(s||'').toUpperCase().replace(/\s+/g,'');
+      const digits=((CUR&&CUR.phone)||'').replace(/\D/g,'');
+      const exact=(rows||[]).filter(r=>norm(r.plate)===plate.toUpperCase());
+      const pick=exact.find(r=>String(r.phone||'').replace(/\D/g,'')===digits) || exact[0];
+      if(pick && CUR) CUR.walkinId=pick.id;
+    }catch(e){}
+  })();
   $('cPlate').textContent=plate;
   $('cModel').textContent=model||'—';
   const phone=((CUR&&CUR.phone)||'').replace(/^\+/,'');
@@ -689,34 +701,31 @@ async function saveProfile(){
   // 1) upsert gl_walkin by phone+plate (customer/car only — package balance
   //    now lives in gl_packages + gl_pending, not here, to avoid duplicates)
   const row={name,phone,plate,model,car_type};
+  const digits=(phone||'').replace(/\D/g,'');
   let walkinId=CUR&&CUR.walkinId;
   try{
+    // resolve the EXACT existing row for this (plate + phone) so we always
+    // update in place and never create a (phone,plate) collision.
+    if(!walkinId && plate){
+      // find a row whose normalised plate matches AND (if we have a phone) the
+      // phone matches too — that's THE row for this car+customer.
+      const {data:rows}=await sb.from('gl_walkin')
+        .select('id,plate,phone').ilike('plate','%'+plate+'%').limit(20);
+      const norm=s=>String(s||'').toUpperCase().replace(/\s+/g,'');
+      const exact=(rows||[]).filter(r=>norm(r.plate)===plate);
+      // prefer one whose phone also matches; else any exact-plate row
+      const byPhone=exact.find(r=>String(r.phone||'').replace(/\D/g,'')===digits);
+      const pick=byPhone || exact[0] || null;
+      if(pick) walkinId=pick.id;
+    }
     if(walkinId){
       const {error}=await sb.from('gl_walkin').update(row).eq('id',walkinId);
       if(error) throw error;
     } else {
-      // find an existing walk-in for this car so we UPDATE instead of duplicating.
-      // match by plate first (strongest key for a car), else by normalized phone.
-      let existing=null;
-      if(plate){
-        const {data}=await sb.from('gl_walkin').select('id').ilike('plate',plate).limit(1).maybeSingle();
-        existing=data;
-      }
-      if(!existing && phone){
-        const digits=phone.replace(/\D/g,'');
-        const {data}=await sb.from('gl_walkin').select('id,phone').ilike('phone','%'+digits+'%').limit(50);
-        const hit=(data||[]).find(r=>String(r.phone||'').replace(/\D/g,'')===digits);
-        if(hit) existing={id:hit.id};
-      }
-      if(existing){
-        walkinId=existing.id;
-        const {error}=await sb.from('gl_walkin').update(row).eq('id',walkinId);
-        if(error) throw error;
-      } else {
-        const {data,error}=await sb.from('gl_walkin').insert(row).select('id').maybeSingle();
-        if(error) throw error;
-        walkinId=data&&data.id;
-      }
+      // no existing row for this exact car -> insert a fresh one
+      const {data,error}=await sb.from('gl_walkin').insert(row).select('id').maybeSingle();
+      if(error) throw error;
+      walkinId=data&&data.id;
     }
   }catch(e){ $('saveMsg').textContent='Save failed: '+(e.message||e); return; }
 
