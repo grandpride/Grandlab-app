@@ -271,23 +271,13 @@ async function doSearch(raw){
   $('status').textContent='Searching '+plate+'…';
   $('cust').classList.remove('show'); $('notfound').classList.remove('show');
 
-  const {data:vehList}=await sb.from('gl_vehicles')
+  const {data:veh}=await sb.from('gl_vehicles')
     .select('id,make,model,plate,owner_id, gl_profiles(id,name,phone,email,tier)')
-    .ilike('plate','%'+plate+'%').limit(5);
-  const _norm=s=>String(s||'').toUpperCase().replace(/\s+/g,'');
-  const veh=(vehList||[]).find(v=>_norm(v.plate)===plate) || (vehList||[])[0] || null;
+    .ilike('plate',plate).limit(1).maybeSingle();
 
   if(!veh || !veh.gl_profiles){
-    // fallback: look in gl_walkin (shop/Mochi customers not yet registered).
-    // wildcard match so stored plates with stray spaces still resolve, then
-    // confirm by comparing normalised plate (strip spaces/case).
-    const {data:wkAll}=await sb.from('gl_walkin').select('*').ilike('plate','%'+plate+'%').limit(20);
-    const norm=s=>String(s||'').toUpperCase().replace(/\s+/g,'');
-    const matches=(wkAll||[]).filter(r=>norm(r.plate)===plate);
-    // prefer the row that actually has a phone (dedupe leftovers can be blank)
-    const wk=(matches.length?matches:(wkAll||[])).sort((a,b)=>
-      (String(b.phone||'').replace(/\D/g,'').length) - (String(a.phone||'').replace(/\D/g,'').length)
-    )[0] || null;
+    // fallback: look in gl_walkin (shop/Mochi customers not yet registered)
+    const {data:wk}=await sb.from('gl_walkin').select('*').ilike('plate',plate).limit(1).maybeSingle();
     if(wk){
       $('status').textContent='';
       CUR={src:'walkin', walkinId:wk.id, name:wk.name||'', phone:wk.phone||'', plate:wk.plate||plate, model:wk.model||'', car_type:wk.car_type||'', pkg_name:wk.pkg_name||'', pkg_total:wk.pkg_total||0, pkg_used:wk.pkg_used||0};
@@ -296,7 +286,7 @@ async function doSearch(raw){
       $('cName').textContent=(wk.name||'—');
       $('cPhone').textContent=wk.phone||'—';
       $('cTier').textContent='Non-Member (walk-in)';
-      $('bookBtn').href=JOBCARD_URL+'?plate='+encodeURIComponent(wk.plate||plate)+'&phone='+encodeURIComponent((wk.phone||'').replace(/^\+/,''))+(wk.model?('&model='+encodeURIComponent(wk.model)):'');
+      $('bookBtn').href=JOBCARD_URL+'?plate='+encodeURIComponent(wk.plate||plate)+'&phone='+encodeURIComponent((wk.phone||'').replace(/^\+/,''));
       // package balances — shared helper (coating per-car, others per-customer)
       await loadPackages(wk.phone||'', wk.plate||plate);
       // legacy fallback: if RPC/gl_packages returned nothing, show old walkin field
@@ -340,82 +330,33 @@ async function doSearch(raw){
 async function loadCustomerCars(phone, currentPlate){
   const wrap=$('carsWrap'); if(!wrap) return;
   const core=(phone||'').replace(/\D/g,'').replace(/^(60|0)/,'');
-  const curName=String((CUR&&CUR.name)||'').trim().toUpperCase();
-  if(!core && !curName){ wrap.innerHTML=''; return; }
+  if(!core){ wrap.innerHTML=''; return; }
   const cars=[]; const seen=new Set();
-  const add=(plate,model,id,src)=>{
-    const p=(plate||'').trim().toUpperCase().replace(/\s+/g,''); if(!p||seen.has(p)) return;
-    seen.add(p); cars.push({plate:p, model:(model||'').trim(), id:id||null, src:src||null});
+  const add=(plate,model)=>{
+    const p=(plate||'').trim().toUpperCase(); if(!p||seen.has(p)) return;
+    seen.add(p); cars.push({plate:p, model:(model||'').trim()});
   };
-  // current car first (from CUR)
-  add(currentPlate, (CUR&&CUR.model)||'', (CUR&&CUR.walkinId)||null, (CUR&&CUR.ownerId)?'vehicle':'walkin');
+  // current car first
+  add(currentPlate, (CUR&&CUR.model)||'');
   try{
-    // walk-in cars for this customer — query server-side by phone/name so we
-    // don't hit the row limit on a large table (filtering in-browser missed
-    // matches beyond the fetch cap). Try a few phone formats + the name.
-    const digits=(phone||'').replace(/\D/g,'');
-    const ors=[];
-    if(digits){
-      ors.push(`phone.ilike.%${digits}%`);
-      if(core) ors.push(`phone.ilike.%${core}%`);
-    }
-    if(curName) ors.push(`name.ilike.${curName}`);
-    if(ors.length){
-      const {data:wk}=await sb.from('gl_walkin').select('id,plate,model,phone,name').or(ors.join(',')).limit(200);
-      (wk||[]).forEach(r=>{
-        const rc=String(r.phone||'').replace(/\D/g,'').replace(/^(60|0)/,'');
-        const rn=String(r.name||'').trim().toUpperCase();
-        const phoneMatch = core && rc===core;
-        const nameMatch  = curName && rn===curName && rn!=='';
-        if(phoneMatch || nameMatch) add(r.plate,r.model,r.id,'walkin');
-      });
-    }
+    // walk-in cars with same phone-core
+    const {data:wk}=await sb.from('gl_walkin').select('plate,model,phone').limit(1000);
+    (wk||[]).forEach(r=>{ if(String(r.phone||'').replace(/\D/g,'').replace(/^(60|0)/,'')===core) add(r.plate,r.model); });
   }catch(e){}
   try{
-    // app-member cars via profile phone (also server-side filtered)
-    const digits=(phone||'').replace(/\D/g,'');
-    if(digits){
-      const {data:prof}=await sb.from('gl_profiles').select('id,phone,name, gl_vehicles(id,make,model,plate)').ilike('phone','%'+digits+'%').limit(50);
-      (prof||[]).forEach(pr=>{
-        const rc=String(pr.phone||'').replace(/\D/g,'').replace(/^(60|0)/,'');
-        if(core && rc===core){
-          (pr.gl_vehicles||[]).forEach(v=>add(v.plate,[v.make,v.model].filter(Boolean).join(' '),v.id,'vehicle'));
-        }
-      });
-    }
+    // app-member cars via profile phone
+    const {data:prof}=await sb.from('gl_profiles').select('id,phone, gl_vehicles(make,model,plate)').limit(1000);
+    (prof||[]).forEach(pr=>{
+      if(String(pr.phone||'').replace(/\D/g,'').replace(/^(60|0)/,'')!==core) return;
+      (pr.gl_vehicles||[]).forEach(v=>add(v.plate,[v.make,v.model].filter(Boolean).join(' ')));
+    });
   }catch(e){}
   if(cars.length<=1){ wrap.innerHTML=''; return; }  // nothing to switch between
-  window._CARS=cars;  // for delete lookup
-  const cur=(currentPlate||'').trim().toUpperCase().replace(/\s+/g,'');
+  const cur=(currentPlate||'').trim().toUpperCase();
   wrap.innerHTML='<div class="cars"><div class="cars-h">Cars — tap to switch / create job</div>'+
-    cars.map((c,idx)=>`<div class="car-chip${c.plate===cur?' sel':''}">`+
-      `<span class="cc-left" style="flex:1;cursor:pointer" onclick="selectCar('${esc(c.plate)}','${esc((c.model||'').replace(/'/g,''))}')"><span class="cc-plate">${esc(c.plate)}</span><span class="cc-model">${esc(c.model||'—')}</span></span>`+
-      `<span class="cc-go" style="cursor:pointer" onclick="selectCar('${esc(c.plate)}','${esc((c.model||'').replace(/'/g,''))}')">${c.plate===cur?'SELECTED':'Create job →'}</span>`+
-      `<button title="Delete this car" onclick="deleteCar(${idx})" style="flex:0 0 auto;margin-left:8px;background:#3a1a1a;color:#ff6b5a;border:1px solid #5a2a2a;border-radius:7px;padding:5px 8px;font-size:12px;cursor:pointer"><i class="ti ti-trash"></i></button>`+
-      `</div>`).join('')+'</div>';
-}
-
-/* Delete a wrong car from the customer. Removes the exact row from Supabase
-   (gl_walkin for walk-ins, gl_vehicles for members) so it's gone everywhere,
-   then refreshes the selector. Won't delete the currently-active car without
-   switching first (avoids leaving the page on a deleted car). */
-async function deleteCar(idx){
-  const c=(window._CARS||[])[idx]; if(!c) return;
-  if(!c.id){ alert('Can\u2019t identify this car row to delete. Try Edit / Complete Profile instead.'); return; }
-  if(!confirm('Delete this car permanently?\n'+c.plate+' · '+(c.model||'')+'\n\nThis removes it from the system for this customer.')) return;
-  try{
-    if(c.src==='vehicle'){ await sb.from('gl_vehicles').delete().eq('id',c.id); }
-    else { await sb.from('gl_walkin').delete().eq('id',c.id); }
-    // if we deleted the active car, fall back to another one
-    const stillCur=(CUR&&CUR.plate||'').trim().toUpperCase().replace(/\s+/g,'')===c.plate;
-    if(stillCur){
-      const other=(window._CARS||[]).find((x,i)=>i!==idx);
-      if(other){ selectCar(other.plate, other.model); }
-    }
-    // refresh the selector
-    await loadCustomerCars((CUR&&CUR.phone)||'', (CUR&&CUR.plate)||'');
-    if(typeof toast==='function') toast('Car deleted');
-  }catch(e){ alert('Delete failed: '+(e.message||e)); }
+    cars.map(c=>`<div class="car-chip${c.plate===cur?' sel':''}" onclick="selectCar('${esc(c.plate)}','${esc((c.model||'').replace(/'/g,''))}')">`+
+      `<span class="cc-left"><span class="cc-plate">${esc(c.plate)}</span><span class="cc-model">${esc(c.model||'—')}</span></span>`+
+      `<span class="cc-go">${c.plate===cur?'SELECTED':'Create job →'}</span></div>`).join('')+'</div>';
 }
 
 /* Switch the active car: if it's already selected, go straight to the job
@@ -425,27 +366,15 @@ function selectCar(plate, model){
   if(plate===cur){
     // already selected -> create a job for this car now
     const phone=((CUR&&CUR.phone)||'').replace(/^\+/,'');
-    location.href=JOBCARD_URL+'?plate='+encodeURIComponent(plate)+(phone?('&phone='+encodeURIComponent(phone)):'')+(model?('&model='+encodeURIComponent(model)):'');
+    location.href=JOBCARD_URL+'?plate='+encodeURIComponent(plate)+(phone?('&phone='+encodeURIComponent(phone)):'');
     return;
   }
   // switch active car
-  if(CUR){ CUR.plate=plate; CUR.model=model; CUR.walkinId=null; }
-  // re-resolve the walk-in row id for the newly selected car (so an Edit/Save
-  // updates THIS car's row, not the previously searched one)
-  (async()=>{
-    try{
-      const {data:rows}=await sb.from('gl_walkin').select('id,plate,phone').ilike('plate','%'+plate+'%').limit(20);
-      const norm=s=>String(s||'').toUpperCase().replace(/\s+/g,'');
-      const digits=((CUR&&CUR.phone)||'').replace(/\D/g,'');
-      const exact=(rows||[]).filter(r=>norm(r.plate)===plate.toUpperCase());
-      const pick=exact.find(r=>String(r.phone||'').replace(/\D/g,'')===digits) || exact[0];
-      if(pick && CUR) CUR.walkinId=pick.id;
-    }catch(e){}
-  })();
+  if(CUR){ CUR.plate=plate; CUR.model=model; }
   $('cPlate').textContent=plate;
   $('cModel').textContent=model||'—';
   const phone=((CUR&&CUR.phone)||'').replace(/^\+/,'');
-  $('bookBtn').href=JOBCARD_URL+'?plate='+encodeURIComponent(plate)+(phone?('&phone='+encodeURIComponent(phone)):'')+(model?('&model='+encodeURIComponent(model)):'');
+  $('bookBtn').href=JOBCARD_URL+'?plate='+encodeURIComponent(plate)+(phone?('&phone='+encodeURIComponent(phone)):'');
   // refresh balances + history for the newly selected car
   loadPackages((CUR&&CUR.phone)||'', plate);
   if(CUR&&CUR.ownerId) loadHistory(CUR.ownerId, plate); else loadWalkinHistory((CUR&&CUR.walkinId)||null, plate);
@@ -552,17 +481,7 @@ async function loadPackages(phone, plate){
   let rows=null;
   try{
     const {data,error}=await sb.rpc('gl_customer_packages',{p_phone:phone||'',p_plate:plate||''});
-    if(!error && data){
-      // RPC returns out_* column names -> map to the shape the renderer uses
-      rows=data.map(r=>({
-        service_name: r.out_service_name,
-        total_uses:   r.out_total_uses,
-        used_uses:    r.out_used_uses,
-        balance:      r.out_balance,
-        scope:        r.out_scope,
-        vehicle_label:r.out_vehicle_label
-      }));
-    }
+    if(!error) rows=data;
   }catch(e){ /* RPC missing -> fallback below */ }
 
   if(!rows){
@@ -727,31 +646,34 @@ async function saveProfile(){
   // 1) upsert gl_walkin by phone+plate (customer/car only — package balance
   //    now lives in gl_packages + gl_pending, not here, to avoid duplicates)
   const row={name,phone,plate,model,car_type};
-  const digits=(phone||'').replace(/\D/g,'');
   let walkinId=CUR&&CUR.walkinId;
   try{
-    // resolve the EXACT existing row for this (plate + phone) so we always
-    // update in place and never create a (phone,plate) collision.
-    if(!walkinId && plate){
-      // find a row whose normalised plate matches AND (if we have a phone) the
-      // phone matches too — that's THE row for this car+customer.
-      const {data:rows}=await sb.from('gl_walkin')
-        .select('id,plate,phone').ilike('plate','%'+plate+'%').limit(20);
-      const norm=s=>String(s||'').toUpperCase().replace(/\s+/g,'');
-      const exact=(rows||[]).filter(r=>norm(r.plate)===plate);
-      // prefer one whose phone also matches; else any exact-plate row
-      const byPhone=exact.find(r=>String(r.phone||'').replace(/\D/g,'')===digits);
-      const pick=byPhone || exact[0] || null;
-      if(pick) walkinId=pick.id;
-    }
     if(walkinId){
       const {error}=await sb.from('gl_walkin').update(row).eq('id',walkinId);
       if(error) throw error;
     } else {
-      // no existing row for this exact car -> insert a fresh one
-      const {data,error}=await sb.from('gl_walkin').insert(row).select('id').maybeSingle();
-      if(error) throw error;
-      walkinId=data&&data.id;
+      // find an existing walk-in for this car so we UPDATE instead of duplicating.
+      // match by plate first (strongest key for a car), else by normalized phone.
+      let existing=null;
+      if(plate){
+        const {data}=await sb.from('gl_walkin').select('id').ilike('plate',plate).limit(1).maybeSingle();
+        existing=data;
+      }
+      if(!existing && phone){
+        const digits=phone.replace(/\D/g,'');
+        const {data}=await sb.from('gl_walkin').select('id,phone').limit(1000);
+        const hit=(data||[]).find(r=>String(r.phone||'').replace(/\D/g,'')===digits);
+        if(hit) existing={id:hit.id};
+      }
+      if(existing){
+        walkinId=existing.id;
+        const {error}=await sb.from('gl_walkin').update(row).eq('id',walkinId);
+        if(error) throw error;
+      } else {
+        const {data,error}=await sb.from('gl_walkin').insert(row).select('id').maybeSingle();
+        if(error) throw error;
+        walkinId=data&&data.id;
+      }
     }
   }catch(e){ $('saveMsg').textContent='Save failed: '+(e.message||e); return; }
 
@@ -770,61 +692,30 @@ async function saveProfile(){
     if(error){ $('saveMsg').textContent='Profile saved, but history failed: '+error.message; return; }
   }
 
-  // 3) save the balance. SCOPE RULE:
-  //    - COATING (pkgIsCoat)  -> per CAR: keyed by this plate.
-  //    - OTHER (Bathe Essence) -> per CUSTOMER: update the customer's existing
-  //      balance on ANY of their plates (matched by phone); only insert if none.
-  //      This stops duplicate per-car rows for shared packages.
+  // 3) if a package was chosen, save it as the UNIFIED balance in gl_packages
+  //    (keyed by plate via vehicle_label, plus owner_id if this car has an app member).
+  //    This is what job card / booking / POS all read. Also mirror to gl_pending
+  //    so it auto-links if/when the customer signs up.
   if(pkg_name && plate){
     const remaining = Math.max(0, pkg_total - pkg_used);
     const ownerId=(CUR&&CUR.ownerId)||null;
-    const phCore=(phone||'').replace(/\D/g,'').replace(/^(60|0)/,'');
-
-    // ---- gl_packages ----
-    let exPk=null;
-    if(pkgIsCoat){
-      // per-car: same service on this plate
-      const {data}=await sb.from('gl_packages')
-        .select('id').ilike('vehicle_label',plate).eq('service_name',pkg_name).eq('status','active').limit(1).maybeSingle();
-      exPk=data;
-    } else if(phCore){
-      // per-customer: same service on ANY of this customer's plates.
-      // query walk-in rows by phone server-side (avoid table-size row cap).
-      const digits=(phone||'').replace(/\D/g,'');
-      const {data:wk}=await sb.from('gl_walkin').select('plate,phone').ilike('phone','%'+digits+'%').limit(200);
-      const plates=(wk||[]).filter(r=>String(r.phone||'').replace(/\D/g,'').replace(/^(60|0)/,'')===phCore)
-                           .map(r=>(r.plate||'').trim().toUpperCase()).filter(Boolean);
-      if(!plates.includes(plate.toUpperCase())) plates.push(plate.toUpperCase());
-      // find an active same-service package on any of those plates (or owner)
-      let q=sb.from('gl_packages').select('id,vehicle_label').eq('service_name',pkg_name).eq('status','active');
-      const {data:cand}=await q;
-      exPk=(cand||[]).find(p=>plates.includes(String(p.vehicle_label||'').trim().toUpperCase())) || null;
-    }
-    const pkgBody={ owner_id:ownerId, vehicle_id:null,
+    // gl_packages: update existing same-service on this plate, else insert
+    const {data:exPk}=await sb.from('gl_packages')
+      .select('id').ilike('vehicle_label',plate).eq('service_name',pkg_name).eq('status','active').limit(1).maybeSingle();
+    const pkgBody={ owner_id:ownerId, vehicle_id:null, vehicle_label:plate,
       service_name:pkg_name, pkg_type: pkgIsCoat?'coating_maintenance':'package',
       total_uses:pkg_total, used_uses:pkg_used, status:'active', source:'platescan' };
-    // keep the balance on the current plate label when creating; when updating a
-    // per-customer row, don't move its existing vehicle_label.
     if(exPk){
       const {error:upErr}=await sb.from('gl_packages').update(pkgBody).eq('id',exPk.id);
       if(upErr){ $('saveMsg').textContent='Package balance failed (update): '+upErr.message; return; }
     } else {
-      const {error:inErr}=await sb.from('gl_packages').insert({...pkgBody, vehicle_label:plate, barcode:genBarcodeValue()});
+      const {error:inErr}=await sb.from('gl_packages').insert({...pkgBody, barcode:genBarcodeValue()});
       if(inErr){ $('saveMsg').textContent='Package balance failed (insert): '+inErr.message; return; }
     }
-
-    // ---- gl_pending (signup auto-claim) ----
+    // mirror to gl_pending (for signup auto-claim) when we have a phone
     if(phone){
-      let exPend=null;
-      if(pkgIsCoat){
-        const {data}=await sb.from('gl_pending')
-          .select('id').eq('plate',plate).eq('service_name',pkg_name).eq('claimed',false).limit(1).maybeSingle();
-        exPend=data;
-      } else if(phCore){
-        // per-customer: any unclaimed same-service row for this phone
-        const {data:pend}=await sb.from('gl_pending').select('id,phone').eq('service_name',pkg_name).eq('claimed',false);
-        exPend=(pend||[]).find(r=>String(r.phone||'').replace(/\D/g,'').replace(/^(60|0)/,'')===phCore) || null;
-      }
+      const {data:exPend}=await sb.from('gl_pending')
+        .select('id').eq('phone',phone).eq('plate',plate).eq('service_name',pkg_name).eq('claimed',false).limit(1).maybeSingle();
       const pendBody={ phone, name, plate, service_name:pkg_name, remaining, is_coating:pkgIsCoat, source:'platescan', claimed:false };
       if(exPend){ await sb.from('gl_pending').update(pendBody).eq('id',exPend.id); }
       else { await sb.from('gl_pending').insert(pendBody); }
@@ -939,7 +830,7 @@ function renderExistingPkgs(){
   if(!EXIST_PKGS.length){ box.innerHTML='<div style="font-size:12px;color:var(--text2);margin-bottom:8px">No balances on this car yet.</div>'; return; }
   box.innerHTML='<div style="font-size:12px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;margin:4px 0 6px">Current balances</div>'+
     EXIST_PKGS.map((p,i)=>`<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;background:var(--card2,#1c1c1c);border:1px solid var(--line,#333);border-radius:9px;padding:8px 10px;margin-bottom:6px">
-      <span style="font-size:13px">${esc(p.name||'Package')} <b style="color:var(--gold,#f5c518)">· ${p.bal} left</b> <span style="font-size:10px;color:var(--text2);opacity:.7">(${p.src.replace('gl_','')})</span></span>
+      <span style="font-size:13px">${esc(p.name||'Package')} <b style="color:var(--gold,#f5c518)">· ${p.bal} left</b></span>
       <button onclick="delExistPkg(${i})" style="background:#3a1a1a;color:#ff6b5a;border:1px solid #5a2a2a;border-radius:7px;padding:5px 9px;font-size:12px;cursor:pointer"><i class="ti ti-trash"></i></button>
     </div>`).join('');
 }
