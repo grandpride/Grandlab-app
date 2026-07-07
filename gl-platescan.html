@@ -343,12 +343,12 @@ async function loadCustomerCars(phone, currentPlate){
   const curName=String((CUR&&CUR.name)||'').trim().toUpperCase();
   if(!core && !curName){ wrap.innerHTML=''; return; }
   const cars=[]; const seen=new Set();
-  const add=(plate,model)=>{
-    const p=(plate||'').trim().toUpperCase(); if(!p||seen.has(p)) return;
-    seen.add(p); cars.push({plate:p, model:(model||'').trim()});
+  const add=(plate,model,id,src)=>{
+    const p=(plate||'').trim().toUpperCase().replace(/\s+/g,''); if(!p||seen.has(p)) return;
+    seen.add(p); cars.push({plate:p, model:(model||'').trim(), id:id||null, src:src||null});
   };
-  // current car first
-  add(currentPlate, (CUR&&CUR.model)||'');
+  // current car first (from CUR)
+  add(currentPlate, (CUR&&CUR.model)||'', (CUR&&CUR.walkinId)||null, (CUR&&CUR.ownerId)?'vehicle':'walkin');
   try{
     // walk-in cars for this customer — query server-side by phone/name so we
     // don't hit the row limit on a large table (filtering in-browser missed
@@ -361,13 +361,13 @@ async function loadCustomerCars(phone, currentPlate){
     }
     if(curName) ors.push(`name.ilike.${curName}`);
     if(ors.length){
-      const {data:wk}=await sb.from('gl_walkin').select('plate,model,phone,name').or(ors.join(',')).limit(200);
+      const {data:wk}=await sb.from('gl_walkin').select('id,plate,model,phone,name').or(ors.join(',')).limit(200);
       (wk||[]).forEach(r=>{
         const rc=String(r.phone||'').replace(/\D/g,'').replace(/^(60|0)/,'');
         const rn=String(r.name||'').trim().toUpperCase();
         const phoneMatch = core && rc===core;
         const nameMatch  = curName && rn===curName && rn!=='';
-        if(phoneMatch || nameMatch) add(r.plate,r.model);
+        if(phoneMatch || nameMatch) add(r.plate,r.model,r.id,'walkin');
       });
     }
   }catch(e){}
@@ -375,21 +375,47 @@ async function loadCustomerCars(phone, currentPlate){
     // app-member cars via profile phone (also server-side filtered)
     const digits=(phone||'').replace(/\D/g,'');
     if(digits){
-      const {data:prof}=await sb.from('gl_profiles').select('id,phone,name, gl_vehicles(make,model,plate)').ilike('phone','%'+digits+'%').limit(50);
+      const {data:prof}=await sb.from('gl_profiles').select('id,phone,name, gl_vehicles(id,make,model,plate)').ilike('phone','%'+digits+'%').limit(50);
       (prof||[]).forEach(pr=>{
         const rc=String(pr.phone||'').replace(/\D/g,'').replace(/^(60|0)/,'');
         if(core && rc===core){
-          (pr.gl_vehicles||[]).forEach(v=>add(v.plate,[v.make,v.model].filter(Boolean).join(' ')));
+          (pr.gl_vehicles||[]).forEach(v=>add(v.plate,[v.make,v.model].filter(Boolean).join(' '),v.id,'vehicle'));
         }
       });
     }
   }catch(e){}
   if(cars.length<=1){ wrap.innerHTML=''; return; }  // nothing to switch between
-  const cur=(currentPlate||'').trim().toUpperCase();
+  window._CARS=cars;  // for delete lookup
+  const cur=(currentPlate||'').trim().toUpperCase().replace(/\s+/g,'');
   wrap.innerHTML='<div class="cars"><div class="cars-h">Cars — tap to switch / create job</div>'+
-    cars.map(c=>`<div class="car-chip${c.plate===cur?' sel':''}" onclick="selectCar('${esc(c.plate)}','${esc((c.model||'').replace(/'/g,''))}')">`+
-      `<span class="cc-left"><span class="cc-plate">${esc(c.plate)}</span><span class="cc-model">${esc(c.model||'—')}</span></span>`+
-      `<span class="cc-go">${c.plate===cur?'SELECTED':'Create job →'}</span></div>`).join('')+'</div>';
+    cars.map((c,idx)=>`<div class="car-chip${c.plate===cur?' sel':''}">`+
+      `<span class="cc-left" style="flex:1;cursor:pointer" onclick="selectCar('${esc(c.plate)}','${esc((c.model||'').replace(/'/g,''))}')"><span class="cc-plate">${esc(c.plate)}</span><span class="cc-model">${esc(c.model||'—')}</span></span>`+
+      `<span class="cc-go" style="cursor:pointer" onclick="selectCar('${esc(c.plate)}','${esc((c.model||'').replace(/'/g,''))}')">${c.plate===cur?'SELECTED':'Create job →'}</span>`+
+      `<button title="Delete this car" onclick="deleteCar(${idx})" style="flex:0 0 auto;margin-left:8px;background:#3a1a1a;color:#ff6b5a;border:1px solid #5a2a2a;border-radius:7px;padding:5px 8px;font-size:12px;cursor:pointer"><i class="ti ti-trash"></i></button>`+
+      `</div>`).join('')+'</div>';
+}
+
+/* Delete a wrong car from the customer. Removes the exact row from Supabase
+   (gl_walkin for walk-ins, gl_vehicles for members) so it's gone everywhere,
+   then refreshes the selector. Won't delete the currently-active car without
+   switching first (avoids leaving the page on a deleted car). */
+async function deleteCar(idx){
+  const c=(window._CARS||[])[idx]; if(!c) return;
+  if(!c.id){ alert('Can\u2019t identify this car row to delete. Try Edit / Complete Profile instead.'); return; }
+  if(!confirm('Delete this car permanently?\n'+c.plate+' · '+(c.model||'')+'\n\nThis removes it from the system for this customer.')) return;
+  try{
+    if(c.src==='vehicle'){ await sb.from('gl_vehicles').delete().eq('id',c.id); }
+    else { await sb.from('gl_walkin').delete().eq('id',c.id); }
+    // if we deleted the active car, fall back to another one
+    const stillCur=(CUR&&CUR.plate||'').trim().toUpperCase().replace(/\s+/g,'')===c.plate;
+    if(stillCur){
+      const other=(window._CARS||[]).find((x,i)=>i!==idx);
+      if(other){ selectCar(other.plate, other.model); }
+    }
+    // refresh the selector
+    await loadCustomerCars((CUR&&CUR.phone)||'', (CUR&&CUR.plate)||'');
+    if(typeof toast==='function') toast('Car deleted');
+  }catch(e){ alert('Delete failed: '+(e.message||e)); }
 }
 
 /* Switch the active car: if it's already selected, go straight to the job
