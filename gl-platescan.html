@@ -44,6 +44,15 @@ html,body{height:100%;background:var(--bg);font-family:-apple-system,BlinkMacSys
 .pkg-line{display:flex;justify-content:space-between;align-items:center;font-size:13px;padding:4px 0}
 .pkg-bal{font-weight:800;color:var(--green)}
 .pkg-bal.zero{color:#e0533d}
+.cars{background:var(--card2);border-radius:12px;padding:12px 14px;margin-top:12px}
+.cars-h{font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px}
+.car-chip{display:flex;align-items:center;justify-content:space-between;gap:8px;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:6px;cursor:pointer;transition:.12s}
+.car-chip:active{transform:scale(.99)}
+.car-chip.sel{border-color:var(--gold)}
+.car-chip .cc-left{display:flex;align-items:center;gap:9px;min-width:0}
+.car-chip .cc-plate{background:var(--gold);color:#111;font-weight:800;font-size:12px;padding:2px 7px;border-radius:5px;letter-spacing:.5px;flex:0 0 auto}
+.car-chip .cc-model{font-size:13px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.car-chip .cc-go{font-size:11px;font-weight:800;color:var(--gold);flex:0 0 auto}
 .hist{margin-top:14px}
 .hist-h{font-size:12px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px}
 .hist-item{background:var(--card2);border-radius:10px;padding:10px 12px;margin-bottom:7px;font-size:13px}
@@ -132,6 +141,8 @@ html,body{height:100%;background:var(--bg);font-family:-apple-system,BlinkMacSys
       <div class="row"><span class="ic"><i class="ti ti-award"></i></span><span class="lbl">Tier</span><span class="val" id="cTier">—</span></div>
 
       <div id="pkgWrap"></div>
+
+      <div id="carsWrap"></div>
 
       <div class="hist">
         <div class="hist-h"><i class="ti ti-history"></i> Service History</div>
@@ -255,6 +266,7 @@ async function doSearch(raw){
           '<div class="pkg-line"><span>'+esc(wk.pkg_name)+'</span><span class="pkg-bal'+(bal<=0?' zero':'')+'">'+bal+' left</span></div></div>';
       }
       await loadWalkinHistory(wk.id, wk.plate||plate);
+      await loadCustomerCars(wk.phone||'', wk.plate||plate);
       $('cust').classList.add('show');
       return;
     }
@@ -278,7 +290,65 @@ async function doSearch(raw){
 
   await loadPackages(prof.phone||'', veh.plate||plate);
   await loadHistory(prof.id, veh.plate||plate);
+  await loadCustomerCars(prof.phone||'', veh.plate||plate);
   $('cust').classList.add('show');
+}
+
+/* Load ALL of the customer's cars (by phone, across gl_walkin + gl_vehicles),
+   render them as tappable chips. Tapping a car switches the active car
+   (packages + history + Create Job target). Hidden if only one car.       */
+async function loadCustomerCars(phone, currentPlate){
+  const wrap=$('carsWrap'); if(!wrap) return;
+  const core=(phone||'').replace(/\D/g,'').replace(/^(60|0)/,'');
+  if(!core){ wrap.innerHTML=''; return; }
+  const cars=[]; const seen=new Set();
+  const add=(plate,model)=>{
+    const p=(plate||'').trim().toUpperCase(); if(!p||seen.has(p)) return;
+    seen.add(p); cars.push({plate:p, model:(model||'').trim()});
+  };
+  // current car first
+  add(currentPlate, (CUR&&CUR.model)||'');
+  try{
+    // walk-in cars with same phone-core
+    const {data:wk}=await sb.from('gl_walkin').select('plate,model,phone').limit(1000);
+    (wk||[]).forEach(r=>{ if(String(r.phone||'').replace(/\D/g,'').replace(/^(60|0)/,'')===core) add(r.plate,r.model); });
+  }catch(e){}
+  try{
+    // app-member cars via profile phone
+    const {data:prof}=await sb.from('gl_profiles').select('id,phone, gl_vehicles(make,model,plate)').limit(1000);
+    (prof||[]).forEach(pr=>{
+      if(String(pr.phone||'').replace(/\D/g,'').replace(/^(60|0)/,'')!==core) return;
+      (pr.gl_vehicles||[]).forEach(v=>add(v.plate,[v.make,v.model].filter(Boolean).join(' ')));
+    });
+  }catch(e){}
+  if(cars.length<=1){ wrap.innerHTML=''; return; }  // nothing to switch between
+  const cur=(currentPlate||'').trim().toUpperCase();
+  wrap.innerHTML='<div class="cars"><div class="cars-h">Cars — tap to switch / create job</div>'+
+    cars.map(c=>`<div class="car-chip${c.plate===cur?' sel':''}" onclick="selectCar('${esc(c.plate)}','${esc((c.model||'').replace(/'/g,''))}')">`+
+      `<span class="cc-left"><span class="cc-plate">${esc(c.plate)}</span><span class="cc-model">${esc(c.model||'—')}</span></span>`+
+      `<span class="cc-go">${c.plate===cur?'SELECTED':'Create job →'}</span></div>`).join('')+'</div>';
+}
+
+/* Switch the active car: if it's already selected, go straight to the job
+   card for it; otherwise switch context (packages + history + Create Job). */
+function selectCar(plate, model){
+  const cur=(CUR&&CUR.plate||'').trim().toUpperCase();
+  if(plate===cur){
+    // already selected -> create a job for this car now
+    const phone=((CUR&&CUR.phone)||'').replace(/^\+/,'');
+    location.href=JOBCARD_URL+'?plate='+encodeURIComponent(plate)+(phone?('&phone='+encodeURIComponent(phone)):'');
+    return;
+  }
+  // switch active car
+  if(CUR){ CUR.plate=plate; CUR.model=model; }
+  $('cPlate').textContent=plate;
+  $('cModel').textContent=model||'—';
+  const phone=((CUR&&CUR.phone)||'').replace(/^\+/,'');
+  $('bookBtn').href=JOBCARD_URL+'?plate='+encodeURIComponent(plate)+(phone?('&phone='+encodeURIComponent(phone)):'');
+  // refresh balances + history for the newly selected car
+  loadPackages((CUR&&CUR.phone)||'', plate);
+  if(CUR&&CUR.ownerId) loadHistory(CUR.ownerId, plate); else loadWalkinHistory((CUR&&CUR.walkinId)||null, plate);
+  loadCustomerCars((CUR&&CUR.phone)||'', plate); // re-render to move the highlight
 }
 
 /* Package balances with the new scope rule (via gl_customer_packages RPC):
