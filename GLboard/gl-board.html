@@ -157,7 +157,9 @@ function apptDisplay(j){
 
 /* ---------- load + realtime ---------- */
 async function load(){
-  const {data}=await sb.from('gl_jobs').select('*').neq('status','paid');
+  // Show ONLY open jobs. Anything closed in POS (paid / unpaid / boss.co) or
+  // otherwise finished leaves the board automatically.
+  const {data}=await sb.from('gl_jobs').select('*').eq('status','open');
   const incoming=data||[];
   // announce newly-ready cars
   if(soundOn && !firstLoad){
