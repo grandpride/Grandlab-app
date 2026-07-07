@@ -344,26 +344,39 @@ async function loadCustomerCars(phone, currentPlate){
   // current car first
   add(currentPlate, (CUR&&CUR.model)||'');
   try{
-    // walk-in cars: match same phone-core OR (if no phone) same name
-    const {data:wk}=await sb.from('gl_walkin').select('plate,model,phone,name').limit(2000);
-    (wk||[]).forEach(r=>{
-      const rc=String(r.phone||'').replace(/\D/g,'').replace(/^(60|0)/,'');
-      const rn=String(r.name||'').trim().toUpperCase();
-      const phoneMatch = core && rc===core;
-      const nameMatch  = curName && rn===curName && rn!=='';
-      if(phoneMatch || nameMatch) add(r.plate,r.model);
-    });
+    // walk-in cars for this customer — query server-side by phone/name so we
+    // don't hit the row limit on a large table (filtering in-browser missed
+    // matches beyond the fetch cap). Try a few phone formats + the name.
+    const digits=(phone||'').replace(/\D/g,'');
+    const ors=[];
+    if(digits){
+      ors.push(`phone.ilike.%${digits}%`);
+      if(core) ors.push(`phone.ilike.%${core}%`);
+    }
+    if(curName) ors.push(`name.ilike.${curName}`);
+    if(ors.length){
+      const {data:wk}=await sb.from('gl_walkin').select('plate,model,phone,name').or(ors.join(',')).limit(200);
+      (wk||[]).forEach(r=>{
+        const rc=String(r.phone||'').replace(/\D/g,'').replace(/^(60|0)/,'');
+        const rn=String(r.name||'').trim().toUpperCase();
+        const phoneMatch = core && rc===core;
+        const nameMatch  = curName && rn===curName && rn!=='';
+        if(phoneMatch || nameMatch) add(r.plate,r.model);
+      });
+    }
   }catch(e){}
   try{
-    // app-member cars via profile phone
-    const {data:prof}=await sb.from('gl_profiles').select('id,phone,name, gl_vehicles(make,model,plate)').limit(2000);
-    (prof||[]).forEach(pr=>{
-      const rc=String(pr.phone||'').replace(/\D/g,'').replace(/^(60|0)/,'');
-      const rn=String(pr.name||'').trim().toUpperCase();
-      if((core && rc===core) || (curName && rn===curName && rn!=='')){
-        (pr.gl_vehicles||[]).forEach(v=>add(v.plate,[v.make,v.model].filter(Boolean).join(' ')));
-      }
-    });
+    // app-member cars via profile phone (also server-side filtered)
+    const digits=(phone||'').replace(/\D/g,'');
+    if(digits){
+      const {data:prof}=await sb.from('gl_profiles').select('id,phone,name, gl_vehicles(make,model,plate)').ilike('phone','%'+digits+'%').limit(50);
+      (prof||[]).forEach(pr=>{
+        const rc=String(pr.phone||'').replace(/\D/g,'').replace(/^(60|0)/,'');
+        if(core && rc===core){
+          (pr.gl_vehicles||[]).forEach(v=>add(v.plate,[v.make,v.model].filter(Boolean).join(' ')));
+        }
+      });
+    }
   }catch(e){}
   if(cars.length<=1){ wrap.innerHTML=''; return; }  // nothing to switch between
   const cur=(currentPlate||'').trim().toUpperCase();
@@ -685,7 +698,7 @@ async function saveProfile(){
       }
       if(!existing && phone){
         const digits=phone.replace(/\D/g,'');
-        const {data}=await sb.from('gl_walkin').select('id,phone').limit(1000);
+        const {data}=await sb.from('gl_walkin').select('id,phone').ilike('phone','%'+digits+'%').limit(50);
         const hit=(data||[]).find(r=>String(r.phone||'').replace(/\D/g,'')===digits);
         if(hit) existing={id:hit.id};
       }
@@ -735,8 +748,9 @@ async function saveProfile(){
       exPk=data;
     } else if(phCore){
       // per-customer: same service on ANY of this customer's plates.
-      // gather the customer's plates from gl_walkin by phone-core.
-      const {data:wk}=await sb.from('gl_walkin').select('plate,phone').limit(2000);
+      // query walk-in rows by phone server-side (avoid table-size row cap).
+      const digits=(phone||'').replace(/\D/g,'');
+      const {data:wk}=await sb.from('gl_walkin').select('plate,phone').ilike('phone','%'+digits+'%').limit(200);
       const plates=(wk||[]).filter(r=>String(r.phone||'').replace(/\D/g,'').replace(/^(60|0)/,'')===phCore)
                            .map(r=>(r.plate||'').trim().toUpperCase()).filter(Boolean);
       if(!plates.includes(plate.toUpperCase())) plates.push(plate.toUpperCase());
