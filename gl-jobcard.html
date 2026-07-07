@@ -984,33 +984,45 @@ async function setStage(id,key){
   await loadJobs(); openJob(id);
 }
 
-/* Deduct package balance for this job. Uses pkg_id if present, else finds the
-   customer's active package matching the service name. Deducts each once. */
+/* Deduct package balance for this job when it completes.
+   - If a service line has an explicit pkg_id, deduct that row directly.
+   - Otherwise use the gl_deduct_package RPC, which applies the scope rule:
+       coating -> this car; Bathe Essence/others -> the customer's shared
+       pool (any of their cars, matched by phone). Works for walk-ins too
+       (no account needed) since it matches by phone/plate, not owner_id.  */
 async function deductPackages_(j){
   const svcs=Array.isArray(j.services)?j.services:[];
-  if(!svcs.length || !j.customer_id) return false;
+  if(!svcs.length) return false;
+  const phone=(j.hp||'').toString();
+  const plate=(j.plate||'').toString();
   let any=false;
-  // gather candidate package uses: explicit pkg_id OR a coating/maintenance service
   for(const s of svcs){
-    let pkg=null;
+    const desc=(s.desc||'').trim();
+    if(!desc) continue;
+    // explicit package row chosen on the line -> deduct it directly
     if(s.pkg_id){
-      const {data}=await sb.from('gl_packages').select('id,total_uses,used_uses,service_name').eq('id',s.pkg_id).maybeSingle();
-      pkg=data;
-    }else if(/coating maintenance|bathe essence|package/i.test(s.desc||'')){
-      // match by customer + service name (clean the count prefix to compare)
-      const clean=(s.desc||'').replace(/^\s*\d+\s*x?\s*(times?\s*)?/i,'').replace(/\(package use\)/i,'').trim();
-      const {data}=await sb.from('gl_packages').select('id,total_uses,used_uses,service_name,status')
-        .eq('owner_id',j.customer_id).eq('status','active');
-      pkg=(data||[]).find(p=>{
-        const pc=(p.service_name||'').replace(/^\s*\d+\s*x?\s*(times?\s*)?/i,'').trim();
-        return pc.toLowerCase()===clean.toLowerCase() && (p.total_uses-p.used_uses)>0;
-      });
+      const {data:pk}=await sb.from('gl_packages').select('id,total_uses,used_uses,service_name').eq('id',s.pkg_id).maybeSingle();
+      if(pk){
+        const used=(pk.used_uses||0)+1;
+        if(used>(pk.total_uses||0)){ toast('⚠️ '+pk.service_name+' no balance left'); }
+        else{
+          const {error}=await sb.from('gl_packages').update({used_uses:used}).eq('id',pk.id);
+          if(!error){ any=true; toast(pk.service_name+' deducted · '+((pk.total_uses||0)-used)+' left'); }
+        }
+      }
+      continue;
     }
-    if(!pkg) continue;
-    const used=(pkg.used_uses||0)+1;
-    if(used>(pkg.total_uses||0)){ toast('⚠️ '+pkg.service_name+' no balance left'); continue; }
-    const {error}=await sb.from('gl_packages').update({used_uses:used}).eq('id',pkg.id);
-    if(!error){ any=true; toast(pkg.service_name+' deducted · '+((pkg.total_uses||0)-used)+' left'); }
+    // only try to deduct for package-ish services
+    if(!/coat|maintenance|mohs|cancoat|infinite|matte|ppf|bathe\s*essence|package/i.test(desc)) continue;
+    // clean the count prefix / "(package use)" so the RPC's coating test + name are clean
+    const clean=desc.replace(/^\s*\d+\s*x?\s*(times?\s*)?/i,'').replace(/\(package use\)/ig,'').trim();
+    try{
+      const {data:left,error}=await sb.rpc('gl_deduct_package',{p_phone:phone,p_plate:plate,p_service:clean});
+      if(error){ continue; }
+      if(typeof left==='number' && left>=0){
+        any=true; toast(clean+' deducted · '+left+' left');
+      }
+    }catch(e){ /* RPC missing -> skip silently, no double-deduct */ }
   }
   return any;
 }
