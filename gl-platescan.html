@@ -151,6 +151,7 @@ html,body{height:100%;background:var(--bg);font-family:-apple-system,BlinkMacSys
       </div>
 
       <button class="editbtn" onclick="openEdit()"><i class="ti ti-edit"></i> Edit / Complete Profile</button>
+      <button class="editbtn" style="margin-top:8px" onclick="openAddCar()"><i class="ti ti-car"></i> + Add another car</button>
     </div>
     <a class="cta" id="bookBtn" href="#"><i class="ti ti-plus"></i> Create Job (Walk-in)</a>
   </div>
@@ -205,6 +206,34 @@ html,body{height:100%;background:var(--bg);font-family:-apple-system,BlinkMacSys
     <div class="savebar">
       <button class="btn sec" onclick="closeEdit()">Cancel</button>
       <button class="btn" onclick="saveProfile()"><i class="ti ti-device-floppy"></i> Save Profile</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add Another Car modal -->
+<div class="modal" id="addCarModal">
+  <div class="sheet">
+    <h3>Add Another Car</h3>
+    <div class="msub" id="acWho">For this customer.</div>
+
+    <div class="sec-h">Vehicle</div>
+    <div class="fld"><label>Plate</label><input id="acPlate" style="text-transform:uppercase" placeholder="ABC1234"></div>
+    <div class="fld"><label>Brand <span style="font-weight:400;color:var(--text2)">— type to search</span></label>
+      <input id="acBrand" list="acBrandList" placeholder="e.g. Honda" oninput="acOnBrand()" autocomplete="off">
+      <datalist id="acBrandList"></datalist>
+    </div>
+    <div class="fld"><label>Model</label>
+      <select id="acModelSel" onchange="acOnModel()" style="display:none"><option value="">— select model —</option></select>
+      <input id="acModel" placeholder="e.g. Civic">
+    </div>
+    <div class="fld"><label>Car type</label>
+      <select id="acType"><option value="">—</option><option>Sedan</option><option>SUV/MPV</option><option>Hatchback</option><option>Pickup</option><option>Luxury</option><option>Supercar</option><option>Motorbike</option><option>Other</option></select>
+    </div>
+
+    <div class="savemsg" id="acMsg"></div>
+    <div class="savebar">
+      <button class="btn sec" onclick="closeAddCar()">Cancel</button>
+      <button class="btn" onclick="saveNewCar()"><i class="ti ti-device-floppy"></i> Save Car</button>
     </div>
   </div>
 </div>
@@ -349,6 +378,95 @@ function selectCar(plate, model){
   loadPackages((CUR&&CUR.phone)||'', plate);
   if(CUR&&CUR.ownerId) loadHistory(CUR.ownerId, plate); else loadWalkinHistory((CUR&&CUR.walkinId)||null, plate);
   loadCustomerCars((CUR&&CUR.phone)||'', plate); // re-render to move the highlight
+}
+
+/* ---------- Add Another Car (searchable brand, auto car-type) ---------- */
+async function openAddCar(){
+  if(!CUR){ alert('Search a customer first.'); return; }
+  $('acWho').textContent='For '+((CUR.name||'this customer'))+(CUR.phone?(' · '+CUR.phone):'');
+  $('acPlate').value=''; $('acBrand').value=''; $('acModel').value=''; $('acModel').style.display='block';
+  $('acModelSel').style.display='none'; $('acType').value=''; $('acMsg').textContent='';
+  if(!BRANDS.length) await loadBrands();
+  // fill the searchable brand datalist
+  const dl=$('acBrandList');
+  if(dl) dl.innerHTML=BRANDS.map(b=>`<option value="${esc(b.name)}">`).join('');
+  // make sure car types are loaded so auto-fill can match
+  if(!CAR_TYPES.length) loadCarTypes();
+  $('addCarModal').classList.add('show');
+}
+function closeAddCar(){ $('addCarModal').classList.remove('show'); }
+
+// brand typed/picked -> load that brand's models into the model select
+async function acOnBrand(){
+  const name=$('acBrand').value.trim();
+  const brand=BRANDS.find(b=>String(b.name||'').toLowerCase()===name.toLowerCase());
+  const modelSel=$('acModelSel'), modelInput=$('acModel');
+  if(!brand){ // unknown brand -> free-text model
+    modelSel.style.display='none'; modelInput.style.display='block';
+    return;
+  }
+  let models=MODELS_CACHE[brand.id];
+  if(!models){
+    const {data}=await sb.from('gl_car_models').select('name,type').eq('brand_id',brand.id).eq('active',true).order('sort_order',{ascending:true});
+    models=data||[]; MODELS_CACHE[brand.id]=models;
+  }
+  if(!models.length){ modelSel.style.display='none'; modelInput.style.display='block'; return; }
+  modelSel.style.display='block'; modelInput.style.display='none';
+  modelSel.dataset.brand=brand.name;
+  modelSel.innerHTML='<option value="">— select model —</option>'+
+    models.map(m=>`<option value="${esc(m.name)}" data-type="${esc(m.type||'')}">${esc(m.name)}</option>`).join('')+
+    '<option value="__other">Other / not listed</option>';
+}
+// model picked -> fill hidden model text + auto-fill car type from data-type
+function acOnModel(){
+  const sel=$('acModelSel'), modelInput=$('acModel');
+  const val=sel.value;
+  if(val==='__other'){ sel.style.display='none'; modelInput.style.display='block'; modelInput.value=''; modelInput.focus(); return; }
+  if(!val){ modelInput.value=''; return; }
+  const brand=sel.dataset.brand||'';
+  modelInput.value=(brand?brand+' ':'')+val;
+  const opt=sel.options[sel.selectedIndex];
+  const t=opt?opt.getAttribute('data-type'):'';
+  if(t){
+    const ty=$('acType');
+    if(![...ty.options].some(o=>o.value===t||o.textContent===t)){ const o=document.createElement('option'); o.value=t; o.textContent=t; ty.appendChild(o); }
+    ty.value=t;
+  }
+}
+
+/* Save the new car to the right table: gl_vehicles for app members
+   (owner_id present), gl_walkin for walk-ins. Keyed to the same customer.
+   Stays on the scanner and refreshes the car selector so it appears.     */
+async function saveNewCar(){
+  const plate=$('acPlate').value.trim().toUpperCase().replace(/\s+/g,'');
+  const model=$('acModel').value.trim();
+  const car_type=$('acType').value;
+  if(!plate){ $('acMsg').textContent='Enter a plate.'; return; }
+  $('acMsg').textContent='Saving…';
+  try{
+    // guard: don't duplicate an existing car
+    const {data:dup}=await sb.from('gl_walkin').select('id').ilike('plate',plate).limit(1).maybeSingle();
+    if(dup){ $('acMsg').textContent='That plate already exists.'; return; }
+
+    if(CUR && CUR.ownerId){
+      // app member -> add to gl_vehicles
+      let make='', mdl=model;
+      const parts=model.split(' ');
+      if(parts.length>1 && BRANDS.some(b=>b.name.toLowerCase()===parts[0].toLowerCase())){ make=parts[0]; mdl=parts.slice(1).join(' '); }
+      const {error}=await sb.from('gl_vehicles').insert({owner_id:CUR.ownerId, make, model:mdl, plate, car_type});
+      if(error) throw error;
+    }else{
+      // walk-in -> add a gl_walkin row for the same customer (same name/phone)
+      const {error}=await sb.from('gl_walkin').insert({
+        name:(CUR&&CUR.name)||'', phone:(CUR&&CUR.phone)||'', plate, model, car_type
+      });
+      if(error) throw error;
+    }
+    $('acMsg').textContent='';
+    closeAddCar();
+    // refresh the selector so the new car shows; keep current car active
+    await loadCustomerCars((CUR&&CUR.phone)||'', (CUR&&CUR.plate)||plate);
+  }catch(e){ $('acMsg').textContent='Save failed: '+(e.message||e); }
 }
 
 /* Package balances with the new scope rule (via gl_customer_packages RPC):
