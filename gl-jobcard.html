@@ -928,9 +928,39 @@ async function saveJob(silent){
   if(!j.plate){ toast('Plate required'); return null; }
   const {error}=await sb.from('gl_jobs').upsert(j);
   if(error){ toast('Save failed: '+error.message); return null; }
+  // register the car so the plate scanner + lookups can find it later
+  try{ await registerCar_(j); }catch(e){ console.warn('registerCar skipped:',e); }
   if(!silent){ toast('Job saved ✓'); showView('list'); }
   loadJobs();
   return j;
+}
+
+/* Make a job's car findable by the plate scanner. Walk-in/appointment cars
+   go to gl_walkin (upsert by plate); app-member cars go to gl_vehicles
+   (insert if that plate isn't already on the member). Trade jobs
+   (workshop/showroom/boss) are company cars — skipped. Add-only.        */
+async function registerCar_(j){
+  const plate=(j.plate||'').trim().toUpperCase().replace(/\s+/g,'');
+  if(!plate) return;
+  const type=String(j.cust_type||'').toLowerCase();
+  if(type==='workshop'||type==='showroom'||type==='boss') return; // company cars
+  // app member -> gl_vehicles
+  if(j.customer_id){
+    const {data:ex}=await sb.from('gl_vehicles').select('id').eq('owner_id',j.customer_id).ilike('plate',plate).limit(1).maybeSingle();
+    if(!ex){
+      let make='', mdl=(j.model||'').trim();
+      const parts=mdl.split(' ');
+      if(parts.length>1){ make=parts[0]; mdl=parts.slice(1).join(' '); }
+      await sb.from('gl_vehicles').insert({owner_id:j.customer_id, make, model:mdl, plate, car_type:j.car_type||null});
+    }
+    return;
+  }
+  // walk-in -> gl_walkin (upsert by plate; keep existing package fields intact)
+  const row={ name:j.name||'', phone:(j.hp||'').toString().replace(/^\+/,''), plate, model:j.model||'' };
+  if(j.car_type) row.car_type=j.car_type;
+  const {data:ex}=await sb.from('gl_walkin').select('id').ilike('plate',plate).limit(1).maybeSingle();
+  if(ex){ await sb.from('gl_walkin').update(row).eq('id',ex.id); }
+  else   { await sb.from('gl_walkin').insert(row); }
 }
 async function saveAndPrint(){ const j=await saveJob(true); if(j){ toast('Saved ✓'); printSlip(j); showView('list'); } }
 
