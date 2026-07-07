@@ -702,30 +702,60 @@ async function saveProfile(){
     if(error){ $('saveMsg').textContent='Profile saved, but history failed: '+error.message; return; }
   }
 
-  // 3) if a package was chosen, save it as the UNIFIED balance in gl_packages
-  //    (keyed by plate via vehicle_label, plus owner_id if this car has an app member).
-  //    This is what job card / booking / POS all read. Also mirror to gl_pending
-  //    so it auto-links if/when the customer signs up.
+  // 3) save the balance. SCOPE RULE:
+  //    - COATING (pkgIsCoat)  -> per CAR: keyed by this plate.
+  //    - OTHER (Bathe Essence) -> per CUSTOMER: update the customer's existing
+  //      balance on ANY of their plates (matched by phone); only insert if none.
+  //      This stops duplicate per-car rows for shared packages.
   if(pkg_name && plate){
     const remaining = Math.max(0, pkg_total - pkg_used);
     const ownerId=(CUR&&CUR.ownerId)||null;
-    // gl_packages: update existing same-service on this plate, else insert
-    const {data:exPk}=await sb.from('gl_packages')
-      .select('id').ilike('vehicle_label',plate).eq('service_name',pkg_name).eq('status','active').limit(1).maybeSingle();
-    const pkgBody={ owner_id:ownerId, vehicle_id:null, vehicle_label:plate,
+    const phCore=(phone||'').replace(/\D/g,'').replace(/^(60|0)/,'');
+
+    // ---- gl_packages ----
+    let exPk=null;
+    if(pkgIsCoat){
+      // per-car: same service on this plate
+      const {data}=await sb.from('gl_packages')
+        .select('id').ilike('vehicle_label',plate).eq('service_name',pkg_name).eq('status','active').limit(1).maybeSingle();
+      exPk=data;
+    } else if(phCore){
+      // per-customer: same service on ANY of this customer's plates.
+      // gather the customer's plates from gl_walkin by phone-core.
+      const {data:wk}=await sb.from('gl_walkin').select('plate,phone').limit(2000);
+      const plates=(wk||[]).filter(r=>String(r.phone||'').replace(/\D/g,'').replace(/^(60|0)/,'')===phCore)
+                           .map(r=>(r.plate||'').trim().toUpperCase()).filter(Boolean);
+      if(!plates.includes(plate.toUpperCase())) plates.push(plate.toUpperCase());
+      // find an active same-service package on any of those plates (or owner)
+      let q=sb.from('gl_packages').select('id,vehicle_label').eq('service_name',pkg_name).eq('status','active');
+      const {data:cand}=await q;
+      exPk=(cand||[]).find(p=>plates.includes(String(p.vehicle_label||'').trim().toUpperCase())) || null;
+    }
+    const pkgBody={ owner_id:ownerId, vehicle_id:null,
       service_name:pkg_name, pkg_type: pkgIsCoat?'coating_maintenance':'package',
       total_uses:pkg_total, used_uses:pkg_used, status:'active', source:'platescan' };
+    // keep the balance on the current plate label when creating; when updating a
+    // per-customer row, don't move its existing vehicle_label.
     if(exPk){
       const {error:upErr}=await sb.from('gl_packages').update(pkgBody).eq('id',exPk.id);
       if(upErr){ $('saveMsg').textContent='Package balance failed (update): '+upErr.message; return; }
     } else {
-      const {error:inErr}=await sb.from('gl_packages').insert({...pkgBody, barcode:genBarcodeValue()});
+      const {error:inErr}=await sb.from('gl_packages').insert({...pkgBody, vehicle_label:plate, barcode:genBarcodeValue()});
       if(inErr){ $('saveMsg').textContent='Package balance failed (insert): '+inErr.message; return; }
     }
-    // mirror to gl_pending (for signup auto-claim) when we have a phone
+
+    // ---- gl_pending (signup auto-claim) ----
     if(phone){
-      const {data:exPend}=await sb.from('gl_pending')
-        .select('id').eq('phone',phone).eq('plate',plate).eq('service_name',pkg_name).eq('claimed',false).limit(1).maybeSingle();
+      let exPend=null;
+      if(pkgIsCoat){
+        const {data}=await sb.from('gl_pending')
+          .select('id').eq('plate',plate).eq('service_name',pkg_name).eq('claimed',false).limit(1).maybeSingle();
+        exPend=data;
+      } else if(phCore){
+        // per-customer: any unclaimed same-service row for this phone
+        const {data:pend}=await sb.from('gl_pending').select('id,phone').eq('service_name',pkg_name).eq('claimed',false);
+        exPend=(pend||[]).find(r=>String(r.phone||'').replace(/\D/g,'').replace(/^(60|0)/,'')===phCore) || null;
+      }
       const pendBody={ phone, name, plate, service_name:pkg_name, remaining, is_coating:pkgIsCoat, source:'platescan', claimed:false };
       if(exPend){ await sb.from('gl_pending').update(pendBody).eq('id',exPend.id); }
       else { await sb.from('gl_pending').insert(pendBody); }
