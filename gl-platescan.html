@@ -271,15 +271,21 @@ async function doSearch(raw){
   $('status').textContent='Searching '+plate+'…';
   $('cust').classList.remove('show'); $('notfound').classList.remove('show');
 
-  const {data:veh}=await sb.from('gl_vehicles')
+  const {data:vehList}=await sb.from('gl_vehicles')
     .select('id,make,model,plate,owner_id, gl_profiles(id,name,phone,email,tier)')
-    .ilike('plate',plate).limit(1).maybeSingle();
+    .ilike('plate','%'+plate+'%').limit(5);
+  const _norm=s=>String(s||'').toUpperCase().replace(/\s+/g,'');
+  const veh=(vehList||[]).find(v=>_norm(v.plate)===plate) || (vehList||[])[0] || null;
 
   if(!veh || !veh.gl_profiles){
-    // fallback: look in gl_walkin (shop/Mochi customers not yet registered)
-    const {data:wkAll}=await sb.from('gl_walkin').select('*').ilike('plate',plate).limit(20);
+    // fallback: look in gl_walkin (shop/Mochi customers not yet registered).
+    // wildcard match so stored plates with stray spaces still resolve, then
+    // confirm by comparing normalised plate (strip spaces/case).
+    const {data:wkAll}=await sb.from('gl_walkin').select('*').ilike('plate','%'+plate+'%').limit(20);
+    const norm=s=>String(s||'').toUpperCase().replace(/\s+/g,'');
+    const matches=(wkAll||[]).filter(r=>norm(r.plate)===plate);
     // prefer the row that actually has a phone (dedupe leftovers can be blank)
-    const wk=(wkAll||[]).sort((a,b)=>
+    const wk=(matches.length?matches:(wkAll||[])).sort((a,b)=>
       (String(b.phone||'').replace(/\D/g,'').length) - (String(a.phone||'').replace(/\D/g,'').length)
     )[0] || null;
     if(wk){
