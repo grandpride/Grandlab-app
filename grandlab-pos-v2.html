@@ -1059,14 +1059,29 @@ async function loadCheckoutPackages(job){
   PAY.pkgList=[];
   const plate=(job.plate||CUR.plate||'').trim().toUpperCase();
   const ownerId=job.customer_id||CUR.customer_id||null;
-  if(!plate && !ownerId) return;
+  const phone=(job.hp||CUR.hp||CUR.phone||'').toString();
+  if(!plate && !ownerId && !phone) return;
+  // PRIMARY: customer-scoped RPC (coating per-car, Bathe Essence shared by phone)
+  try{
+    const {data,error}=await sb.rpc('gl_customer_packages',{p_phone:phone||'',p_plate:plate||''});
+    if(!error && data){
+      PAY.pkgList=data.map(r=>({
+        id:null,                       // per-customer rows have no single id
+        service_name:r.out_service_name,
+        total_uses:r.out_total_uses, used_uses:r.out_used_uses,
+        remaining:Number(r.out_balance)||0,
+        scope:r.out_scope, vehicle_label:r.out_vehicle_label
+      })).filter(p=>p.remaining>0);
+      if(PAY.pkgList.length) return;
+    }
+  }catch(e){ /* fall back below */ }
+  // FALLBACK: legacy plate/owner read
   let q=sb.from('gl_packages').select('id,owner_id,vehicle_label,service_name,total_uses,used_uses,status').eq('status','active');
-  // match by plate OR owner
   if(plate && ownerId) q=q.or(`vehicle_label.ilike.${plate},owner_id.eq.${ownerId}`);
   else if(plate) q=q.ilike('vehicle_label',plate);
-  else q=q.eq('owner_id',ownerId);
+  else if(ownerId) q=q.eq('owner_id',ownerId);
   const {data}=await q;
-  PAY.pkgList=(data||[]).filter(p=>((p.total_uses||0)-(p.used_uses||0))>0);
+  PAY.pkgList=(data||[]).map(p=>({...p,remaining:(p.total_uses||0)-(p.used_uses||0)})).filter(p=>p.remaining>0);
 }
 
 function netDue(){
@@ -1134,12 +1149,13 @@ function renderCheckout(){
     <div class="section-h">Adjustments</div>
     ${PAY.depositUsed>0?`<div class="adj"><span class="lab"><i class="ti ti-cash"></i> Deposit already paid</span><span class="val">−${RM(PAY.depositUsed)}</span></div>`:''}
 
-    ${(PAY.pkgList&&PAY.pkgList.length)?PAY.pkgList.map(p=>{
-      const bal=(p.total_uses||0)-(p.used_uses||0);
-      const on=PAY.pkgUse&&PAY.pkgUse.id===p.id;
+    ${(PAY.pkgList&&PAY.pkgList.length)?PAY.pkgList.map((p,pi)=>{
+      const bal=(p.remaining!=null?p.remaining:((p.total_uses||0)-(p.used_uses||0)));
+      const on=PAY.pkgUse&&PAY.pkgUseIdx===pi;
+      const allcars = p.scope==='customer' ? ' <span style="font-size:9px;color:var(--gold-deep);border:1px solid currentColor;border-radius:5px;padding:0 3px">ALL CARS</span>' : '';
       return `<div class="adj">
-        <span class="lab"><i class="ti ti-package"></i> ${esc(cleanPkgName(p.service_name))} <b style="color:var(--gold-deep)">· ${bal} left</b>${on?` <span style="color:var(--ink3);font-size:11px">(will use 1 → ${bal-1} left)</span>`:''}</span>
-        <button class="toggle ${on?'on':''}" onclick="togglePkgUse('${p.id}')"><span class="dot"></span></button>
+        <span class="lab"><i class="ti ti-package"></i> ${esc(cleanPkgName(p.service_name))}${allcars} <b style="color:var(--gold-deep)">· ${bal} left</b>${on?` <span style="color:var(--ink3);font-size:11px">(will use 1 → ${bal-1} left)</span>`:''}</span>
+        <button class="toggle ${on?'on':''}" onclick="togglePkgUse(${pi})"><span class="dot"></span></button>
       </div>`;
     }).join('')
     :`<div class="adj" style="opacity:.6"><span class="lab"><i class="ti ti-package"></i> No package on this vehicle</span></div>`}
@@ -1252,9 +1268,9 @@ function clearCheckout(){
 }
 
 /* ---------- adjustments ---------- */
-function togglePkgUse(id){
-  if(PAY.pkgUse && String(PAY.pkgUse.id)===String(id)){ PAY.pkgUse=null; }
-  else { PAY.pkgUse=(PAY.pkgList||[]).find(p=>String(p.id)===String(id))||null; }
+function togglePkgUse(idx){
+  if(PAY.pkgUse && PAY.pkgUseIdx===idx){ PAY.pkgUse=null; PAY.pkgUseIdx=null; }
+  else { PAY.pkgUse=(PAY.pkgList||[])[idx]||null; PAY.pkgUseIdx=(PAY.pkgUse?idx:null); }
   PAY.packageUsed=!!PAY.pkgUse;
   renderCheckout();
 }
@@ -1704,12 +1720,24 @@ async function confirmPay(){
       const {error}=await sb.rpc('gl_deduct_points',{p_customer:CUR.customer_id,p_points:PAY.pointsUsed});
       if(error) throw new Error('Points: '+error.message);
     }
-    if(PAY.pkgUse && PAY.pkgUse.id && !PAY.voucher){
-      // deduct 1 use from the specific package the cashier selected
-      const {data:pk}=await sb.from('gl_packages').select('id,total_uses,used_uses')
-        .eq('id',PAY.pkgUse.id).maybeSingle();
-      if(pk && (pk.total_uses-pk.used_uses)>0){
-        await sb.from('gl_packages').update({used_uses:(pk.used_uses||0)+1}).eq('id',pk.id);
+    if(PAY.pkgUse && !PAY.voucher){
+      if(PAY.pkgUse.id){
+        // specific package row selected -> deduct it directly
+        const {data:pk}=await sb.from('gl_packages').select('id,total_uses,used_uses')
+          .eq('id',PAY.pkgUse.id).maybeSingle();
+        if(pk && (pk.total_uses-pk.used_uses)>0){
+          await sb.from('gl_packages').update({used_uses:(pk.used_uses||0)+1}).eq('id',pk.id);
+        }
+      } else {
+        // per-customer package (no single id) -> deduct from the shared pool
+        // via the RPC (coating per-car, Bathe Essence shared by phone).
+        try{
+          await sb.rpc('gl_deduct_package',{
+            p_phone:(CUR.hp||CUR.phone||'').toString(),
+            p_plate:(CUR.plate||''),
+            p_service:PAY.pkgUse.service_name||''
+          });
+        }catch(e){ /* non-fatal: don't block the sale */ }
       }
     }
     // decrement stock for any tracked products in this order
