@@ -1078,6 +1078,28 @@ function netDue(){
 }
 function cleanPkgName(s){ return (s||'').replace(/^\s*\d+\s*x?\s*(times?\s*)?/i,'').trim(); }
 
+/* Proper display name for the checkout header, by job type:
+   workshop/showroom/boss -> the org/company name from the job card
+   (workshop_name, e.g. "Lemans Workshop" / "Palm Motor" / boss name);
+   walk-in -> the customer name; blank -> a sensible type label.        */
+function checkoutName_(j){
+  const type=String(j.cust_type||'').toLowerCase();
+  const org=(j.workshop_name||'').trim();
+  const nm=(j.name||'').trim();
+  if(type==='workshop'||type==='showroom') return org || nm || (type==='workshop'?'Workshop':'Showroom');
+  if(type==='boss') return org || nm || 'Boss.co';
+  return nm || 'Walk-in customer';
+}
+/* Like checkoutName_ but for DB writes: returns the real org/customer name
+   or '' (never a UI placeholder like "Walk-in customer"). */
+function recordName_(j){
+  const type=String(j.cust_type||'').toLowerCase();
+  const org=(j.workshop_name||'').trim();
+  const nm=(j.name||'').trim();
+  if(type==='workshop'||type==='showroom'||type==='boss') return org || nm || '';
+  return nm || '';
+}
+
 function renderCheckout(){
   const svc=jobServices(CUR);
   const due=netDue();
@@ -1086,11 +1108,19 @@ function renderCheckout(){
   [Math.ceil(due), Math.ceil(due/5)*5, Math.ceil(due/10)*10, Math.ceil(due/50)*50, 50,100,150,200]
     .forEach(v=>{ if(v>exact && !ups.includes(v) && ups.length<8) ups.push(v); });
   const quicks=ups.slice(0,8);
+  const _type = String(CUR.cust_type||'').toLowerCase();
+  const _boss = _type==='boss';
+  // proper display name by job type: workshop/showroom/boss use the org/company
+  // name from the job card; walk-in uses the customer name.
+  const _name = checkoutName_(CUR);
+  const _chipMap = {boss:'BOSS.CO', workshop:'WORKSHOP', showroom:'SHOWROOM'};
+  const _typeChip = _chipMap[_type]
+    ? `<span class="chip" style="background:#111;color:var(--gold);margin-left:6px">${_chipMap[_type]}</span>` : '';
 
   $('coBody').innerHTML=`
     <div class="co-head">
       <div>
-        <div class="co-name">${esc(titleCase(CUR.name||'Walk-in customer'))} <i class="ti ti-edit" style="font-size:14px;color:var(--gold-deep);cursor:pointer;margin-left:4px" onclick="openEditCust()" title="Edit customer details"></i></div>
+        <div class="co-name">${esc(titleCase(_name))}${_typeChip} <i class="ti ti-edit" style="font-size:14px;color:var(--gold-deep);cursor:pointer;margin-left:4px" onclick="openEditCust()" title="Edit customer details"></i></div>
         <div class="co-sub">${esc(titleCase(CUR.model||'—'))} · ${esc(CUR.plate||'—')}${CUR.hasProfile||PAY.hasProfile?' · app member':''}</div>
       </div>
       <button class="btn-mini" onclick="clearCheckout()"><i class="ti ti-x"></i></button>
@@ -1205,6 +1235,9 @@ function renderCheckout(){
         <i class="ti ti-check"></i> Confirm payment
       </button>
     </div>
+    ${String(CUR.cust_type||'').toLowerCase()==='boss'?`<button class="btn" id="bossBtn" style="margin-top:9px;background:#111;color:var(--gold)" onclick="confirmBoss()">
+      <i class="ti ti-crown"></i> Boss.co — close (RM0, no charge)
+    </button>`:''}
     ${!CUR._walkin?`<button class="btn btn-ghost" style="margin-top:9px" onclick="${CUR.on_hold?'resumeHold':'holdOrder'}()">
       <i class="ti ti-player-${CUR.on_hold?'play':'pause'}"></i> ${CUR.on_hold?'Resume (remove hold)':'Put on hold (finish later)'}
     </button>`:''}
@@ -1287,7 +1320,7 @@ let CATALOG=[];
 async function loadCatalog(){
   if(CATALOG.length) return;
   const {data}=await sb.from('gl_services')
-    .select('id,name,category,base_price,price_by_type,media,rebate_kind,stock,track_stock,is_package,pkg_uses,subtitle,active,sort_order,hidden')
+    .select('id,name,category,base_price,price_by_type,media,rebate_kind,stock,track_stock,is_package,subtitle,active,sort_order,hidden')
     .eq('active',true).order('sort_order',{ascending:true});
   CATALOG=(data||[]).filter(s=>!s.hidden);
 }
@@ -1398,66 +1431,6 @@ function addCustomItem(){
   _addLine(desc,price,null);
   closeModal('catModal');
 }
-/* write a package purchase to gl_packages (the shared source of truth that
-   the plate scanner, job card, booking and POS all read). Finds package
-   lines in the current order and, per package, updates an existing active
-   same-service package on this plate (adds the uses) or inserts a new one
-   with a barcode. Also mirrors to gl_pending for app-signup auto-claim.
-   Matches the plate scanner's format exactly.                            */
-function genBarcodeValue_(){
-  const t=Date.now().toString(36).toUpperCase();
-  const r=Math.random().toString(36).slice(2,7).toUpperCase();
-  return ('GL'+t+r).replace(/[^A-Z0-9]/g,'');
-}
-async function writePackageBalance_(){
-  const lines=jobServices(CUR).filter(x=>x._isPackage && (Number(x._pkgUses)||0)>0);
-  if(!lines.length) return;
-  const plate=(CUR.plate||'').trim();
-  if(!plate) return; // gl_packages is keyed by plate (vehicle_label)
-  const ownerId=CUR.customer_id||null;
-  const phone=(CUR.hp||CUR.phone||'').trim();
-  const name=CUR.name||'';
-  for(const ln of lines){
-    const svcName=ln._pkgName || 'Package';
-    const addUses=Number(ln._pkgUses)||0;
-    if(addUses<=0) continue;
-    const isCoat=/coat|maintenance|mohs|cancoat|infinite|matte/i.test(svcName);
-    // existing active same-service package on this plate -> add the uses
-    const {data:ex}=await sb.from('gl_packages')
-      .select('id,total_uses,used_uses').ilike('vehicle_label',plate)
-      .eq('service_name',svcName).eq('status','active').limit(1).maybeSingle();
-    if(ex){
-      await sb.from('gl_packages').update({
-        total_uses:(Number(ex.total_uses)||0)+addUses
-      }).eq('id',ex.id);
-    }else{
-      await sb.from('gl_packages').insert({
-        owner_id:ownerId, vehicle_id:null, vehicle_label:plate,
-        service_name:svcName, pkg_type:isCoat?'coating_maintenance':'package',
-        total_uses:addUses, used_uses:0, status:'active', source:'pos',
-        barcode:genBarcodeValue_()
-      });
-    }
-    // mirror to gl_pending so it auto-links on app signup (needs a phone)
-    if(phone){
-      try{
-        const {data:exP}=await sb.from('gl_pending')
-          .select('id,remaining').eq('phone',phone).eq('plate',plate)
-          .eq('service_name',svcName).eq('claimed',false).limit(1).maybeSingle();
-        if(exP){
-          await sb.from('gl_pending').update({
-            remaining:(Number(exP.remaining)||0)+addUses
-          }).eq('id',exP.id);
-        }else{
-          await sb.from('gl_pending').insert({
-            phone, name, plate, service_name:svcName, remaining:addUses,
-            is_coating:isCoat, source:'pos', claimed:false
-          });
-        }
-      }catch(e){ /* gl_pending mirror is non-fatal */ }
-    }
-  }
-}
 function _addLine(desc,price,svc){
   let arr=jobServices(CUR);
   // preserve original job total if line items don't already sum to it
@@ -1467,12 +1440,6 @@ function _addLine(desc,price,svc){
   const line={desc,price,_added:true};
   // tag product line so we can decrement stock on payment
   if(svc && svc.rebate_kind==='product' && svc.track_stock){ line._prodId=svc.id; }
-  // tag package purchase so checkout can write the balance to gl_walkin
-  if(svc && svc.is_package){
-    line._isPackage=true;
-    line._pkgUses=Number(svc.pkg_uses)||0;
-    line._pkgName=cleanPkgName(svc.name);
-  }
   arr.push(line);
   CUR.services=arr;
   PAY.gross=arr.reduce((s,x)=>s+svcPrice(x),0);
@@ -1757,7 +1724,7 @@ async function confirmPay(){
     const isUuid=v=>typeof v==='string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
     const {error:payErr}=await sb.from('gl_payments').insert({
       job_id:CUR._walkin?null:String(CUR.id), invoice_no:invoice, customer_id:CUR.customer_id||null,
-      customer_name:CUR.name||'', phone:CUR.hp||CUR.phone||'', plate:CUR.plate||'',
+      customer_name:recordName_(CUR), phone:CUR.hp||CUR.phone||'', plate:CUR.plate||'',
       gross:PAY.gross, discount:PAY.discount, discount_by:PAY.discountBy||null,
       deposit_used:PAY.depositUsed, package_used:PAY.packageUsed,
       pkg_used_id:(PAY.pkgUse&&!PAY.voucher&&isUuid(String(PAY.pkgUse.id)))?PAY.pkgUse.id:null,
@@ -1769,9 +1736,6 @@ async function confirmPay(){
       items:JSON.stringify(jobServices(CUR).map(s=>({desc:svcDesc(s),price:svcPrice(s),qty:s.qty||1,code:s.code||''})))
     });
     if(payErr) throw new Error('Payment: '+payErr.message);
-    // if this order included a package purchase, record the balance on the
-    // customer's gl_walkin row so the sheet mirror + future checkouts see it.
-    try{ await writePackageBalance_(); }catch(e){ console.warn('pkg balance write skipped:',e); }
     if(!CUR._walkin){
       await sb.from('gl_jobs').update({status:'paid', payment:methodLabel, collected:true, total:PAY.gross, on_hold:false}).eq('id',CUR.id);
       JOBS=JOBS.filter(j=>j.id!==CUR.id);
@@ -1781,6 +1745,39 @@ async function confirmPay(){
   }catch(e){
     alert('Could not complete: '+e.message);
     $('payBtn').disabled=false; $('payBtn').innerHTML='<i class="ti ti-check"></i> Confirm payment';
+  }
+}
+
+/* ---------- boss.co close (RM0, no charge, no package deduction) ---------- */
+async function confirmBoss(){
+  if(String(CUR.cust_type||'').toLowerCase()!=='boss'){ return; }
+  if(!confirm('Close this Boss.co job as RM0 (no charge)?\nRecorded with payment method "boss.co". No package balance is used.')) return;
+  const btn=$('bossBtn'); if(btn){ btn.disabled=true; btn.innerHTML='<i class="ti ti-loader"></i> Processing…'; }
+  try{
+    const {data:invData,error:invErr}=await sb.rpc('gl_next_invoice_no');
+    if(invErr) throw new Error('Invoice: '+invErr.message);
+    const invoice=invData;
+    // record a RM0 sale, method boss.co — NO wallet/points/package/stock changes
+    const {error:payErr}=await sb.from('gl_payments').insert({
+      job_id:CUR._walkin?null:String(CUR.id), invoice_no:invoice, customer_id:CUR.customer_id||null,
+      customer_name:recordName_(CUR), phone:CUR.hp||CUR.phone||'', plate:CUR.plate||'',
+      gross:0, discount:0, deposit_used:0, package_used:false,
+      wallet_used:0, points_used:0, points_value:0,
+      voucher_code:null, voucher_value:0,
+      net_paid:0, method:'boss.co', taken_by:ME,
+      attendee:CUR.attendee||null, sqlacc_code:CUR.sqlacc_code||null,
+      items:JSON.stringify(jobServices(CUR).map(s=>({desc:svcDesc(s),price:svcPrice(s),qty:s.qty||1,code:s.code||''})))
+    });
+    if(payErr) throw new Error('Payment: '+payErr.message);
+    if(!CUR._walkin){
+      await sb.from('gl_jobs').update({status:'paid', payment:'boss.co', collected:true, total:0, on_hold:false}).eq('id',CUR.id);
+      JOBS=JOBS.filter(j=>j.id!==CUR.id);
+    }
+    showDone(invoice, 0);
+    loadTakings();
+  }catch(e){
+    alert('Could not complete: '+e.message);
+    if(btn){ btn.disabled=false; btn.innerHTML='<i class="ti ti-crown"></i> Boss.co — close (RM0, no charge)'; }
   }
 }
 
@@ -1797,7 +1794,7 @@ async function markUnpaid(){
     // record the outstanding amount
     const {error:upErr}=await sb.from('gl_unpaid').insert({
       job_id:String(CUR.id), invoice_no:invoice, customer_id:CUR.customer_id||null,
-      customer_name:CUR.name||'', phone:CUR.hp||CUR.phone||'', plate:CUR.plate||'',
+      customer_name:recordName_(CUR), phone:CUR.hp||CUR.phone||'', plate:CUR.plate||'',
       workshop_name:CUR.workshop_name||'', amount_owed:Math.max(0,amount),
       gross:PAY.gross, deposit_used:PAY.depositUsed, marked_by:ME
     });
