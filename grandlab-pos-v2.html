@@ -1087,12 +1087,14 @@ function downloadSettlementPdf_(day, list, sums){
     +'<td style="border:1px solid #000;padding:4px 6px;text-align:right;white-space:nowrap">'+money(r.net_paid)+'</td></tr>').join('');
   const methodRows=SETTLEMENT_METHODS.map(c=>'<tr><td style="padding:2px 8px">'+c+'</td><td style="padding:2px 8px;text-align:right">'+money(sums.byCat[c])+'</td></tr>').join('');
   const periodLabel=day.toLocaleDateString('en-GB',{weekday:'long',day:'2-digit',month:'short',year:'numeric'});
-  const html='<!DOCTYPE html><html><head><meta charset="utf-8"><title>'+fname+'</title>'
+  const printBtn='<div class="no-print" style="text-align:center;margin:14px 0"><button onclick="window.print()" style="padding:8px 16px;font-size:14px;cursor:pointer">🖨️ Save as PDF / Print</button></div>';
+  const fullHtml='<!DOCTYPE html><html><head><meta charset="utf-8"><title>'+fname+'</title>'
     +'<style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,sans-serif;font-size:12px;color:#000;padding:18px;max-width:900px;margin:0 auto}'
     +'.title{font-size:20px;font-weight:900}.sub{font-size:12px;color:#333;margin:2px 0 12px}'
     +'table{width:100%;border-collapse:collapse;margin-top:8px}th{border:1px solid #000;padding:5px 6px;font-size:11px;background:#f0f0f0;text-align:left}'
     +'.sumbox{margin:10px 0;border:1px solid #000;padding:8px 10px;max-width:320px}.sumbox b{font-size:13px}'
-    +'@media print{body{padding:8px}}</style></head><body>'
+    +'@media print{body{padding:8px}.no-print{display:none}}</style></head><body>'
+    +printBtn
     +'<div class="title">Grandlab Detailing</div><div class="sub">Daily Sales Settlement · '+periodLabel+'</div>'
     +'<div class="sumbox"><b>Cash opening: '+money(sums.opening)+'</b><br><b>Cash closing: '+money(sums.closing)+'</b></div>'
     +'<div class="sumbox"><table style="margin:0"><tbody>'+methodRows+'</tbody></table></div>'
@@ -1100,8 +1102,19 @@ function downloadSettlementPdf_(day, list, sums){
     +'<tbody>'+rowsHtml+'</tbody></table>'
     +'<div style="margin-top:12px;font-weight:800">TODAY SALES: '+money(sums.todaySales)+' &nbsp;·&nbsp; UTD TOTAL: '+money(sums.utd)+'</div>'
     +'</body></html>';
-  const w=window.open('','_blank');
-  if(w){ w.document.title=fname; w.document.write(html); w.document.close(); setTimeout(()=>w.print(),700); }
+  // download as a file (blob) — never blocked by popup blockers, keeps the name
+  try{
+    const blob=new Blob([fullHtml],{type:'text/html'});
+    const a=document.createElement('a');
+    a.href=URL.createObjectURL(blob);
+    a.download=fname+'.html';
+    document.body.appendChild(a); a.click();
+    setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+  }catch(e){
+    // fallback: open in a window if blob download fails
+    const w=window.open('','_blank');
+    if(w){ w.document.title=fname; w.document.write(fullHtml); w.document.close(); }
+  }
 }
 
 
