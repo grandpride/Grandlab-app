@@ -109,6 +109,7 @@ html,body{height:100%;background:var(--bg);font-family:-apple-system,BlinkMacSys
     <button class="nav-btn a" data-view="list" onclick="showView('list')"><i class="ti ti-list"></i>Jobs</button>
     <button class="nav-btn" data-view="new" onclick="newJob()"><i class="ti ti-plus"></i>New</button>
     <button class="nav-btn" data-view="report" onclick="showView('report')"><i class="ti ti-chart-bar"></i>Report</button>
+    <button class="nav-btn" data-view="absent" onclick="showView('absent');loadAbsent()"><i class="ti ti-user-x"></i>Absent</button>
     <button class="nav-btn" data-view="settings" onclick="showView('settings')"><i class="ti ti-settings"></i>Settings</button>
   </div>
 
@@ -232,6 +233,15 @@ html,body{height:100%;background:var(--bg);font-family:-apple-system,BlinkMacSys
       <div class="card">
         <div class="card-t"><i class="ti ti-chart-bar"></i> Today's Jobs</div>
         <div id="reportBody"><div class="empty">Loading…</div></div>
+      </div>
+    </div>
+
+    <!-- ABSENT / NO-SHOW VIEW -->
+    <div class="view" id="view-absent">
+      <div class="card">
+        <div class="card-t"><i class="ti ti-user-x"></i> Absent / No-show — last 7 days</div>
+        <div style="font-size:12px;color:var(--text2);margin-bottom:10px">Customers marked absent. Tap 💬 to send a WhatsApp reminder. Reminded ones are tagged so you don't double-message.</div>
+        <div id="absentBody"><div class="empty">Loading…</div></div>
       </div>
     </div>
 
@@ -469,7 +479,7 @@ function showView(v){
   const vid = v==='detail'?'detail':(v==='new'?'form':v);
   $('view-'+vid).classList.add('a');
   document.querySelectorAll('.nav-btn').forEach(b=>b.classList.toggle('a',b.dataset.view===v));
-  $('hdrSub').textContent={list:'All jobs',new:'New job card',report:'Daily report',detail:'Job details',settings:'Manage lists'}[v]||'';
+  $('hdrSub').textContent={list:'All jobs',new:'New job card',report:'Daily report',detail:'Job details',absent:'Absent / no-show',settings:'Manage lists'}[v]||'';
   if(v==='settings') renderSettings();
 }
 
@@ -992,6 +1002,51 @@ async function registerCar_(j){
 }
 async function saveAndPrint(){ const j=await saveJob(true); if(j){ toast('Saved ✓'); printSlip(j); showView('list'); } }
 
+/* ---------- ABSENT / NO-SHOW list + WhatsApp reminder ---------- */
+async function loadAbsent(){
+  const box=$('absentBody'); if(box) box.innerHTML='<div class="empty">Loading…</div>';
+  const since=new Date(Date.now()-7*24*60*60*1000).toISOString();
+  const {data,error}=await sb.from('gl_jobs')
+    .select('id,name,hp,plate,model,cust_type,workshop_name,no_show,no_show_at,no_show_reminded_at,slot_time,created_at')
+    .eq('no_show',true).gte('no_show_at',since).order('no_show_at',{ascending:false});
+  if(error){ if(box) box.innerHTML='<div class="empty">Error: '+esc(error.message)+'</div>'; return; }
+  const rows=data||[];
+  if(!rows.length){ if(box) box.innerHTML='<div class="empty">No absent customers in the last 7 days. 🎉</div>'; return; }
+  box.innerHTML=rows.map(j=>{
+    const nm=j.name||j.workshop_name||'Customer';
+    const when=j.no_show_at?new Date(j.no_show_at).toLocaleDateString('en-GB'):'';
+    const done=!!j.no_show_reminded_at;
+    const phone=(j.hp||'').toString();
+    return `<div style="border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:8px">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+        <div style="min-width:0">
+          <div style="font-weight:800">${esc(nm)}${done?' <span style="font-size:10px;color:#16A34A;border:1px solid #16A34A;border-radius:6px;padding:0 5px;vertical-align:middle">reminded</span>':''}</div>
+          <div style="font-size:12px;color:var(--text2)">${esc(j.model||'')}${j.plate?' · '+esc(j.plate):''}${when?' · absent '+when:''}</div>
+          <div style="font-size:12px;color:var(--text3)">${esc(phone||'no phone')}</div>
+        </div>
+        <button class="btn btn-pri" style="flex:0 0 auto" onclick="remindAbsent('${j.id}')" ${phone?'':'disabled'}>💬 Remind</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function remindAbsent(id){
+  const {data:j}=await sb.from('gl_jobs').select('id,name,hp,plate,model,slot_time,workshop_name').eq('id',id).maybeSingle();
+  if(!j){ toast('Job not found'); return; }
+  const phone=(j.hp||'').toString().replace(/\D/g,'');
+  if(!phone){ toast('No phone number for this customer'); return; }
+  const nm=(j.name||j.workshop_name||'').split(' ')[0]||'there';
+  const car=j.model?(' for your '+j.model):'';
+  const msg=`Hi ${nm}! 👋 This is GrandLab Detailing. We missed you at your recent appointment${car}. Would you like to reschedule? Just reply here and we'll find a new slot for you. 🚗✨`;
+  const wa=(/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)?'https://wa.me/':'https://web.whatsapp.com/send?phone=')
+    + (/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)?(phone.replace(/^0/,'60')+'?text='+encodeURIComponent(msg)):(phone.replace(/^0/,'60')+'&text='+encodeURIComponent(msg)));
+  window.open(wa,'_blank');
+  // tag as reminded so it won't be double-messaged
+  await sb.from('gl_jobs').update({no_show_reminded_at:new Date().toISOString()}).eq('id',id);
+  toast('WhatsApp opened · marked reminded');
+  loadAbsent();
+}
+
 /* ---------- DETAIL ---------- */
 function openJob(id){
   const j=JOBS.find(x=>x.id===id); if(!j)return;
@@ -1014,6 +1069,9 @@ function openJob(id){
       <button class="btn btn-dark" style="flex:1" onclick="printSlip(JOBS.find(x=>x.id==='${j.id}'))"><i class="ti ti-printer"></i> Print</button>
       <button class="btn btn-ghost" style="flex:1" onclick="editJob('${j.id}')"><i class="ti ti-edit"></i> Edit</button>
     </div>
+    <button class="btn btn-block" style="margin-bottom:8px;${j.no_show?'background:#C0392B;color:#fff':'background:transparent;border:1px solid #C0392B;color:#C0392B'}" onclick="toggleNoShow('${j.id}')">
+      <i class="ti ti-user-x"></i> ${j.no_show?'Absent / No-show ✓ (tap to undo)':'Mark Absent / No-show'}
+    </button>
     ${(j.cust_type==='workshop'||j.cust_type==='showroom')
       ? `<button class="btn btn-pri btn-block" style="margin-bottom:8px" onclick="markCollected('${j.id}')"><i class="ti ti-circle-check"></i> Collected (remove from board)</button>`
       : `<button class="btn btn-pri btn-block" style="margin-bottom:8px" onclick="markPaid('${j.id}')"><i class="ti ti-cash"></i> Paid &amp; collected (remove from board)</button>`}
@@ -1039,6 +1097,21 @@ async function setStage(id,key){
   }
   await sb.from('gl_jobs').update(patch).eq('id',id);
   toast('Status: '+stageOf(key).label);
+  await loadJobs(); openJob(id);
+}
+
+/* Mark / unmark a job as Absent / No-show. Additive flag — does NOT change
+   the job's status, so the board/POS/payment flow is untouched. Records a
+   timestamp so the reminder list can find recent no-shows. */
+async function toggleNoShow(id){
+  const j=JOBS.find(x=>x.id===id); if(!j) return;
+  const turningOn = !j.no_show;
+  const patch = turningOn
+    ? { no_show:true,  no_show_at: new Date().toISOString() }
+    : { no_show:false, no_show_at: null, no_show_reminded_at: null };
+  const {error}=await sb.from('gl_jobs').update(patch).eq('id',id);
+  if(error){ toast('Failed: '+error.message); return; }
+  toast(turningOn ? 'Marked absent / no-show' : 'Absent flag removed');
   await loadJobs(); openJob(id);
 }
 
