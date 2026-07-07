@@ -283,6 +283,7 @@ function renderPending(){
       </div>
       <div class="pend-detail">
         <div class="drow"><b>Ref</b><span>${esc(r.ref_code||'-')}</span></div>
+        <div class="drow"><b>Free Service</b><span style="color:var(--gold,#f5c518);font-weight:700">🚗 Car Wash (FOC)</span></div>
         <div class="drow"><b>Car</b><span>${esc([r.car_brand,r.car_model].filter(Boolean).join(' ')||'-')}</span></div>
         <div class="drow"><b>Type</b><span>${esc(r.car_type||'-')}</span></div>
         <div class="drow"><b>Plate</b><span>${esc(r.plate||'-')}</span></div>
@@ -755,8 +756,11 @@ $('save').onclick=async()=>{
           ex2=data;
         }
         if(!ex2 && phone){
-          const {data}=await sb.from('gl_walkin').select('id,phone').limit(1000);
-          const hit=(data||[]).find(r=>String(r.phone||'').replace(/\D/g,'')===String(phone).replace(/\D/g,''));
+          // server-side phone match (gl_walkin is large; fetch-all misses rows
+          // beyond the 1000-row cap)
+          const digits=String(phone).replace(/\D/g,'');
+          const {data}=await sb.from('gl_walkin').select('id,phone').ilike('phone','%'+digits+'%').limit(50);
+          const hit=(data||[]).find(r=>String(r.phone||'').replace(/\D/g,'')===digits);
           if(hit) ex2={id:hit.id};
         }
         const wkBody={ name:nm||null, phone:'+'+phone, plate:plate||null, model:carModel||null };
