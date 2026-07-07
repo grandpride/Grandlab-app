@@ -185,7 +185,7 @@ html,body{height:100%;background:var(--bg);font-family:-apple-system,BlinkMacSys
       <input id="eModel" placeholder="e.g. Honda Civic">
     </div>
     <div class="fld"><label>Car type</label>
-      <select id="eType"><option value="">—</option><option>Sedan</option><option>SUV/MPV</option><option>Hatchback</option><option>Pickup</option><option>Luxury</option><option>Supercar</option><option>Motorbike</option><option>Other</option></select>
+      <select id="eType"><option value="">—</option></select>
     </div>
 
     <div class="sec-h">Package / Maintenance Balance</div>
@@ -228,7 +228,7 @@ html,body{height:100%;background:var(--bg);font-family:-apple-system,BlinkMacSys
       <input id="acModel" placeholder="e.g. Civic">
     </div>
     <div class="fld"><label>Car type</label>
-      <select id="acType"><option value="">—</option><option>Sedan</option><option>SUV/MPV</option><option>Hatchback</option><option>Pickup</option><option>Luxury</option><option>Supercar</option><option>Motorbike</option><option>Other</option></select>
+      <select id="acType"><option value="">—</option></select>
     </div>
 
     <div class="savemsg" id="acMsg"></div>
@@ -391,8 +391,10 @@ async function openAddCar(){
   // fill the searchable brand datalist
   const dl=$('acBrandList');
   if(dl) dl.innerHTML=BRANDS.map(b=>`<option value="${esc(b.name)}">`).join('');
-  // make sure car types are loaded so auto-fill can match
-  if(!CAR_TYPES.length) loadCarTypes();
+  // make sure car types are loaded + the add-car dropdown is filled from DB
+  if(!CAR_TYPES.length) await loadCarTypes();
+  else fillOneTypeSelect_('acType');
+  $('acType').value='';
   $('addCarModal').classList.add('show');
 }
 function closeAddCar(){ $('addCarModal').classList.remove('show'); }
@@ -851,19 +853,21 @@ async function loadCarTypes(){
   fillTypeSelect();
 }
 function fillTypeSelect(){
-  const sel=$('eType'); if(!sel) return;
-  const cur=PENDING_TYPE!=null?PENDING_TYPE:sel.value;
+  ['eType','acType'].forEach(id=>fillOneTypeSelect_(id));
+}
+function fillOneTypeSelect_(id){
+  const sel=$(id); if(!sel) return;
+  const cur=(id==='eType' && PENDING_TYPE!=null)?PENDING_TYPE:sel.value;
   if(CAR_TYPES.length){
     sel.innerHTML='<option value="">—</option>'+CAR_TYPES.map(t=>`<option>${esc(t)}</option>`).join('');
   }
   if(cur){
-    // ensure the value exists as an option, then select it
     if(![...sel.options].some(o=>o.value===cur || o.textContent===cur)){
       const o=document.createElement('option'); o.value=cur; o.textContent=cur; sel.appendChild(o);
     }
     sel.value=cur;
   }
-  PENDING_TYPE=null;
+  if(id==='eType') PENDING_TYPE=null;
 }
 async function onBrandChange(){
   const typed=$('eBrand').value.trim();
