@@ -1055,12 +1055,19 @@ async function sendSettlementWA(){
   msg+=`\n🧾 TODAY SALES : ${money(todaySales)}\n`;
   msg+=`📈 UTD TOTAL SALES : ${money(utd)}`;
 
-  // 1) download the PDF (named ddmmyy DAILY SALES SETTLEMENT)
-  downloadSettlementPdf_(day, todayList, {opening,closing,byCat,todaySales,utd});
-  // 2) open WhatsApp with the text (group must be picked by the user)
+  // Open WhatsApp FIRST — directly in the click handler so the browser treats
+  // it as a user gesture and doesn't block the popup. (A setTimeout'd window
+  // .open gets blocked as "not user-initiated".)
   const isMobile=/Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
   const url=(isMobile?'https://wa.me/?text=':'https://web.whatsapp.com/send?text=')+encodeURIComponent(msg);
-  setTimeout(()=>window.open(url,'_blank','noopener'), 400);
+  const waWin=window.open(url,'_blank');
+  if(!waWin){
+    // popup blocked — fall back to navigating a temp link (still a gesture)
+    const a=document.createElement('a'); a.href=url; a.target='_blank'; a.rel='noopener';
+    document.body.appendChild(a); a.click(); a.remove();
+  }
+  // then generate the PDF (its own print window)
+  downloadSettlementPdf_(day, todayList, {opening,closing,byCat,todaySales,utd});
 }
 
 // PDF version of the settlement, filename: "ddmmyy DAILY SALES SETTLEMENT.pdf"
