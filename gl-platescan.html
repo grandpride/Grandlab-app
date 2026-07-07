@@ -246,18 +246,14 @@ async function doSearch(raw){
       $('cPhone').textContent=wk.phone||'—';
       $('cTier').textContent='Non-Member (walk-in)';
       $('bookBtn').href=JOBCARD_URL+'?plate='+encodeURIComponent(wk.plate||plate)+'&phone='+encodeURIComponent((wk.phone||'').replace(/^\+/,''));
-      // balance chip — read from gl_packages (source of truth), fallback to legacy walkin field
-      let chip='';
-      try{
-        const {data:pk}=await sb.from('gl_packages').select('service_name,total_uses,used_uses').ilike('vehicle_label',wk.plate||plate).eq('status','active');
-        if(pk&&pk.length){
-          chip=pk.map(p=>{ const b=(p.total_uses||0)-(p.used_uses||0);
-            return '<div class="pkg-line"><span>'+esc(p.service_name)+'</span><span class="pkg-bal'+(b<=0?' zero':'')+'">'+b+' left</span></div>'; }).join('');
-        }
-      }catch(e){}
-      if(!chip && wk.pkg_name){ const bal=(wk.pkg_total||0)-(wk.pkg_used||0);
-        chip='<div class="pkg-line"><span>'+esc(wk.pkg_name)+'</span><span class="pkg-bal'+(bal<=0?' zero':'')+'">'+bal+' left</span></div>'; }
-      $('pkgWrap').innerHTML = chip ? '<div class="pkg"><div style="font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Package</div>'+chip+'</div>' : '';
+      // package balances — shared helper (coating per-car, others per-customer)
+      await loadPackages(wk.phone||'', wk.plate||plate);
+      // legacy fallback: if RPC/gl_packages returned nothing, show old walkin field
+      if(!$('pkgWrap').innerHTML && wk.pkg_name){
+        const bal=(wk.pkg_total||0)-(wk.pkg_used||0);
+        $('pkgWrap').innerHTML='<div class="pkg"><div style="font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Package</div>'+
+          '<div class="pkg-line"><span>'+esc(wk.pkg_name)+'</span><span class="pkg-bal'+(bal<=0?' zero':'')+'">'+bal+' left</span></div></div>';
+      }
       await loadWalkinHistory(wk.id, wk.plate||plate);
       $('cust').classList.add('show');
       return;
@@ -280,21 +276,49 @@ async function doSearch(raw){
   $('cTier').textContent=prof.tier||'Standard';
   $('bookBtn').href=JOBCARD_URL+'?plate='+encodeURIComponent(veh.plate||plate)+'&phone='+encodeURIComponent((prof.phone||'').replace(/^\+/,''));
 
-  await loadPackages(prof.id, veh.plate||plate);
+  await loadPackages(prof.phone||'', veh.plate||plate);
   await loadHistory(prof.id, veh.plate||plate);
   $('cust').classList.add('show');
 }
 
-async function loadPackages(ownerId, plate){
-  const {data}=await sb.from('gl_packages').select('service_name,total_uses,used_uses,vehicle_label,status').eq('owner_id',ownerId).eq('status','active');
-  const pk=(data||[]).filter(p=>!p.vehicle_label || p.vehicle_label.toUpperCase()===plate);
-  if(!pk.length){ $('pkgWrap').innerHTML=''; return; }
-  $('pkgWrap').innerHTML='<div class="pkg"><div style="font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Packages</div>'+
-    pk.map(p=>{
-      const bal=(p.total_uses||0)-(p.used_uses||0);
-      const name=(p.service_name||'').replace(/^\s*\d+\s*x?\s*(times?\s*)?/i,'').trim();
-      return `<div class="pkg-line"><span>${esc(name)}</span><span class="pkg-bal${bal<=0?' zero':''}">${bal} left</span></div>`;
-    }).join('')+'</div>';
+/* Package balances with the new scope rule (via gl_customer_packages RPC):
+   coating/maintenance = per car (this plate only); everything else
+   (Bathe Essence, wash packages) = per customer (shared across their cars).
+   Pass the customer's phone + current plate. Falls back to the old
+   plate-only read if the RPC isn't deployed yet.                          */
+async function loadPackages(phone, plate){
+  let rows=null;
+  try{
+    const {data,error}=await sb.rpc('gl_customer_packages',{p_phone:phone||'',p_plate:plate||''});
+    if(!error) rows=data;
+  }catch(e){ /* RPC missing -> fallback below */ }
+
+  if(!rows){
+    // fallback: legacy plate-only read so nothing breaks pre-deploy
+    const {data}=await sb.from('gl_packages')
+      .select('service_name,total_uses,used_uses,vehicle_label,status')
+      .ilike('vehicle_label',plate||'').eq('status','active');
+    rows=(data||[]).map(p=>({
+      service_name:p.service_name, total_uses:p.total_uses, used_uses:p.used_uses,
+      balance:(p.total_uses||0)-(p.used_uses||0),
+      scope:/coat|maintenance|mohs|cancoat|infinite|matte|ppf/i.test(p.service_name||'')?'car':'customer',
+      vehicle_label:p.vehicle_label
+    })).filter(p=>p.balance>0);
+  }
+
+  if(!rows || !rows.length){ $('pkgWrap').innerHTML=''; return; }
+  const line=p=>{
+    const name=(p.service_name||'').replace(/^\s*\d+\s*x?\s*(times?\s*)?/i,'').trim();
+    const b=Number(p.balance)||0;
+    const tag = p.scope==='customer'
+      ? ' <span style="font-size:9px;color:var(--gold);border:1px solid var(--gold);border-radius:6px;padding:0 4px;vertical-align:middle">ALL CARS</span>'
+      : '';
+    return '<div class="pkg-line"><span>'+esc(name)+tag+'</span>'+
+           '<span class="pkg-bal'+(b<=0?' zero':'')+'">'+b+' left</span></div>';
+  };
+  $('pkgWrap').innerHTML='<div class="pkg">'+
+    '<div style="font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Packages</div>'+
+    rows.map(line).join('')+'</div>';
 }
 
 async function loadWalkinHistory(walkinId, plate){
