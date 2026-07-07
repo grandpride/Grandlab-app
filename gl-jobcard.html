@@ -974,6 +974,11 @@ async function setStage(id,key){
     const did=await deductPackages_(j);
     if(did) patch.pkg_deducted=true;
   }
+  // write one Service History row per service, once, when job first completes
+  if(key==='done' && j && !j.history_written){
+    const wrote=await writeServiceHistory_(j);
+    if(wrote) patch.history_written=true;
+  }
   await sb.from('gl_jobs').update(patch).eq('id',id);
   toast('Status: '+stageOf(key).label);
   await loadJobs(); openJob(id);
@@ -1009,6 +1014,33 @@ async function deductPackages_(j){
   }
   return any;
 }
+/* Write one gl_service_records row per service on this job, so the visit
+   shows in Service History (plate scanner / app). Keyed by vehicle_label
+   (plate) plus owner_id when the car belongs to an app member. Matches the
+   plate scanner's insert format. Idempotency is handled by the caller via
+   the job's history_written flag (only runs on first completion).          */
+async function writeServiceHistory_(j){
+  const svcs=Array.isArray(j.services)?j.services:[];
+  const plate=(j.plate||'').trim();
+  if(!svcs.length || !plate) return false;
+  const today=new Date().toISOString().slice(0,10);
+  const recs=svcs
+    .map(s=>String(s.desc||'').trim())
+    .filter(Boolean)
+    .map(desc=>({
+      owner_id: j.customer_id||null,
+      vehicle_label: plate,
+      service_name: desc,
+      service_date: today,
+      remark: (j.cust_type==='walkin'?'Walk-in':'Job')+(j.attendee?(' · '+j.attendee):''),
+      staff: 'jobcard'
+    }));
+  if(!recs.length) return false;
+  const {error}=await sb.from('gl_service_records').insert(recs);
+  if(error){ toast('History save failed: '+error.message); return false; }
+  return true;
+}
+
 function editJob(id){
   const j=JOBS.find(x=>x.id===id); if(!j)return;
   newJob(); EDITING=j; CUR_TYPE=j.cust_type||'walkin';
