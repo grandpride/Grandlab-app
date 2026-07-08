@@ -57,11 +57,10 @@ button,input{font-family:inherit}
 @media(max-width:600px){
   .topbar{gap:6px;padding:9px 10px}
   .brand{font-size:16px}
-  .brand .pos{display:none}                 /* drop the "POS" tag on phones */
-  .linktile{padding:8px 10px;gap:0;font-size:0}  /* icon-only pills */
+  .brand .pos{display:none}
+  .linktile{padding:8px 10px;gap:0;font-size:0}
   .linktile .hide-sm{display:none}
   .linktile i{font-size:18px}
-  /* let the tab row scroll instead of squashing 4 tabs */
   .tabs{gap:5px;padding:10px 10px 0;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
   .tabs::-webkit-scrollbar{display:none}
   .tab{flex:0 0 auto;padding:9px 12px;font-size:12px}
@@ -803,7 +802,6 @@ function openEditTx(i){
   $('etxDate').value = String(sd).slice(0,10);
   $('etxModal').classList.add('show');
 }
-// tiles for the edit-transaction method picker (keeps codes consistent w/ reports + sheet)
 function renderEtxMethodTiles(current){
   const cur=String(current||'').trim().toLowerCase();
   const opts=METHODS.concat([{k:'voucher',label:'Voucher',icon:'ticket'}]);
@@ -827,7 +825,6 @@ async function saveEditTx(){
   const upd={method:method||null, net_paid:amt};
   if(saleDate) upd.sale_date=saleDate;
   // always bump a watched timestamp so the sheet mirror re-scans this row
-  // (re-writes PAY BY / amount, and moves the row if the date changed)
   upd.sql_keyed_at=new Date().toISOString();
   const {error}=await sb.from('gl_payments').update(upd).eq('id',r.id);
   if(error){ alert('Update failed: '+error.message); return; }
@@ -1834,8 +1831,17 @@ function numToWords(n){
 }
 
 /* ---------- success screen (buttons: view receipt / WA / done) ---------- */
+/* Normalize a Malaysian phone for wa.me (needs full intl, no +/0 prefix). */
+function waPhone_(raw){
+  let p=(raw||'').replace(/[^\d]/g,'');
+  if(!p) return '';
+  if(p.startsWith('60')) return p;            // already 60xxxxxxxxx
+  if(p.startsWith('0'))  return '60'+p.slice(1); // 01x… -> 601x…
+  if(p.startsWith('1'))  return '60'+p;       // 1x… -> 601x…
+  return p;                                    // leave anything else as-is
+}
 function showDone(invoice, net){
-  const phone=(CUR.hp||CUR.phone||'').replace(/[^\d]/g,'');
+  const phone=waPhone_(CUR.hp||CUR.phone||'');
   const waText=buildReceipt(invoice, net);
   window._lastReceipt={invoice,net,phone};
   $('coBody').innerHTML=`
@@ -1845,7 +1851,7 @@ function showDone(invoice, net){
       <div class="inv-big">${esc(invoice)}</div>
       <div class="co-sub" style="text-align:center;margin-bottom:14px">${RM(net)} · ${esc(methodDisplay())}</div>
       <button class="btn btn-blue" onclick="openReceipt('${esc(invoice)}',${net})"><i class="ti ti-file-invoice"></i> View / print receipt</button>
-      ${phone?`<a class="btn btn-wa" style="margin-top:10px" href="https://web.whatsapp.com/send?phone=${phone}&text=${encodeURIComponent(waText)}" target="_blank" rel="noopener"><i class="ti ti-brand-whatsapp"></i> Send receipt on WhatsApp</a>`:''}
+      ${phone?`<a class="btn btn-wa" style="margin-top:10px" href="https://wa.me/${phone}?text=${encodeURIComponent(waText)}" target="_blank" rel="noopener"><i class="ti ti-brand-whatsapp"></i> Send receipt on WhatsApp</a>`:''}
       <button class="btn" style="margin-top:10px" onclick="clearCheckout()"><i class="ti ti-check"></i> Done</button>
     </div>`;
 }

@@ -294,14 +294,8 @@ async function doSearch(raw){
       $('cPhone').textContent=wk.phone||'—';
       $('cTier').textContent='Non-Member (walk-in)';
       $('bookBtn').href=JOBCARD_URL+'?plate='+encodeURIComponent(wk.plate||plate)+'&phone='+encodeURIComponent((wk.phone||'').replace(/^\+/,''));
-      // package balances — shared helper (coating per-car, others per-customer)
+      // package balances — same raw source as the click-in detail (matches numbers)
       await loadPackages(wk.phone||'', wk.plate||plate);
-      // legacy fallback: if RPC/gl_packages returned nothing, show old walkin field
-      if(!$('pkgWrap').innerHTML && wk.pkg_name){
-        const bal=(wk.pkg_total||0)-(wk.pkg_used||0);
-        $('pkgWrap').innerHTML='<div class="pkg"><div style="font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Package</div>'+
-          '<div class="pkg-line"><span>'+esc(wk.pkg_name)+'</span><span class="pkg-bal'+(bal<=0?' zero':'')+'">'+bal+' left</span></div></div>';
-      }
       await loadWalkinHistory(wk.id, wk.plate||plate);
       await loadCustomerCars(wk.phone||'', wk.plate||plate);
       $('cust').classList.add('show');
@@ -479,44 +473,24 @@ async function saveNewCar(){
   }catch(e){ $('acMsg').textContent='Save failed: '+(e.message||e); }
 }
 
-/* Package balances with the new scope rule (via gl_customer_packages RPC):
-   coating/maintenance = per car (this plate only); everything else
-   (Bathe Essence, wash packages) = per customer (shared across their cars).
-   Pass the customer's phone + current plate. Falls back to the old
-   plate-only read if the RPC isn't deployed yet.                          */
+/* Card package balances — now read from the SAME raw source as the
+   click-in "Current balances" list (gl_packages + gl_walkin + gl_pending),
+   so the card and the detail view always show identical numbers.
+   (Previously the card used the gl_customer_packages RPC, which aggregated
+   differently and could disagree with the click-in view.)                */
 async function loadPackages(phone, plate){
-  let rows=null;
-  try{
-    const {data,error}=await sb.rpc('gl_customer_packages',{p_phone:phone||'',p_plate:plate||''});
-    if(!error) rows=data;
-  }catch(e){ /* RPC missing -> fallback below */ }
-
-  if(!rows){
-    // fallback: legacy plate-only read so nothing breaks pre-deploy
-    const {data}=await sb.from('gl_packages')
-      .select('service_name,total_uses,used_uses,vehicle_label,status')
-      .ilike('vehicle_label',plate||'').eq('status','active');
-    rows=(data||[]).map(p=>({
-      service_name:p.service_name, total_uses:p.total_uses, used_uses:p.used_uses,
-      balance:(p.total_uses||0)-(p.used_uses||0),
-      scope:/coat|maintenance|mohs|cancoat|infinite|matte|ppf/i.test(p.service_name||'')?'car':'customer',
-      vehicle_label:p.vehicle_label
-    })).filter(p=>p.balance>0);
-  }
-
-  if(!rows || !rows.length){ $('pkgWrap').innerHTML=''; return; }
+  // build the raw balance list (fills EXIST_PKGS, deduped by normalized name)
+  await loadExistingPkgs();
+  if(!EXIST_PKGS || !EXIST_PKGS.length){ $('pkgWrap').innerHTML=''; return; }
+  const clean=n=>(n||'').toString().replace(/^\s*\d+\s*x?\s*(times?\s*)?/i,'').trim();
   const line=p=>{
-    const name=(p.service_name||'').replace(/^\s*\d+\s*x?\s*(times?\s*)?/i,'').trim();
-    const b=Number(p.balance)||0;
-    const tag = p.scope==='customer'
-      ? ' <span style="font-size:9px;color:var(--gold);border:1px solid var(--gold);border-radius:6px;padding:0 4px;vertical-align:middle">ALL CARS</span>'
-      : '';
-    return '<div class="pkg-line"><span>'+esc(name)+tag+'</span>'+
+    const b=Number(p.bal)||0;
+    return '<div class="pkg-line"><span>'+esc(clean(p.name))+'</span>'+
            '<span class="pkg-bal'+(b<=0?' zero':'')+'">'+b+' left</span></div>';
   };
   $('pkgWrap').innerHTML='<div class="pkg">'+
     '<div style="font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Packages</div>'+
-    rows.map(line).join('')+'</div>';
+    EXIST_PKGS.map(line).join('')+'</div>';
 }
 
 async function loadWalkinHistory(walkinId, plate){
