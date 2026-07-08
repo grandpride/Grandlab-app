@@ -35,9 +35,6 @@ button,input{font-family:inherit}
 .wrap{max-width:1240px;margin:0 auto;padding:16px}
 .cols{display:grid;grid-template-columns:1fr;gap:16px}
 @media(min-width:880px){ .cols{grid-template-columns:minmax(360px,1fr) minmax(420px,560px)} }
-/* when viewing the Dashboard, give it the full width + hide checkout */
-.cols.dash-full{grid-template-columns:1fr !important}
-.cols.dash-full #rightCol{display:none}
 
 .panel{background:var(--surface);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow)}
 .panel-h{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--line2)}
@@ -55,6 +52,22 @@ button,input{font-family:inherit}
 .tab.on{background:var(--surface);color:var(--ink);box-shadow:0 -2px 6px rgba(16,20,30,.04)}
 .tab .cnt{background:var(--gold);color:var(--ink-on-gold);font-size:10px;font-weight:800;border-radius:20px;padding:1px 6px;min-width:16px}
 .tab.on .cnt{}
+
+/* ---------- mobile polish (phones) ---------- */
+@media(max-width:600px){
+  .topbar{gap:6px;padding:9px 10px}
+  .brand{font-size:16px}
+  .brand .pos{display:none}                 /* drop the "POS" tag on phones */
+  .linktile{padding:8px 10px;gap:0;font-size:0}  /* icon-only pills */
+  .linktile .hide-sm{display:none}
+  .linktile i{font-size:18px}
+  /* let the tab row scroll instead of squashing 4 tabs */
+  .tabs{gap:5px;padding:10px 10px 0;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+  .tabs::-webkit-scrollbar{display:none}
+  .tab{flex:0 0 auto;padding:9px 12px;font-size:12px}
+  .wrap{padding:12px 10px}
+  .panel-b{padding:12px}
+}
 
 /* ---------- job list ---------- */
 .job{background:var(--surface);border:1px solid var(--line);border-radius:13px;padding:13px 14px;margin-bottom:10px;cursor:pointer;transition:.12s;box-shadow:var(--shadow)}
@@ -160,14 +173,13 @@ button,input{font-family:inherit}
 .dash-m-fill{height:100%;background:var(--gold);border-radius:6px}
 .dash-chart{background:var(--surface);border:1px solid var(--line2);border-radius:12px;padding:10px;overflow-x:auto;margin-bottom:4px}
 .dash-tx-wrap{overflow-x:auto;border:1px solid var(--line2);border-radius:12px}
-.dash-tx{width:100%;border-collapse:collapse;font-size:12px;table-layout:auto}
-.dash-tx th{text-align:left;padding:7px 8px;background:var(--surface2);color:var(--ink2);font-weight:700;font-size:10.5px;white-space:nowrap}
-.dash-tx td{padding:6px 8px;border-top:1px solid var(--line2);white-space:nowrap}
-.dash-tx td.acts{padding:5px 6px}
-.dash-edit,.dash-del{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;padding:0;margin:0 1px;font-size:13px;line-height:1;vertical-align:middle;background:none;border:1px solid var(--line2);border-radius:7px;cursor:pointer}
-.dash-edit{color:var(--gold-deep)}
-.dash-edit:active,.dash-del:active{transform:scale(.95)}
-.dash-del{color:var(--danger)}
+.dash-tx{width:100%;border-collapse:collapse;font-size:12.5px}
+.dash-tx th{text-align:left;padding:8px 10px;background:var(--surface2);color:var(--ink2);font-weight:700;font-size:11px;white-space:nowrap}
+.dash-tx td{padding:8px 10px;border-top:1px solid var(--line2);white-space:nowrap}
+.dash-edit{background:none;border:1px solid var(--line2);border-radius:7px;padding:4px 7px;cursor:pointer;color:var(--gold-deep);font-size:13px}
+.dash-edit:active{transform:scale(.95)}
+.dash-del{background:none;border:1px solid var(--line2);border-radius:7px;padding:4px 7px;cursor:pointer;color:var(--danger);font-size:13px}
+.dash-del:active{transform:scale(.95)}
 
 .totals{background:var(--surface2);border:1px solid var(--line);border-radius:13px;padding:14px;margin-top:14px}
 .totals .row{display:flex;justify-content:space-between;font-size:14px;padding:4px 0}
@@ -369,7 +381,7 @@ button,input{font-family:inherit}
     </div>
 
     <!-- RIGHT: checkout -->
-    <div id="rightCol">
+    <div>
       <div class="panel">
         <div class="panel-h">
           <span class="ttl"><i class="ti ti-cash-register"></i> Checkout</span>
@@ -444,7 +456,9 @@ button,input{font-family:inherit}
     <div class="dialog-b">
       <div style="font-size:13px;color:var(--ink2);margin-bottom:12px" id="etxWho"></div>
       <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px">Payment method</label>
-      <input id="etxMethod" class="cat-search" placeholder="e.g. Cash / TnG" style="margin-bottom:12px">
+      <div id="etxMethodTiles" class="methods" style="margin-bottom:12px"></div>
+      <input id="etxMethod" type="hidden">
+      <div style="font-size:11px;color:var(--ink3);margin:-6px 0 12px">Tap to change · updates the sheet automatically.</div>
       <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px">Amount (RM)</label>
       <input id="etxAmount" class="cat-search" type="number" step="0.01" min="0" style="margin-bottom:12px">
       <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px">Sale date <span style="color:var(--ink3);font-weight:400">(backdate if keyed late)</span></label>
@@ -642,9 +656,6 @@ function switchTab(t){
   $('walkinBtn').style.display=t==='hold'?'none':'inline-flex';
   $('takings').style.display=(t==='ready')?'flex':'none';
   const dashMode=(t==='dash'), sqlMode=(t==='sql');
-  // Dashboard uses the full width (hide checkout) so the sales table fits
-  const cols=document.querySelector('.cols');
-  if(cols) cols.classList.toggle('dash-full', dashMode);
   $('dashList').style.display=dashMode?'block':'none';
   $('jobs').style.display=(dashMode||sqlMode)?'none':'block';
   $('empty').style.display='none';
@@ -751,8 +762,6 @@ async function loadDashboard(){
       <span>Sales overview · this month</span>
       <div style="display:flex;gap:6px;align-items:center">
         <input type="date" id="dashRepDate" value="${new Date().toLocaleDateString('en-CA')}" style="padding:6px 8px;border:1px solid var(--line2);border-radius:8px;font-family:inherit;font-size:12px">
-        <input type="number" id="dashOpenBal" placeholder="Opening RM" step="0.01" style="width:100px;padding:6px 8px;border:1px solid var(--line2);border-radius:8px;font-family:inherit;font-size:12px" title="Cash opening balance">
-        <button class="btn-mini" style="background:#25D366;color:#fff;border-color:#25D366" onclick="sendSettlementWA()"><i class="ti ti-brand-whatsapp"></i> Settlement</button>
         <button class="btn-mini" onclick="downloadDashReport()"><i class="ti ti-file-type-pdf"></i> Day report</button>
         <button class="btn-mini" onclick="downloadDashReport(true)"><i class="ti ti-calendar"></i> Month</button>
       </div>
@@ -765,7 +774,7 @@ async function loadDashboard(){
         <td>${esc(r.plate||'—')}</td>
         <td>${esc(r.method||'')}</td>
         <td style="text-align:right;font-weight:700">${RM(r.net_paid)}</td>
-        <td class="acts" style="text-align:right;white-space:nowrap"><button class="dash-edit" onclick="openEditTx(${i})" title="Edit"><i class="ti ti-edit"></i></button> <button class="dash-edit" onclick="waTxReceipt(${i})" title="Send receipt on WhatsApp" style="color:#128C7E"><i class="ti ti-brand-whatsapp"></i></button> <button class="dash-edit" onclick="printTxReceipt(${i})" title="Receipt PDF"><i class="ti ti-receipt"></i></button> <button class="dash-edit" onclick="printTxJobOrder(${i})" title="Job Order PDF"><i class="ti ti-file-invoice"></i></button> <button class="dash-del" onclick="deleteTx(${i})" title="Delete / redo"><i class="ti ti-trash"></i></button></td>
+        <td style="text-align:right;white-space:nowrap"><button class="dash-edit" onclick="openEditTx(${i})" title="Edit"><i class="ti ti-edit"></i></button> <button class="dash-edit" onclick="printTxReceipt(${i})" title="Receipt PDF"><i class="ti ti-receipt"></i></button> <button class="dash-edit" onclick="printTxJobOrder(${i})" title="Job Order PDF"><i class="ti ti-file-invoice"></i></button> <button class="dash-del" onclick="deleteTx(${i})" title="Delete / redo"><i class="ti ti-trash"></i></button></td>
       </tr>`).join('')}
       </tbody></table>`:'<div class="status">No transactions this month.</div>'}
     </div>
@@ -787,12 +796,27 @@ function openEditTx(i){
   const r=DASH_TX[i]; if(!r) return;
   window._editTx=r;
   $('etxWho').textContent=(r.customer_name||'—')+' · '+(r.plate||'—');
-  $('etxMethod').value=r.method||'';
+  renderEtxMethodTiles(r.method||'');
   $('etxAmount').value=Number(r.net_paid)||0;
   // sale date: use sale_date if set, else the date part of paid_at
   const sd = r.sale_date || (r.paid_at? new Date(r.paid_at).toISOString().slice(0,10) : new Date().toISOString().slice(0,10));
   $('etxDate').value = String(sd).slice(0,10);
   $('etxModal').classList.add('show');
+}
+// tiles for the edit-transaction method picker (keeps codes consistent w/ reports + sheet)
+function renderEtxMethodTiles(current){
+  const cur=String(current||'').trim().toLowerCase();
+  const opts=METHODS.concat([{k:'voucher',label:'Voucher',icon:'ticket'}]);
+  $('etxMethodTiles').innerHTML=opts.map(m=>
+    `<div class="method${m.k===cur?' sel':''}" data-k="${m.k}" onclick="pickEtxMethod('${m.k}')">`+
+    `<i class="ti ti-${m.icon} mi"></i>${esc(m.label)}</div>`).join('');
+  $('etxMethod').value=cur;
+}
+function pickEtxMethod(k){
+  $('etxMethod').value=k;
+  document.querySelectorAll('#etxMethodTiles .method').forEach(el=>{
+    el.classList.toggle('sel', el.getAttribute('data-k')===k);
+  });
 }
 async function saveEditTx(){
   const r=window._editTx; if(!r) return;
@@ -801,11 +825,10 @@ async function saveEditTx(){
   if(isNaN(amt)||amt<0){ alert('Enter a valid amount.'); return; }
   const saleDate=$('etxDate').value || null;
   const upd={method:method||null, net_paid:amt};
-  if(saleDate){
-    upd.sale_date=saleDate;
-    // bump a watched timestamp so the sheet mirror re-scans and moves the row
-    upd.sql_keyed_at=new Date().toISOString();
-  }
+  if(saleDate) upd.sale_date=saleDate;
+  // always bump a watched timestamp so the sheet mirror re-scans this row
+  // (re-writes PAY BY / amount, and moves the row if the date changed)
+  upd.sql_keyed_at=new Date().toISOString();
   const {error}=await sb.from('gl_payments').update(upd).eq('id',r.id);
   if(error){ alert('Update failed: '+error.message); return; }
   toast('Transaction updated ✓');
@@ -868,36 +891,6 @@ async function printTxReceipt(i){
     +'<div class="c" style="font-size:11px">Thank you! 🚗✨</div>'
     +'</body></html>';
   const w=window.open('','_blank'); if(w){ w.document.write(html); w.document.close(); setTimeout(()=>w.print(),500); }
-}
-/* Send this sale's receipt to the customer on WhatsApp (text, no PDF). */
-async function waTxReceipt(i){
-  const r=DASH_TX[i]; if(!r) return;
-  let phone=(r.phone||'').toString().replace(/\D/g,'');
-  let items=[];
-  if(r.job_id){
-    try{ const {data:j}=await sb.from('gl_jobs').select('services,hp,plate').eq('id',r.job_id).maybeSingle();
-      if(j){ if(!phone && j.hp) phone=String(j.hp).replace(/\D/g,''); if(Array.isArray(j.services)) items=j.services; } }catch(e){}
-  }
-  if(!phone && r.plate){
-    try{ const {data:wk}=await sb.from('gl_walkin').select('phone').ilike('plate',r.plate).limit(5);
-      const hit=(wk||[]).find(x=>String(x.phone||'').replace(/\D/g,'').length>=7);
-      if(hit) phone=String(hit.phone).replace(/\D/g,''); }catch(e){}
-  }
-  if(!phone){ alert('No phone number on file for this customer.'); return; }
-  if(phone.startsWith('0')) phone='60'+phone.slice(1);
-  else if(!phone.startsWith('60')) phone='60'+phone;
-  const lineTxt=items.length
-    ? items.map(s=>`• ${s.desc||'Service'} — ${RM(s.price||0)}`).join('\n')
-    : `• Service — ${RM(r.net_paid)}`;
-  let msg=`*GRANDLAB DETAILING*\nOfficial Receipt\n\n`;
-  msg+=`Invoice: ${r.invoice_no||'—'}\nDate: ${new Date(r.paid_at).toLocaleString('en-GB')}\n`;
-  msg+=`Customer: ${r.customer_name||'—'}\nPlate: ${r.plate||'—'}\n\n${lineTxt}\n\n`;
-  msg+=`*TOTAL: ${RM(r.net_paid)}*\nMethod: ${r.method||''}\n\nThank you! 🚗✨`;
-  const isMobile=/Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-  const url=isMobile
-    ? `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`
-    : `https://web.whatsapp.com/send?phone=${phone}&text=${encodeURIComponent(msg)}`;
-  window.open(url,'_blank','noopener');
 }
 async function printTxJobOrder(i){
   const r=DASH_TX[i]; if(!r) return;
@@ -995,126 +988,6 @@ function bucketMethod_(m){
   if(s.indexOf('+')>=0) return 'Split';
   const hit=METHODS.find(x=>x.label.toLowerCase()===s.toLowerCase()||x.k===s);
   return hit?hit.label:s;
-}
-
-/* ---------- daily WhatsApp settlement (text) + PDF download ---------- */
-// map any stored method label/key to the settlement report categories.
-function settlementCategory_(m){
-  const s=String(m||'').trim().toLowerCase();
-  if(s.indexOf('cash')>=0) return 'CASH';
-  if(s.indexOf('credit')>=0 && s.indexOf('install')<0) return 'CREDIT CARD';
-  if(s.indexOf('debit')>=0) return 'DEBIT CARD';
-  if(s.indexOf('install')>=0) return 'CREDIT CARD';       // CC installment -> credit
-  if(s.indexOf('tng')>=0 || s.indexOf('touch')>=0) return 'TNG';
-  if(s.indexOf('atome')>=0) return 'ATOME';
-  if(s.indexOf('senang')>=0) return 'SENANGPAY';
-  // wallets / online rails grouped as ONLINE
-  if(['mae','grabpay','shopeepay','online','duitnow','fpx','app credit','app_credit','app points','app_points']
-      .some(k=>s.indexOf(k)>=0)) return 'ONLINE';
-  if(s.indexOf('voucher')>=0 || s.indexOf('package')>=0) return null; // RM0, skip
-  if(s.indexOf('boss')>=0) return null;                                // RM0, skip
-  return 'ONLINE';
-}
-// the fixed order shown in the settlement (all shown even if RM0.00)
-const SETTLEMENT_METHODS=['TNG','CREDIT CARD','DEBIT CARD','ONLINE','CASH','ATOME','SENANGPAY'];
-
-async function sendSettlementWA(){
-  const now=new Date();
-  const dv=$('dashRepDate')?$('dashRepDate').value:'';
-  const day=dv?new Date(dv+'T00:00:00'):dayStart_(now);
-  const dayEnd=new Date(day); dayEnd.setDate(dayEnd.getDate()+1);
-  // today's sales
-  const todayList=DASH_TX.filter(r=>{ const t=r.sale_date?new Date(r.sale_date+'T00:00:00'):new Date(r.paid_at); return t>=day && t<dayEnd; });
-  // per-category totals
-  const byCat={}; SETTLEMENT_METHODS.forEach(c=>byCat[c]=0);
-  let todaySales=0;
-  todayList.forEach(r=>{
-    const amt=Number(r.net_paid)||0; todaySales+=amt;
-    const cat=settlementCategory_(r.method);
-    if(cat && byCat[cat]!=null) byCat[cat]+=amt;
-  });
-  // UTD = up-to-date total = sum of ALL this-month transactions up to & incl. this day
-  let utd=0;
-  DASH_TX.forEach(r=>{ const t=r.sale_date?new Date(r.sale_date+'T00:00:00'):new Date(r.paid_at); if(t<dayEnd) utd+=Number(r.net_paid)||0; });
-  // cash: opening keyed in, closing = opening + today's cash
-  const opening=parseFloat($('dashOpenBal')?$('dashOpenBal').value:'')||0;
-  const cashToday=byCat['CASH']||0;
-  const closing=opening+cashToday;
-  // build message
-  const dd=String(day.getDate()).padStart(2,'0');
-  const mm=String(day.getMonth()+1).padStart(2,'0');
-  const yyyy=day.getFullYear();
-  const weekday=day.toLocaleDateString('en-GB',{weekday:'long'}).toUpperCase();
-  const money=n=>'RM'+(Number(n)||0).toFixed(2);
-  let msg=`*Grandlab Detailing (Mia) Juin*\n`;
-  msg+=`📅 ${dd}.${mm}.${yyyy} ${weekday}\n\n`;
-  msg+=`💰 CASH OPENING BALANCE : ${money(opening)}\n`;
-  msg+=`💰 CASH CLOSING BALANCE : ${money(closing)}\n\n`;
-  msg+=`📊 *PAYMENT DETAILS*\n\n`;
-  SETTLEMENT_METHODS.forEach(c=>{ msg+=`• ${c} : ${money(byCat[c])}\n`; });
-  msg+=`\n🧾 TODAY SALES : ${money(todaySales)}\n`;
-  msg+=`📈 UTD TOTAL SALES : ${money(utd)}`;
-
-  // Open WhatsApp FIRST — directly in the click handler so the browser treats
-  // it as a user gesture and doesn't block the popup. (A setTimeout'd window
-  // .open gets blocked as "not user-initiated".)
-  const isMobile=/Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-  const url=(isMobile?'https://wa.me/?text=':'https://web.whatsapp.com/send?text=')+encodeURIComponent(msg);
-  const waWin=window.open(url,'_blank');
-  if(!waWin){
-    // popup blocked — fall back to navigating a temp link (still a gesture)
-    const a=document.createElement('a'); a.href=url; a.target='_blank'; a.rel='noopener';
-    document.body.appendChild(a); a.click(); a.remove();
-  }
-  // then generate the PDF (its own print window)
-  downloadSettlementPdf_(day, todayList, {opening,closing,byCat,todaySales,utd});
-}
-
-// PDF version of the settlement, filename: "ddmmyy DAILY SALES SETTLEMENT.pdf"
-function downloadSettlementPdf_(day, list, sums){
-  const dd=String(day.getDate()).padStart(2,'0');
-  const mm=String(day.getMonth()+1).padStart(2,'0');
-  const yy=String(day.getFullYear()).slice(-2);
-  const fname=`${dd}${mm}${yy} DAILY SALES SETTLEMENT`;
-  const money=n=>'RM'+(Number(n)||0).toFixed(2);
-  const rowsHtml=list.slice().reverse().map((r,i)=>'<tr>'
-    +'<td style="border:1px solid #000;padding:4px 6px;text-align:center">'+(i+1)+'</td>'
-    +'<td style="border:1px solid #000;padding:4px 6px">'+(r.sale_date?new Date(r.sale_date+'T00:00:00'):new Date(r.paid_at)).toLocaleDateString('en-GB')+'</td>'
-    +'<td style="border:1px solid #000;padding:4px 6px">'+esc(r.invoice_no||'')+'</td>'
-    +'<td style="border:1px solid #000;padding:4px 6px">'+esc(r.customer_name||'')+'</td>'
-    +'<td style="border:1px solid #000;padding:4px 6px">'+esc(r.plate||'')+'</td>'
-    +'<td style="border:1px solid #000;padding:4px 6px">'+esc(r.method||'')+'</td>'
-    +'<td style="border:1px solid #000;padding:4px 6px;text-align:right;white-space:nowrap">'+money(r.net_paid)+'</td></tr>').join('');
-  const methodRows=SETTLEMENT_METHODS.map(c=>'<tr><td style="padding:2px 8px">'+c+'</td><td style="padding:2px 8px;text-align:right">'+money(sums.byCat[c])+'</td></tr>').join('');
-  const periodLabel=day.toLocaleDateString('en-GB',{weekday:'long',day:'2-digit',month:'short',year:'numeric'});
-  const printBtn='<div class="no-print" style="text-align:center;margin:14px 0"><button onclick="window.print()" style="padding:8px 16px;font-size:14px;cursor:pointer">🖨️ Save as PDF / Print</button></div>';
-  const fullHtml='<!DOCTYPE html><html><head><meta charset="utf-8"><title>'+fname+'</title>'
-    +'<style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,sans-serif;font-size:12px;color:#000;padding:18px;max-width:900px;margin:0 auto}'
-    +'.title{font-size:20px;font-weight:900}.sub{font-size:12px;color:#333;margin:2px 0 12px}'
-    +'table{width:100%;border-collapse:collapse;margin-top:8px}th{border:1px solid #000;padding:5px 6px;font-size:11px;background:#f0f0f0;text-align:left}'
-    +'.sumbox{margin:10px 0;border:1px solid #000;padding:8px 10px;max-width:320px}.sumbox b{font-size:13px}'
-    +'@media print{body{padding:8px}.no-print{display:none}}</style></head><body>'
-    +printBtn
-    +'<div class="title">Grandlab Detailing</div><div class="sub">Daily Sales Settlement · '+periodLabel+'</div>'
-    +'<div class="sumbox"><b>Cash opening: '+money(sums.opening)+'</b><br><b>Cash closing: '+money(sums.closing)+'</b></div>'
-    +'<div class="sumbox"><table style="margin:0"><tbody>'+methodRows+'</tbody></table></div>'
-    +'<table><thead><tr><th style="width:28px">#</th><th>Date</th><th>Invoice</th><th>Customer</th><th>Plate</th><th>Method</th><th style="text-align:right">Amount</th></tr></thead>'
-    +'<tbody>'+rowsHtml+'</tbody></table>'
-    +'<div style="margin-top:12px;font-weight:800">TODAY SALES: '+money(sums.todaySales)+' &nbsp;·&nbsp; UTD TOTAL: '+money(sums.utd)+'</div>'
-    +'</body></html>';
-  // download as a file (blob) — never blocked by popup blockers, keeps the name
-  try{
-    const blob=new Blob([fullHtml],{type:'text/html'});
-    const a=document.createElement('a');
-    a.href=URL.createObjectURL(blob);
-    a.download=fname+'.html';
-    document.body.appendChild(a); a.click();
-    setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); }, 1000);
-  }catch(e){
-    // fallback: open in a window if blob download fails
-    const w=window.open('','_blank');
-    if(w){ w.document.title=fname; w.document.write(fullHtml); w.document.close(); }
-  }
 }
 
 
@@ -1218,29 +1091,14 @@ async function loadCheckoutPackages(job){
   PAY.pkgList=[];
   const plate=(job.plate||CUR.plate||'').trim().toUpperCase();
   const ownerId=job.customer_id||CUR.customer_id||null;
-  const phone=(job.hp||CUR.hp||CUR.phone||'').toString();
-  if(!plate && !ownerId && !phone) return;
-  // PRIMARY: customer-scoped RPC (coating per-car, Bathe Essence shared by phone)
-  try{
-    const {data,error}=await sb.rpc('gl_customer_packages',{p_phone:phone||'',p_plate:plate||''});
-    if(!error && data){
-      PAY.pkgList=data.map(r=>({
-        id:null,                       // per-customer rows have no single id
-        service_name:r.out_service_name,
-        total_uses:r.out_total_uses, used_uses:r.out_used_uses,
-        remaining:Number(r.out_balance)||0,
-        scope:r.out_scope, vehicle_label:r.out_vehicle_label
-      })).filter(p=>p.remaining>0);
-      if(PAY.pkgList.length) return;
-    }
-  }catch(e){ /* fall back below */ }
-  // FALLBACK: legacy plate/owner read
+  if(!plate && !ownerId) return;
   let q=sb.from('gl_packages').select('id,owner_id,vehicle_label,service_name,total_uses,used_uses,status').eq('status','active');
+  // match by plate OR owner
   if(plate && ownerId) q=q.or(`vehicle_label.ilike.${plate},owner_id.eq.${ownerId}`);
   else if(plate) q=q.ilike('vehicle_label',plate);
-  else if(ownerId) q=q.eq('owner_id',ownerId);
+  else q=q.eq('owner_id',ownerId);
   const {data}=await q;
-  PAY.pkgList=(data||[]).map(p=>({...p,remaining:(p.total_uses||0)-(p.used_uses||0)})).filter(p=>p.remaining>0);
+  PAY.pkgList=(data||[]).filter(p=>((p.total_uses||0)-(p.used_uses||0))>0);
 }
 
 function netDue(){
@@ -1252,28 +1110,6 @@ function netDue(){
 }
 function cleanPkgName(s){ return (s||'').replace(/^\s*\d+\s*x?\s*(times?\s*)?/i,'').trim(); }
 
-/* Proper display name for the checkout header, by job type:
-   workshop/showroom/boss -> the org/company name from the job card
-   (workshop_name, e.g. "Lemans Workshop" / "Palm Motor" / boss name);
-   walk-in -> the customer name; blank -> a sensible type label.        */
-function checkoutName_(j){
-  const type=String(j.cust_type||'').toLowerCase();
-  const org=(j.workshop_name||'').trim();
-  const nm=(j.name||'').trim();
-  if(type==='workshop'||type==='showroom') return org || nm || (type==='workshop'?'Workshop':'Showroom');
-  if(type==='boss') return org || nm || 'Boss.co';
-  return nm || 'Walk-in customer';
-}
-/* Like checkoutName_ but for DB writes: returns the real org/customer name
-   or '' (never a UI placeholder like "Walk-in customer"). */
-function recordName_(j){
-  const type=String(j.cust_type||'').toLowerCase();
-  const org=(j.workshop_name||'').trim();
-  const nm=(j.name||'').trim();
-  if(type==='workshop'||type==='showroom'||type==='boss') return org || nm || '';
-  return nm || '';
-}
-
 function renderCheckout(){
   const svc=jobServices(CUR);
   const due=netDue();
@@ -1282,19 +1118,11 @@ function renderCheckout(){
   [Math.ceil(due), Math.ceil(due/5)*5, Math.ceil(due/10)*10, Math.ceil(due/50)*50, 50,100,150,200]
     .forEach(v=>{ if(v>exact && !ups.includes(v) && ups.length<8) ups.push(v); });
   const quicks=ups.slice(0,8);
-  const _type = String(CUR.cust_type||'').toLowerCase();
-  const _boss = _type==='boss';
-  // proper display name by job type: workshop/showroom/boss use the org/company
-  // name from the job card; walk-in uses the customer name.
-  const _name = checkoutName_(CUR);
-  const _chipMap = {boss:'BOSS.CO', workshop:'WORKSHOP', showroom:'SHOWROOM'};
-  const _typeChip = _chipMap[_type]
-    ? `<span class="chip" style="background:#111;color:var(--gold);margin-left:6px">${_chipMap[_type]}</span>` : '';
 
   $('coBody').innerHTML=`
     <div class="co-head">
       <div>
-        <div class="co-name">${esc(titleCase(_name))}${_typeChip} <i class="ti ti-edit" style="font-size:14px;color:var(--gold-deep);cursor:pointer;margin-left:4px" onclick="openEditCust()" title="Edit customer details"></i></div>
+        <div class="co-name">${esc(titleCase(CUR.name||'Walk-in customer'))} <i class="ti ti-edit" style="font-size:14px;color:var(--gold-deep);cursor:pointer;margin-left:4px" onclick="openEditCust()" title="Edit customer details"></i></div>
         <div class="co-sub">${esc(titleCase(CUR.model||'—'))} · ${esc(CUR.plate||'—')}${CUR.hasProfile||PAY.hasProfile?' · app member':''}</div>
       </div>
       <button class="btn-mini" onclick="clearCheckout()"><i class="ti ti-x"></i></button>
@@ -1308,13 +1136,12 @@ function renderCheckout(){
     <div class="section-h">Adjustments</div>
     ${PAY.depositUsed>0?`<div class="adj"><span class="lab"><i class="ti ti-cash"></i> Deposit already paid</span><span class="val">−${RM(PAY.depositUsed)}</span></div>`:''}
 
-    ${(PAY.pkgList&&PAY.pkgList.length)?PAY.pkgList.map((p,pi)=>{
-      const bal=(p.remaining!=null?p.remaining:((p.total_uses||0)-(p.used_uses||0)));
-      const on=PAY.pkgUse&&PAY.pkgUseIdx===pi;
-      const allcars = p.scope==='customer' ? ' <span style="font-size:9px;color:var(--gold-deep);border:1px solid currentColor;border-radius:5px;padding:0 3px">ALL CARS</span>' : '';
+    ${(PAY.pkgList&&PAY.pkgList.length)?PAY.pkgList.map(p=>{
+      const bal=(p.total_uses||0)-(p.used_uses||0);
+      const on=PAY.pkgUse&&PAY.pkgUse.id===p.id;
       return `<div class="adj">
-        <span class="lab"><i class="ti ti-package"></i> ${esc(cleanPkgName(p.service_name))}${allcars} <b style="color:var(--gold-deep)">· ${bal} left</b>${on?` <span style="color:var(--ink3);font-size:11px">(will use 1 → ${bal-1} left)</span>`:''}</span>
-        <button class="toggle ${on?'on':''}" onclick="togglePkgUse(${pi})"><span class="dot"></span></button>
+        <span class="lab"><i class="ti ti-package"></i> ${esc(cleanPkgName(p.service_name))} <b style="color:var(--gold-deep)">· ${bal} left</b>${on?` <span style="color:var(--ink3);font-size:11px">(will use 1 → ${bal-1} left)</span>`:''}</span>
+        <button class="toggle ${on?'on':''}" onclick="togglePkgUse('${p.id}')"><span class="dot"></span></button>
       </div>`;
     }).join('')
     :`<div class="adj" style="opacity:.6"><span class="lab"><i class="ti ti-package"></i> No package on this vehicle</span></div>`}
@@ -1410,9 +1237,6 @@ function renderCheckout(){
         <i class="ti ti-check"></i> Confirm payment
       </button>
     </div>
-    ${String(CUR.cust_type||'').toLowerCase()==='boss'?`<button class="btn" id="bossBtn" style="margin-top:9px;background:#111;color:var(--gold)" onclick="confirmBoss()">
-      <i class="ti ti-crown"></i> Boss.co — close (RM0, no charge)
-    </button>`:''}
     ${!CUR._walkin?`<button class="btn btn-ghost" style="margin-top:9px" onclick="${CUR.on_hold?'resumeHold':'holdOrder'}()">
       <i class="ti ti-player-${CUR.on_hold?'play':'pause'}"></i> ${CUR.on_hold?'Resume (remove hold)':'Put on hold (finish later)'}
     </button>`:''}
@@ -1427,9 +1251,9 @@ function clearCheckout(){
 }
 
 /* ---------- adjustments ---------- */
-function togglePkgUse(idx){
-  if(PAY.pkgUse && PAY.pkgUseIdx===idx){ PAY.pkgUse=null; PAY.pkgUseIdx=null; }
-  else { PAY.pkgUse=(PAY.pkgList||[])[idx]||null; PAY.pkgUseIdx=(PAY.pkgUse?idx:null); }
+function togglePkgUse(id){
+  if(PAY.pkgUse && String(PAY.pkgUse.id)===String(id)){ PAY.pkgUse=null; }
+  else { PAY.pkgUse=(PAY.pkgList||[]).find(p=>String(p.id)===String(id))||null; }
   PAY.packageUsed=!!PAY.pkgUse;
   renderCheckout();
 }
@@ -1879,24 +1703,12 @@ async function confirmPay(){
       const {error}=await sb.rpc('gl_deduct_points',{p_customer:CUR.customer_id,p_points:PAY.pointsUsed});
       if(error) throw new Error('Points: '+error.message);
     }
-    if(PAY.pkgUse && !PAY.voucher){
-      if(PAY.pkgUse.id){
-        // specific package row selected -> deduct it directly
-        const {data:pk}=await sb.from('gl_packages').select('id,total_uses,used_uses')
-          .eq('id',PAY.pkgUse.id).maybeSingle();
-        if(pk && (pk.total_uses-pk.used_uses)>0){
-          await sb.from('gl_packages').update({used_uses:(pk.used_uses||0)+1}).eq('id',pk.id);
-        }
-      } else {
-        // per-customer package (no single id) -> deduct from the shared pool
-        // via the RPC (coating per-car, Bathe Essence shared by phone).
-        try{
-          await sb.rpc('gl_deduct_package',{
-            p_phone:(CUR.hp||CUR.phone||'').toString(),
-            p_plate:(CUR.plate||''),
-            p_service:PAY.pkgUse.service_name||''
-          });
-        }catch(e){ /* non-fatal: don't block the sale */ }
+    if(PAY.pkgUse && PAY.pkgUse.id && !PAY.voucher){
+      // deduct 1 use from the specific package the cashier selected
+      const {data:pk}=await sb.from('gl_packages').select('id,total_uses,used_uses')
+        .eq('id',PAY.pkgUse.id).maybeSingle();
+      if(pk && (pk.total_uses-pk.used_uses)>0){
+        await sb.from('gl_packages').update({used_uses:(pk.used_uses||0)+1}).eq('id',pk.id);
       }
     }
     // decrement stock for any tracked products in this order
@@ -1911,7 +1723,7 @@ async function confirmPay(){
     const isUuid=v=>typeof v==='string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
     const {error:payErr}=await sb.from('gl_payments').insert({
       job_id:CUR._walkin?null:String(CUR.id), invoice_no:invoice, customer_id:CUR.customer_id||null,
-      customer_name:recordName_(CUR), phone:CUR.hp||CUR.phone||'', plate:CUR.plate||'',
+      customer_name:CUR.name||'', phone:CUR.hp||CUR.phone||'', plate:CUR.plate||'',
       gross:PAY.gross, discount:PAY.discount, discount_by:PAY.discountBy||null,
       deposit_used:PAY.depositUsed, package_used:PAY.packageUsed,
       pkg_used_id:(PAY.pkgUse&&!PAY.voucher&&isUuid(String(PAY.pkgUse.id)))?PAY.pkgUse.id:null,
@@ -1935,39 +1747,6 @@ async function confirmPay(){
   }
 }
 
-/* ---------- boss.co close (RM0, no charge, no package deduction) ---------- */
-async function confirmBoss(){
-  if(String(CUR.cust_type||'').toLowerCase()!=='boss'){ return; }
-  if(!confirm('Close this Boss.co job as RM0 (no charge)?\nRecorded with payment method "boss.co". No package balance is used.')) return;
-  const btn=$('bossBtn'); if(btn){ btn.disabled=true; btn.innerHTML='<i class="ti ti-loader"></i> Processing…'; }
-  try{
-    const {data:invData,error:invErr}=await sb.rpc('gl_next_invoice_no');
-    if(invErr) throw new Error('Invoice: '+invErr.message);
-    const invoice=invData;
-    // record a RM0 sale, method boss.co — NO wallet/points/package/stock changes
-    const {error:payErr}=await sb.from('gl_payments').insert({
-      job_id:CUR._walkin?null:String(CUR.id), invoice_no:invoice, customer_id:CUR.customer_id||null,
-      customer_name:recordName_(CUR), phone:CUR.hp||CUR.phone||'', plate:CUR.plate||'',
-      gross:0, discount:0, deposit_used:0, package_used:false,
-      wallet_used:0, points_used:0, points_value:0,
-      voucher_code:null, voucher_value:0,
-      net_paid:0, method:'boss.co', taken_by:ME,
-      attendee:CUR.attendee||null, sqlacc_code:CUR.sqlacc_code||null,
-      items:JSON.stringify(jobServices(CUR).map(s=>({desc:svcDesc(s),price:svcPrice(s),qty:s.qty||1,code:s.code||''})))
-    });
-    if(payErr) throw new Error('Payment: '+payErr.message);
-    if(!CUR._walkin){
-      await sb.from('gl_jobs').update({status:'paid', payment:'boss.co', collected:true, total:0, on_hold:false}).eq('id',CUR.id);
-      JOBS=JOBS.filter(j=>j.id!==CUR.id);
-    }
-    showDone(invoice, 0);
-    loadTakings();
-  }catch(e){
-    alert('Could not complete: '+e.message);
-    if(btn){ btn.disabled=false; btn.innerHTML='<i class="ti ti-crown"></i> Boss.co — close (RM0, no charge)'; }
-  }
-}
-
 /* ---------- mark unpaid (workshop credit) ---------- */
 async function markUnpaid(){
   if(CUR._walkin){ alert('Walk-in sales can\u2019t be marked unpaid \u2014 use Confirm payment.'); return; }
@@ -1981,7 +1760,7 @@ async function markUnpaid(){
     // record the outstanding amount
     const {error:upErr}=await sb.from('gl_unpaid').insert({
       job_id:String(CUR.id), invoice_no:invoice, customer_id:CUR.customer_id||null,
-      customer_name:recordName_(CUR), phone:CUR.hp||CUR.phone||'', plate:CUR.plate||'',
+      customer_name:CUR.name||'', phone:CUR.hp||CUR.phone||'', plate:CUR.plate||'',
       workshop_name:CUR.workshop_name||'', amount_owed:Math.max(0,amount),
       gross:PAY.gross, deposit_used:PAY.depositUsed, marked_by:ME
     });

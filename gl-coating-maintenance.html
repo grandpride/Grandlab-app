@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="mobile-web-app-capable" content="yes">
+<title>Grandlab — Coating Maintenance</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.x/dist/tabler-icons.min.css">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+:root{--bg:#080808;--card:#141414;--card2:#1c1c1c;--gold:#F5C518;--text:#fff;--text2:#9a9a9a;--border:#2a2a2a;
+  --red:#e0533d;--green:#4ec06f;--amber:#f0a020}
+html,body{height:100%;background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:var(--text)}
+.app{max-width:1100px;margin:0 auto;min-height:100dvh;padding:50px 14px 40px}
+.back{position:fixed;top:8px;left:8px;z-index:300;background:rgba(0,0,0,.65);color:var(--gold);text-decoration:none;font-size:12px;font-weight:700;padding:6px 11px;border-radius:20px;backdrop-filter:blur(4px)}
+.hdr{text-align:center;margin-bottom:16px}
+.logo{font-weight:900;font-size:24px;letter-spacing:1px}
+.logo span{color:var(--gold)}
+.tag{font-size:11px;color:var(--text2);letter-spacing:.2em;text-transform:uppercase;margin-top:4px}
+
+/* tabs */
+.tabs{display:flex;gap:7px;overflow-x:auto;padding-bottom:4px;margin-bottom:12px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tabbtn{flex:0 0 auto;background:var(--card);border:1px solid var(--border);border-radius:20px;color:var(--text2);
+  padding:9px 15px;font-size:13px;font-weight:700;font-family:inherit;cursor:pointer;white-space:nowrap;display:flex;align-items:center;gap:7px}
+.tabbtn .cnt{background:var(--card2);color:var(--text2);border-radius:20px;font-size:10px;padding:1px 7px;font-weight:800}
+.tabbtn.on{background:var(--gold);color:#080808;border-color:var(--gold)}
+.tabbtn.on .cnt{background:rgba(0,0,0,.18);color:#080808}
+
+/* filter row */
+.filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;align-items:center}
+.filters .seg{display:flex;gap:0;background:var(--card);border:1px solid var(--border);border-radius:10px;overflow:hidden}
+.filters .seg button{background:none;border:none;color:var(--text2);font-family:inherit;font-size:12px;font-weight:700;padding:8px 12px;cursor:pointer}
+.filters .seg button.on{background:var(--gold);color:#080808}
+.search{flex:1;min-width:140px;background:#1e1e1a;border:1px solid var(--border);border-radius:10px;color:#fff;padding:10px 12px;font-size:14px;font-family:inherit;outline:none}
+.search:focus{border-color:var(--gold)}
+
+/* stats */
+.stats{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+.stat{flex:1;min-width:90px;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:11px 12px;text-align:center}
+.stat .n{font-size:20px;font-weight:900}
+.stat .l{font-size:10px;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;margin-top:2px}
+.stat.due .n{color:var(--amber)}
+.stat.over .n{color:var(--red)}
+
+/* list */
+.status{text-align:center;font-size:13px;color:var(--text2);padding:24px 0}
+.row{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:13px 14px;margin-bottom:10px}
+.row.overdue{border-color:rgba(224,83,61,.5)}
+.row.duesoon{border-color:rgba(240,160,32,.45)}
+.row .top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+.row .nm{font-weight:800;font-size:15px}
+.row .plate{display:inline-block;background:var(--card2);border:1px solid var(--border);border-radius:6px;
+  padding:2px 8px;font-size:12px;font-weight:800;letter-spacing:1px;margin-top:3px}
+.row .pkg{font-size:12px;color:var(--text2);margin-top:6px;line-height:1.4}
+.duebadge{font-size:11px;font-weight:800;padding:4px 10px;border-radius:20px;white-space:nowrap}
+.duebadge.over{background:rgba(224,83,61,.15);color:var(--red)}
+.duebadge.soon{background:rgba(240,160,32,.15);color:var(--amber)}
+.duebadge.ok{background:rgba(78,192,111,.12);color:var(--green)}
+.duebadge.none{background:var(--card2);color:var(--text2)}
+
+.dates{display:grid;grid-template-columns:1fr 1fr;gap:6px 14px;margin-top:10px;font-size:12px}
+.dates .k{color:var(--text2)}
+.dates .v{font-weight:700}
+.dates .v.muted{color:var(--text2);font-weight:400}
+
+.remind{display:flex;gap:8px;flex-wrap:wrap;margin-top:11px;align-items:center}
+.wa{background:#25D366;color:#062b13;border:none;border-radius:10px;padding:9px 14px;font-weight:800;font-size:13px;
+  font-family:inherit;cursor:pointer;display:inline-flex;align-items:center;gap:6px;text-decoration:none}
+.wa.two{background:#1c7a3f;color:#eafff2}
+.wa:active{transform:scale(.97)}
+.wa[disabled]{opacity:.4;pointer-events:none}
+.remark-btn{background:var(--card2);color:var(--text2);border:1px solid var(--border);border-radius:10px;
+  padding:9px 12px;font-size:12px;font-weight:700;font-family:inherit;cursor:pointer}
+.rmk{font-size:12px;color:var(--amber);margin-top:8px;font-style:italic}
+
+/* login gate */
+.gate{position:fixed;inset:0;background:var(--bg);z-index:50;display:flex;align-items:center;justify-content:center;padding:24px}
+.gate.hidden{display:none}
+.gate-box{width:100%;max-width:340px}
+.gate label{display:block;font-size:11px;color:var(--text2);margin-bottom:4px;font-weight:600}
+.gate input{width:100%;background:#1e1e1a;border:1px solid var(--border);border-radius:12px;color:#fff;padding:13px 14px;font-size:15px;font-family:inherit;margin-bottom:12px;outline:none}
+.gate input:focus{border-color:var(--gold)}
+.gate button{width:100%;background:var(--gold);color:#080808;border:none;border-radius:12px;padding:14px;font-weight:800;font-size:15px;font-family:inherit;cursor:pointer}
+.err{color:var(--red);font-size:12px;min-height:16px;margin-bottom:6px}
+
+@media(max-width:560px){
+  .dates{grid-template-columns:1fr}
+  .app{padding:48px 12px 32px}
+}
+</style>
+</head>
+<body>
+
+<a class="back" href="https://grandpride.github.io/Grandlab-app/gl-hub.html"><i class="ti ti-arrow-left"></i> Hub</a>
+
+<!-- login gate -->
+<div id="gate" class="gate">
+  <div class="gate-box">
+    <div class="logo" style="text-align:center;margin-bottom:6px">GRAND<span>LAB</span></div>
+    <div class="tag" style="text-align:center;margin-bottom:24px">Coating Maintenance</div>
+    <label>Email</label>
+    <input id="email" type="email" autocomplete="username" placeholder="reception@grandpride.com">
+    <label>Password</label>
+    <input id="pass" type="password" autocomplete="current-password" placeholder="Password">
+    <div class="err" id="gerr"></div>
+    <button onclick="doLogin()">Sign in</button>
+  </div>
+</div>
+
+<div class="app">
+  <div class="hdr">
+    <div class="logo">GRAND<span>LAB</span></div>
+    <div class="tag">Coating Maintenance</div>
+  </div>
+
+  <!-- coating family tabs -->
+  <div class="tabs" id="tabs"></div>
+
+  <!-- filters -->
+  <div class="filters">
+    <div class="seg" id="dueSeg">
+      <button data-f="all" class="on" onclick="setDue('all')">All</button>
+      <button data-f="overdue" onclick="setDue('overdue')">Overdue</button>
+      <button data-f="soon" onclick="setDue('soon')">Due soon</button>
+      <button data-f="notdone" onclick="setDue('notdone')">Not reminded</button>
+    </div>
+    <input class="search" id="search" placeholder="Search name or plate…" oninput="render()">
+  </div>
+
+  <!-- stats -->
+  <div class="stats" id="stats"></div>
+
+  <!-- list -->
+  <div id="list"></div>
+  <div class="status" id="status">Loading…</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SUPABASE_URL="https://eychljpzorzmaveixlnu.supabase.co";
+const SUPABASE_ANON="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV5Y2hsanB6b3J6bWF2ZWl4bG51Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2NDk2NjQsImV4cCI6MjA5NzIyNTY2NH0.6dA1zhz5ZIwf8byFB8vhfOzPI-uPPdPihEr1b8GG_oA";
+const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON,{auth:{persistSession:true,autoRefreshToken:true,storageKey:'gl_auth'}});
+const $=id=>document.getElementById(id);
+const esc=s=>(s||'').toString().replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+// ---------- coating families ----------
+// each family = a tab. `match` = keywords that route a package/service name here.
+// 2x/4x/6x, "maintenance", and "balance" variants all fold into their parent.
+const FAMILIES=[
+  {key:'cancoat',  label:'Cancoat',  match:['cancoat']},
+  {key:'mohs',     label:'MOHS',     match:['mohs','mohs coating']},
+  {key:'c002',     label:'C0.02',    match:['c0.02','c 0.02','c002']},
+  {key:'infinite', label:'Infinite', match:['infinite']},
+];
+function familyOf(name){
+  const s=(name||'').toLowerCase();
+  for(const f of FAMILIES){ if(f.match.some(m=>s.includes(m))) return f.key; }
+  return null; // not a coating we track
+}
+// only treat as a coating/maintenance record if it mentions coating/maintenance
+function isCoatingName(name){
+  const s=(name||'').toLowerCase();
+  if(familyOf(s)===null) return false;
+  return true;
+}
+
+// ---------- WHATSAPP TEMPLATE ----------
+// TODO: Jimmy will provide the final template. {name} {plate} {pkg} {due} get replaced.
+// Keeping a clear placeholder so the send flow works end-to-end now.
+function buildMessage(c, round){
+  const name=c.name||'there';
+  const plate=c.plate?(' ('+c.plate+')'):'';
+  const due=c.next_due?fmtDate(c.next_due):'soon';
+  // 1st vs 2nd reminder can differ; template goes here.
+  if(round===2){
+    return `Hi ${name}, just a friendly follow-up from GrandLab Detailing. `+
+      `Your ${c.pkg||'coating'} maintenance for your car${plate} is due (${due}). `+
+      `Shall we arrange a slot for you? Reply here and we'll book it. Thank you!`;
+  }
+  return `Hi ${name}, this is GrandLab Detailing. `+
+    `Your ${c.pkg||'coating'} maintenance for your car${plate} is coming due (${due}). `+
+    `Would you like to book your next maintenance visit? We'd be happy to arrange it for you.`;
+}
+
+// ---------- state ----------
+let ALL=[];           // merged customer records
+let TAB='cancoat';
+let DUE='all';
+
+// ---------- boot ----------
+async function boot(){
+  const {data}=await sb.auth.getSession();
+  if(data&&data.session){ $('gate').classList.add('hidden'); load(); }
+  else $('gate').classList.remove('hidden');
+}
+async function doLogin(){
+  const email=$('email').value.trim(), pass=$('pass').value;
+  $('gerr').textContent='Signing in…';
+  const {error}=await sb.auth.signInWithPassword({email,password:pass});
+  if(error){ $('gerr').textContent='Login failed: '+error.message; return; }
+  $('gerr').textContent=''; $('gate').classList.add('hidden'); load();
+}
+
+// ---------- data load + merge ----------
+async function load(){
+  $('status').textContent='Loading…'; $('status').style.display='block';
+  ALL=[];
+  try{
+    // 1) gl_service_records — coatings with real next_due (POS + backfill)
+    const {data:srv,error:e1}=await sb.from('gl_service_records')
+      .select('id,service_name,service_date,next_due,plate,phone,customer_name,owner_id,app_reminded_at,wa_remind_1_at,wa_remind_2_at,remark')
+      .order('next_due',{ascending:true});
+    if(e1) throw e1;
+
+    (srv||[]).forEach(r=>{
+      if(!isCoatingName(r.service_name)) return;
+      ALL.push({
+        src:'sr', id:r.id,
+        name:r.customer_name||'', phone:r.phone||'', plate:(r.plate||'').toUpperCase(),
+        pkg:r.service_name||'', family:familyOf(r.service_name),
+        last_visit:r.service_date||null, next_due:r.next_due||null,
+        app_reminded_at:r.app_reminded_at||null,
+        wa1:r.wa_remind_1_at||null, wa2:r.wa_remind_2_at||null, remark:r.remark||''
+      });
+    });
+
+    // 2) gl_walkin — historical balance customers (no next_due).
+    // Only add ones we DON'T already have a service record for (by phone+plate).
+    const {data:wk,error:e2}=await sb.from('gl_walkin')
+      .select('id,name,phone,plate,model,pkg_name,pkg_total,pkg_used,last_service')
+      .not('pkg_name','is',null);
+    if(e2) throw e2;
+
+    const seen=new Set(ALL.map(x=>keyOf(x.phone,x.plate)));
+    (wk||[]).forEach(w=>{
+      if(!isCoatingName(w.pkg_name)) return;
+      const k=keyOf(w.phone,w.plate);
+      if(seen.has(k)) return; // already covered by a service record
+      seen.add(k);
+      const total=parseInt(w.pkg_total), used=parseInt(w.pkg_used)||0;
+      const left=isNaN(total)?null:(total-used);
+      ALL.push({
+        src:'wk', id:w.id,
+        name:w.name||'', phone:w.phone||'', plate:(w.plate||'').toUpperCase(),
+        pkg:w.pkg_name||'', family:familyOf(w.pkg_name),
+        last_visit:w.last_service||null, next_due:null, // walk-ins have no scheduled due
+        bal_left:left, app_reminded_at:null, wa1:null, wa2:null, remark:''
+      });
+    });
+
+    buildTabs();
+    render();
+  }catch(err){
+    $('status').textContent='Could not load: '+err.message;
+  }
+}
+
+function keyOf(phone,plate){
+  const p=(phone||'').replace(/\D/g,'').replace(/^0+/,'').replace(/^60/,'');
+  const pl=(plate||'').toUpperCase().replace(/\s/g,'');
+  return p+'|'+pl;
+}
+
+// ---------- tabs ----------
+function buildTabs(){
+  $('tabs').innerHTML=FAMILIES.map(f=>{
+    const n=ALL.filter(x=>x.family===f.key).length;
+    return `<button class="tabbtn${f.key===TAB?' on':''}" onclick="setTab('${f.key}')">`+
+      `${esc(f.label)} <span class="cnt">${n}</span></button>`;
+  }).join('');
+}
+function setTab(k){ TAB=k; buildTabs(); render(); }
+function setDue(f){ DUE=f; document.querySelectorAll('#dueSeg button').forEach(b=>b.classList.toggle('on',b.dataset.f===f)); render(); }
+
+// ---------- due helpers ----------
+function daysUntil(d){
+  if(!d) return null;
+  const due=new Date(d+'T00:00:00'); const now=new Date(); now.setHours(0,0,0,0);
+  return Math.round((due-now)/86400000);
+}
+function dueState(d){
+  const n=daysUntil(d);
+  if(n===null) return 'none';
+  if(n<0) return 'over';
+  if(n<=14) return 'soon';
+  return 'ok';
+}
+function fmtDate(d){
+  if(!d) return '—';
+  const dt=(d instanceof Date)?d:new Date((''+d).length<=10?d+'T00:00:00':d);
+  if(isNaN(dt)) return '—';
+  return dt.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
+}
+function fmtDateTime(d){
+  if(!d) return null;
+  const dt=new Date(d); if(isNaN(dt)) return null;
+  return dt.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
+}
+
+// ---------- render ----------
+function render(){
+  const q=($('search').value||'').trim().toUpperCase();
+  let rows=ALL.filter(x=>x.family===TAB);
+
+  // due filter
+  rows=rows.filter(x=>{
+    if(DUE==='all') return true;
+    const st=dueState(x.next_due);
+    if(DUE==='overdue') return st==='over';
+    if(DUE==='soon')    return st==='soon';
+    if(DUE==='notdone') return !x.wa1 && !x.app_reminded_at; // nobody's reminded yet
+    return true;
+  });
+
+  // search
+  if(q) rows=rows.filter(x=>(x.name||'').toUpperCase().includes(q)||(x.plate||'').includes(q));
+
+  // sort: overdue first, then soonest due, walk-ins (no due) last
+  rows.sort((a,b)=>{
+    const da=daysUntil(a.next_due), db=daysUntil(b.next_due);
+    if(da===null&&db===null) return 0;
+    if(da===null) return 1;
+    if(db===null) return -1;
+    return da-db;
+  });
+
+  // stats (for this tab, pre-search)
+  const tabRows=ALL.filter(x=>x.family===TAB);
+  const over=tabRows.filter(x=>dueState(x.next_due)==='over').length;
+  const soon=tabRows.filter(x=>dueState(x.next_due)==='soon').length;
+  $('stats').innerHTML=
+    `<div class="stat"><div class="n">${tabRows.length}</div><div class="l">Customers</div></div>`+
+    `<div class="stat over"><div class="n">${over}</div><div class="l">Overdue</div></div>`+
+    `<div class="stat due"><div class="n">${soon}</div><div class="l">Due soon</div></div>`;
+
+  if(!rows.length){
+    $('list').innerHTML='';
+    $('status').style.display='block';
+    $('status').textContent = tabRows.length? 'No customers match this filter.' : 'No customers with this coating yet.';
+    return;
+  }
+  $('status').style.display='none';
+
+  $('list').innerHTML=rows.map(c=>rowHtml(c)).join('');
+}
+
+function rowHtml(c){
+  const st=dueState(c.next_due);
+  const cls = st==='over'?'overdue':(st==='soon'?'duesoon':'');
+  let badge;
+  if(st==='none') badge=`<span class="duebadge none">No due date</span>`;
+  else if(st==='over'){ const n=Math.abs(daysUntil(c.next_due)); badge=`<span class="duebadge over">${n}d overdue</span>`; }
+  else if(st==='soon'){ const n=daysUntil(c.next_due); badge=`<span class="duebadge soon">${n===0?'due today':'in '+n+'d'}</span>`; }
+  else badge=`<span class="duebadge ok">on track</span>`;
+
+  const bal=(c.bal_left!=null)?` · balance ${c.bal_left} left`:'';
+
+  // reminder state
+  const wa1txt = c.wa1? ('1st WhatsApp: '+fmtDateTime(c.wa1)) : '1st WhatsApp: not sent';
+  const canSecond = c.wa1 && ((Date.now()-new Date(c.wa1).getTime())>=7*86400000);
+  const wa2txt = c.wa2? ('2nd WhatsApp: '+fmtDateTime(c.wa2))
+                      : (c.wa1? (canSecond?'2nd WhatsApp: ready':'2nd WhatsApp: in '+(7-Math.floor((Date.now()-new Date(c.wa1).getTime())/86400000))+'d')
+                              : '2nd WhatsApp: —');
+  const appTxt = c.app_reminded_at? ('App reminded: '+fmtDateTime(c.app_reminded_at)) : 'App reminded: not yet';
+
+  const waLink=(round)=>{
+    const phone=(c.phone||'').replace(/\D/g,'');
+    return 'https://wa.me/'+phone+'?text='+encodeURIComponent(buildMessage(c,round));
+  };
+
+  const canWa = (c.phone||'').replace(/\D/g,'').length>=8;
+
+  return `<div class="row ${cls}">
+    <div class="top">
+      <div>
+        <div class="nm">${esc(c.name||'(no name)')}</div>
+        <div class="plate">${esc(c.plate||'—')}</div>
+      </div>
+      ${badge}
+    </div>
+    <div class="pkg">${esc(c.pkg||'')}${esc(bal)}</div>
+    <div class="dates">
+      <div><span class="k">Last maintenance</span><br><span class="v ${c.last_visit?'':'muted'}">${fmtDate(c.last_visit)}</span></div>
+      <div><span class="k">Next due</span><br><span class="v ${c.next_due?'':'muted'}">${c.next_due?fmtDate(c.next_due):'not scheduled'}</span></div>
+      <div><span class="k">${esc(appTxt.split(':')[0])}</span><br><span class="v ${c.app_reminded_at?'':'muted'}">${c.app_reminded_at?fmtDateTime(c.app_reminded_at):'not yet'}</span></div>
+      <div><span class="k">Reminders sent</span><br><span class="v ${c.wa1?'':'muted'}">${c.wa1?(c.wa2?'2 sent':'1 sent'):'none'}</span></div>
+    </div>
+    ${c.remark?`<div class="rmk"><i class="ti ti-flag"></i> ${esc(c.remark)}</div>`:''}
+    <div class="remind">
+      ${!c.wa1
+        ? `<a class="wa" href="${canWa?waLink(1):'#'}" target="_blank" ${canWa?'':'disabled'} onclick="stampWa('${c.src}','${c.id}',1)"><i class="ti ti-brand-whatsapp"></i> Send 1st reminder</a>`
+        : (!c.wa2
+            ? `<a class="wa two" href="${(canWa&&canSecond)?waLink(2):'#'}" target="_blank" ${(canWa&&canSecond)?'':'disabled'} onclick="${canSecond?`stampWa('${c.src}','${c.id}',2)`:'return false'}"><i class="ti ti-brand-whatsapp"></i> Send 2nd reminder</a>`
+            : `<span class="duebadge ok"><i class="ti ti-check"></i> 2 reminders sent</span>`)
+      }
+      <button class="remark-btn" onclick="editRemark('${c.src}','${c.id}')"><i class="ti ti-note"></i> Remark</button>
+    </div>
+  </div>`;
+}
+
+// ---------- actions ----------
+async function stampWa(src,id,round){
+  // stamp the reminder date. Only gl_service_records rows are trackable
+  // (walk-in rows have no reminder columns) — for those we just open WhatsApp.
+  const rec=ALL.find(x=>String(x.id)===String(id)&&x.src===src);
+  if(!rec) return;
+  const now=new Date().toISOString();
+  if(round===1) rec.wa1=now; else rec.wa2=now;
+  if(src==='sr'){
+    const col=round===1?'wa_remind_1_at':'wa_remind_2_at';
+    try{ await sb.from('gl_service_records').update({[col]:now}).eq('id',id); }
+    catch(e){ /* link still opens; UI already updated */ }
+  }
+  // re-render shortly after the link opens
+  setTimeout(render,400);
+}
+
+async function editRemark(src,id){
+  const rec=ALL.find(x=>String(x.id)===String(id)&&x.src===src);
+  if(!rec) return;
+  const val=prompt('Remark for '+(rec.name||'this customer')+':', rec.remark||'');
+  if(val===null) return;
+  rec.remark=val.trim();
+  if(src==='sr'){
+    try{ await sb.from('gl_service_records').update({remark:rec.remark}).eq('id',id); }
+    catch(e){ alert('Saved locally but DB update failed: '+e.message); }
+  } else {
+    alert('Note: this is a historical walk-in record with no service entry yet, so the remark is not saved to the database. Log a maintenance visit in POS to make it trackable.');
+  }
+  render();
+}
+
+boot();
+</script>
+</body>
+</html>
