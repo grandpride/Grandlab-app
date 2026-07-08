@@ -66,23 +66,16 @@ async function load(){
   const root=document.getElementById('root');
   if(!id){ root.innerHTML='<div class="status">No receipt ID provided.</div>'; return; }
   try{
-    // find the payment by invoice_no (the GLIV code we put in the link)
-    let {data:pay}=await sb.from('gl_payments')
-      .select('id,job_id,invoice_no,customer_name,plate,net_paid,method,paid_at,sale_date,voided')
-      .eq('invoice_no',id).maybeSingle();
-    // fallback: allow the raw payment UUID as id
-    if(!pay){ const r=await sb.from('gl_payments')
-      .select('id,job_id,invoice_no,customer_name,plate,net_paid,method,paid_at,sale_date,voided')
-      .eq('id',id).maybeSingle(); pay=r.data; }
+    // fetch ONE receipt via a security-definer RPC (safe for anon key —
+    // returns only the receipt matching this exact invoice, nothing else).
+    let pay=null, items=[];
+    const {data:rpc,error:rpcErr}=await sb.rpc('gl_receipt_by_invoice',{p_invoice:id});
+    if(!rpcErr && rpc && rpc.length){
+      pay=rpc[0];
+      if(Array.isArray(pay.services)) items=pay.services;
+    }
     if(!pay){ root.innerHTML='<div class="status">Receipt not found.</div>'; return; }
     if(pay.voided){ root.innerHTML='<div class="status">This receipt has been voided.</div>'; return; }
-
-    // pull line items from the linked job (if any)
-    let items=[];
-    if(pay.job_id){
-      const {data:j}=await sb.from('gl_jobs').select('services').eq('id',pay.job_id).maybeSingle();
-      if(j && Array.isArray(j.services)) items=j.services;
-    }
     render(pay, items);
   }catch(e){
     root.innerHTML='<div class="status">Could not load the receipt. Please try again later.</div>';
