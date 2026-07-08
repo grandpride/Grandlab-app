@@ -2415,7 +2415,7 @@ async function openUnpaid(){
         <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
           <b>${RM(r.amount_owed)}</b>
           <button class="btn-mini" title="Edit" onclick='openUnpaidEdit(${JSON.stringify(r).replace(/'/g,"&#39;")})'><i class="ti ti-edit"></i></button>
-          <button class="btn-mini" onclick="settleUnpaid('${esc(r.id)}','${esc(r.invoice_no||'')}',${Number(r.amount_owed)||0})"><i class="ti ti-check"></i> Settle</button>
+          <button class="btn-mini" onclick='settleUnpaid(${JSON.stringify(r).replace(/'/g,"&#39;")})'><i class="ti ti-check"></i> Settle</button>
         </div>
       </div>`;
     });
@@ -2457,16 +2457,22 @@ async function saveUnpaidEdit(){
   openUnpaid();
 }
 
-async function settleUnpaid(id, invoice, amount){
-  if(!confirm('Mark this as PAID now?\nAmount: '+RM(amount)+'\nThis records the payment and clears the unpaid balance.')) return;
+async function settleUnpaid(r){
+  if(!r || !r.id){ toast('No record'); return; }
+  const amount=Number(r.amount_owed)||0;
+  const who=r.customer_name||r.workshop_name||r.plate||'—';
+  if(!confirm('Mark this as PAID now?\n'+who+(r.plate?' · '+r.plate:'')+'\nAmount: '+RM(amount)+'\n\nThis records the payment and clears the unpaid balance.')) return;
   try{
     // 1) mark the unpaid row settled
-    const {error:e1}=await sb.from('gl_unpaid').update({settled:true, settled_at:new Date().toISOString(), settled_by:ME}).eq('id',id);
+    const {error:e1}=await sb.from('gl_unpaid').update({settled:true, settled_at:new Date().toISOString(), settled_by:ME}).eq('id',r.id);
     if(e1) throw e1;
-    // 2) record a payment (so it counts in takings / exports)
+    // 2) record a payment (so it counts in takings / exports) — carry the
+    //    real customer name + plate so the sales row isn't blank.
     const {error:e2}=await sb.from('gl_payments').insert({
-      invoice_no:invoice||null, gross:amount, net_paid:amount, method:'cash',
-      taken_by:ME, customer_name:'(settled unpaid)'
+      invoice_no:r.invoice_no||null, gross:amount, net_paid:amount, method:'cash',
+      taken_by:ME,
+      customer_name:(r.customer_name||r.workshop_name||r.plate||'Settled unpaid'),
+      plate:r.plate||'', job_id:r.job_id||null
     });
     if(e2) throw e2;
     toast('Settled ✓');
