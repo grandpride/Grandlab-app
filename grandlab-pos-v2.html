@@ -164,7 +164,7 @@ button,input{font-family:inherit}
 .dash-tx th{text-align:left;padding:7px 8px;background:var(--surface2);color:var(--ink2);font-weight:700;font-size:10.5px;white-space:nowrap}
 .dash-tx td{padding:6px 8px;border-top:1px solid var(--line2);white-space:nowrap}
 .dash-tx td.acts{padding:5px 4px}
-.dash-tx td.cust{max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dash-tx td.dcust{max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .dash-tx td.meth{max-width:96px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .dash-edit,.dash-del{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;padding:0;margin:0 1px;font-size:12px;line-height:1;vertical-align:middle;background:none;border:1px solid var(--line2);border-radius:6px;cursor:pointer}
 .dash-edit{color:var(--gold-deep)}
@@ -763,7 +763,7 @@ async function loadDashboard(){
       ${DASH_TX.length?`<table class="dash-tx"><thead><tr><th>Date</th><th>Customer</th><th>Plate</th><th>Method</th><th style="text-align:right">Amount</th><th></th></tr></thead><tbody>
       ${DASH_TX.map((r,i)=>`<tr>
         <td>${(r.sale_date?new Date(r.sale_date+'T00:00:00'):new Date(r.paid_at)).toLocaleDateString('en-MY',{day:'2-digit',month:'short'})}</td>
-        <td class="cust" title="${esc(titleCase(r.customer_name||'—'))}">${esc(titleCase(r.customer_name||'—'))}</td>
+        <td class="dcust" title="${esc(titleCase(r.customer_name||'—'))}">${esc(titleCase(r.customer_name||'—'))}</td>
         <td>${esc(r.plate||'—')}</td>
         <td class="meth" title="${esc(r.method||'')}">${esc(r.method||'')}</td>
         <td style="text-align:right;font-weight:700">${RM(r.net_paid)}</td>
@@ -888,13 +888,16 @@ async function waTxReceipt(i){
   if(!phone){ alert('No phone number on file for this customer.'); return; }
   if(phone.startsWith('0')) phone='60'+phone.slice(1);
   else if(!phone.startsWith('60')) phone='60'+phone;
-  const lineTxt=items.length
-    ? items.map(s=>`• ${s.desc||'Service'} — ${RM(s.price||0)}`).join('\n')
-    : `• Service — ${RM(r.net_paid)}`;
-  let msg=`*GRANDLAB DETAILING*\nOfficial Receipt\n\n`;
-  msg+=`Invoice: ${r.invoice_no||'—'}\nDate: ${new Date(r.paid_at).toLocaleString('en-GB')}\n`;
-  msg+=`Customer: ${r.customer_name||'—'}\nPlate: ${r.plate||'—'}\n\n${lineTxt}\n\n`;
-  msg+=`*TOTAL: ${RM(r.net_paid)}*\nMethod: ${r.method||''}\n\nThank you! 🚗✨`;
+  // build a short message + a tappable receipt link (hosted receipt page).
+  // The link opens receipt.html?id=<invoice_no> which renders the full receipt.
+  const RECEIPT_BASE='https://grandpride.github.io/Grandlab-app/receipt.html';
+  const rid=encodeURIComponent(r.invoice_no||r.id||'');
+  const link=`${RECEIPT_BASE}?id=${rid}`;
+  const nm=(r.customer_name||'').split(' ')[0]||'there';
+  let msg=`Hi ${nm}! 👋 Thank you for choosing *GrandLab Detailing*.\n\n`;
+  msg+=`Here's your receipt for ${r.plate||'your vehicle'} — total ${RM(r.net_paid)}.\n\n`;
+  msg+=`🧾 Click to view / download your receipt:\n${link}\n\n`;
+  msg+=`See you again soon! 🚗✨`;
   const isMobile=/Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
   const url=isMobile
     ? `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`
