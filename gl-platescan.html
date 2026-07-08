@@ -675,8 +675,9 @@ async function saveProfile(){
         existing=data;
       }
       if(!existing && phone){
+        // server-side phone match (gl_walkin has 5000+ rows; fetch-all caps at 1000)
         const digits=phone.replace(/\D/g,'');
-        const {data}=await sb.from('gl_walkin').select('id,phone').limit(1000);
+        const {data}=await sb.from('gl_walkin').select('id,phone').ilike('phone','%'+digits+'%').limit(50);
         const hit=(data||[]).find(r=>String(r.phone||'').replace(/\D/g,'')===digits);
         if(hit) existing={id:hit.id};
       }
@@ -686,8 +687,28 @@ async function saveProfile(){
         if(error) throw error;
       } else {
         const {data,error}=await sb.from('gl_walkin').insert(row).select('id').maybeSingle();
-        if(error) throw error;
-        walkinId=data&&data.id;
+        if(error){
+          // duplicate (phone,plate) slipped past our lookup (e.g. stored plate has
+          // extra spaces/case). Recover: find the real row and UPDATE it instead.
+          if((error.code==='23505')||/duplicate key|unique constraint/i.test(error.message||'')){
+            const digits=(phone||'').replace(/\D/g,'');
+            const platN=plate.toUpperCase().replace(/\s+/g,'');
+            let hit=null;
+            const {data:byPlate}=await sb.from('gl_walkin').select('id,phone,plate').ilike('plate','%'+platN+'%').limit(50);
+            hit=(byPlate||[]).find(r=>String(r.plate||'').toUpperCase().replace(/\s+/g,'')===platN && (!digits||String(r.phone||'').replace(/\D/g,'')===digits));
+            if(!hit && digits){
+              const {data:byPhone}=await sb.from('gl_walkin').select('id,phone').ilike('phone','%'+digits+'%').limit(50);
+              hit=(byPhone||[]).find(r=>String(r.phone||'').replace(/\D/g,'')===digits);
+            }
+            if(hit){
+              walkinId=hit.id;
+              const {error:uerr}=await sb.from('gl_walkin').update(row).eq('id',walkinId);
+              if(uerr) throw uerr;
+            } else { throw error; }
+          } else { throw error; }
+        } else {
+          walkinId=data&&data.id;
+        }
       }
     }
   }catch(e){ $('saveMsg').textContent='Save failed: '+(e.message||e); return; }
