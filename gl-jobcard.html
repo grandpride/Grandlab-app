@@ -109,7 +109,6 @@ html,body{height:100%;background:var(--bg);font-family:-apple-system,BlinkMacSys
     <button class="nav-btn a" data-view="list" onclick="showView('list')"><i class="ti ti-list"></i>Jobs</button>
     <button class="nav-btn" data-view="new" onclick="newJob()"><i class="ti ti-plus"></i>New</button>
     <button class="nav-btn" data-view="report" onclick="showView('report')"><i class="ti ti-chart-bar"></i>Report</button>
-    <button class="nav-btn" data-view="absent" onclick="showView('absent');loadAbsent()"><i class="ti ti-user-x"></i>Absent</button>
     <button class="nav-btn" data-view="settings" onclick="showView('settings')"><i class="ti ti-settings"></i>Settings</button>
   </div>
 
@@ -236,15 +235,6 @@ html,body{height:100%;background:var(--bg);font-family:-apple-system,BlinkMacSys
       </div>
     </div>
 
-    <!-- ABSENT / NO-SHOW VIEW -->
-    <div class="view" id="view-absent">
-      <div class="card">
-        <div class="card-t"><i class="ti ti-user-x"></i> Absent / No-show — last 7 days</div>
-        <div style="font-size:12px;color:var(--text2);margin-bottom:10px">Customers marked absent. Tap 💬 to send a WhatsApp reminder. Reminded ones are tagged so you don't double-message.</div>
-        <div id="absentBody"><div class="empty">Loading…</div></div>
-      </div>
-    </div>
-
     <!-- SETTINGS VIEW -->
     <div class="view" id="view-settings">
       <div class="card">
@@ -351,19 +341,13 @@ async function start(){
   await loadJobs();
   sb.channel('jobs-rt').on('postgres_changes',{event:'*',schema:'public',table:'gl_jobs'},()=>loadJobs()).subscribe();
   loadAppointments();
-  // prefill from plate scanner (?plate=...&phone=...&model=...)
+  // prefill from plate scanner (?plate=...&phone=...)
   const qs=new URLSearchParams(location.search);
-  const qp=qs.get('plate'), qph=qs.get('phone'), qmodel=qs.get('model');
+  const qp=qs.get('plate'), qph=qs.get('phone');
   if(qp||qph){
     showView('form'); newJob(); setType('walkin');
     if(qph){ $('f_hp').value=qph; if(typeof _doLookup==='function') await _doLookup(); }
-    if(qp){ $('f_plate').value=qp.toUpperCase(); }
-    // if the scanner passed the exact car's model, use it directly (don't let
-    // a plate lookup pick the wrong car for a multi-car customer)
-    if(qmodel){ $('f_model').value=qmodel; if(typeof jcTypeFromModel==='function') jcTypeFromModel(qmodel); }
-    if(qp && !qmodel && !foundProfile && typeof _doPlateLookup==='function') await _doPlateLookup();
-    // load packages for this customer regardless (RPC is phone-scoped)
-    if(typeof loadCustPackages==='function') await loadCustPackages();
+    if(qp){ $('f_plate').value=qp.toUpperCase(); if(!foundProfile && typeof _doPlateLookup==='function') await _doPlateLookup(); }
   }
 }
 async function loadConfig(){
@@ -479,7 +463,7 @@ function showView(v){
   const vid = v==='detail'?'detail':(v==='new'?'form':v);
   $('view-'+vid).classList.add('a');
   document.querySelectorAll('.nav-btn').forEach(b=>b.classList.toggle('a',b.dataset.view===v));
-  $('hdrSub').textContent={list:'All jobs',new:'New job card',report:'Daily report',detail:'Job details',absent:'Absent / no-show',settings:'Manage lists'}[v]||'';
+  $('hdrSub').textContent={list:'All jobs',new:'New job card',report:'Daily report',detail:'Job details',settings:'Manage lists'}[v]||'';
   if(v==='settings') renderSettings();
 }
 
@@ -528,23 +512,98 @@ async function loadAppointments(){
   const converted=new Set(JOBS.map(j=>j.booking_id).filter(Boolean));
   const waiting=appts.filter(a=>!converted.has(a.id));
   const el=$('apptWaiting');
-  if(!waiting.length){ el.innerHTML=''; return; }
-  el.innerHTML=`<div style="font-size:12px;font-weight:700;color:var(--text2);margin-bottom:8px"><i class="ti ti-calendar"></i> Today's appointments — tap to open job card</div>`+
+  const reschedBtn=`<button onclick="findRescheduleBooking()" style="background:transparent;border:1px solid var(--gold);color:var(--gold);border-radius:8px;padding:4px 9px;font-size:11px;cursor:pointer"><i class="ti ti-calendar-search"></i> Reschedule (other day)</button>`;
+  if(!waiting.length){
+    el.innerHTML=`<div style="display:flex;justify-content:flex-end;margin-bottom:10px">${reschedBtn}</div>`;
+    return;
+  }
+  el.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <div style="font-size:12px;font-weight:700;color:var(--text2)"><i class="ti ti-calendar"></i> Today's appointments — tap to open job card</div>
+      ${reschedBtn}
+    </div>`+
     waiting.map(a=>{
       const n=noteField(a.notes,'Name'), plate=noteField(a.notes,'Plate'), car=noteField(a.notes,'Car');
       const t=a.scheduled_at?new Date(a.scheduled_at).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'}):'';
-      return `<div class="job-card" style="border-color:var(--gold)" onclick='convertAppt(${JSON.stringify(a).replace(/'/g,"&#39;")})'>
+      return `<div class="job-card" style="border-color:var(--gold)">
         <div class="stage-dot" style="background:#9CA3AF"></div>
-        <div style="flex:1;min-width:0">
+        <div style="flex:1;min-width:0;cursor:pointer" onclick='convertAppt(${JSON.stringify(a).replace(/'/g,"&#39;")})'>
           <div style="font-weight:700">${esc(n||'(appt)')} <span style="font-size:11px;color:var(--text3)">${t}</span></div>
           <div style="font-size:12px;color:var(--text2);margin-top:2px">${esc(car||'')} · <span class="plate-badge">${esc(plate||'')}</span></div>
           <div style="font-size:11px;color:var(--text3);margin-top:4px">${esc(a.service_name||'')}</div>
         </div>
-        <i class="ti ti-arrow-right" style="color:var(--gold)"></i>
+        <button title="Reschedule date/time" onclick='event.stopPropagation();rescheduleAppt(${JSON.stringify(a).replace(/'/g,"&#39;")})' style="flex:0 0 auto;background:transparent;border:1px solid var(--gold);color:var(--gold);border-radius:8px;padding:6px 8px;margin-right:6px;cursor:pointer"><i class="ti ti-calendar-event"></i></button>
+        <i class="ti ti-arrow-right" style="color:var(--gold)" onclick='convertAppt(${JSON.stringify(a).replace(/'/g,"&#39;")})'></i>
       </div>`;
     }).join('')+'<div style="height:14px"></div>';
 }
 function noteField(notes,key){ if(!notes)return''; const m=notes.match(new RegExp(key+':\\s*([^|\\[]+)')); return m?m[1].trim():''; }
+
+/* Reschedule a booking to a new date/time. Updates gl_bookings.scheduled_at.
+   Keeps the same time if only the date is changed. Receptionist-friendly:
+   pre-fills the current date/time, she edits and confirms. */
+async function rescheduleAppt(a){
+  if(!a || !a.id){ toast('No booking to reschedule'); return; }
+  const cur=a.scheduled_at?new Date(a.scheduled_at):new Date();
+  const curDate=`${cur.getFullYear()}-${String(cur.getMonth()+1).padStart(2,'0')}-${String(cur.getDate()).padStart(2,'0')}`;
+  const curTime=`${String(cur.getHours()).padStart(2,'0')}:${String(cur.getMinutes()).padStart(2,'0')}`;
+  const who=noteField(a.notes,'Name')||a.service_name||'this booking';
+
+  const newDate=prompt(`Reschedule ${who}\n\nEnter the NEW DATE (YYYY-MM-DD):`, curDate);
+  if(newDate===null) return;                       // cancelled
+  const dOK=/^\d{4}-\d{2}-\d{2}$/.test(newDate.trim());
+  if(!dOK){ alert('Date must look like 2026-07-15'); return; }
+
+  const newTime=prompt(`New TIME (24h HH:MM):`, curTime);
+  if(newTime===null) return;
+  const tOK=/^\d{1,2}:\d{2}$/.test(newTime.trim());
+  if(!tOK){ alert('Time must look like 14:30'); return; }
+
+  // build local datetime -> ISO (keeps Malaysia local time correctly)
+  const [Y,M,D]=newDate.trim().split('-').map(Number);
+  const [h,mi]=newTime.trim().split(':').map(Number);
+  const dt=new Date(Y, M-1, D, h, mi, 0);
+  if(isNaN(dt.getTime())){ alert('That date/time is not valid.'); return; }
+
+  if(!confirm(`Move ${who} to:\n${newDate} at ${newTime}?`)) return;
+  const {error}=await sb.from('gl_bookings').update({scheduled_at:dt.toISOString()}).eq('id',a.id);
+  if(error){ alert('Reschedule failed: '+error.message); return; }
+  toast('Booking moved to '+newDate+' '+newTime);
+  await loadJobs(); loadAppointments();
+}
+
+/* Find a booking on ANY day (by plate / phone / name) and reschedule it.
+   For fixing a booking the receptionist put on the wrong day — it won't be in
+   today's list, so she searches for it here. */
+async function findRescheduleBooking(){
+  const q=prompt('Reschedule a booking on another day.\n\nSearch by plate, phone, or name:');
+  if(q===null) return;
+  const term=q.trim(); if(!term){ return; }
+  // pull upcoming + recent pending/confirmed bookings and match in-browser on notes
+  const from=new Date(); from.setDate(from.getDate()-3);
+  const to=new Date();   to.setDate(to.getDate()+120);
+  const {data,error}=await sb.from('gl_bookings').select('*')
+    .gte('scheduled_at',from.toISOString()).lte('scheduled_at',to.toISOString())
+    .in('status',['pending','confirmed']).order('scheduled_at');
+  if(error){ alert('Search failed: '+error.message); return; }
+  const t=term.toLowerCase();
+  const hits=(data||[]).filter(a=>{
+    const blob=((a.notes||'')+' '+(a.service_name||'')).toLowerCase();
+    return blob.includes(t);
+  });
+  if(!hits.length){ alert('No pending booking found for "'+term+'".'); return; }
+  // build a numbered chooser
+  const lines=hits.slice(0,15).map((a,i)=>{
+    const d=a.scheduled_at?new Date(a.scheduled_at):null;
+    const when=d?`${d.toLocaleDateString('en-GB')} ${d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}`:'(no date)';
+    const nm=noteField(a.notes,'Name')||''; const pl=noteField(a.notes,'Plate')||'';
+    return `${i+1}. ${when} — ${nm} ${pl} — ${a.service_name||''}`;
+  }).join('\n');
+  const pick=prompt('Which booking? Enter the number:\n\n'+lines);
+  if(pick===null) return;
+  const idx=parseInt(pick,10)-1;
+  if(isNaN(idx)||idx<0||idx>=hits.length){ alert('Invalid choice.'); return; }
+  rescheduleAppt(hits[idx]);
+}
 
 function convertAppt(a){
   newJob();
@@ -728,12 +787,9 @@ function renderDefs(){
     </div>`).join('');
 }
 function addDef(){ DEFS.push({note:'',status:'noted'}); renderDefs(); }
-function usePkg(pid, svcName){
-  // per-customer packages have no single id -> match by name; else by id
-  const p = (pid && CAR_PACKAGES.find(x=>String(x.id)===String(pid)))
-         || CAR_PACKAGES.find(x=>String(x.service_name)===String(svcName));
-  if(!p)return;
-  const line={staff:'',desc:(p.service_name||'Package')+' (package use)',price:'0',pkg_id:p.id||null};
+function usePkg(pid){
+  const p=CAR_PACKAGES.find(x=>String(x.id)===String(pid)); if(!p)return;
+  const line={staff:'',desc:p.service_name+' (package use)',price:'0',pkg_id:p.id};
   // if the only row is an empty placeholder, replace it; else add on top
   if(SVCS.length===1 && !SVCS[0].desc){ SVCS[0]=line; } else { SVCS.unshift(line); }
   renderSvcs(); toast('Added from package · '+p.remaining+' left');
@@ -849,36 +905,17 @@ function onCarSel(){
 }
 async function loadCustPackages(){
   const plate=($('f_plate').value||'').trim().toUpperCase();
-  const phone=($('f_hp2').value.trim()||$('f_hp').value.trim()||'');
-  if(!plate && !phone){ $('pkgChips').innerHTML=''; CAR_PACKAGES=[]; return; }
-  let pk=[];
-  // primary: customer-scoped RPC (coating per-car, Bathe Essence shared).
-  try{
-    const {data,error}=await sb.rpc('gl_customer_packages',{p_phone:phone||'',p_plate:plate||''});
-    if(!error && data){
-      pk=data.map(r=>({
-        // note: per-customer rows have no single id; keep service_name for deduction-by-name
-        id:null, service_name:r.out_service_name, remaining:Number(r.out_balance)||0,
-        scope:r.out_scope, vehicle_label:r.out_vehicle_label
-      })).filter(p=>p.remaining>0);
-    }
-  }catch(e){ /* fall back below */ }
-  // fallback: legacy plate/owner read if RPC unavailable
-  if(!pk.length){
-    const owner=foundProfile?foundProfile.id:null;
-    let q=sb.from('gl_packages').select('*').eq('status','active');
-    if(plate && owner) q=q.or(`vehicle_label.ilike.${plate},owner_id.eq.${owner}`);
-    else if(plate) q=q.ilike('vehicle_label',plate);
-    else if(owner) q=q.eq('owner_id',owner);
-    const {data}=await q;
-    pk=(data||[]).map(p=>({...p,remaining:(p.total_uses||0)-(p.used_uses||0)})).filter(p=>p.remaining>0);
-  }
+  const owner=foundProfile?foundProfile.id:null;
+  if(!plate && !owner){ $('pkgChips').innerHTML=''; CAR_PACKAGES=[]; return; }
+  let q=sb.from('gl_packages').select('*').eq('status','active');
+  if(plate && owner) q=q.or(`vehicle_label.ilike.${plate},owner_id.eq.${owner}`);
+  else if(plate) q=q.ilike('vehicle_label',plate);
+  else q=q.eq('owner_id',owner);
+  const {data}=await q;
+  let pk=(data||[]).map(p=>({...p,remaining:(p.total_uses||0)-(p.used_uses||0)})).filter(p=>p.remaining>0);
   CAR_PACKAGES=pk;
   if(!CAR_PACKAGES.length){ $('pkgChips').innerHTML=''; return; }
-  $('pkgChips').innerHTML=CAR_PACKAGES.map((p,i)=>{
-    const allcars = p.scope==='customer' ? ' <span style="font-size:9px;color:var(--gold-deep,#b8860b);border:1px solid currentColor;border-radius:6px;padding:0 4px">ALL CARS</span>' : '';
-    return `<div class="chip" onclick="usePkg('${p.id||''}','${esc((p.service_name||'').replace(/'/g,''))}')">🎟️ ${esc(p.service_name)}${allcars} · ${p.remaining} left</div>`;
-  }).join('');
+  $('pkgChips').innerHTML=CAR_PACKAGES.map((p,i)=>`<div class="chip" onclick="usePkg('${p.id}')">🎟️ ${esc(p.service_name)} · ${p.remaining} left</div>`).join('');
 }
 
 /* ---------- PHOTOS (ImgBB -> Supabase urls) ---------- */
@@ -1002,51 +1039,6 @@ async function registerCar_(j){
 }
 async function saveAndPrint(){ const j=await saveJob(true); if(j){ toast('Saved ✓'); printSlip(j); showView('list'); } }
 
-/* ---------- ABSENT / NO-SHOW list + WhatsApp reminder ---------- */
-async function loadAbsent(){
-  const box=$('absentBody'); if(box) box.innerHTML='<div class="empty">Loading…</div>';
-  const since=new Date(Date.now()-7*24*60*60*1000).toISOString();
-  const {data,error}=await sb.from('gl_jobs')
-    .select('id,name,hp,plate,model,cust_type,workshop_name,no_show,no_show_at,no_show_reminded_at,slot_time,created_at')
-    .eq('no_show',true).gte('no_show_at',since).order('no_show_at',{ascending:false});
-  if(error){ if(box) box.innerHTML='<div class="empty">Error: '+esc(error.message)+'</div>'; return; }
-  const rows=data||[];
-  if(!rows.length){ if(box) box.innerHTML='<div class="empty">No absent customers in the last 7 days. 🎉</div>'; return; }
-  box.innerHTML=rows.map(j=>{
-    const nm=j.name||j.workshop_name||'Customer';
-    const when=j.no_show_at?new Date(j.no_show_at).toLocaleDateString('en-GB'):'';
-    const done=!!j.no_show_reminded_at;
-    const phone=(j.hp||'').toString();
-    return `<div style="border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:8px">
-      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
-        <div style="min-width:0">
-          <div style="font-weight:800">${esc(nm)}${done?' <span style="font-size:10px;color:#16A34A;border:1px solid #16A34A;border-radius:6px;padding:0 5px;vertical-align:middle">reminded</span>':''}</div>
-          <div style="font-size:12px;color:var(--text2)">${esc(j.model||'')}${j.plate?' · '+esc(j.plate):''}${when?' · absent '+when:''}</div>
-          <div style="font-size:12px;color:var(--text3)">${esc(phone||'no phone')}</div>
-        </div>
-        <button class="btn btn-pri" style="flex:0 0 auto" onclick="remindAbsent('${j.id}')" ${phone?'':'disabled'}>💬 Remind</button>
-      </div>
-    </div>`;
-  }).join('');
-}
-
-async function remindAbsent(id){
-  const {data:j}=await sb.from('gl_jobs').select('id,name,hp,plate,model,slot_time,workshop_name').eq('id',id).maybeSingle();
-  if(!j){ toast('Job not found'); return; }
-  const phone=(j.hp||'').toString().replace(/\D/g,'');
-  if(!phone){ toast('No phone number for this customer'); return; }
-  const nm=(j.name||j.workshop_name||'').split(' ')[0]||'there';
-  const car=j.model?(' for your '+j.model):'';
-  const msg=`Hi ${nm}! 👋 This is GrandLab Detailing. We missed you at your recent appointment${car}. Would you like to reschedule? Just reply here and we'll find a new slot for you. 🚗✨`;
-  const wa=(/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)?'https://wa.me/':'https://web.whatsapp.com/send?phone=')
-    + (/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)?(phone.replace(/^0/,'60')+'?text='+encodeURIComponent(msg)):(phone.replace(/^0/,'60')+'&text='+encodeURIComponent(msg)));
-  window.open(wa,'_blank');
-  // tag as reminded so it won't be double-messaged
-  await sb.from('gl_jobs').update({no_show_reminded_at:new Date().toISOString()}).eq('id',id);
-  toast('WhatsApp opened · marked reminded');
-  loadAbsent();
-}
-
 /* ---------- DETAIL ---------- */
 function openJob(id){
   const j=JOBS.find(x=>x.id===id); if(!j)return;
@@ -1069,9 +1061,6 @@ function openJob(id){
       <button class="btn btn-dark" style="flex:1" onclick="printSlip(JOBS.find(x=>x.id==='${j.id}'))"><i class="ti ti-printer"></i> Print</button>
       <button class="btn btn-ghost" style="flex:1" onclick="editJob('${j.id}')"><i class="ti ti-edit"></i> Edit</button>
     </div>
-    <button class="btn btn-block" style="margin-bottom:8px;${j.no_show?'background:#C0392B;color:#fff':'background:transparent;border:1px solid #C0392B;color:#C0392B'}" onclick="toggleNoShow('${j.id}')">
-      <i class="ti ti-user-x"></i> ${j.no_show?'Absent / No-show ✓ (tap to undo)':'Mark Absent / No-show'}
-    </button>
     ${(j.cust_type==='workshop'||j.cust_type==='showroom')
       ? `<button class="btn btn-pri btn-block" style="margin-bottom:8px" onclick="markCollected('${j.id}')"><i class="ti ti-circle-check"></i> Collected (remove from board)</button>`
       : `<button class="btn btn-pri btn-block" style="margin-bottom:8px" onclick="markPaid('${j.id}')"><i class="ti ti-cash"></i> Paid &amp; collected (remove from board)</button>`}
@@ -1097,21 +1086,6 @@ async function setStage(id,key){
   }
   await sb.from('gl_jobs').update(patch).eq('id',id);
   toast('Status: '+stageOf(key).label);
-  await loadJobs(); openJob(id);
-}
-
-/* Mark / unmark a job as Absent / No-show. Additive flag — does NOT change
-   the job's status, so the board/POS/payment flow is untouched. Records a
-   timestamp so the reminder list can find recent no-shows. */
-async function toggleNoShow(id){
-  const j=JOBS.find(x=>x.id===id); if(!j) return;
-  const turningOn = !j.no_show;
-  const patch = turningOn
-    ? { no_show:true,  no_show_at: new Date().toISOString() }
-    : { no_show:false, no_show_at: null, no_show_reminded_at: null };
-  const {error}=await sb.from('gl_jobs').update(patch).eq('id',id);
-  if(error){ toast('Failed: '+error.message); return; }
-  toast(turningOn ? 'Marked absent / no-show' : 'Absent flag removed');
   await loadJobs(); openJob(id);
 }
 
