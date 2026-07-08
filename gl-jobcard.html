@@ -1287,10 +1287,48 @@ async function loadAbsent(){
           <div style="font-size:12px;color:var(--text2)">${esc(j.model||'')}${j.plate?' · '+esc(j.plate):''}${when?' · absent '+when:''}</div>
           <div style="font-size:12px;color:var(--text3)">${esc(phone||'no phone')}</div>
         </div>
-        <button class="btn btn-pri" style="flex:0 0 auto" onclick="remindAbsent('${j.id}')" ${phone?'':'disabled'}>💬 Remind</button>
+        <div style="display:flex;flex-direction:column;gap:6px;flex:0 0 auto">
+          <button class="btn btn-pri" onclick="remindAbsent('${j.id}')" ${phone?'':'disabled'}>💬 Remind</button>
+          <button class="btn btn-ghost" style="border:1px solid var(--gold);color:var(--gold)" onclick='rescheduleAbsent(${JSON.stringify(j).replace(/'/g,"&#39;")})'>📅 Reschedule</button>
+        </div>
       </div>
     </div>`;
   }).join('');
+}
+
+/* Reschedule an absent customer: create a FRESH booking for the new date so
+   they appear as an appointment again, then clear the absent flag so they leave
+   the Absent list (they're rebooked). */
+async function rescheduleAbsent(j){
+  if(!j || !j.id){ toast('No record'); return; }
+  const who=j.name||j.workshop_name||'this customer';
+  const newDate=prompt(`Reschedule ${who}\n\nNew DATE (YYYY-MM-DD):`);
+  if(newDate===null) return;
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(newDate.trim())){ alert('Date must look like 2026-07-15'); return; }
+  const newTime=prompt('New TIME (24h HH:MM):','10:00');
+  if(newTime===null) return;
+  if(!/^\d{1,2}:\d{2}$/.test(newTime.trim())){ alert('Time must look like 10:00'); return; }
+  const [Y,M,D]=newDate.trim().split('-').map(Number);
+  const [h,mi]=newTime.trim().split(':').map(Number);
+  const dt=new Date(Y,M-1,D,h,mi,0);
+  if(isNaN(dt.getTime())){ alert('Invalid date/time.'); return; }
+  if(!confirm(`Rebook ${who} on:\n${newDate} at ${newTime}?`)) return;
+
+  // build notes in the same format the job card reads (Name / Phone / Car / Plate)
+  const notes=[`Name: ${j.name||''}`,`Phone: ${j.hp||''}`,`Car: ${j.model||''}`,`Plate: ${j.plate||''}`].join(' | ');
+  const booking={
+    scheduled_at:dt.toISOString(),
+    status:'pending',
+    source:'reschedule',
+    service_name:(Array.isArray(j.services)&&j.services[0]&&j.services[0].desc)?j.services[0].desc:'',
+    notes:notes
+  };
+  const {error:be}=await sb.from('gl_bookings').insert(booking);
+  if(be){ alert('Rebook failed: '+be.message); return; }
+  // clear the absent flag so they leave the Absent list
+  await sb.from('gl_jobs').update({no_show:false, no_show_at:null, no_show_reminded_at:null}).eq('id',j.id);
+  toast('Rebooked for '+newDate+' '+newTime+' · removed from Absent');
+  await loadJobs(); loadAbsent();
 }
 
 async function remindAbsent(id){
