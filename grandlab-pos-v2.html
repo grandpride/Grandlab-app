@@ -1306,7 +1306,7 @@ function renderCheckout(){
     </div>
 
     <div class="section-h">Order</div>
-    ${svc.length?svc.map((s,i)=>`<div class="lineitem"><span class="d">${esc(svcDesc(s))}${s._added?` <span style="color:var(--gold-deep);font-size:11px">+added</span>`:''}</span><span class="p">${RM(svcPrice(s))} ${s._added?`<i class="ti ti-x" style="cursor:pointer;color:#c00;margin-left:6px" onclick="rmItem(${i})"></i>`:''}</span></div>`).join('')
+    ${svc.length?svc.map((s,i)=>`<div class="lineitem"><span class="d">${esc(svcDesc(s))}${s._added?` <span style="color:var(--gold-deep);font-size:11px">+added</span>`:''}</span><span class="p"><span onclick="editItemPrice(${i})" style="cursor:pointer;border-bottom:1px dashed var(--ink3)" title="Tap to edit amount">${RM(svcPrice(s))}</span> <i class="ti ti-pencil" style="cursor:pointer;color:var(--ink3);font-size:12px;margin-left:2px" onclick="editItemPrice(${i})"></i>${s._added?` <i class="ti ti-x" style="cursor:pointer;color:#c00;margin-left:6px" onclick="rmItem(${i})"></i>`:''}</span></div>`).join('')
       :`<div class="lineitem"><span class="d">Total</span><span class="p">${RM(PAY.gross)}</span></div>`}
     <button class="btn-mini" style="margin-top:10px" onclick="addItem()"><i class="ti ti-plus"></i> Add service / product</button>
 
@@ -1629,6 +1629,23 @@ function rmItem(i){
   const arr=jobServices(CUR);
   if(i<0||i>=arr.length) return;
   arr.splice(i,1); CUR.services=arr;
+  PAY.gross=arr.reduce((s,x)=>s+svcPrice(x),0);
+  renderCheckout();
+}
+
+/* Edit the amount of a service/product line in checkout. Prompts for a new
+   RM value, stores it on the item, and recomputes the order total. */
+function editItemPrice(i){
+  const arr=jobServices(CUR);
+  if(i<0||i>=arr.length) return;
+  const cur=svcPrice(arr[i]);
+  const raw=prompt('Edit amount for:\n'+svcDesc(arr[i])+'\n\nEnter new price (RM):', cur.toFixed(2));
+  if(raw===null) return;
+  const v=parseFloat(String(raw).replace(/[^\d.]/g,''));
+  if(isNaN(v)||v<0){ alert('Enter a valid amount (e.g. 550 or 550.00)'); return; }
+  arr[i].price=v;            // override the price on this line
+  arr[i].amount=v;           // keep both fields in sync (svcPrice reads either)
+  CUR.services=arr;
   PAY.gross=arr.reduce((s,x)=>s+svcPrice(x),0);
   renderCheckout();
 }
