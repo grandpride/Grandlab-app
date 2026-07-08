@@ -331,33 +331,67 @@ async function doSearch(raw){
 async function loadCustomerCars(phone, currentPlate){
   const wrap=$('carsWrap'); if(!wrap) return;
   const core=(phone||'').replace(/\D/g,'').replace(/^(60|0)/,'');
-  if(!core){ wrap.innerHTML=''; return; }
+  const curName=String((CUR&&CUR.name)||'').trim().toUpperCase();
+  if(!core && !curName){ wrap.innerHTML=''; return; }
   const cars=[]; const seen=new Set();
-  const add=(plate,model)=>{
-    const p=(plate||'').trim().toUpperCase(); if(!p||seen.has(p)) return;
-    seen.add(p); cars.push({plate:p, model:(model||'').trim()});
+  const add=(plate,model,id,src)=>{
+    const p=(plate||'').trim().toUpperCase().replace(/\s+/g,''); if(!p||seen.has(p)) return;
+    seen.add(p); cars.push({plate:p, model:(model||'').trim(), id:id||null, src:src||null});
   };
   // current car first
-  add(currentPlate, (CUR&&CUR.model)||'');
+  add(currentPlate, (CUR&&CUR.model)||'', (CUR&&CUR.walkinId)||null, (CUR&&CUR.ownerId)?'vehicle':'walkin');
   try{
-    // walk-in cars with same phone-core
-    const {data:wk}=await sb.from('gl_walkin').select('plate,model,phone').limit(1000);
-    (wk||[]).forEach(r=>{ if(String(r.phone||'').replace(/\D/g,'').replace(/^(60|0)/,'')===core) add(r.plate,r.model); });
+    // walk-in cars — query SERVER-SIDE by phone/name (gl_walkin is large; a
+    // fetch-all-and-filter misses rows beyond Supabase's 1000-row cap).
+    const digits=(phone||'').replace(/\D/g,'');
+    const ors=[];
+    if(digits){ ors.push(`phone.ilike.%${digits}%`); if(core) ors.push(`phone.ilike.%${core}%`); }
+    if(curName) ors.push(`name.ilike.${curName}`);
+    if(ors.length){
+      const {data:wk}=await sb.from('gl_walkin').select('id,plate,model,phone,name').or(ors.join(',')).limit(200);
+      (wk||[]).forEach(r=>{
+        const rc=String(r.phone||'').replace(/\D/g,'').replace(/^(60|0)/,'');
+        const rn=String(r.name||'').trim().toUpperCase();
+        if((core&&rc===core) || (curName&&rn===curName&&rn!=='')) add(r.plate,r.model,r.id,'walkin');
+      });
+    }
   }catch(e){}
   try{
-    // app-member cars via profile phone
-    const {data:prof}=await sb.from('gl_profiles').select('id,phone, gl_vehicles(make,model,plate)').limit(1000);
-    (prof||[]).forEach(pr=>{
-      if(String(pr.phone||'').replace(/\D/g,'').replace(/^(60|0)/,'')!==core) return;
-      (pr.gl_vehicles||[]).forEach(v=>add(v.plate,[v.make,v.model].filter(Boolean).join(' ')));
-    });
+    // app-member cars via profile phone (server-side)
+    const digits=(phone||'').replace(/\D/g,'');
+    if(digits){
+      const {data:prof}=await sb.from('gl_profiles').select('id,phone,name, gl_vehicles(id,make,model,plate)').ilike('phone','%'+digits+'%').limit(50);
+      (prof||[]).forEach(pr=>{
+        const rc=String(pr.phone||'').replace(/\D/g,'').replace(/^(60|0)/,'');
+        if(core && rc===core){
+          (pr.gl_vehicles||[]).forEach(v=>add(v.plate,[v.make,v.model].filter(Boolean).join(' '),v.id,'vehicle'));
+        }
+      });
+    }
   }catch(e){}
   if(cars.length<=1){ wrap.innerHTML=''; return; }  // nothing to switch between
-  const cur=(currentPlate||'').trim().toUpperCase();
+  window._CARS=cars;
+  const cur=(currentPlate||'').trim().toUpperCase().replace(/\s+/g,'');
   wrap.innerHTML='<div class="cars"><div class="cars-h">Cars — tap to switch / create job</div>'+
-    cars.map(c=>`<div class="car-chip${c.plate===cur?' sel':''}" onclick="selectCar('${esc(c.plate)}','${esc((c.model||'').replace(/'/g,''))}')">`+
-      `<span class="cc-left"><span class="cc-plate">${esc(c.plate)}</span><span class="cc-model">${esc(c.model||'—')}</span></span>`+
-      `<span class="cc-go">${c.plate===cur?'SELECTED':'Create job →'}</span></div>`).join('')+'</div>';
+    cars.map((c,idx)=>`<div class="car-chip${c.plate===cur?' sel':''}">`+
+      `<span class="cc-left" style="flex:1;cursor:pointer" onclick="selectCar('${esc(c.plate)}','${esc((c.model||'').replace(/'/g,''))}')"><span class="cc-plate">${esc(c.plate)}</span><span class="cc-model">${esc(c.model||'—')}</span></span>`+
+      `<span class="cc-go" style="cursor:pointer" onclick="selectCar('${esc(c.plate)}','${esc((c.model||'').replace(/'/g,''))}')">${c.plate===cur?'SELECTED':'Create job →'}</span>`+
+      `<button title="Delete this car" onclick="deleteCar(${idx})" style="flex:0 0 auto;margin-left:8px;background:#3a1a1a;color:#ff6b5a;border:1px solid #5a2a2a;border-radius:7px;padding:5px 8px;font-size:12px;cursor:pointer"><i class="ti ti-trash"></i></button>`+
+      `</div>`).join('')+'</div>';
+}
+
+/* Delete a wrong car from the customer (removes the exact row from Supabase). */
+async function deleteCar(idx){
+  const c=(window._CARS||[])[idx]; if(!c) return;
+  if(!c.id){ alert('Can\u2019t identify this car row to delete. Use Edit / Complete Profile.'); return; }
+  if(!confirm('Delete this car permanently?\n'+c.plate+' · '+(c.model||''))) return;
+  try{
+    if(c.src==='vehicle'){ await sb.from('gl_vehicles').delete().eq('id',c.id); }
+    else { await sb.from('gl_walkin').delete().eq('id',c.id); }
+    const stillCur=(CUR&&CUR.plate||'').trim().toUpperCase().replace(/\s+/g,'')===c.plate;
+    if(stillCur){ const other=(window._CARS||[]).find((x,i)=>i!==idx); if(other) selectCar(other.plate, other.model); }
+    await loadCustomerCars((CUR&&CUR.phone)||'', (CUR&&CUR.plate)||'');
+  }catch(e){ alert('Delete failed: '+(e.message||e)); }
 }
 
 /* Switch the active car: if it's already selected, go straight to the job
