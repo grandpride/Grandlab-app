@@ -207,17 +207,31 @@ async function load(){
   $('status').textContent='Loading…'; $('status').style.display='block';
   ALL=[];
   try{
-    // 1) gl_service_records — coatings with real next_due (POS + backfill)
+    // 0) build a plate -> {name,phone} map from gl_walkin (coating customers
+    //    are mostly walk-ins; service records only store the plate/vehicle_label).
+    const {data:wkAll}=await sb.from('gl_walkin')
+      .select('name,phone,plate,model').limit(6000);
+    const byPlate={};
+    (wkAll||[]).forEach(w=>{
+      const p=String(w.plate||'').trim().toUpperCase().replace(/\s+/g,'');
+      if(p && !byPlate[p]) byPlate[p]={name:w.name||'',phone:w.phone||'',model:w.model||''};
+    });
+
+    // 1) gl_service_records — coatings with real next_due (POS + backfill).
+    //    NOTE: this table stores the plate in `vehicle_label` (not `plate`) and
+    //    has no name/phone — we resolve those from gl_walkin by plate above.
     const {data:srv,error:e1}=await sb.from('gl_service_records')
-      .select('id,service_name,service_date,next_due,plate,phone,customer_name,owner_id,app_reminded_at,wa_remind_1_at,wa_remind_2_at,remark')
+      .select('id,service_name,service_date,next_due,vehicle_label,owner_id,app_reminded_at,wa_remind_1_at,wa_remind_2_at,remark')
       .order('next_due',{ascending:true});
     if(e1) throw e1;
 
     (srv||[]).forEach(r=>{
       if(!isCoatingName(r.service_name)) return;
+      const plate=String(r.vehicle_label||'').trim().toUpperCase().replace(/\s+/g,'');
+      const cust=byPlate[plate]||{};
       ALL.push({
         src:'sr', id:r.id,
-        name:r.customer_name||'', phone:r.phone||'', plate:(r.plate||'').toUpperCase(),
+        name:cust.name||'', phone:cust.phone||'', plate:plate,
         pkg:r.service_name||'', family:familyOf(r.service_name),
         last_visit:r.service_date||null, next_due:r.next_due||null,
         app_reminded_at:r.app_reminded_at||null,
