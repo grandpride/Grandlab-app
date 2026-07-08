@@ -166,21 +166,32 @@ function isCoatingName(name){
 }
 
 // ---------- WHATSAPP TEMPLATE ----------
-// TODO: Jimmy will provide the final template. {name} {plate} {pkg} {due} get replaced.
-// Keeping a clear placeholder so the send flow works end-to-end now.
+// Car shows as [MODEL, PLATE] and auto-fills from the record.
+function timeGreeting(){
+  const h=new Date().getHours();
+  if(h<12) return 'Good Morning';
+  if(h<18) return 'Good Afternoon';
+  return 'Good Evening';
+}
 function buildMessage(c, round){
-  const name=c.name||'there';
-  const plate=c.plate?(' ('+c.plate+')'):'';
-  const due=c.next_due?fmtDate(c.next_due):'soon';
-  // 1st vs 2nd reminder can differ; template goes here.
+  const car=[c.model,c.plate].map(s=>String(s||'').trim()).filter(Boolean).join(', ');
+  const carTag=car?`[${car}]`:'your car';
   if(round===2){
-    return `Hi ${name}, just a friendly follow-up from GrandLab Detailing. `+
-      `Your ${c.pkg||'coating'} maintenance for your car${plate} is due (${due}). `+
-      `Shall we arrange a slot for you? Reply here and we'll book it. Thank you!`;
+    return `Mr/Mrs, just to share — delaying maintenance may cause:\n`+
+      `⚠️ Watermarks\n`+
+      `⚠️ Minor stains\n`+
+      `⚠️ Reduced coating performance\n`+
+      `Better to settle early so your car stays perfect.\n`+
+      `Which slot should I arrange for you?`;
   }
-  return `Hi ${name}, this is GrandLab Detailing. `+
-    `Your ${c.pkg||'coating'} maintenance for your car${plate} is coming due (${due}). `+
-    `Would you like to book your next maintenance visit? We'd be happy to arrange it for you.`;
+  return `${timeGreeting()} Mr/ Mrs. This is Mia from Grandlab detailing ☺️\n`+
+    `This is a friendly reminder from Grandlab 🚘✨\n`+
+    `Your car ${carTag} is due for its coating maintenance.\n`+
+    `Regular maintenance keeps your coating looking new and protects your car's shine. 🌟\n`+
+    `Would you like us to book your slot this week?\n`+
+    `✅ Reply YES to confirm\n`+
+    `📅 Or let us know your preferred date/time\n`+
+    `Thank you for trusting Grandlab with your car care!`;
 }
 
 // ---------- state ----------
@@ -214,8 +225,7 @@ async function load(){
     const byPlate={};
     (wkAll||[]).forEach(w=>{
       const p=String(w.plate||'').trim().toUpperCase().replace(/\s+/g,'');
-      if(p && !byPlate[p]) byPlate[p]={name:w.name||'',phone:w.phone||'',model:w.model||''};
-    });
+      if(p && !byPlate[p]) byPlate[p]={name:w.name||'',phone:w.phone||'',model:w.model||''};    });
 
     // 1) gl_service_records — coatings with real next_due (POS + backfill).
     //    NOTE: this table stores the plate in `vehicle_label` (not `plate`) and
@@ -231,7 +241,7 @@ async function load(){
       const cust=byPlate[plate]||{};
       ALL.push({
         src:'sr', id:r.id,
-        name:cust.name||'', phone:cust.phone||'', plate:plate,
+        name:cust.name||'', phone:cust.phone||'', plate:plate, model:cust.model||'',
         pkg:r.service_name||'', family:familyOf(r.service_name),
         last_visit:r.service_date||null, next_due:r.next_due||null,
         app_reminded_at:r.app_reminded_at||null,
@@ -256,7 +266,7 @@ async function load(){
       const left=isNaN(total)?null:(total-used);
       ALL.push({
         src:'wk', id:w.id,
-        name:w.name||'', phone:w.phone||'', plate:(w.plate||'').toUpperCase(),
+        name:w.name||'', phone:w.phone||'', plate:(w.plate||'').toUpperCase(), model:w.model||'',
         pkg:w.pkg_name||'', family:familyOf(w.pkg_name),
         last_visit:w.last_service||null, next_due:null, // walk-ins have no scheduled due
         bal_left:left, app_reminded_at:null, wa1:null, wa2:null, remark:''
