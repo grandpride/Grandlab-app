@@ -490,7 +490,7 @@ function typeTag(j){
 }
 function renderList(){
   const el=$('jobList');
-  const active=JOBS.filter(j=>j.status!=='paid' && j.status!=='unpaid' && j.status!=='voided');
+  const active=JOBS.filter(j=>j.status!=='paid' && j.status!=='unpaid' && j.status!=='voided' && j.status!=='absent' && !j.no_show);
   if(!active.length){ el.innerHTML='<div class="empty">No active jobs. Tap <b>New</b> to open one.</div>'; return; }
   el.innerHTML=active.map(j=>{
     const st=stageOf(j.stage);
