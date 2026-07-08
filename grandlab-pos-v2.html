@@ -484,7 +484,7 @@ button,input{font-family:inherit}
       <input type="hidden" id="ue_id">
       <label class="fld"><span>Customer name</span><input id="ue_name" type="text" placeholder="Customer name"></label>
       <label class="fld"><span>Plate</span><input id="ue_plate" type="text" placeholder="Plate" style="text-transform:uppercase"></label>
-      <label class="fld"><span>Workshop / group (optional)</span><input id="ue_workshop" type="text" placeholder="e.g. Lemans - Workshop"></label>
+      <label class="fld"><span>Workshop / showroom (optional)</span><select id="ue_workshop"></select></label>
       <label class="fld"><span>Amount owed (RM)</span><input id="ue_amount" type="number" step="0.01" min="0" placeholder="0.00"></label>
       <div style="display:flex;gap:8px;margin-top:14px">
         <button class="btn-mini" style="flex:1" onclick="closeModal('unpaidEditModal')">Cancel</button>
@@ -549,6 +549,7 @@ function glAccountFor(desc){
 }
 let POINTS_RATE=0.01;
 let JOBS=[], CUR=null, PAY=null, ME='';
+let WORKSHOPS=[], SHOWROOMS=[];
 let BRANDS=[], MODELS_CACHE={};
 
 const METHODS=[
@@ -615,8 +616,12 @@ async function doLogin(){
 }
 async function init(){
   try{
-    const {data}=await sb.from('gl_board_config').select('points_redeem_rate').eq('id',1).maybeSingle();
+    const {data}=await sb.from('gl_board_config').select('points_redeem_rate,workshops,showrooms').eq('id',1).maybeSingle();
     if(data&&data.points_redeem_rate) POINTS_RATE=Number(data.points_redeem_rate)||0.01;
+    if(data){
+      WORKSHOPS = Array.isArray(data.workshops)?data.workshops:(data.workshops?JSON.parse(data.workshops):[]);
+      SHOWROOMS = Array.isArray(data.showrooms)?data.showrooms:(data.showrooms?JSON.parse(data.showrooms):[]);
+    }
   }catch(e){}
   loadJobs(); loadTakings(); loadBrands();
 }
@@ -2423,7 +2428,14 @@ function openUnpaidEdit(r){
   $('ue_id').value=r.id;
   $('ue_name').value=r.customer_name||'';
   $('ue_plate').value=r.plate||'';
-  $('ue_workshop').value=r.workshop_name||'';
+  // populate the workshop/showroom dropdown (from config) + select the current one
+  const opts=['— none —'].concat(WORKSHOPS||[]).concat(SHOWROOMS||[]);
+  const cur=r.workshop_name||'';
+  if(cur && opts.indexOf(cur)<0) opts.push(cur);  // keep an existing custom value
+  $('ue_workshop').innerHTML=opts.map(w=>{
+    const val=(w==='— none —')?'':w;
+    return `<option value="${esc(val)}" ${val===cur?'selected':''}>${esc(w)}</option>`;
+  }).join('');
   $('ue_amount').value=(Number(r.amount_owed)||0).toFixed(2);
   $('unpaidEditModal').classList.add('show');
 }
