@@ -1297,8 +1297,10 @@ function recordName_(j){
   const type=String(j.cust_type||'').toLowerCase();
   const org=(j.workshop_name||'').trim();
   const nm=(j.name||'').trim();
-  if(type==='workshop'||type==='showroom'||type==='boss') return org || nm || '';
-  return nm || '';
+  const alt=(j.customer_name||j.cust_name||j.contact_name||'').trim();
+  const plate=(j.plate||'').trim().toUpperCase();
+  if(type==='workshop'||type==='showroom'||type==='boss') return org || nm || alt || plate || '';
+  return nm || alt || plate || '';
 }
 
 function renderCheckout(){
@@ -2022,10 +2024,16 @@ async function markUnpaid(){
     if(invErr) throw new Error('Invoice: '+invErr.message);
     const invoice=invData;
     const amount=PAY.gross - PAY.depositUsed; // still owed after any deposit
+    // resolve a name; if still blank, ask so the unpaid/settled row isn't nameless
+    let uName=recordName_(CUR);
+    if(!uName){
+      uName=(prompt('No customer name on this job. Enter a name for the unpaid record:', CUR.plate||'')||'').trim();
+      if(!uName){ throw new Error('Customer name required for unpaid record.'); }
+    }
     // record the outstanding amount
     const {error:upErr}=await sb.from('gl_unpaid').insert({
       job_id:String(CUR.id), invoice_no:invoice, customer_id:CUR.customer_id||null,
-      customer_name:recordName_(CUR), phone:CUR.hp||CUR.phone||'', plate:CUR.plate||'',
+      customer_name:uName, phone:CUR.hp||CUR.phone||'', plate:CUR.plate||'',
       workshop_name:CUR.workshop_name||'', amount_owed:Math.max(0,amount),
       gross:PAY.gross, deposit_used:PAY.depositUsed, marked_by:ME
     });
