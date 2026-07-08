@@ -573,11 +573,14 @@ async function apptAbsent(a){
   const car=noteField(a.notes,'Car')||'';
   const phone=noteField(a.notes,'Phone')||noteField(a.notes,'Contact')||a.phone||'';
   if(!confirm('Mark '+(who||'this customer')+' as ABSENT / no-show?\n\nThey will appear in the Absent tab to send a reschedule reminder.')) return;
-  // create a job flagged no_show so it shows in the Absent tab
+  // create a job flagged no_show so it shows in the Absent tab.
+  // gl_jobs uses `services` (JSON array), NOT service_name.
+  const svcArr = Array.isArray(a.services) ? a.services
+    : (a.service_name ? [{desc:a.service_name, price:0}] : []);
   const jobRow={
-    booking_id:a.id, cust_type:'appointment',
-    name:who, hp:phone, plate:plate, model:car,
-    service_name:a.service_name||'', services:a.services||null,
+    booking_id:a.id, cust_type:'walkin',
+    name:who, hp:phone, plate:plate||'N/A', model:car,
+    services:svcArr,
     stage:'upcoming', status:'absent',
     no_show:true, no_show_at:new Date().toISOString(),
     created_at:Date.now()
