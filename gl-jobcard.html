@@ -542,11 +542,53 @@ async function loadAppointments(){
           <div style="font-size:11px;color:var(--text3);margin-top:4px">${esc(a.service_name||'')}</div>
         </div>
         <button title="Reschedule date/time" onclick='event.stopPropagation();rescheduleAppt(${JSON.stringify(a).replace(/'/g,"&#39;")})' style="flex:0 0 auto;background:transparent;border:1px solid var(--gold);color:var(--gold);border-radius:8px;padding:6px 8px;margin-right:6px;cursor:pointer"><i class="ti ti-calendar-event"></i></button>
+        <button title="Mark absent / no-show" onclick='event.stopPropagation();apptAbsent(${JSON.stringify(a).replace(/'/g,"&#39;")})' style="flex:0 0 auto;background:transparent;border:1px solid #C0392B;color:#C0392B;border-radius:8px;padding:6px 8px;margin-right:6px;cursor:pointer"><i class="ti ti-user-x"></i></button>
+        <button title="Delete this appointment" onclick='event.stopPropagation();deleteAppt(${JSON.stringify(a).replace(/'/g,"&#39;")})' style="flex:0 0 auto;background:transparent;border:1px solid #888;color:#888;border-radius:8px;padding:6px 8px;margin-right:6px;cursor:pointer"><i class="ti ti-trash"></i></button>
         <i class="ti ti-arrow-right" style="color:var(--gold)" onclick='convertAppt(${JSON.stringify(a).replace(/'/g,"&#39;")})'></i>
       </div>`;
     }).join('')+'<div style="height:14px"></div>';
 }
 function noteField(notes,key){ if(!notes)return''; const m=notes.match(new RegExp(key+':\\s*([^|\\[]+)')); return m?m[1].trim():''; }
+
+/* Delete an appointment (booking) entirely — for accidental duplicates.
+   Removes the row from gl_bookings so it's gone everywhere. */
+async function deleteAppt(a){
+  if(!a || !a.id){ toast('No appointment to delete'); return; }
+  const who=noteField(a.notes,'Name')||a.service_name||'this appointment';
+  const plate=noteField(a.notes,'Plate')||'';
+  if(!confirm('Delete this appointment permanently?\n\n'+who+(plate?' · '+plate:'')+'\n\nThis removes it from the system.')) return;
+  const {error}=await sb.from('gl_bookings').delete().eq('id',a.id);
+  if(error){ alert('Delete failed: '+error.message); return; }
+  toast('Appointment deleted');
+  await loadJobs(); loadAppointments();
+}
+
+/* Mark an appointment as Absent / No-show. Creates a job row (so it appears in
+   the Absent tab with the Remind button) flagged no_show=true, and marks the
+   booking done so it leaves the appointment list. */
+async function apptAbsent(a){
+  if(!a || !a.id){ toast('No appointment'); return; }
+  const who=noteField(a.notes,'Name')||'';
+  const plate=noteField(a.notes,'Plate')||'';
+  const car=noteField(a.notes,'Car')||'';
+  const phone=noteField(a.notes,'Phone')||noteField(a.notes,'Contact')||a.phone||'';
+  if(!confirm('Mark '+(who||'this customer')+' as ABSENT / no-show?\n\nThey will appear in the Absent tab to send a reschedule reminder.')) return;
+  // create a job flagged no_show so it shows in the Absent tab
+  const jobRow={
+    booking_id:a.id, cust_type:'appointment',
+    name:who, hp:phone, plate:plate, model:car,
+    service_name:a.service_name||'', services:a.services||null,
+    stage:'upcoming', status:'absent',
+    no_show:true, no_show_at:new Date().toISOString(),
+    created_at:Date.now()
+  };
+  const {error:je}=await sb.from('gl_jobs').insert(jobRow);
+  if(je){ alert('Failed: '+je.message); return; }
+  // mark the booking done so it leaves the appointment list
+  try{ await sb.from('gl_bookings').update({status:'done'}).eq('id',a.id); }catch(e){}
+  toast('Marked absent · moved to Absent tab');
+  await loadJobs(); loadAppointments();
+}
 
 /* Reschedule a booking to a new date/time. Updates gl_bookings.scheduled_at.
    Keeps the same time if only the date is changed. Receptionist-friendly:
@@ -1253,9 +1295,17 @@ async function remindAbsent(id){
   let phone=(j.hp||'').toString().replace(/\D/g,'');
   if(!phone){ toast('No phone number for this customer'); return; }
   if(phone.startsWith('0')) phone='60'+phone.slice(1); else if(!phone.startsWith('60')) phone='60'+phone;
-  const nm=(j.name||j.workshop_name||'').split(' ')[0]||'there';
-  const car=j.model?(' for your '+j.model):'';
-  const msg=`Hi ${nm}! 👋 This is GrandLab Detailing. We missed you at your recent appointment${car}. Would you like to reschedule? Just reply here and we'll find a new slot for you. 🚗✨`;
+  const h=new Date().getHours();
+  const greet=h<12?'Good Morning':(h<18?'Good Afternoon':'Good Evening');
+  const car=[j.model,j.plate].map(s=>String(s||'').trim()).filter(Boolean).join(', ');
+  const carTag=car?`[${car}]`:'your car';
+  const msg=
+    `${greet} Mr/Mrs 😊 This is Mia from GrandLab Detailing.\n`+
+    `We noticed you weren't able to make your appointment for ${carTag} — no worries at all, it happens! 🚗\n`+
+    `We'd love to welcome you back. Would you like us to arrange a new slot for you?\n`+
+    `📅 Just reply with your preferred date & time\n`+
+    `✅ Or reply YES and we'll suggest the next available slot\n`+
+    `Thank you for choosing GrandLab — we look forward to taking care of your car! ✨`;
   const isMobile=/Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
   const url=isMobile?`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`:`https://web.whatsapp.com/send?phone=${phone}&text=${encodeURIComponent(msg)}`;
   window.open(url,'_blank');
