@@ -578,6 +578,7 @@ async function apptAbsent(a){
   const svcArr = Array.isArray(a.services) ? a.services
     : (a.service_name ? [{desc:a.service_name, price:0}] : []);
   const jobRow={
+    id:uid(),
     booking_id:a.id, cust_type:'walkin',
     name:who, hp:phone, plate:plate||'N/A', model:car,
     services:svcArr,
