@@ -174,16 +174,22 @@ html,body{height:100%;background:var(--bg);font-family:-apple-system,BlinkMacSys
           <select id="f_slot" onchange="onSlotChange()">
             <option value="">— select time —</option>
             <option value="9:00 AM">9:00 AM</option>
+            <option value="9:00 AM">9:00 AM</option>
+            <option value="10:00 AM">10:00 AM</option>
             <option value="10:00 AM">10:00 AM</option>
             <option value="11:00 AM">11:00 AM</option>
+            <option value="11:00 AM">11:00 AM</option>
+            <option value="12:00 PM">12:00 PM</option>
             <option value="12:00 PM">12:00 PM</option>
             <option value="2:00 PM">2:00 PM</option>
+            <option value="2:00 PM">2:00 PM</option>
+            <option value="3:00 PM">3:00 PM</option>
             <option value="3:00 PM">3:00 PM</option>
             <option value="4:00 PM">4:00 PM</option>
+            <option value="4:00 PM">4:00 PM</option>
             <option value="5:00 PM">5:00 PM</option>
-            <option value="__other__">Others (custom time)</option>
+            <option value="5:00 PM">5:00 PM</option>
           </select>
-          <input id="f_slot_other" placeholder="e.g. 6:30 PM" style="display:none;margin-top:6px;width:100%;padding:8px;border:1px solid var(--border);border-radius:7px;background:var(--bg);color:var(--text)">
         </div>
       </div>
 
@@ -431,9 +437,11 @@ async function loadSlotTimes_(){
   }catch(e){}
   const sel=$('f_slot'); if(!sel) return;
   const cur=sel.value;
+  // show each time TWICE (2 slots per time), no custom-time option
+  const doubled=[];
+  times.forEach(t=>{ doubled.push(t); doubled.push(t); });
   sel.innerHTML='<option value="">— select time —</option>'+
-    times.map(t=>`<option value="${esc(t)}">${esc(t)}</option>`).join('')+
-    '<option value="__other__">Others (custom time)</option>';
+    doubled.map(t=>`<option value="${esc(t)}">${esc(t)}</option>`).join('');
   if(cur) sel.value=cur;
 }
 async function loadServicesCat(){
@@ -755,7 +763,7 @@ function convertAppt(a){
 let SVCS=[], DEFS=[];
 function newJob(){
   EDITING=null; CUR_TYPE='walkin'; foundProfile=null; CAR_PACKAGES=[]; CUST_CARS=[]; PHOTOS=[]; SEL_TECHS=[];
-  if($('f_slot')){ $('f_slot').value=''; } if($('f_slot_other')){ $('f_slot_other').value=''; $('f_slot_other').style.display='none'; }
+  if($('f_slot')){ $('f_slot').value=''; }
   if($('f_attendee')) $('f_attendee').value='';
   ['f_name','f_model','f_plate','f_hp','f_hp2','f_email','f_sentby','f_depamt','f_depdate'].forEach(i=>{if($(i))$(i).value='';});
   if($('f_brand'))$('f_brand').value=''; if($('f_cartype'))$('f_cartype').value='';
@@ -841,8 +849,8 @@ function toggleTech(n){
   renderTechChips();
 }
 function onSlotChange(){
-  const sel=$('f_slot'), oth=$('f_slot_other');
-  if(sel&&oth){ oth.style.display = sel.value==='__other__' ? 'block':'none'; }
+  // custom-time option removed; nothing to toggle. Kept as a no-op so the
+  // select's onchange handler doesn't error.
 }
 function checkCompanyName(){
   const hint=$('companyHint'); if(!hint) return;
@@ -1111,7 +1119,7 @@ function collectJob(){
     services:SVCS.filter(s=>s.desc), defects:DEFS.filter(d=>d.note),
     intro:CUR_TYPE==='walkin'?'walk-in':'', staff:SEL_TECHS.join(', '), techs:SEL_TECHS,
     attendee:($('f_attendee')?$('f_attendee').value:'')||'',
-    slot_time:(($('f_slot')&&$('f_slot').value==='__other__')?($('f_slot_other')?$('f_slot_other').value.trim():''):($('f_slot')?$('f_slot').value:'')),
+    slot_time:($('f_slot')?$('f_slot').value:''),
     ready_at:EDITING&&EDITING.ready_at?EDITING.ready_at:null,
     collected:EDITING&&EDITING.collected?EDITING.collected:false,
     workshop_name:(CUR_TYPE==='workshop'||CUR_TYPE==='showroom')?$('f_org').value:(CUR_TYPE==='boss'?($('f_boss')?$('f_boss').value:''):''),
@@ -1297,8 +1305,13 @@ function editJob(id){
   if($('f_slot')){
     const st=j.slot_time||'';
     const opts=[...$('f_slot').options].map(o=>o.value);
-    if(st && opts.includes(st)){ $('f_slot').value=st; if($('f_slot_other'))$('f_slot_other').style.display='none'; }
-    else if(st){ $('f_slot').value='__other__'; if($('f_slot_other')){ $('f_slot_other').value=st; $('f_slot_other').style.display='block'; } }
+    if(st && opts.includes(st)){ $('f_slot').value=st; }
+    else if(st){
+      // legacy job saved with a custom time not in the list — add it as a
+      // temporary option so it still shows and isn't lost on re-save
+      const o=document.createElement('option'); o.value=st; o.textContent=st+' (custom)';
+      $('f_slot').appendChild(o); $('f_slot').value=st;
+    }
     else { $('f_slot').value=''; }
   }
   if(j.deposit){ $('f_deposit').value='yes'; toggleDep(); $('f_depamt').value=j.dep_amt||''; if($('f_depdate'))$('f_depdate').value=j.dep_date||''; }
