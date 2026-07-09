@@ -486,6 +486,7 @@ button,input{font-family:inherit}
       <label class="fld"><span>Plate</span><input id="ue_plate" type="text" placeholder="Plate" style="text-transform:uppercase"></label>
       <label class="fld"><span>Workshop / showroom (optional)</span><select id="ue_workshop"></select></label>
       <label class="fld"><span>Amount owed (RM)</span><input id="ue_amount" type="number" step="0.01" min="0" placeholder="0.00"></label>
+      <label class="fld"><span>Order date (counts sale for this day)</span><input id="ue_date" type="date"></label>
       <div style="display:flex;gap:8px;margin-top:14px">
         <button class="btn-mini" style="flex:1" onclick="closeModal('unpaidEditModal')">Cancel</button>
         <button class="btn-mini" style="flex:1;background:var(--gold);color:#000;border-color:var(--gold)" onclick="saveUnpaidEdit()"><i class="ti ti-device-floppy"></i> Save</button>
@@ -2446,6 +2447,11 @@ function openUnpaidEdit(r){
     return `<option value="${esc(val)}" ${val===cur?'selected':''}>${esc(w)}</option>`;
   }).join('');
   $('ue_amount').value=(Number(r.amount_owed)||0).toFixed(2);
+  // order date: use stored sale_date, else the created date
+  let d='';
+  if(r.sale_date){ d=String(r.sale_date).slice(0,10); }
+  else if(r.created_at){ try{ d=new Date(r.created_at).toISOString().slice(0,10); }catch(e){} }
+  $('ue_date').value=d;
   $('unpaidEditModal').classList.add('show');
 }
 /* Save edits to gl_unpaid (name, plate, workshop, amount). */
@@ -2459,6 +2465,8 @@ async function saveUnpaidEdit(){
     workshop_name:$('ue_workshop').value.trim(),
     amount_owed:amt
   };
+  const od=$('ue_date').value;
+  if(od) patch.sale_date=od;   // business date the sale should count for
   const {error}=await sb.from('gl_unpaid').update(patch).eq('id',id);
   if(error){ alert('Save failed: '+error.message); return; }
   toast('Unpaid record updated ✓');
@@ -2481,7 +2489,8 @@ async function settleUnpaid(r){
       invoice_no:r.invoice_no||null, gross:amount, net_paid:amount, method:'cash',
       taken_by:ME,
       customer_name:(r.customer_name||r.workshop_name||r.plate||'Settled unpaid'),
-      plate:r.plate||'', job_id:r.job_id||null
+      plate:r.plate||'', job_id:r.job_id||null,
+      sale_date:(r.sale_date?String(r.sale_date).slice(0,10):null)
     });
     if(e2) throw e2;
     toast('Settled ✓');
