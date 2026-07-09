@@ -1272,11 +1272,35 @@ async function loadCheckoutPackages(job){
 }
 
 function netDue(){
-  // if using a package visit, the covered service is free -> charge 0 for it.
-  // Simple model: a package visit covers the whole order (typical for coating maintenance / wash packages).
-  if(PAY.pkgUse) return 0;
-  let n=PAY.gross - PAY.discount - PAY.depositUsed - PAY.walletUsed - (PAY.pointsUsed*POINTS_RATE) - (PAY.voucher?Number(PAY.voucher.value||0):0) - (PAY.spinPrize?Number(PAY.spinPrize._discount||0):0);
+  // A package/voucher visit covers ONLY the service it matches (by name),
+  // not the whole order. Any other services stay payable by cash/tng/etc.
+  let pkgCover=0;
+  if(PAY.pkgUse){
+    pkgCover=pkgCoverAmount_();
+  }
+  let n=PAY.gross - pkgCover - PAY.discount - PAY.depositUsed - PAY.walletUsed - (PAY.pointsUsed*POINTS_RATE) - (PAY.voucher?Number(PAY.voucher.value||0):0) - (PAY.spinPrize?Number(PAY.spinPrize._discount||0):0);
   return Math.max(0, Math.round(n*100)/100);
+}
+
+/* How much of the order the chosen package covers: the price of the service
+   line whose description matches the package's service name. If no line
+   matches (older data / generic package), fall back to covering the whole
+   order (previous behaviour) so nothing breaks. */
+function pkgCoverAmount_(){
+  if(!PAY.pkgUse) return 0;
+  const norm=s=>String(s||'').toLowerCase().replace(/^\s*\d+\s*x?\s*(times?\s*)?/i,'').replace(/\s*package\s*$/i,'').replace(/\s+/g,' ').trim();
+  const pkgName=norm(PAY.pkgUse.service_name);
+  const svcs=jobServices(CUR)||[];
+  let matched=0, anyMatch=false;
+  svcs.forEach(s=>{
+    const d=norm(svcDesc(s));
+    if(pkgName && d && (d===pkgName || d.includes(pkgName) || pkgName.includes(d))){
+      matched += Number(svcPrice(s))||0; anyMatch=true;
+    }
+  });
+  if(anyMatch) return matched;
+  // no matching line -> cover the whole order (legacy behaviour, safe default)
+  return PAY.gross;
 }
 function cleanPkgName(s){ return (s||'').replace(/^\s*\d+\s*x?\s*(times?\s*)?/i,'').trim(); }
 
@@ -1334,6 +1358,7 @@ function renderCheckout(){
     ${svc.length?svc.map((s,i)=>`<div class="lineitem"><span class="d">${esc(svcDesc(s))}${s._added?` <span style="color:var(--gold-deep);font-size:11px">+added</span>`:''}</span><span class="p"><span onclick="editItemPrice(${i})" style="cursor:pointer;border-bottom:1px dashed var(--ink3)" title="Tap to edit amount">${RM(svcPrice(s))}</span> <i class="ti ti-pencil" style="cursor:pointer;color:var(--ink3);font-size:12px;margin-left:2px" onclick="editItemPrice(${i})"></i>${s._added?` <i class="ti ti-x" style="cursor:pointer;color:#c00;margin-left:6px" onclick="rmItem(${i})"></i>`:''}</span></div>`).join('')
       :`<div class="lineitem"><span class="d">Total</span><span class="p">${RM(PAY.gross)}</span></div>`}
     <button class="btn-mini" style="margin-top:10px" onclick="addItem()"><i class="ti ti-plus"></i> Add service / product</button>
+    ${(PAY.pkgUse && pkgCoverAmount_()>0)?`<div class="lineitem" style="margin-top:6px;color:var(--gold-deep)"><span class="d"><i class="ti ti-ticket"></i> Covered by ${esc(cleanPkgName(PAY.pkgUse.service_name))}</span><span class="p">− ${RM(pkgCoverAmount_())}</span></div>`:''}
 
     <div class="section-h">Adjustments</div>
     ${PAY.depositUsed>0?`<div class="adj"><span class="lab"><i class="ti ti-cash"></i> Deposit already paid</span><span class="val">−${RM(PAY.depositUsed)}</span></div>`:''}
