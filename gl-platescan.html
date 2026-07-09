@@ -530,15 +530,32 @@ async function loadPackages(phone, plate){
 async function loadWalkinHistory(walkinId, plate){
   // service records (by walkin id as owner_id, or by plate) + any jobs by plate
   const {data:recs}=await sb.from('gl_service_records').select('id,service_date,service_name,remark,invoice_url,owner_id,vehicle_label').or(`owner_id.eq.${walkinId},vehicle_label.ilike.${plate}`).order('service_date',{ascending:false}).limit(50);
-  const {data:jobs}=await sb.from('gl_jobs').select('created_at,services,plate').ilike('plate',plate).order('created_at',{ascending:false}).limit(50);
+  const {data:jobs}=await sb.from('gl_jobs').select('id,created_at,services,plate').ilike('plate',plate).order('created_at',{ascending:false}).limit(50);
+  // POS payments for this plate — carry the FINAL sale_date + services (items)
+  // after any adds/edits at checkout, so history matches the books.
+  const {data:pays}=await sb.from('gl_payments').select('job_id,plate,sale_date,paid_at,items,voided').ilike('plate',plate).limit(50);
+  const payByJob={};
+  (pays||[]).forEach(p=>{ if(p.voided===true) return; if(p.job_id!=null) payByJob[String(p.job_id)]=p; });
   const items=[];
   (recs||[]).forEach(r=>{
     const t=r.service_date?new Date(r.service_date).getTime():0;
     items.push({ts:t, date:r.service_date?fmtDate(t):'—', svc:(r.service_name||'Service')+(r.remark?' · '+r.remark:''), src:'record', pdf:r.invoice_url||'', recId:r.id});
   });
   (jobs||[]).forEach(j=>{
-    const svcs=Array.isArray(j.services)?j.services.map(s=>s.desc).filter(Boolean).join(', '):'';
-    items.push({ts:Number(j.created_at)||0, date:fmtDate(Number(j.created_at)), svc:svcs||'Job', src:'job', pdf:''});
+    const pay=payByJob[String(j.id)];
+    // date: POS sale_date (backdated) if a payment exists, else job created_at
+    let ts=Number(j.created_at)||0;
+    if(pay){
+      if(pay.sale_date) ts=new Date(pay.sale_date+'T12:00:00').getTime();
+      else if(pay.paid_at) ts=new Date(pay.paid_at).getTime();
+    }
+    // services: POS final items if present, else the job's own services
+    let svcs='';
+    if(pay && pay.items){
+      try{ const arr=JSON.parse(pay.items); svcs=arr.map(x=>x.desc).filter(Boolean).join(', '); }catch(e){}
+    }
+    if(!svcs) svcs=Array.isArray(j.services)?j.services.map(s=>s.desc).filter(Boolean).join(', '):'';
+    items.push({ts:ts, date:fmtDate(ts), svc:svcs||'Job', src:'job', pdf:''});
   });
   items.sort((a,b)=>b.ts-a.ts);
   ALL_HISTORY=items;
@@ -549,16 +566,30 @@ async function loadWalkinHistory(walkinId, plate){
 
 async function loadHistory(ownerId, plate){
   // jobs (completed/all) for this customer or plate
-  const {data:jobs}=await sb.from('gl_jobs').select('created_at,services,plate,stage,status').or(`customer_id.eq.${ownerId},plate.ilike.${plate}`).order('created_at',{ascending:false}).limit(50);
+  const {data:jobs}=await sb.from('gl_jobs').select('id,created_at,services,plate,stage,status').or(`customer_id.eq.${ownerId},plate.ilike.${plate}`).order('created_at',{ascending:false}).limit(50);
   // bookings for this customer
   const {data:bk}=await sb.from('gl_bookings').select('scheduled_at,service_name,plate,notes').eq('customer_id',ownerId).order('scheduled_at',{ascending:false}).limit(50);
   // service records (manually added / with receipt PDFs)
   const {data:recs}=await sb.from('gl_service_records').select('id,service_date,service_name,remark,invoice_url,vehicle_label,owner_id').or(`owner_id.eq.${ownerId},vehicle_label.ilike.${plate}`).order('service_date',{ascending:false}).limit(50);
+  // POS payments for this plate — final sale_date + services after checkout edits
+  const {data:pays}=await sb.from('gl_payments').select('job_id,plate,sale_date,paid_at,items,voided').ilike('plate',plate).limit(50);
+  const payByJob={};
+  (pays||[]).forEach(p=>{ if(p.voided===true) return; if(p.job_id!=null) payByJob[String(p.job_id)]=p; });
 
   const items=[];
   (jobs||[]).forEach(j=>{
-    const svcs=Array.isArray(j.services)?j.services.map(s=>s.desc).filter(Boolean).join(', '):'';
-    items.push({ts:Number(j.created_at)||0, date:fmtDate(Number(j.created_at)), svc:svcs||'Job', src:'job', pdf:''});
+    const pay=payByJob[String(j.id)];
+    let ts=Number(j.created_at)||0;
+    if(pay){
+      if(pay.sale_date) ts=new Date(pay.sale_date+'T12:00:00').getTime();
+      else if(pay.paid_at) ts=new Date(pay.paid_at).getTime();
+    }
+    let svcs='';
+    if(pay && pay.items){
+      try{ const arr=JSON.parse(pay.items); svcs=arr.map(x=>x.desc).filter(Boolean).join(', '); }catch(e){}
+    }
+    if(!svcs) svcs=Array.isArray(j.services)?j.services.map(s=>s.desc).filter(Boolean).join(', '):'';
+    items.push({ts:ts, date:fmtDate(ts), svc:svcs||'Job', src:'job', pdf:''});
   });
   (bk||[]).forEach(b=>{
     const t=b.scheduled_at?new Date(b.scheduled_at).getTime():0;
