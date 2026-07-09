@@ -922,9 +922,25 @@ async function delExistPkg(i){
   const p=EXIST_PKGS[i]; if(!p) return;
   if(!confirm('Delete this balance?\n'+(p.name||'')+' ('+p.bal+' left)\nThis removes it so you can add a fresh one.')) return;
   try{
-    if(p.src==='gl_packages'){ await sb.from('gl_packages').delete().eq('id',p.id); }
-    else if(p.src==='gl_pending'){ await sb.from('gl_pending').delete().eq('id',p.id); }
-    else if(p.src==='gl_walkin'){ await sb.from('gl_walkin').update({pkg_name:null,pkg_total:0,pkg_used:0}).eq('id',p.id); if(CUR){CUR.pkg_name='';CUR.pkg_total=0;CUR.pkg_used=0;} }
+    let ok=false;
+    if(p.src==='gl_packages'){
+      const {data,error}=await sb.from('gl_packages').delete().eq('id',p.id).select();
+      if(error) throw error;
+      ok=!!(data&&data.length);
+    } else if(p.src==='gl_pending'){
+      const {data,error}=await sb.from('gl_pending').delete().eq('id',p.id).select();
+      if(error) throw error;
+      ok=!!(data&&data.length);
+    } else if(p.src==='gl_walkin'){
+      const {data,error}=await sb.from('gl_walkin').update({pkg_name:null,pkg_total:0,pkg_used:0}).eq('id',p.id).select();
+      if(error) throw error;
+      ok=!!(data&&data.length);
+      if(ok && CUR){CUR.pkg_name='';CUR.pkg_total=0;CUR.pkg_used=0;}
+    }
+    if(!ok){
+      alert('Delete was blocked (no permission on '+p.src+'). The balance is still there.\nA DELETE policy for '+p.src+' is needed — ask to run the RLS policy SQL.');
+      return;   // DON'T remove it from the on-screen list — it wasn't deleted
+    }
     EXIST_PKGS.splice(i,1); renderExistingPkgs();
     showExistingPkgHint('','',''); // clear the hint too
   }catch(e){ alert('Delete failed: '+(e.message||e)); }
