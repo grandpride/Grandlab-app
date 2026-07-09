@@ -511,7 +511,40 @@ async function loadJobs(){
   const {data,error}=await sb.from('gl_jobs').select('*').order('created_at',{ascending:false});
   if(error){ setSync(false); return; }
   JOBS=data||[]; setSync(true);
+  await refreshModelsFromWalkin_();   // pull latest car models corrected in the scanner
   renderList(); renderReport();
+}
+
+/* When a model is fixed in the plate scanner it updates gl_walkin, but jobs
+   already created keep their old gl_jobs.model. Here we overlay the newest
+   model from gl_walkin (by plate) onto ACTIVE jobs so the correction shows up
+   automatically. Server-side query by the exact plates on the board only
+   (gl_walkin has 5000+ rows — never fetch-all). Display-only; the job row in
+   the DB is not changed. */
+async function refreshModelsFromWalkin_(){
+  try{
+    const active=(JOBS||[]).filter(j=>j.status!=='paid'&&j.status!=='unpaid'&&j.status!=='voided'&&j.status!=='absent'&&j.status!=='rescheduled'&&!j.no_show);
+    // collect plates in both original and uppercase form (gl_walkin casing may differ)
+    const rawPlates=active.map(j=>String(j.plate||'').trim()).filter(Boolean);
+    const plateSet=new Set();
+    rawPlates.forEach(p=>{ plateSet.add(p); plateSet.add(p.toUpperCase()); });
+    const plates=[...plateSet];
+    if(!plates.length) return;
+    const {data}=await sb.from('gl_walkin').select('plate,model').in('plate',plates);
+    if(!data||!data.length) return;
+    // newest/most-complete model per plate
+    const best={};
+    data.forEach(r=>{
+      const p=String(r.plate||'').trim().toUpperCase();
+      const m=String(r.model||'').trim();
+      if(!p||!m) return;
+      if(!best[p]) best[p]=m;              // first non-empty wins (query order)
+    });
+    JOBS.forEach(j=>{
+      const p=String(j.plate||'').trim().toUpperCase();
+      if(best[p] && best[p]!==String(j.model||'').trim()){ j.model=best[p]; }
+    });
+  }catch(e){ /* non-fatal: keep existing models */ }
 }
 
 function showView(v){
