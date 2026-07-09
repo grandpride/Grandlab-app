@@ -2504,13 +2504,20 @@ async function saveUnpaidEdit(){
   };
   const od=$('ue_date').value;
   if(od) patch.sale_date=od;   // business date the sale should count for
-  // if the date changed, regenerate the GLIV for that date (atomic RPC, no collision)
-  if(od && _ueOrig && od!==_ueOrig.date){
-    try{
-      const {data:newInv,error:invErr}=await sb.rpc('gl_next_invoice_no_for_date',{p_date:od});
-      if(!invErr && newInv){ patch.invoice_no=newInv; }
-      else if(invErr){ alert('Note: could not regenerate invoice number ('+invErr.message+'). Saved the date, kept the old GLIV.'); }
-    }catch(e){ /* keep old invoice_no if RPC missing */ }
+  // Regenerate the GLIV when its embedded date (GLIVyymmdd-nnn) doesn't match
+  // the order date — covers both changing the date AND records whose GLIV was
+  // assigned on a different day than the (later backdated) order date.
+  if(od){
+    const wantYY = od.slice(2,4)+od.slice(5,7)+od.slice(8,10);   // yyMMdd from yyyy-mm-dd
+    const curInv = (_ueOrig&&_ueOrig.invoice_no)||'';
+    const curYY  = (curInv.match(/GLIV(\d{6})-/)||[])[1]||'';
+    if(curYY!==wantYY){
+      try{
+        const {data:newInv,error:invErr}=await sb.rpc('gl_next_invoice_no_for_date',{p_date:od});
+        if(!invErr && newInv){ patch.invoice_no=newInv; }
+        else if(invErr){ alert('Note: could not regenerate invoice number ('+invErr.message+'). Saved the date, kept the old GLIV.'); }
+      }catch(e){ /* keep old invoice_no if RPC missing */ }
+    }
   }
   const {error}=await sb.from('gl_unpaid').update(patch).eq('id',id);
   if(error){ alert('Save failed: '+error.message); return; }
