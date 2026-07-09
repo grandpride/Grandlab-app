@@ -686,7 +686,23 @@ function build(){
   if(bal)m+=`\nmaintenance / package balance : ${bal}\n`;
   const dep=parseFloat($('deposit').value);
   if(!isNaN(dep)&&dep>0){ m+=`\nDeposit paid : RM${dep}${$('depDate').value?(' on '+fmtDate($('depDate').value)):''}\n`; }
+  // booking confirmation line — auto-fills the appointment date the user picked
+  if($('date').value){
+    m+=`\n\nYour appointment has been successfully booked. Please let us know if you need to make any changes. Looking forward to seeing you on ${fmtDateOrdinal_($('date').value)} ✨😉\n`;
+  }
   $('preview').textContent=m;return m;
+}
+
+/* Format a yyyy-mm-dd date like "11th July 26" (ordinal day, full month, 2-digit year). */
+function fmtDateOrdinal_(v){
+  if(!v) return "";
+  const d=new Date(v+'T00:00:00');
+  if(isNaN(d.getTime())) return "";
+  const day=d.getDate();
+  const months=["January","February","March","April","May","June","July","August","September","October","November","December"];
+  const ord=(n)=>{ const s=["th","st","nd","rd"], v2=n%100; return n+(s[(v2-20)%10]||s[v2]||s[0]); };
+  const yy=String(d.getFullYear()).slice(-2);
+  return ord(day)+" "+months[d.getMonth()]+" "+yy;
 }
 ['change','input'].forEach(ev=>document.querySelectorAll('input').forEach(el=>el.addEventListener(ev,build)));
 
