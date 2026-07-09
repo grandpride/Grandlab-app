@@ -2452,9 +2452,13 @@ function openUnpaidEdit(r){
   if(r.sale_date){ d=String(r.sale_date).slice(0,10); }
   else if(r.created_at){ try{ d=new Date(r.created_at).toISOString().slice(0,10); }catch(e){} }
   $('ue_date').value=d;
+  _ueOrig={ id:r.id, invoice_no:r.invoice_no||'', date:d };  // remember original for GLIV regen
   $('unpaidEditModal').classList.add('show');
 }
-/* Save edits to gl_unpaid (name, plate, workshop, amount). */
+let _ueOrig=null;
+/* Save edits to gl_unpaid (name, plate, workshop, amount, order date).
+   If the order date changed, regenerate the GLIV to match that date so the
+   invoice number's date matches the day the sale counts for. */
 async function saveUnpaidEdit(){
   const id=$('ue_id').value;
   const amt=parseFloat($('ue_amount').value);
@@ -2467,9 +2471,17 @@ async function saveUnpaidEdit(){
   };
   const od=$('ue_date').value;
   if(od) patch.sale_date=od;   // business date the sale should count for
+  // if the date changed, regenerate the GLIV for that date (atomic RPC, no collision)
+  if(od && _ueOrig && od!==_ueOrig.date){
+    try{
+      const {data:newInv,error:invErr}=await sb.rpc('gl_next_invoice_no_for_date',{p_date:od});
+      if(!invErr && newInv){ patch.invoice_no=newInv; }
+      else if(invErr){ alert('Note: could not regenerate invoice number ('+invErr.message+'). Saved the date, kept the old GLIV.'); }
+    }catch(e){ /* keep old invoice_no if RPC missing */ }
+  }
   const {error}=await sb.from('gl_unpaid').update(patch).eq('id',id);
   if(error){ alert('Save failed: '+error.message); return; }
-  toast('Unpaid record updated ✓');
+  toast(patch.invoice_no?('Updated ✓ · new GLIV '+patch.invoice_no):'Unpaid record updated ✓');
   closeModal('unpaidEditModal');
   openUnpaid();
 }
