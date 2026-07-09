@@ -1141,6 +1141,16 @@ async function saveJob(silent){
   if(error){ toast('Save failed: '+error.message); return null; }
   // register the car so the plate scanner + lookups can find it later
   try{ await registerCar_(j); }catch(e){ console.warn('registerCar skipped:',e); }
+  // customer came back: clear any stale absent/no-show flag on this plate so
+  // they drop off the Absent tab (they're clearly not absent if we're working
+  // on their car). Only touches no_show flags — nothing else.
+  try{
+    if(j.plate){
+      await sb.from('gl_jobs')
+        .update({no_show:false, no_show_at:null, no_show_reminded_at:null})
+        .ilike('plate', j.plate).eq('no_show', true);
+    }
+  }catch(e){ console.warn('clear absent skipped:',e); }
   if(!silent){ toast('Job saved ✓'); showView('list'); }
   loadJobs();
   return j;
@@ -1208,6 +1218,9 @@ async function setStage(id,key){
   const patch={stage:key};
   const j=JOBS.find(x=>x.id===id);
   if(key!=='upcoming' && j && !j.started_at) patch.started_at=Date.now(); // start elapsed
+  // work is being done on this car -> it's not a no-show. Clear the flag so it
+  // drops off the Absent tab.
+  if(key!=='upcoming' && j && j.no_show){ patch.no_show=false; patch.no_show_at=null; patch.no_show_reminded_at=null; }
   if(key==='done' && j && !j.ready_at) patch.ready_at=Date.now();          // record completed time
   if(key!=='done') patch.ready_at=null;                                    // moved back from ready
   // deduct package balance once, when job first reaches Ready
