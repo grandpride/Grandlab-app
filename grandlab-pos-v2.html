@@ -1191,8 +1191,16 @@ async function saveSqlRow(i){
 /* ---------- takings ---------- */
 async function loadTakings(){
   const start=new Date(); start.setHours(0,0,0,0);
-  const {data}=await sb.from('gl_payments').select('net_paid,paid_at,voided').eq('voided',false).gte('paid_at',start.toISOString());
-  const rows=data||[];
+  const end=new Date(start); end.setDate(end.getDate()+1);
+  // fetch a wide window, then keep only rows whose BUSINESS date (sale_date if
+  // set, else paid_at) falls on today — so a sale backdated to yesterday does
+  // NOT count in today's takings.
+  const winStart=new Date(start); winStart.setDate(winStart.getDate()-3);
+  const {data}=await sb.from('gl_payments').select('net_paid,paid_at,sale_date,voided').eq('voided',false).gte('paid_at',winStart.toISOString());
+  const rows=(data||[]).filter(r=>{
+    const t = r.sale_date ? new Date(r.sale_date+'T00:00:00') : new Date(r.paid_at);
+    return t>=start && t<end;
+  });
   $('takings').style.display='flex';
   $('tkCount').textContent=rows.length;
   $('tkTotal').textContent=RM(rows.reduce((s,r)=>s+(Number(r.net_paid)||0),0));
