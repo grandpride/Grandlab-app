@@ -536,7 +536,7 @@ function typeTag(j){
 }
 function renderList(){
   const el=$('jobList');
-  const active=JOBS.filter(j=>j.status!=='paid' && j.status!=='unpaid' && j.status!=='voided' && j.status!=='absent' && !j.no_show);
+  const active=JOBS.filter(j=>j.status!=='paid' && j.status!=='unpaid' && j.status!=='voided' && j.status!=='absent' && j.status!=='rescheduled' && !j.no_show);
   if(!active.length){ el.innerHTML='<div class="empty">No active jobs. Tap <b>New</b> to open one.</div>'; return; }
   el.innerHTML=active.map(j=>{
     const st=stageOf(j.stage);
@@ -547,6 +547,7 @@ function renderList(){
         <div style="font-size:12px;color:var(--text2);margin-top:2px">${esc(j.model||'')} · <span class="plate-badge">${esc(j.plate||'')}</span></div>
         <div style="font-size:11px;color:${st.color};margin-top:4px;font-weight:700">${st.label}</div>
       </div>
+      <button title="Reschedule to another day" onclick='event.stopPropagation();rescheduleJob("${j.id}")' style="flex:0 0 auto;background:transparent;border:1px solid var(--gold);color:var(--gold);border-radius:8px;padding:6px 8px;margin-right:4px;cursor:pointer"><i class="ti ti-calendar-event"></i></button>
       <i class="ti ti-chevron-right" style="color:var(--text3)"></i>
     </div>`;
   }).join('');
@@ -568,14 +569,12 @@ async function loadAppointments(){
   const converted=new Set(JOBS.map(j=>j.booking_id).filter(Boolean));
   const waiting=appts.filter(a=>!converted.has(a.id));
   const el=$('apptWaiting');
-  const reschedBtn=`<button onclick="findRescheduleBooking()" style="background:transparent;border:1px solid var(--gold);color:var(--gold);border-radius:8px;padding:4px 9px;font-size:11px;cursor:pointer"><i class="ti ti-calendar-search"></i> Reschedule (other day)</button>`;
   if(!waiting.length){
-    el.innerHTML=`<div style="display:flex;justify-content:flex-end;margin-bottom:10px">${reschedBtn}</div>`;
+    el.innerHTML='';
     return;
   }
   el.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
       <div style="font-size:12px;font-weight:700;color:var(--text2)"><i class="ti ti-calendar"></i> Today's appointments — tap to open job card</div>
-      ${reschedBtn}
     </div>`+
     waiting.map(a=>{
       const n=noteField(a.notes,'Name'), plate=noteField(a.notes,'Plate'), car=noteField(a.notes,'Car');
@@ -1160,9 +1159,6 @@ function openJob(id){
     <button class="btn btn-block" style="margin-bottom:8px;${j.no_show?'background:#C0392B;color:#fff':'background:transparent;border:1px solid #C0392B;color:#C0392B'}" onclick="toggleNoShow('${j.id}')">
       <i class="ti ti-user-x"></i> ${j.no_show?'Absent / No-show ✓ (tap to undo)':'Mark Absent / No-show'}
     </button>
-    ${(j.cust_type==='workshop'||j.cust_type==='showroom')
-      ? `<button class="btn btn-pri btn-block" style="margin-bottom:8px" onclick="markCollected('${j.id}')"><i class="ti ti-circle-check"></i> Collected (remove from board)</button>`
-      : `<button class="btn btn-pri btn-block" style="margin-bottom:8px" onclick="markPaid('${j.id}')"><i class="ti ti-cash"></i> Paid &amp; collected (remove from board)</button>`}
     <button class="btn btn-ghost btn-block" style="color:var(--danger-text);margin-bottom:14px" onclick="delJob('${j.id}')">Delete job</button>
     <button class="btn btn-ghost btn-block" onclick="showView('list')" style="margin-bottom:30px">← Back</button>`;
   showView('detail');
@@ -1366,6 +1362,38 @@ async function rescheduleAbsent(j){
   await sb.from('gl_jobs').update({no_show:false, no_show_at:null, no_show_reminded_at:null}).eq('id',j.id);
   toast('Rebooked for '+newDate+' '+newTime+' · removed from Absent');
   await loadJobs(); loadAbsent();
+}
+
+/* Reschedule an ACTIVE job to another day: creates a fresh booking on the new
+   date (so it reappears as an appointment that day) and removes the current
+   in-progress job from the board. Reuses the tapable date picker. */
+async function rescheduleJob(id){
+  const j=(JOBS||[]).find(x=>String(x.id)===String(id));
+  if(!j){ toast('Job not found'); return; }
+  const who=j.name||j.workshop_name||'this customer';
+  const picked=await pickDateTime({title:`Reschedule ${who}`, time:'10:00'});
+  if(!picked) return;
+  const newDate=picked.date, newTime=picked.time;
+  const [Y,M,D]=newDate.split('-').map(Number);
+  const [h,mi]=newTime.split(':').map(Number);
+  const dt=new Date(Y,M-1,D,h,mi,0);
+  if(isNaN(dt.getTime())){ alert('Invalid date/time.'); return; }
+  if(!confirm(`Move ${who} to:\n${newDate} at ${newTime}?\n\nThis removes the job from today's board and rebooks it for that day.`)) return;
+
+  const notes=[`Name: ${j.name||''}`,`Phone: ${j.hp||''}`,`Car: ${j.model||''}`,`Plate: ${j.plate||''}`].join(' | ');
+  const booking={
+    scheduled_at:dt.toISOString(),
+    status:'pending',
+    source:'reschedule',
+    service_name:(Array.isArray(j.services)&&j.services[0]&&j.services[0].desc)?j.services[0].desc:'',
+    notes:notes
+  };
+  const {error:be}=await sb.from('gl_bookings').insert(booking);
+  if(be){ alert('Reschedule failed: '+be.message); return; }
+  // remove the active job from the board (it's been moved to another day)
+  await sb.from('gl_jobs').update({status:'rescheduled'}).eq('id',j.id);
+  toast('Moved to '+newDate+' '+newTime);
+  await loadJobs(); showView('list');
 }
 
 async function remindAbsent(id){
