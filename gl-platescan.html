@@ -529,12 +529,12 @@ async function loadPackages(phone, plate){
 
 async function loadWalkinHistory(walkinId, plate){
   // service records (by walkin id as owner_id, or by plate) + any jobs by plate
-  const {data:recs}=await sb.from('gl_service_records').select('service_date,service_name,remark,invoice_url,owner_id,vehicle_label').or(`owner_id.eq.${walkinId},vehicle_label.ilike.${plate}`).order('service_date',{ascending:false}).limit(50);
+  const {data:recs}=await sb.from('gl_service_records').select('id,service_date,service_name,remark,invoice_url,owner_id,vehicle_label').or(`owner_id.eq.${walkinId},vehicle_label.ilike.${plate}`).order('service_date',{ascending:false}).limit(50);
   const {data:jobs}=await sb.from('gl_jobs').select('created_at,services,plate').ilike('plate',plate).order('created_at',{ascending:false}).limit(50);
   const items=[];
   (recs||[]).forEach(r=>{
     const t=r.service_date?new Date(r.service_date).getTime():0;
-    items.push({ts:t, date:r.service_date?fmtDate(t):'—', svc:(r.service_name||'Service')+(r.remark?' · '+r.remark:''), src:'record', pdf:r.invoice_url||''});
+    items.push({ts:t, date:r.service_date?fmtDate(t):'—', svc:(r.service_name||'Service')+(r.remark?' · '+r.remark:''), src:'record', pdf:r.invoice_url||'', recId:r.id});
   });
   (jobs||[]).forEach(j=>{
     const svcs=Array.isArray(j.services)?j.services.map(s=>s.desc).filter(Boolean).join(', '):'';
@@ -553,7 +553,7 @@ async function loadHistory(ownerId, plate){
   // bookings for this customer
   const {data:bk}=await sb.from('gl_bookings').select('scheduled_at,service_name,plate,notes').eq('customer_id',ownerId).order('scheduled_at',{ascending:false}).limit(50);
   // service records (manually added / with receipt PDFs)
-  const {data:recs}=await sb.from('gl_service_records').select('service_date,service_name,remark,invoice_url,vehicle_label,owner_id').or(`owner_id.eq.${ownerId},vehicle_label.ilike.${plate}`).order('service_date',{ascending:false}).limit(50);
+  const {data:recs}=await sb.from('gl_service_records').select('id,service_date,service_name,remark,invoice_url,vehicle_label,owner_id').or(`owner_id.eq.${ownerId},vehicle_label.ilike.${plate}`).order('service_date',{ascending:false}).limit(50);
 
   const items=[];
   (jobs||[]).forEach(j=>{
@@ -566,7 +566,7 @@ async function loadHistory(ownerId, plate){
   });
   (recs||[]).forEach(r=>{
     const t=r.service_date?new Date(r.service_date).getTime():0;
-    items.push({ts:t, date:r.service_date?fmtDate(t):'—', svc:(r.service_name||'Service')+(r.remark?' · '+r.remark:''), src:'record', pdf:r.invoice_url||''});
+    items.push({ts:t, date:r.service_date?fmtDate(t):'—', svc:(r.service_name||'Service')+(r.remark?' · '+r.remark:''), src:'record', pdf:r.invoice_url||'', recId:r.id});
   });
   items.sort((a,b)=>b.ts-a.ts);
   ALL_HISTORY=items;
@@ -576,10 +576,27 @@ async function loadHistory(ownerId, plate){
 }
 function renderHistory(list){
   if(!list.length){ $('histList').innerHTML='<div style="color:var(--text2);font-size:13px;padding:6px 0">No past records.</div>'; return; }
-  $('histList').innerHTML=list.map(h=>{
+  $('histList').innerHTML=list.map((h,idx)=>{
     const pdf=h.pdf?`<a href="${esc(h.pdf)}" target="_blank" rel="noopener" class="pdf-ic" title="View receipt PDF" onclick="event.stopPropagation()"><i class="ti ti-file-type-pdf"></i></a>`:'';
-    return `<div class="hist-item"><div style="display:flex;justify-content:space-between;align-items:center"><div class="hist-date">${h.date} · ${h.src}</div>${pdf}</div><div class="hist-svc">${esc(h.svc)}</div></div>`;
+    // delete button ONLY for manually-added service records (never job rows)
+    const del=(h.src==='record' && h.recId)
+      ? `<button title="Delete this record" onclick="event.stopPropagation();deleteServiceRecord('${esc(String(h.recId))}')" style="background:transparent;border:none;color:#C0392B;cursor:pointer;padding:2px 4px;margin-left:6px"><i class="ti ti-trash"></i></button>`
+      : '';
+    return `<div class="hist-item"><div style="display:flex;justify-content:space-between;align-items:center"><div class="hist-date">${h.date} · ${h.src}</div><div style="display:flex;align-items:center">${pdf}${del}</div></div><div class="hist-svc">${esc(h.svc)}</div></div>`;
   }).join('');
+}
+
+/* Delete one manually-added service record (gl_service_records only).
+   Never touches gl_jobs — the button is only rendered for src==='record'. */
+async function deleteServiceRecord(recId){
+  if(!recId){ return; }
+  if(!confirm('Delete this service record?\n\nThis removes the visit log only. It does not affect any payment or job.')) return;
+  const {data,error}=await sb.from('gl_service_records').delete().eq('id',recId).select();
+  if(error){ alert('Delete failed: '+error.message); return; }
+  if(!data || !data.length){ alert('Delete blocked (no permission). A DELETE policy for gl_service_records is needed.'); return; }
+  // refresh the history list
+  ALL_HISTORY=ALL_HISTORY.filter(h=>String(h.recId)!==String(recId));
+  renderHistory(ALL_HISTORY);
 }
 function showAllHistory(){ renderHistory(ALL_HISTORY); $('moreBtn').style.display='none'; }
 
