@@ -531,15 +531,15 @@ async function loadWalkinHistory(walkinId, plate){
   // service records (by walkin id as owner_id, or by plate) + any jobs by plate
   const {data:recs}=await sb.from('gl_service_records').select('id,service_date,service_name,remark,invoice_url,owner_id,vehicle_label').or(`owner_id.eq.${walkinId},vehicle_label.ilike.${plate}`).order('service_date',{ascending:false}).limit(50);
   const {data:jobs}=await sb.from('gl_jobs').select('id,created_at,services,plate').ilike('plate',plate).order('created_at',{ascending:false}).limit(50);
-  // POS payments for this plate — carry the FINAL sale_date + services (items)
+  // POS payments for this plate — carry the FINAL sale_date + services (items) + fee
   // after any adds/edits at checkout, so history matches the books.
-  const {data:pays}=await sb.from('gl_payments').select('job_id,plate,sale_date,paid_at,items,voided').ilike('plate',plate).limit(50);
+  const {data:pays}=await sb.from('gl_payments').select('job_id,plate,sale_date,paid_at,items,net_paid,voided').ilike('plate',plate).limit(50);
   const payByJob={};
   (pays||[]).forEach(p=>{ if(p.voided===true) return; if(p.job_id!=null) payByJob[String(p.job_id)]=p; });
   const items=[];
   (recs||[]).forEach(r=>{
     const t=r.service_date?new Date(r.service_date).getTime():0;
-    items.push({ts:t, date:r.service_date?fmtDate(t):'—', svc:(r.service_name||'Service')+(r.remark?' · '+r.remark:''), src:'record', pdf:r.invoice_url||'', recId:r.id});
+    items.push({ts:t, date:r.service_date?fmtDate(t):'—', svc:(r.service_name||'Service')+(r.remark?' · '+r.remark:''), src:'record', pdf:r.invoice_url||'', recId:r.id, plate:(r.vehicle_label||plate||''), fee:null});
   });
   (jobs||[]).forEach(j=>{
     const pay=payByJob[String(j.id)];
@@ -555,7 +555,10 @@ async function loadWalkinHistory(walkinId, plate){
       try{ const arr=JSON.parse(pay.items); svcs=arr.map(x=>x.desc).filter(Boolean).join(', '); }catch(e){}
     }
     if(!svcs) svcs=Array.isArray(j.services)?j.services.map(s=>s.desc).filter(Boolean).join(', '):'';
-    items.push({ts:ts, date:fmtDate(ts), svc:svcs||'Job', src:'job', pdf:''});
+    // fee: from the payment (net_paid) if paid, else null
+    let fee=null;
+    if(pay && pay.net_paid!=null && pay.net_paid!=='') fee=Number(pay.net_paid);
+    items.push({ts:ts, date:fmtDate(ts), svc:svcs||'Job', src:'job', pdf:'', plate:(j.plate||plate||''), fee:fee});
   });
   items.sort((a,b)=>b.ts-a.ts);
   ALL_HISTORY=items;
@@ -571,8 +574,8 @@ async function loadHistory(ownerId, plate){
   const {data:bk}=await sb.from('gl_bookings').select('scheduled_at,service_name,plate,notes').eq('customer_id',ownerId).order('scheduled_at',{ascending:false}).limit(50);
   // service records (manually added / with receipt PDFs)
   const {data:recs}=await sb.from('gl_service_records').select('id,service_date,service_name,remark,invoice_url,vehicle_label,owner_id').or(`owner_id.eq.${ownerId},vehicle_label.ilike.${plate}`).order('service_date',{ascending:false}).limit(50);
-  // POS payments for this plate — final sale_date + services after checkout edits
-  const {data:pays}=await sb.from('gl_payments').select('job_id,plate,sale_date,paid_at,items,voided').ilike('plate',plate).limit(50);
+  // POS payments for this plate — final sale_date + services + fee after checkout edits
+  const {data:pays}=await sb.from('gl_payments').select('job_id,plate,sale_date,paid_at,items,net_paid,voided').ilike('plate',plate).limit(50);
   const payByJob={};
   (pays||[]).forEach(p=>{ if(p.voided===true) return; if(p.job_id!=null) payByJob[String(p.job_id)]=p; });
 
@@ -589,15 +592,17 @@ async function loadHistory(ownerId, plate){
       try{ const arr=JSON.parse(pay.items); svcs=arr.map(x=>x.desc).filter(Boolean).join(', '); }catch(e){}
     }
     if(!svcs) svcs=Array.isArray(j.services)?j.services.map(s=>s.desc).filter(Boolean).join(', '):'';
-    items.push({ts:ts, date:fmtDate(ts), svc:svcs||'Job', src:'job', pdf:''});
+    let fee=null;
+    if(pay && pay.net_paid!=null && pay.net_paid!=='') fee=Number(pay.net_paid);
+    items.push({ts:ts, date:fmtDate(ts), svc:svcs||'Job', src:'job', pdf:'', plate:(j.plate||plate||''), fee:fee});
   });
   (bk||[]).forEach(b=>{
     const t=b.scheduled_at?new Date(b.scheduled_at).getTime():0;
-    items.push({ts:t, date:fmtDate(t), svc:b.service_name||'Booking', src:'booking', pdf:''});
+    items.push({ts:t, date:fmtDate(t), svc:b.service_name||'Booking', src:'booking', pdf:'', plate:(b.plate||plate||''), fee:null});
   });
   (recs||[]).forEach(r=>{
     const t=r.service_date?new Date(r.service_date).getTime():0;
-    items.push({ts:t, date:r.service_date?fmtDate(t):'—', svc:(r.service_name||'Service')+(r.remark?' · '+r.remark:''), src:'record', pdf:r.invoice_url||'', recId:r.id});
+    items.push({ts:t, date:r.service_date?fmtDate(t):'—', svc:(r.service_name||'Service')+(r.remark?' · '+r.remark:''), src:'record', pdf:r.invoice_url||'', recId:r.id, plate:(r.vehicle_label||plate||''), fee:null});
   });
   items.sort((a,b)=>b.ts-a.ts);
   ALL_HISTORY=items;
@@ -613,7 +618,17 @@ function renderHistory(list){
     const del=(h.src==='record' && h.recId)
       ? `<button title="Delete this record" onclick="event.stopPropagation();deleteServiceRecord('${esc(String(h.recId))}')" style="background:transparent;border:none;color:#C0392B;cursor:pointer;padding:2px 4px;margin-left:6px"><i class="ti ti-trash"></i></button>`
       : '';
-    return `<div class="hist-item"><div style="display:flex;justify-content:space-between;align-items:center"><div class="hist-date">${h.date} · ${h.src}</div><div style="display:flex;align-items:center">${pdf}${del}</div></div><div class="hist-svc">${esc(h.svc)}</div></div>`;
+    const plateTag=h.plate?`<span style="font-size:11px;color:var(--gold,#f5c518);font-weight:700;margin-left:6px">${esc(h.plate)}</span>`:'';
+    const feeTag=(h.fee!=null && !isNaN(h.fee))?`<span style="font-size:12px;color:var(--text2);font-weight:700;white-space:nowrap;margin-left:8px">RM${Number(h.fee).toFixed(2)}</span>`:'';
+    return `<div class="hist-item">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div class="hist-date">${h.date} · ${h.src}${plateTag}</div>
+        <div style="display:flex;align-items:center">${pdf}${del}</div>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
+        <div class="hist-svc">${esc(h.svc)}</div>${feeTag}
+      </div>
+    </div>`;
   }).join('');
 }
 
