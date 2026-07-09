@@ -2423,6 +2423,7 @@ async function openUnpaid(){
         <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
           <b>${RM(r.amount_owed)}</b>
           <button class="btn-mini" title="Edit" onclick='openUnpaidEdit(${JSON.stringify(r).replace(/'/g,"&#39;")})'><i class="ti ti-edit"></i></button>
+          <button class="btn-mini" title="Delete this unpaid record" style="color:#C0392B" onclick='deleteUnpaid(${JSON.stringify(r).replace(/'/g,"&#39;")})'><i class="ti ti-trash"></i></button>
           <button class="btn-mini" onclick='settleUnpaid(${JSON.stringify(r).replace(/'/g,"&#39;")})'><i class="ti ti-check"></i> Settle</button>
         </div>
       </div>`;
@@ -2486,6 +2487,26 @@ async function settleUnpaid(r){
     toast('Settled ✓');
     openUnpaid(); loadTakings();
   }catch(e){ alert('Settle failed: '+(e.message||e)); }
+}
+
+/* Delete an unpaid record (e.g. a duplicate). Removes the gl_unpaid row only —
+   does NOT create a payment. Confirms first, and verifies the delete actually
+   took effect (guards against a silently-blocked RLS delete). */
+async function deleteUnpaid(r){
+  if(!r || !r.id){ toast('No record'); return; }
+  const who=r.customer_name||r.workshop_name||r.plate||'—';
+  const amount=Number(r.amount_owed)||0;
+  if(!confirm('DELETE this unpaid record?\n'+who+(r.plate?' · '+r.plate:'')+'\nAmount: '+RM(amount)+'\n\nUse this to remove a wrong/duplicate entry. It does NOT record a payment.')) return;
+  try{
+    const {data,error}=await sb.from('gl_unpaid').delete().eq('id',r.id).select();
+    if(error) throw error;
+    if(!data || !data.length){
+      alert('Delete was blocked (no permission on gl_unpaid). Nothing was changed.\nA DELETE policy for gl_unpaid is needed.');
+      return;
+    }
+    toast('Deleted');
+    openUnpaid();
+  }catch(e){ alert('Delete failed: '+(e.message||e)); }
 }
 
 boot();
