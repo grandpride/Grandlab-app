@@ -4120,13 +4120,14 @@ async function doCheckout(method){
             method:'POST',headers:authHeaders(),
             body:JSON.stringify({owner_id:SESSION.user.id, amount:-amt, note:'Paid by G Wallet: '+s.name, kind:'purchase'})});
         }catch(e){}
-        // mark order paid + rewarded, but NO points for wallet payment
-        // (points were already earned on the top-up; avoid double-dipping)
+        // mark order paid + rewarded; wallet payment DOES earn points now
+        // (Option B: points on every service purchase, none on top-up)
         await fetch(`${SUPA_URL}/rest/v1/gl_orders?order_ref=eq.${encodeURIComponent(orderRef)}`,{
           method:'PATCH',headers:authHeaders(),
           body:JSON.stringify({payment_status:'paid',paid_at:new Date().toISOString(),rewarded:true,payment_method:'wallet'})});
         await afterOrderCreated(s, car, carLabel);
-        toast('Paid with wallet ✓');
+        const earned = await awardPoints(amt, 'Purchase: '+s.name);
+        toast(earned>0 ? `Paid with wallet ✓ · +${earned} G Coin` : 'Paid with wallet ✓');
         try{ await fetchProfile(); }catch(e){}
         routeTab('order'); return;
       }
@@ -4203,27 +4204,25 @@ async function testCompleteTopup(){
     const ord=(r.ok?(await r.json())[0]:null);
     if(!ord){ toast('No pending top-up found'); return; }
     if(!ord.topup_amount){ toast('Top-up amount missing'); return; }
-    const RM_PER=Number(STYLE.pointRmPer||4);
     const credit=Number(ord.topup_amount)+Number(ord.topup_bonus||0);
-    const p=Math.round(Number(ord.topup_amount||0)/RM_PER);
     const newWallet=Number(PROFILE?.wallet||0)+credit;
-    const newPoints=Number(PROFILE?.points||0)+p;
+    // top-ups earn NO points (Option B) — points come at service purchase
     // mark order paid + rewarded
     await fetch(`${SUPA_URL}/rest/v1/gl_orders?order_ref=eq.${encodeURIComponent(ord.order_ref)}`,{
       method:'PATCH',headers:authHeaders(),
       body:JSON.stringify({payment_status:'paid',paid_at:new Date().toISOString(),rewarded:true})});
-    // credit profile
+    // credit wallet only (no points)
     await fetch(`${SUPA_URL}/rest/v1/gl_profiles?id=eq.${SESSION.user.id}`,{
       method:'PATCH',headers:authHeaders(),
-      body:JSON.stringify({wallet:newWallet,points:newPoints})});
+      body:JSON.stringify({wallet:newWallet})});
     // record wallet transaction history
     try{
       await fetch(`${SUPA_URL}/rest/v1/gl_wallet_txns`,{
         method:'POST',headers:authHeaders(),
         body:JSON.stringify({owner_id:SESSION.user.id, amount:credit, note:'Top-up (RM'+Number(ord.topup_amount).toFixed(2)+(Number(ord.topup_bonus||0)>0?' + RM'+Number(ord.topup_bonus).toFixed(2)+' bonus':'')+')', kind:'topup'})});
     }catch(e){}
-    if(PROFILE){ PROFILE.wallet=newWallet; PROFILE.points=newPoints; }
-    toast('Top-up +RM'+credit.toFixed(2)+(p>0?' · +'+p+' G Coin':'')+' ✓ (test)');
+    if(PROFILE){ PROFILE.wallet=newWallet; }
+    toast('Top-up +RM'+credit.toFixed(2)+' ✓ (test)');
     try{ await fetchProfile(); }catch(e){}
     renderWallet();
   }catch(e){ toast('Error: '+e.message); }
