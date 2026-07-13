@@ -4507,11 +4507,13 @@ async function openBooking(prefillServiceId){
   if(IS_GUEST){ toast('Sign in to book'); return; }
   if(!SERVICES.length) try{ await fetchServices(); }catch(e){}
   if(!VEHICLES.length) try{ await fetchVehicles(); }catch(e){}
-  // prefill service if passed (e.g. from a maintenance reminder)
-  let preName='', preId=prefillServiceId||null;
-  if(preId){ const s=SERVICES.find(x=>String(x.id)===String(preId)); if(s) preName=s.name; }
-  _bkState={ service_name:preName||(SERVICES[0]?.name||''), service_id:preId||(SERVICES[0]?.id||null),
-    vehicle:VEHICLES[0]?(([VEHICLES[0].make,VEHICLES[0].model].filter(Boolean).join(' '))+(VEHICLES[0].plate?' - '+VEHICLES[0].plate:'')):'',
+  try{ await fetchPackages(); }catch(e){}
+  // only packages with remaining balance are bookable here
+  const bookable=(PACKAGES||[]).filter(p=>p.status==='active' && Number(p.used_uses)<Number(p.total_uses));
+  const first=bookable[0]||null;
+  _bkState={ service_name:first?first.name:'', service_id:first?(first.service_id||null):null,
+    package_id:first?first.id:null,
+    vehicle:first&&first.vehicle_label?first.vehicle_label:(VEHICLES[0]?(([VEHICLES[0].make,VEHICLES[0].model].filter(Boolean).join(' '))+(VEHICLES[0].plate?' - '+VEHICLES[0].plate:'')):''),
     date:null, time:null, note:'' };
   _bkMonth=new Date(); _bkMonth.setDate(1);
   renderBooking();
@@ -4524,14 +4526,39 @@ function bkClosed(dateStr, dateObj){
 }
 
 async function renderBooking(){
-  const svcOpts=SERVICES.map(s=>`<option value="${esc(s.name)}" data-id="${s.id}" ${String(s.id)===String(_bkState.service_id)?'selected':''}>${esc(s.name)}</option>`).join('');
+  // Only packages/balances with remaining uses are bookable here.
+  const bookable=(PACKAGES||[]).filter(p=>p.status==='active' && Number(p.used_uses)<Number(p.total_uses));
+
+  // No balances → don't show the booking form; tell them to purchase first.
+  if(!bookable.length){
+    appRoot.innerHTML=`
+      <div class="topbar-app"><button class="back" onclick="routeTab('order')">‹</button><div class="ttl">Book Appointment</div><button class="home-btn" onclick="routeTab('home')">⌂</button></div>
+      <div class="app-scroll" style="padding:40px 24px">
+        <div style="text-align:center;margin-top:40px">
+          <div style="font-size:44px;margin-bottom:14px">🎟️</div>
+          <div style="font-size:18px;font-weight:800;margin-bottom:10px">No balance to book yet</div>
+          <div style="color:var(--muted);font-size:14px;line-height:1.5;margin-bottom:24px">
+            Direct booking is for services you've already purchased (like a coating maintenance or a Bathe Essence package).
+            To book a new service, purchase it first — you'll pick your date &amp; time at checkout.
+          </div>
+          <button class="btn btn-primary" style="width:100%" onclick="routeTab('home')">Browse services</button>
+        </div>
+      </div>`;
+    return;
+  }
+
+  const svcOpts=bookable.map(p=>{
+    const left=Number(p.total_uses)-Number(p.used_uses);
+    const lab=p.name+' ('+left+' left)';
+    return `<option value="${esc(p.name)}" data-id="${esc(p.service_id||'')}" data-pkg="${esc(p.id)}" ${String(p.id)===String(_bkState.package_id)?'selected':''}>${esc(lab)}</option>`;
+  }).join('');
   const vehOpts=VEHICLES.map(v=>{const bm=[v.make,v.model].filter(Boolean).join(' ');const lab=bm+(v.plate?' - '+v.plate:'');return `<option ${lab===_bkState.vehicle?'selected':''}>${esc(lab)}</option>`;}).join('');
   appRoot.innerHTML=`
     <div class="topbar-app"><button class="back" onclick="routeTab('order')">‹</button><div class="ttl">Book Appointment</div><button class="home-btn" onclick="routeTab('home')">⌂</button></div>
     <div class="app-scroll" style="padding:18px 18px 120px">
-      <div class="field"><label>Service</label>
+      <div class="field"><label>Service (from your balance)</label>
         <select id="bk-svc" onchange="_bkPickSvc(this)" style="width:100%;height:52px;background:var(--surface);border:1.5px solid var(--line);border-radius:14px;padding:0 16px;color:var(--text);font-size:16px">
-          ${svcOpts||'<option value="">No services</option>'}
+          ${svcOpts}
         </select>
       </div>
       <div class="field"><label>Vehicle</label>
@@ -4582,7 +4609,12 @@ function renderCalendar(){
     <div class="cal-grid">${cells}</div>`;
 }
 
-function _bkPickSvc(sel){ _bkState.service_name=sel.value; _bkState.service_id=sel.options[sel.selectedIndex]?.dataset.id||null; }
+function _bkPickSvc(sel){
+  _bkState.service_name=sel.value;
+  const opt=sel.options[sel.selectedIndex];
+  _bkState.service_id=opt?.dataset.id||null;
+  _bkState.package_id=opt?.dataset.pkg||null;
+}
 function _bkPickDate(ds){ _bkState.date=ds; _bkState.time=null; document.getElementById('bk-cal').innerHTML=renderCalendar(); loadSlots(); }
 
 async function loadSlots(){
