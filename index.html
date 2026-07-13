@@ -214,7 +214,7 @@
     background-size:cover;background-position:center;background-repeat:no-repeat;pointer-events:none;}
   #appBgLayer.show{display:block;}
   #appBgLayer::after{content:"";position:absolute;inset:0;background:rgba(0,0,0,var(--app-bg-dark,.55));}
-  #appRoot{position:fixed;top:0;left:0;right:0;height:100dvh;max-width:440px;margin:0 auto;overflow:hidden;
+  #appRoot{position:fixed;top:0;left:0;right:0;height:100dvh;height:var(--app-vh,100dvh);max-width:440px;margin:0 auto;overflow:hidden;
     background:radial-gradient(120% 80% at 50% 0%, #161410 0%, #0d0d0c 40%, #080808 100%);
     display:none;flex-direction:column;z-index:20;}
   #appRoot.show{display:flex;}
@@ -3973,6 +3973,11 @@ async function doCheckout(method){
         toast(earned>0 ? `Booked ✓ — pay at outlet · +${earned} G Coin` : "Booked ✓ — pay at outlet"); routeTab('order'); return;
       }
       // online → get senangPay URL from the edge function and redirect
+      // DOKU minimum is RM2 — guide the customer instead of a silent fail.
+      if(Number(amt) < 2){
+        toast("Online payment needs min RM2. Please choose Pay at outlet for this amount.");
+        return;
+      }
       toast("Opening payment…");
       const pr=await fetch(`${SENANGPAY_FN}/create`,{
         method:"POST",headers:{'Content-Type':'application/json','Authorization':'Bearer '+SUPA_ANON,'apikey':SUPA_ANON},
@@ -5353,6 +5358,24 @@ Object.defineProperty(window,'stepIndex',{get:()=>cur,set:v=>{cur=v;}});
       window._PAY_RETURN={result:payResult, ref:payRef};
     }
   }catch(e){}
+  // Fix bottom-gap after returning from an external payment page (DOKU).
+  // Coming back via back-button restores the page from bfcache with a stale
+  // 100dvh, leaving a gap. Force a viewport/layout recalc on restore.
+  try{
+    window.addEventListener('pageshow', function(ev){
+      if(ev.persisted){ fixViewport_(); setTimeout(fixViewport_, 60); setTimeout(fixViewport_, 250); }
+    });
+    window.addEventListener('resize', fixViewport_);
+    window.addEventListener('orientationchange', function(){ setTimeout(fixViewport_, 100); });
+  }catch(e){}
+  function fixViewport_(){
+    try{
+      // pin real viewport height to a CSS var and nudge fixed containers to reflow
+      document.documentElement.style.setProperty('--app-vh', window.innerHeight + 'px');
+      const root=document.getElementById('appRoot');
+      if(root){ root.style.height='100dvh'; /* re-assert */ void root.offsetHeight; }
+    }catch(e){}
+  }
   // TEMP: preview the main page directly (no login)
   if(PREVIEW_HOME){
     await Promise.allSettled([
