@@ -4115,13 +4115,13 @@ async function doCheckout(method){
             method:'POST',headers:authHeaders(),
             body:JSON.stringify({owner_id:SESSION.user.id, amount:-amt, note:'Paid: '+s.name, kind:'purchase'})});
         }catch(e){}
-        // mark order paid + rewarded, grant points
+        // mark order paid + rewarded, but NO points for wallet payment
+        // (points were already earned on the top-up; avoid double-dipping)
         await fetch(`${SUPA_URL}/rest/v1/gl_orders?order_ref=eq.${encodeURIComponent(orderRef)}`,{
           method:'PATCH',headers:authHeaders(),
           body:JSON.stringify({payment_status:'paid',paid_at:new Date().toISOString(),rewarded:true,payment_method:'wallet'})});
         await afterOrderCreated(s, car, carLabel);
-        const earned = await awardPoints(amt, 'Purchase: '+s.name);
-        toast(earned>0 ? `Paid with wallet ✓ · +${earned} G Coin` : 'Paid with wallet ✓');
+        toast('Paid with wallet ✓');
         try{ await fetchProfile(); }catch(e){}
         routeTab('order'); return;
       }
