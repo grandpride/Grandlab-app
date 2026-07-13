@@ -4041,7 +4041,7 @@ async function afterOrderCreated(s, car, carLabel){
 async function handlePayReturn(){
   const pr=window._PAY_RETURN; if(!pr) return;
   window._PAY_RETURN=null;
-  if(pr.result==='success'){
+  if(pr.result==='success' || pr.result==='done'){
     toast('Payment successful ✓');
     // fetch the paid order and finalize any package/milestones
     try{
