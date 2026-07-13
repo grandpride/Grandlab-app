@@ -3954,34 +3954,17 @@ function openDateSheet(){
   sheet.className='pay-sheet-overlay date-sheet';
   const dateChips=dates.map((d,i)=>{
     const k=_dateKey(d);
-    return `<button class="date-chip ${SVC_SEL.date===k?'on':''}" onclick="_pickDate('${k}')">${_dateLabel(d,i)}</button>`;
+    return `<button class="date-chip ${SVC_SEL.date===k?'on':''}" data-dk="${k}" onclick="_pickDate('${k}')">${_dateLabel(d,i)}</button>`;
   }).join('');
-  // For TODAY, disable time slots already past (with a 30-min lead buffer so
-  // customers can't book a slot that's about to start). Future dates: all slots.
-  const todayKey=_dateKey(new Date());
-  const isToday=(SVC_SEL.date===todayKey);
-  const now=new Date();
-  const cutoffMins = now.getHours()*60 + now.getMinutes() + 30; // need 30-min lead
-  const slotMins=(t)=>{
-    const m=t.match(/(\d+):(\d+)\s*(AM|PM)/i); if(!m) return 0;
-    let h=Number(m[1])%12 + (/PM/i.test(m[3])?12:0);
-    return h*60 + Number(m[2]);
-  };
-  const timeChips=_TIME_SLOTS.map(t=>{
-    const past = isToday && (slotMins(t) < cutoffMins);
-    if(past){
-      return `<button class="time-chip past" disabled title="Slot passed">${t}</button>`;
-    }
-    return `<button class="time-chip ${SVC_SEL.time===t?'on':''}" onclick="_pickTime('${t}')">${t}</button>`;
-  }).join('');
+  const timeChips=_buildTimeChips();
   sheet.innerHTML=`
     <div class="pay-sheet">
       <div class="pay-sheet-handle"></div>
       <div class="pay-sheet-title">Choose date & time</div>
       <div class="date-sec-label">Date</div>
-      <div class="date-row">${dateChips}</div>
+      <div class="date-row" id="dateRow">${dateChips}</div>
       <div class="date-sec-label">Time</div>
-      <div class="time-grid">${timeChips}</div>
+      <div class="time-grid" id="timeGrid">${timeChips}</div>
       <button class="btn btn-primary" style="margin-top:16px;width:100%" onclick="_dateNext()">Continue to payment</button>
       <button class="pay-cancel" onclick="closeDateSheet()">Cancel</button>
     </div>`;
@@ -3989,9 +3972,39 @@ function openDateSheet(){
   document.body.appendChild(sheet);
   requestAnimationFrame(()=>sheet.classList.add('show'));
 }
-function _pickDate(k){ SVC_SEL.date=k; refreshDateSheet(); }
-function _pickTime(t){ SVC_SEL.time=t; refreshDateSheet(); }
-function refreshDateSheet(){ closeDateSheet(); openDateSheet(); }
+// Build time-slot chips (past slots disabled for today, 30-min lead buffer).
+function _buildTimeChips(){
+  const todayKey=_dateKey(new Date());
+  const isToday=(SVC_SEL.date===todayKey);
+  const now=new Date();
+  const cutoffMins = now.getHours()*60 + now.getMinutes() + 30;
+  const slotMins=(t)=>{
+    const m=t.match(/(\d+):(\d+)\s*(AM|PM)/i); if(!m) return 0;
+    let h=Number(m[1])%12 + (/PM/i.test(m[3])?12:0);
+    return h*60 + Number(m[2]);
+  };
+  return _TIME_SLOTS.map(t=>{
+    const past = isToday && (slotMins(t) < cutoffMins);
+    if(past) return `<button class="time-chip past" disabled title="Slot passed">${t}</button>`;
+    return `<button class="time-chip ${SVC_SEL.time===t?'on':''}" data-tk="${t}" onclick="_pickTime('${t}')">${t}</button>`;
+  }).join('');
+}
+function _pickDate(k){
+  SVC_SEL.date=k;
+  // update selected date chip in place
+  document.querySelectorAll('#dateRow .date-chip').forEach(b=>{
+    b.classList.toggle('on', b.getAttribute('data-dk')===k);
+  });
+  // rebuild ONLY the time grid (past-slot availability depends on the date)
+  const grid=document.getElementById('timeGrid');
+  if(grid) grid.innerHTML=_buildTimeChips();
+}
+function _pickTime(t){
+  SVC_SEL.time=t;
+  document.querySelectorAll('#timeGrid .time-chip').forEach(b=>{
+    b.classList.toggle('on', b.getAttribute('data-tk')===t);
+  });
+}
 function closeDateSheet(){
   const o=document.querySelector('.date-sheet');
   if(o){ o.classList.remove('show'); o.remove(); }
@@ -4006,7 +4019,7 @@ function _dateNext(){
     const m=SVC_SEL.time.match(/(\d+):(\d+)\s*(AM|PM)/i);
     if(m){
       const mins=(Number(m[1])%12 + (/PM/i.test(m[3])?12:0))*60 + Number(m[2]);
-      if(mins<cutoff){ toast("That time has passed — please pick a later slot"); SVC_SEL.time=""; refreshDateSheet(); return; }
+      if(mins<cutoff){ toast("That time has passed — please pick a later slot"); SVC_SEL.time=""; const g=document.getElementById('timeGrid'); if(g) g.innerHTML=_buildTimeChips(); return; }
     }
   }
   closeDateSheet();
