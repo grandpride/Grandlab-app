@@ -4081,7 +4081,7 @@ async function doCheckout(method){
             scheduled_at:schedISO,
             status:'upcoming',
             total_price:amt,
-            payment_type:(method==='counter'?'outlet':'online'),
+            payment_type:(method==='counter'?'deposit':'full'),
             amount_paid:0,
             source:'APP',
             notes:(carLabel?('Plate: '+carLabel+' · '):'')+note+' · Ref: '+orderRef
