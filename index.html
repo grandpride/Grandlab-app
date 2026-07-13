@@ -4003,7 +4003,7 @@ function openPaymentSheet(){
         const bal=Number(PROFILE?.wallet||0);
         const enough=bal>=amt;
         return `<button class="pay-opt" ${enough?'':'disabled style="opacity:.5"'} onclick="${enough?"doCheckout('wallet')":''}">
-          <div class="pay-opt-ic">👛</div>
+          <div class="pay-opt-ic">💰</div>
           <div><div class="pay-opt-nm">Pay with ${esc(STYLE.walletName||'G Wallet')}</div>
           <div class="pay-opt-sub">${enough?('Balance: RM'+money(bal)):('Not enough — balance RM'+money(bal))}</div></div>
         </button>`;
