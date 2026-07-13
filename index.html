@@ -4214,7 +4214,7 @@ async function doCheckout(method){
           detail:('Grandlab '+s.name).slice(0,200)})});
       if(pr.ok){
         const data=await pr.json();
-        if(data.pay_url){ window.location.href=data.pay_url; return; }
+        if(data.pay_url){ openPaymentUrl(data.pay_url); toast('Opening payment in your browser…'); return; }
       }
       toast("Couldn't open payment — try Pay at outlet");
     } else {
@@ -4349,6 +4349,18 @@ async function testMarkPaid(orderRef){
     try{ await fetchProfile(); }catch(e){}
     renderOrders('available');
   }catch(e){ toast('Error: '+e.message); }
+}
+
+// Open the DOKU payment page in the EXTERNAL system browser (Safari/Chrome),
+// not the in-app layer — this avoids the ghost/layered page after cancel.
+// After paying, DOKU redirects to our return URL which re-opens the PWA
+// (iOS best-effort). The webhook confirms payment regardless of the return.
+function openPaymentUrl(url){
+  try{
+    const w=window.open(url, '_blank');
+    // if popup blocked (some iOS PWA cases), fall back to same-window nav
+    if(!w){ window.location.href=url; }
+  }catch(e){ window.location.href=url; }
 }
 
 async function handlePayReturn(){
@@ -4810,7 +4822,7 @@ async function confirmTopUp(amount, payNow){
       const pr=await fetch(`${SENANGPAY_FN}/create`,{method:"POST",headers:{'Content-Type':'application/json','Authorization':'Bearer '+SUPA_ANON,'apikey':SUPA_ANON},
         body:JSON.stringify({order_ref:orderRef, amount:amount, name:(PROFILE?.name||'Customer'),
           email:(SESSION?.user?.email||''), phone:(PROFILE?.phone||''), detail:'Grandlab Wallet Top-Up'})});
-      if(pr.ok){ const d=await pr.json(); if(d.pay_url){ window.location.href=d.pay_url; return; }
+      if(pr.ok){ const d=await pr.json(); if(d.pay_url){ openPaymentUrl(d.pay_url); toast('Opening payment in your browser…'); return; }
         const em=(d.doku_response&&(d.doku_response.error_messages||d.doku_response.message))||d.error||'unknown';
         alert('Payment error:\n'+JSON.stringify(em)); console.log('DOKU error detail:',d);
       } else { const t=await pr.text(); alert('Payment failed ('+pr.status+'):\n'+t); }
@@ -4872,7 +4884,7 @@ async function sendGiftCard(amount){
     const pr=await fetch(`${SENANGPAY_FN}/create`,{method:"POST",headers:{'Content-Type':'application/json','Authorization':'Bearer '+SUPA_ANON,'apikey':SUPA_ANON},
       body:JSON.stringify({order_ref:orderRef, amount:amount, name:(PROFILE?.name||'Customer'),
         email:(SESSION?.user?.email||''), phone:(PROFILE?.phone||''), detail:'Grandlab Gift Card'})});
-    if(pr.ok){ const d=await pr.json(); if(d.pay_url){ window.location.href=d.pay_url; return; } }
+    if(pr.ok){ const d=await pr.json(); if(d.pay_url){ openPaymentUrl(d.pay_url); toast('Opening payment in your browser…'); return; } }
     toast("Couldn't open payment");
   }catch(e){ toast('Error — try again'); }
 }
@@ -5723,7 +5735,20 @@ Object.defineProperty(window,'stepIndex',{get:()=>cur,set:v=>{cur=v;}});
     window.addEventListener('resize', fixViewport_);
     window.addEventListener('focus', function(){ setTimeout(fixViewport_, 50); });
     document.addEventListener('visibilitychange', function(){
-      if(!document.hidden){ fixViewport_(); setTimeout(fixViewport_, 120); setTimeout(fixViewport_, 350); }
+      if(!document.hidden){
+        fixViewport_(); setTimeout(fixViewport_, 120); setTimeout(fixViewport_, 350);
+        // Returning from an external payment page: refresh so a webhook-confirmed
+        // payment shows up (Paid badge / updated wallet) without a manual reload.
+        try{
+          if(!IS_GUEST && SESSION?.user?.id){
+            fetchProfile().then(()=>{
+              const t=currentTab;
+              if(t==='order') renderOrders('available');
+              else if(t==='wallet') renderWallet();
+            }).catch(()=>{});
+          }
+        }catch(e){}
+      }
     });
     window.addEventListener('orientationchange', function(){ setTimeout(fixViewport_, 100); });
   }catch(e){}
