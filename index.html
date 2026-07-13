@@ -4150,8 +4150,12 @@ async function doCheckout(method){
         if(data.pay_url){ window.location.href=data.pay_url; return; }
       }
       toast("Couldn't open payment — try Pay at outlet");
-    } else { toast("Could not place order"); }
-  }catch(e){ toast("Order error"); }
+    } else {
+      const errTxt = await r.text().catch(()=> '');
+      console.error('gl_orders insert failed:', r.status, errTxt);
+      toast("Could not place order ("+r.status+")");
+    }
+  }catch(e){ console.error('order error:', e); toast("Order error: "+e.message); }
 }
 // create package + milestone rewards after an order is placed (used by counter + paid online)
 async function awardPoints(amountAfterRebate, reason){
@@ -4199,6 +4203,10 @@ async function afterOrderCreated(s, car, carLabel){
 // TEST ONLY (sandbox): find the newest unpaid topup order and credit it,
 // simulating the webhook (wallet credit + bonus + points).
 async function testCompleteTopup(){
+  // ask which channel to simulate (sandbox has no webhook; production auto-captures)
+  let ch=(prompt('Simulate top-up channel? tng / fpx / grabpay / shopeepay / card','tng')||'tng').trim().toLowerCase();
+  if(!ch) ch='tng';
+  const simMethod='senangpay-'+ch;
   try{
     const r=await fetch(`${SUPA_URL}/rest/v1/gl_orders?select=*&owner_id=eq.${SESSION.user.id}&status=eq.topup&payment_status=eq.unpaid&order=created_at.desc&limit=1`,{headers:authHeaders()});
     const ord=(r.ok?(await r.json())[0]:null);
@@ -4207,10 +4215,10 @@ async function testCompleteTopup(){
     const credit=Number(ord.topup_amount)+Number(ord.topup_bonus||0);
     const newWallet=Number(PROFILE?.wallet||0)+credit;
     // top-ups earn NO points (Option B) — points come at service purchase
-    // mark order paid + rewarded
+    // mark order paid + rewarded + store the simulated channel
     await fetch(`${SUPA_URL}/rest/v1/gl_orders?order_ref=eq.${encodeURIComponent(ord.order_ref)}`,{
       method:'PATCH',headers:authHeaders(),
-      body:JSON.stringify({payment_status:'paid',paid_at:new Date().toISOString(),rewarded:true})});
+      body:JSON.stringify({payment_status:'paid',paid_at:new Date().toISOString(),rewarded:true,payment_method:simMethod})});
     // credit wallet only (no points)
     await fetch(`${SUPA_URL}/rest/v1/gl_profiles?id=eq.${SESSION.user.id}`,{
       method:'PATCH',headers:authHeaders(),
