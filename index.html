@@ -4118,7 +4118,7 @@ async function doCheckout(method){
         try{
           await fetch(`${SUPA_URL}/rest/v1/gl_wallet_txns`,{
             method:'POST',headers:authHeaders(),
-            body:JSON.stringify({owner_id:SESSION.user.id, amount:-amt, note:'Paid: '+s.name, kind:'purchase'})});
+            body:JSON.stringify({owner_id:SESSION.user.id, amount:-amt, note:'Paid by G Wallet: '+s.name, kind:'purchase'})});
         }catch(e){}
         // mark order paid + rewarded, but NO points for wallet payment
         // (points were already earned on the top-up; avoid double-dipping)
