@@ -4079,7 +4079,7 @@ async function doCheckout(method){
             service_name:s.name,
             car_type:(car?.car_type||car?.type||null),
             scheduled_at:schedISO,
-            status:'upcoming',
+            status:'confirmed',
             total_price:amt,
             payment_type:(method==='counter'?'deposit':'full'),
             amount_paid:0,
