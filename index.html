@@ -1042,10 +1042,16 @@ const APP_VERSION = "1.0.0";
 // DOKU Checkout Edge Function base URL. Use the .functions.supabase.co format
 // to match the webhook path (/doku/notify) configured in the DOKU dashboard.
 // Leave blank to disable online payment (only "Pay at outlet" shows).
+// ============================================================
+// 🚦 GO-LIVE CHECKLIST (change these 2 lines to switch OFF sandbox/testing):
+//   1. SENANGPAY_FN → change "doku-sandbox" to "doku"   (real payments)
+//   2. SANDBOX_TEST → change true to false              (hides all 🧪 test buttons)
+// That's it. The test functions (testMarkPaid, testCompleteTopup) stay in the
+// code but are never shown/called when SANDBOX_TEST=false — safe to leave.
+// ============================================================
 // SANDBOX MODE — points at doku-sandbox function for free test payments.
-// TO GO LIVE: change "doku-sandbox" back to "doku" below AND set SANDBOX_TEST=false.
 const SENANGPAY_FN = "https://eychljpzorzmaveixlnu.supabase.co/functions/v1/doku-sandbox";
-const SANDBOX_TEST = true;  // shows a "Mark paid (test)" button on orders — set false for production
+const SANDBOX_TEST = true;  // true = testing (🧪 buttons show); false = live (buttons hidden)
 const IS_LIVE = true;
 // Set to true once OTP (WhatsApp/SMS) is connected & working.
 // While false: the Sign in button is hidden, everyone uses guest mode.
