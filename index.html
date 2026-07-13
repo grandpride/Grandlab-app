@@ -3999,6 +3999,15 @@ function openPaymentSheet(){
       ${grossLine}
       ${rebateLine}
       <div class="pay-sheet-amt">Total: RM${money(amt)}</div>
+      ${(()=>{
+        const bal=Number(PROFILE?.wallet||0);
+        const enough=bal>=amt;
+        return `<button class="pay-opt" ${enough?'':'disabled style="opacity:.5"'} onclick="${enough?"doCheckout('wallet')":''}">
+          <div class="pay-opt-ic">👛</div>
+          <div><div class="pay-opt-nm">Pay with ${esc(STYLE.walletName||'G Wallet')}</div>
+          <div class="pay-opt-sub">${enough?('Balance: RM'+money(bal)):('Not enough — balance RM'+money(bal))}</div></div>
+        </button>`;
+      })()}
       ${online?`<button class="pay-opt" onclick="doCheckout('senangpay')">
         <div class="pay-opt-ic">💳</div>
         <div><div class="pay-opt-nm">Pay online now</div><div class="pay-opt-sub">Card · FPX · e-Wallet via senangPay</div></div>
@@ -4086,6 +4095,30 @@ async function doCheckout(method){
         await afterOrderCreated(s, car, carLabel);
         const earned = await awardPoints(amt, 'Booking: '+s.name);
         toast(earned>0 ? `Booked ✓ — pay at outlet · +${earned} G Coin` : "Booked ✓ — pay at outlet"); routeTab('order'); return;
+      }
+      if(method==='wallet'){
+        const bal=Number(PROFILE?.wallet||0);
+        if(bal < amt){ toast('Not enough wallet balance'); return; }
+        const newBal=bal-amt;
+        // deduct wallet
+        await fetch(`${SUPA_URL}/rest/v1/gl_profiles?id=eq.${SESSION.user.id}`,{
+          method:'PATCH',headers:authHeaders(),body:JSON.stringify({wallet:newBal})});
+        if(PROFILE) PROFILE.wallet=newBal;
+        // record wallet transaction (negative)
+        try{
+          await fetch(`${SUPA_URL}/rest/v1/gl_wallet_txns`,{
+            method:'POST',headers:authHeaders(),
+            body:JSON.stringify({owner_id:SESSION.user.id, amount:-amt, note:'Paid: '+s.name, kind:'purchase'})});
+        }catch(e){}
+        // mark order paid + rewarded, grant points
+        await fetch(`${SUPA_URL}/rest/v1/gl_orders?order_ref=eq.${encodeURIComponent(orderRef)}`,{
+          method:'PATCH',headers:authHeaders(),
+          body:JSON.stringify({payment_status:'paid',paid_at:new Date().toISOString(),rewarded:true,payment_method:'wallet'})});
+        await afterOrderCreated(s, car, carLabel);
+        const earned = await awardPoints(amt, 'Purchase: '+s.name);
+        toast(earned>0 ? `Paid with wallet ✓ · +${earned} G Coin` : 'Paid with wallet ✓');
+        try{ await fetchProfile(); }catch(e){}
+        routeTab('order'); return;
       }
       // online → get senangPay URL from the edge function and redirect
       // DOKU minimum is RM2 — guide the customer instead of a silent fail.
