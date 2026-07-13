@@ -5359,23 +5359,31 @@ Object.defineProperty(window,'stepIndex',{get:()=>cur,set:v=>{cur=v;}});
     }
   }catch(e){}
   // Fix bottom-gap after returning from an external payment page (DOKU).
-  // Coming back via back-button restores the page from bfcache with a stale
-  // 100dvh, leaving a gap. Force a viewport/layout recalc on restore.
+  // Returning (back button / tab re-focus) can leave a stale 100dvh, causing a
+  // gap. Recalc the real viewport height on every return, not just bfcache.
   try{
-    window.addEventListener('pageshow', function(ev){
-      if(ev.persisted){ fixViewport_(); setTimeout(fixViewport_, 60); setTimeout(fixViewport_, 250); }
-    });
+    window.addEventListener('pageshow', fixViewport_);
     window.addEventListener('resize', fixViewport_);
+    window.addEventListener('focus', function(){ setTimeout(fixViewport_, 50); });
+    document.addEventListener('visibilitychange', function(){
+      if(!document.hidden){ fixViewport_(); setTimeout(fixViewport_, 120); setTimeout(fixViewport_, 350); }
+    });
     window.addEventListener('orientationchange', function(){ setTimeout(fixViewport_, 100); });
   }catch(e){}
   function fixViewport_(){
     try{
-      // pin real viewport height to a CSS var and nudge fixed containers to reflow
-      document.documentElement.style.setProperty('--app-vh', window.innerHeight + 'px');
+      const h=window.innerHeight;
+      document.documentElement.style.setProperty('--app-vh', h + 'px');
       const root=document.getElementById('appRoot');
-      if(root){ root.style.height='100dvh'; /* re-assert */ void root.offsetHeight; }
+      if(root){ root.style.height=h+'px'; void root.offsetHeight; }
+      // force inner screens container to re-measure too
+      document.querySelectorAll('.screens,.screen,.scr,.tab-body').forEach(function(el){
+        el.style.minHeight='0'; void el.offsetHeight;
+      });
     }catch(e){}
   }
+  // run once on load too
+  try{ fixViewport_(); }catch(e){}
   // TEMP: preview the main page directly (no login)
   if(PREVIEW_HOME){
     await Promise.allSettled([
