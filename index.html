@@ -4232,15 +4232,19 @@ async function testCompleteTopup(){
 // simulating what the production webhook does (since sandbox webhook won't fire).
 async function testMarkPaid(orderRef){
   if(!orderRef){ toast('No order ref'); return; }
+  // ask which channel to simulate (sandbox has no webhook to supply it)
+  let ch=(prompt('Simulate payment channel? tng / fpx / grabpay / shopeepay / card','tng')||'tng').trim().toLowerCase();
+  if(!ch) ch='tng';
+  const simMethod='senangpay-'+ch;
   try{
     // 1) fetch the order to know type/amount/owner
     const or=await fetch(`${SUPA_URL}/rest/v1/gl_orders?select=*&order_ref=eq.${encodeURIComponent(orderRef)}`,{headers:authHeaders()});
     const ord=(or.ok?(await or.json())[0]:null);
     if(!ord){ toast('Order not found'); return; }
-    // 2) mark it paid
+    // 2) mark it paid (store the simulated channel so the sheet shows senangpay-<ch>)
     await fetch(`${SUPA_URL}/rest/v1/gl_orders?order_ref=eq.${encodeURIComponent(orderRef)}`,{
       method:'PATCH',headers:authHeaders(),
-      body:JSON.stringify({payment_status:'paid',paid_at:new Date().toISOString(),rewarded:true})
+      body:JSON.stringify({payment_status:'paid',paid_at:new Date().toISOString(),rewarded:true,payment_method:simMethod})
     });
     // 3) grant points + wallet credit (same rules as the webhook)
     if(!ord.rewarded){
