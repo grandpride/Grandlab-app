@@ -707,6 +707,14 @@
     border-top:1px solid var(--gold-line-soft);transform:translateY(100%);transition:transform .22s;}
   .pay-sheet-overlay.show .pay-sheet{transform:translateY(0);}
   .pay-sheet-handle{width:40px;height:4px;background:var(--line);border-radius:3px;margin:6px auto 14px;}
+  .date-sec-label{font-size:12px;color:var(--muted);font-weight:700;margin:14px 0 8px;text-transform:uppercase;letter-spacing:.04em;}
+  .date-row{display:flex;gap:8px;overflow-x:auto;padding-bottom:6px;scrollbar-width:none;}
+  .date-row::-webkit-scrollbar{display:none;}
+  .date-chip{flex:0 0 auto;padding:10px 14px;border-radius:12px;border:1px solid var(--line);background:var(--surface);color:var(--text);font-size:13px;font-weight:600;white-space:nowrap;cursor:pointer;}
+  .date-chip.on{background:var(--yellow);color:#111;border-color:var(--yellow);}
+  .time-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;}
+  .time-chip{padding:10px 4px;border-radius:12px;border:1px solid var(--line);background:var(--surface);color:var(--text);font-size:12.5px;font-weight:600;cursor:pointer;}
+  .time-chip.on{background:var(--yellow);color:#111;border-color:var(--yellow);}
   .pay-sheet-title{font-size:18px;font-weight:800;}
   .pay-sheet-amt{font-size:14px;color:var(--yellow);font-weight:700;margin:4px 0 16px;}
   .pay-opt{display:flex;align-items:center;gap:14px;width:100%;text-align:left;background:var(--surface);
@@ -1035,8 +1043,9 @@ const APP_VERSION = "1.0.0";
 // to match the webhook path (/doku/notify) configured in the DOKU dashboard.
 // Leave blank to disable online payment (only "Pay at outlet" shows).
 // SANDBOX MODE — points at doku-sandbox function for free test payments.
-// TO GO LIVE: change "doku-sandbox" back to "doku" below.
+// TO GO LIVE: change "doku-sandbox" back to "doku" below AND set SANDBOX_TEST=false.
 const SENANGPAY_FN = "https://eychljpzorzmaveixlnu.supabase.co/functions/v1/doku-sandbox";
+const SANDBOX_TEST = true;  // shows a "Mark paid (test)" button on orders — set false for production
 const IS_LIVE = true;
 // Set to true once OTP (WhatsApp/SMS) is connected & working.
 // While false: the Sign in button is hidden, everyone uses guest mode.
@@ -3901,7 +3910,67 @@ async function checkoutService(){
   const s=SVC_SEL.service; if(!s) return;
   if(IS_GUEST){ toast("Sign in to book"); return; }
   if(!SVC_SEL.carId){ toast("Please select a car first"); return; }
-  // show payment choice first
+  // NEW: pick appointment date/time first, then payment
+  openDateSheet();
+}
+
+// Build the next 14 selectable dates (skip none; label nicely)
+function _nextDates(n){
+  const out=[]; const now=new Date();
+  for(let i=0;i<n;i++){
+    const d=new Date(now.getFullYear(),now.getMonth(),now.getDate()+i);
+    out.push(d);
+  }
+  return out;
+}
+function _dateKey(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function _dateLabel(d,i){
+  const days=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const mons=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  if(i===0) return 'Today';
+  if(i===1) return 'Tmrw';
+  return days[d.getDay()]+' '+d.getDate()+' '+mons[d.getMonth()];
+}
+const _TIME_SLOTS=['9:00 AM','10:00 AM','11:00 AM','12:00 PM','1:00 PM','2:00 PM','3:00 PM','4:00 PM','5:00 PM','6:00 PM'];
+
+function openDateSheet(){
+  closeDateSheet();
+  const dates=_nextDates(14);
+  if(!SVC_SEL.date) SVC_SEL.date=_dateKey(dates[0]);
+  const sheet=document.createElement('div');
+  sheet.className='pay-sheet-overlay date-sheet';
+  const dateChips=dates.map((d,i)=>{
+    const k=_dateKey(d);
+    return `<button class="date-chip ${SVC_SEL.date===k?'on':''}" onclick="_pickDate('${k}')">${_dateLabel(d,i)}</button>`;
+  }).join('');
+  const timeChips=_TIME_SLOTS.map(t=>
+    `<button class="time-chip ${SVC_SEL.time===t?'on':''}" onclick="_pickTime('${t}')">${t}</button>`
+  ).join('');
+  sheet.innerHTML=`
+    <div class="pay-sheet">
+      <div class="pay-sheet-handle"></div>
+      <div class="pay-sheet-title">Choose date & time</div>
+      <div class="date-sec-label">Date</div>
+      <div class="date-row">${dateChips}</div>
+      <div class="date-sec-label">Time</div>
+      <div class="time-grid">${timeChips}</div>
+      <button class="btn btn-primary" style="margin-top:16px;width:100%" onclick="_dateNext()">Continue to payment</button>
+      <button class="pay-cancel" onclick="closeDateSheet()">Cancel</button>
+    </div>`;
+  sheet.onclick=e=>{ if(e.target===sheet) closeDateSheet(); };
+  document.body.appendChild(sheet);
+  requestAnimationFrame(()=>sheet.classList.add('show'));
+}
+function _pickDate(k){ SVC_SEL.date=k; refreshDateSheet(); }
+function _pickTime(t){ SVC_SEL.time=t; refreshDateSheet(); }
+function refreshDateSheet(){ closeDateSheet(); openDateSheet(); }
+function closeDateSheet(){
+  const o=document.querySelector('.date-sheet');
+  if(o){ o.classList.remove('show'); o.remove(); }
+}
+function _dateNext(){
+  if(!SVC_SEL.time){ toast("Please pick a time slot"); return; }
+  closeDateSheet();
   openPaymentSheet();
 }
 function openPaymentSheet(){
@@ -3968,7 +4037,7 @@ async function doCheckout(method){
       method:"POST",headers:Object.assign(authHeaders(),{Prefer:"return=representation"}),
       body:JSON.stringify({owner_id:SESSION.user.id,service_name:s.name,service_id:s.id,
         vehicle:carLabel, vehicle_id:car?.id||null, vehicle_label:carLabel,
-        appointment_date:null,appointment_time:null,note:note,status:'upcoming',
+        appointment_date:(SVC_SEL.date||null),appointment_time:(SVC_SEL.time||null),note:note,status:'upcoming',
         amount:amt, order_ref:orderRef,
         payment_method:method, payment_status: method==='counter'?'unpaid':'unpaid'})});
     if(r.ok){
@@ -4044,6 +4113,20 @@ async function afterOrderCreated(s, car, carLabel){
   }
 }
 // unique-ish barcode value: GL + base36 timestamp + random — Code128-safe (digits+letters)
+// TEST ONLY (sandbox): manually mark an order paid, simulating the webhook.
+async function testMarkPaid(orderRef){
+  if(!orderRef){ toast('No order ref'); return; }
+  try{
+    const r=await fetch(`${SUPA_URL}/rest/v1/gl_orders?order_ref=eq.${encodeURIComponent(orderRef)}`,{
+      method:'PATCH',
+      headers:Object.assign(authHeaders(),{Prefer:'return=representation'}),
+      body:JSON.stringify({payment_status:'paid',paid_at:new Date().toISOString()})
+    });
+    if(r.ok){ toast('Marked paid ✓ (test)'); renderOrders('available'); }
+    else { toast('Could not mark paid'); }
+  }catch(e){ toast('Error: '+e.message); }
+}
+
 async function handlePayReturn(){
   const pr=window._PAY_RETURN; if(!pr) return;
   window._PAY_RETURN=null;
@@ -4132,6 +4215,7 @@ async function renderOrders(which){
       <div class="order-meta">📅 ${o.appointment_date?esc(fmtDate(o.appointment_date)):(o.created_at?esc(fmtDate(o.created_at)):'—')}${o.appointment_time?' · '+esc(o.appointment_time):''}</div>
       ${o.note?`<div class="order-meta">📝 ${esc(o.note)}</div>`:''}
       ${(o.status==='upcoming' && !isPaid)?`<button class="order-cancel" onclick="cancelOrder('${o.id}')">Cancel appointment</button>`:''}
+      ${(!isPaid && SANDBOX_TEST)?`<button class="order-cancel" style="border-color:#51cf66;color:#51cf66" onclick="testMarkPaid('${o.order_ref}')">🧪 Mark paid (test)</button>`:''}
     </div>`;
   };
   const reminderCard=(r)=>`
