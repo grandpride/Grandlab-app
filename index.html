@@ -313,6 +313,10 @@
   .order-status.completed{background:rgba(81,207,102,.18);color:#51cf66;}
   .order-status.cancelled{background:rgba(255,107,107,.18);color:#ff6b6b;}
   .order-meta{font-size:13px;color:var(--muted);margin-top:8px;}
+  .order-badges{margin-top:8px;}
+  .pay-badge{display:inline-block;font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;}
+  .pay-badge.paid{background:rgba(81,207,102,.18);color:#51cf66;}
+  .pay-badge.pending{background:rgba(255,169,77,.18);color:#ffa94d;}
 
   /* ===== ACCOUNT page ===== */
   .acc-head{display:flex;align-items:center;gap:14px;padding:calc(10px + env(safe-area-inset-top)) 0 4px;cursor:pointer;}
@@ -4092,7 +4096,7 @@ function genBarcodeValue(){
 async function fetchOrders(){
   if(!SESSION?.user?.id) return [];
   try{
-    const r=await fetch(`${SUPA_URL}/rest/v1/gl_orders?select=*&owner_id=eq.${SESSION.user.id}&order=appointment_date.desc`,{headers:authHeaders()});
+    const r=await fetch(`${SUPA_URL}/rest/v1/gl_orders?select=*&owner_id=eq.${SESSION.user.id}&order=created_at.desc`,{headers:authHeaders()});
     if(r.ok) return await r.json();
   }catch(e){}
   return [];
@@ -4110,17 +4114,24 @@ async function renderOrders(which){
   if(which==='available'){
     try{ reminders=await fetchMaintenanceReminders(); }catch(e){}
   }
-  const card=(o)=>`
+  const card=(o)=>{
+    const isPaid = o.payment_status==='paid';
+    const payBadge = isPaid
+      ? `<span class="pay-badge paid">Paid</span>`
+      : `<span class="pay-badge pending">Pending Payment</span>`;
+    return `
     <div class="order-card">
       <div class="order-top">
         <div class="order-svc">${esc(o.service_name||'Service')}</div>
         <div class="order-status ${o.status}">${esc(o.status==='upcoming'?'Upcoming':o.status||'')}</div>
       </div>
+      <div class="order-badges">${payBadge}</div>
       ${o.vehicle?`<div class="order-meta">🚗 ${esc(o.vehicle)}</div>`:''}
-      <div class="order-meta">📅 ${o.appointment_date?esc(fmtDate(o.appointment_date)):'—'}${o.appointment_time?' · '+esc(o.appointment_time):''}</div>
+      <div class="order-meta">📅 ${o.appointment_date?esc(fmtDate(o.appointment_date)):(o.created_at?esc(fmtDate(o.created_at)):'—')}${o.appointment_time?' · '+esc(o.appointment_time):''}</div>
       ${o.note?`<div class="order-meta">📝 ${esc(o.note)}</div>`:''}
-      ${o.status==='upcoming'?`<button class="order-cancel" onclick="cancelOrder('${o.id}')">Cancel appointment</button>`:''}
+      ${(o.status==='upcoming' && !isPaid)?`<button class="order-cancel" onclick="cancelOrder('${o.id}')">Cancel appointment</button>`:''}
     </div>`;
+  };
   const reminderCard=(r)=>`
     <div class="maint-reminder">
       <div class="maint-rem-top">
