@@ -4543,7 +4543,7 @@ async function openBooking(prefillServiceId){
   // only packages with remaining balance are bookable here
   const bookable=(PACKAGES||[]).filter(p=>p.status==='active' && Number(p.used_uses)<Number(p.total_uses));
   const first=bookable[0]||null;
-  _bkState={ service_name:first?first.name:'', service_id:first?(first.service_id||null):null,
+  _bkState={ service_name:first?(first.service_name||''):'', service_id:first?(first.service_id||null):null,
     package_id:first?first.id:null,
     vehicle:first&&first.vehicle_label?first.vehicle_label:(VEHICLES[0]?(([VEHICLES[0].make,VEHICLES[0].model].filter(Boolean).join(' '))+(VEHICLES[0].plate?' - '+VEHICLES[0].plate:'')):''),
     date:null, time:null, note:'' };
@@ -4558,11 +4558,27 @@ function bkClosed(dateStr, dateObj){
 }
 
 async function renderBooking(){
-  // Only packages/balances with remaining uses are bookable here.
-  const bookable=(PACKAGES||[]).filter(p=>p.status==='active' && Number(p.used_uses)<Number(p.total_uses));
+  // Which vehicle is selected? (packages belong to a specific car)
+  const selVeh = _bkState.vehicle || (VEHICLES[0]?(([VEHICLES[0].make,VEHICLES[0].model].filter(Boolean).join(' '))+(VEHICLES[0].plate?' - '+VEHICLES[0].plate:'')):'');
+  const selVehObj = VEHICLES.find(v=>{
+    const lab=[v.make,v.model].filter(Boolean).join(' ')+(v.plate?' - '+v.plate:'');
+    return lab===selVeh;
+  });
+  const matchesVeh=(p)=>{
+    if(!selVehObj) return true;
+    return String(p.vehicle_id)===String(selVehObj.id)
+        || p.vehicle_label===selVehObj.plate
+        || p.vehicle_label===([selVehObj.make,selVehObj.model].filter(Boolean).join(' '))
+        || p.vehicle_label===selVeh;
+  };
+  // Only active packages with remaining uses, for the selected vehicle.
+  const bookable=(PACKAGES||[]).filter(p=>p.status==='active' && Number(p.used_uses)<Number(p.total_uses) && matchesVeh(p));
 
-  // No balances → don't show the booking form; tell them to purchase first.
-  if(!bookable.length){
+  // Any package with balance across ALL vehicles?
+  const anyBookable=(PACKAGES||[]).filter(p=>p.status==='active' && Number(p.used_uses)<Number(p.total_uses));
+
+  // If NO vehicle has any balance → purchase-first message.
+  if(!anyBookable.length){
     appRoot.innerHTML=`
       <div class="topbar-app"><button class="back" onclick="routeTab('order')">‹</button><div class="ttl">Book Appointment</div><button class="home-btn" onclick="routeTab('home')">⌂</button></div>
       <div class="app-scroll" style="padding:40px 24px">
@@ -4579,10 +4595,23 @@ async function renderBooking(){
     return;
   }
 
+  // Some car has balance. If the SELECTED car has none, auto-switch to a car
+  // that does, so the user sees bookable options right away.
+  if(!bookable.length){
+    const firstPkg=anyBookable[0];
+    const ownerVeh=VEHICLES.find(v=> String(firstPkg.vehicle_id)===String(v.id) || firstPkg.vehicle_label===v.plate || firstPkg.vehicle_label===([v.make,v.model].filter(Boolean).join(' ')) );
+    if(ownerVeh){
+      _bkState.vehicle=[ownerVeh.make,ownerVeh.model].filter(Boolean).join(' ')+(ownerVeh.plate?' - '+ownerVeh.plate:'');
+      _bkState.package_id=firstPkg.id; _bkState.service_name=firstPkg.service_name||''; _bkState.service_id=firstPkg.service_id||null;
+      return renderBooking();  // re-render with the correct car selected
+    }
+  }
+
   const svcOpts=bookable.map(p=>{
     const left=Number(p.total_uses)-Number(p.used_uses);
-    const lab=p.name+' ('+left+' left)';
-    return `<option value="${esc(p.name)}" data-id="${esc(p.service_id||'')}" data-pkg="${esc(p.id)}" ${String(p.id)===String(_bkState.package_id)?'selected':''}>${esc(lab)}</option>`;
+    const nm=p.service_name||'Package';
+    const lab=nm+' ('+left+' left)';
+    return `<option value="${esc(nm)}" data-id="${esc(p.service_id||'')}" data-pkg="${esc(p.id)}" ${String(p.id)===String(_bkState.package_id)?'selected':''}>${esc(lab)}</option>`;
   }).join('');
   const vehOpts=VEHICLES.map(v=>{const bm=[v.make,v.model].filter(Boolean).join(' ');const lab=bm+(v.plate?' - '+v.plate:'');return `<option ${lab===_bkState.vehicle?'selected':''}>${esc(lab)}</option>`;}).join('');
   appRoot.innerHTML=`
@@ -4594,7 +4623,7 @@ async function renderBooking(){
         </select>
       </div>
       <div class="field"><label>Vehicle</label>
-        <select id="bk-veh" onchange="_bkState.vehicle=this.value" style="width:100%;height:52px;background:var(--surface);border:1.5px solid var(--line);border-radius:14px;padding:0 16px;color:var(--text);font-size:16px">
+        <select id="bk-veh" onchange="_bkState.vehicle=this.value; _bkState.package_id=null; renderBooking()" style="width:100%;height:52px;background:var(--surface);border:1.5px solid var(--line);border-radius:14px;padding:0 16px;color:var(--text);font-size:16px">
           ${vehOpts||'<option value="">No vehicle added</option>'}
         </select>
       </div>
