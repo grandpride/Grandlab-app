@@ -4351,21 +4351,19 @@ async function testMarkPaid(orderRef){
   }catch(e){ toast('Error: '+e.message); }
 }
 
-// Open the DOKU payment page in the EXTERNAL system browser (Safari/Chrome),
-// not the in-app layer — this avoids the ghost/layered page after cancel.
-// After paying, DOKU redirects to our return URL which re-opens the PWA
-// (iOS best-effort). The webhook confirms payment regardless of the return.
+// Navigate to the DOKU payment page. On iOS PWAs, same-window navigation is
+// more reliable than window.open (which iOS often blocks or wraps anyway).
+// The ghost/layered page after cancel is an iOS PWA artifact; we clean up the
+// app state when the customer returns (see handlePayReturn + visibilitychange).
 function openPaymentUrl(url){
-  try{
-    const w=window.open(url, '_blank');
-    // if popup blocked (some iOS PWA cases), fall back to same-window nav
-    if(!w){ window.location.href=url; }
-  }catch(e){ window.location.href=url; }
+  try{ sessionStorage.setItem('gl_pay_pending','1'); }catch(e){}
+  try{ window.location.href=url; }catch(e){ window.location.href=url; }
 }
 
 async function handlePayReturn(){
   const pr=window._PAY_RETURN; if(!pr) return;
   window._PAY_RETURN=null;
+  try{ sessionStorage.removeItem('gl_pay_pending'); }catch(e){}
   if(pr.result==='success' || pr.result==='done'){
     toast('Payment successful ✓');
     // fetch the paid order and finalize any package/milestones
@@ -5770,10 +5768,17 @@ Object.defineProperty(window,'stepIndex',{get:()=>cur,set:v=>{cur=v;}});
         // payment shows up (Paid badge / updated wallet) without a manual reload.
         try{
           if(!IS_GUEST && SESSION?.user?.id){
+            const wasPending = (()=>{ try{ return sessionStorage.getItem('gl_pay_pending')==='1'; }catch(e){ return false; } })();
             fetchProfile().then(()=>{
               const t=currentTab;
               if(t==='order') renderOrders('available');
               else if(t==='wallet') renderWallet();
+              // If a payment was in progress and we're back (paid or cancelled),
+              // land on a clean Order screen so there's no confusing leftover state.
+              if(wasPending){
+                try{ sessionStorage.removeItem('gl_pay_pending'); }catch(e){}
+                if(t!=='wallet') routeTab('order');
+              }
             }).catch(()=>{});
           }
         }catch(e){}
