@@ -1029,7 +1029,7 @@ const APP_VERSION = "1.0.0";
 // DOKU Checkout Edge Function base URL. Use the .functions.supabase.co format
 // to match the webhook path (/doku/notify) configured in the DOKU dashboard.
 // Leave blank to disable online payment (only "Pay at outlet" shows).
-const SENANGPAY_FN = "https://eychljpzorzmaveixlnu.functions.supabase.co/doku";
+const SENANGPAY_FN = "https://eychljpzorzmaveixlnu.supabase.co/functions/v1/doku";
 const IS_LIVE = true;
 // Set to true once OTP (WhatsApp/SMS) is connected & working.
 // While false: the Sign in button is hidden, everyone uses guest mode.
@@ -3975,7 +3975,7 @@ async function doCheckout(method){
       // online → get senangPay URL from the edge function and redirect
       toast("Opening payment…");
       const pr=await fetch(`${SENANGPAY_FN}/create`,{
-        method:"POST",headers:{'Content-Type':'application/json'},
+        method:"POST",headers:{'Content-Type':'application/json','Authorization':'Bearer '+SUPA_ANON,'apikey':SUPA_ANON},
         body:JSON.stringify({order_ref:orderRef, amount:amt,
           name:(PROFILE?.name||SESSION?.user?.user_metadata?.name||'Customer'),
           email:(SESSION?.user?.email||''),
@@ -4445,7 +4445,7 @@ async function confirmTopUp(amount, payNow){
           amount:amount, order_ref:orderRef, payment_method:'senangpay', payment_status:'unpaid', status:'topup',
           topup_amount:amount, topup_bonus:bonus})});
       toast('Opening payment…');
-      const pr=await fetch(`${SENANGPAY_FN}/create`,{method:"POST",headers:{'Content-Type':'application/json'},
+      const pr=await fetch(`${SENANGPAY_FN}/create`,{method:"POST",headers:{'Content-Type':'application/json','Authorization':'Bearer '+SUPA_ANON,'apikey':SUPA_ANON},
         body:JSON.stringify({order_ref:orderRef, amount:amount, name:(PROFILE?.name||'Customer'),
           email:(SESSION?.user?.email||''), phone:(PROFILE?.phone||''), detail:'Grandlab Wallet Top-Up'})});
       if(pr.ok){ const d=await pr.json(); if(d.pay_url){ window.location.href=d.pay_url; return; }
@@ -4507,7 +4507,7 @@ async function sendGiftCard(amount){
         amount:amount, order_ref:orderRef, payment_method:'senangpay', payment_status:'unpaid', status:'gift',
         gift_to:to, gift_amount:amount, gift_msg:msg||null})});
     toast('Opening payment…');
-    const pr=await fetch(`${SENANGPAY_FN}/create`,{method:"POST",headers:{'Content-Type':'application/json'},
+    const pr=await fetch(`${SENANGPAY_FN}/create`,{method:"POST",headers:{'Content-Type':'application/json','Authorization':'Bearer '+SUPA_ANON,'apikey':SUPA_ANON},
       body:JSON.stringify({order_ref:orderRef, amount:amount, name:(PROFILE?.name||'Customer'),
         email:(SESSION?.user?.email||''), phone:(PROFILE?.phone||''), detail:'Grandlab Gift Card'})});
     if(pr.ok){ const d=await pr.json(); if(d.pay_url){ window.location.href=d.pay_url; return; } }
