@@ -4146,6 +4146,34 @@ async function afterOrderCreated(s, car, carLabel){
   }
 }
 // unique-ish barcode value: GL + base36 timestamp + random — Code128-safe (digits+letters)
+// TEST ONLY (sandbox): find the newest unpaid topup order and credit it,
+// simulating the webhook (wallet credit + bonus + points).
+async function testCompleteTopup(){
+  try{
+    const r=await fetch(`${SUPA_URL}/rest/v1/gl_orders?select=*&owner_id=eq.${SESSION.user.id}&status=eq.topup&payment_status=eq.unpaid&order=created_at.desc&limit=1`,{headers:authHeaders()});
+    const ord=(r.ok?(await r.json())[0]:null);
+    if(!ord){ toast('No pending top-up found'); return; }
+    if(!ord.topup_amount){ toast('Top-up amount missing'); return; }
+    const RM_PER=Number(STYLE.pointRmPer||4);
+    const credit=Number(ord.topup_amount)+Number(ord.topup_bonus||0);
+    const p=Math.round(Number(ord.topup_amount||0)/RM_PER);
+    const newWallet=Number(PROFILE?.wallet||0)+credit;
+    const newPoints=Number(PROFILE?.points||0)+p;
+    // mark order paid + rewarded
+    await fetch(`${SUPA_URL}/rest/v1/gl_orders?order_ref=eq.${encodeURIComponent(ord.order_ref)}`,{
+      method:'PATCH',headers:authHeaders(),
+      body:JSON.stringify({payment_status:'paid',paid_at:new Date().toISOString(),rewarded:true})});
+    // credit profile
+    await fetch(`${SUPA_URL}/rest/v1/gl_profiles?id=eq.${SESSION.user.id}`,{
+      method:'PATCH',headers:authHeaders(),
+      body:JSON.stringify({wallet:newWallet,points:newPoints})});
+    if(PROFILE){ PROFILE.wallet=newWallet; PROFILE.points=newPoints; }
+    toast('Top-up +RM'+credit.toFixed(2)+(p>0?' · +'+p+' G Coin':'')+' ✓ (test)');
+    try{ await fetchProfile(); }catch(e){}
+    renderWallet();
+  }catch(e){ toast('Error: '+e.message); }
+}
+
 // TEST ONLY (sandbox): manually mark an order paid AND grant points/credit,
 // simulating what the production webhook does (since sandbox webhook won't fire).
 async function testMarkPaid(orderRef){
@@ -4201,12 +4229,15 @@ async function handlePayReturn(){
       if(r.ok){
         const rows=await r.json(); const ord=rows[0];
         if(ord){
-          // wallet top-up paid → credit wallet (amount + bonus)
+          // wallet top-up → wallet credit + points are granted server-side by
+          // the webhook when payment confirms (may take a few seconds).
           if(ord.status==='topup' && ord.topup_amount){
-            // wallet credit + points are granted server-side by the webhook now.
-            // Just show a friendly message and refresh so the new balance appears.
-            toast('Top-up received ✓ — updating your wallet…');
             try{ await fetchProfile(); }catch(e){}
+            if(ord.payment_status==='paid'){
+              toast('Top-up complete ✓ — wallet updated');
+            } else {
+              toast('Payment received — your wallet will update shortly ✓');
+            }
             routeTab('wallet'); return;
           }
           // gift card paid → handled server-side ideally; show confirmation
@@ -4521,6 +4552,7 @@ async function renderWallet(){
           <span>${esc(STYLE.walletJoinedLabel||'Joined since')} ${joined}</span>
         </div>
       </div>
+      ${SANDBOX_TEST?`<button class="btn" style="width:100%;margin-top:10px;border:1px solid #51cf66;color:#51cf66;background:transparent" onclick="testCompleteTopup()">🧪 Complete last top-up (test)</button>`:''}
       <!-- quick actions -->
       <div class="wallet-actions">
         <div class="wa" onclick="openTopUp()"><div class="wa-ic">${waIcon('icTopup','＋')}</div><div class="wa-t">${esc(STYLE.walletAction1||'Top Up')}</div></div>
