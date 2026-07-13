@@ -4070,8 +4070,8 @@ async function doCheckout(method){
           schedISO = SVC_SEL.date+'T'+String(hh).padStart(2,'0')+':'+String(mm).padStart(2,'0')+':00';
         }
         const bkPaid = (method!=='counter'); // online = will be paid; counter = pay at outlet
-        await fetch(`${SUPA_URL}/rest/v1/gl_bookings`,{
-          method:"POST",headers:authHeaders(),
+        const bkResp=await fetch(`${SUPA_URL}/rest/v1/gl_bookings`,{
+          method:"POST",headers:Object.assign(authHeaders(),{Prefer:"return=representation"}),
           body:JSON.stringify({
             customer_id:SESSION.user.id,
             vehicle_id:car?.id||null,
@@ -4089,6 +4089,11 @@ async function doCheckout(method){
             notes:(carLabel?('Plate: '+carLabel+' · '):'')+note+' · Ref: '+orderRef
           })
         });
+        if(!bkResp.ok){
+          const errTxt=await bkResp.text().catch(()=> '');
+          console.error('gl_bookings insert failed:', bkResp.status, errTxt);
+          toast('Booking sync note: '+bkResp.status);
+        }
       }catch(e){ /* booking mirror is best-effort; order already created */ }
       // multi-use package handling (only finalize package on PAID or counter; for online we still create on return)
       if(method==='counter'){
