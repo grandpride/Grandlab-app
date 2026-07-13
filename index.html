@@ -4084,7 +4084,13 @@ async function doCheckout(method){
             payment_type:(method==='counter'?'deposit':'full'),
             amount_paid:0,
             source:'app',
-            notes:(carLabel?('Plate: '+carLabel+' · '):'')+note+' · Ref: '+orderRef
+            notes:'Name: '+((PROFILE?.name||'').trim())
+                 +' | Phone: '+((PROFILE?.phone||'').trim())
+                 +' | Car: '+([car?.make,car?.model].filter(Boolean).join(' ')||'')
+                 +' | Plate: '+((car?.plate||'').trim())
+                 +' | '+note
+                 +' | Ref: '+orderRef
+                 +(SVC_SEL.time?(' [slot:'+SVC_SEL.time+']'):'')
           })
         });
         if(!bkResp.ok){
