@@ -710,8 +710,11 @@
   .date-sec-label{font-size:12px;color:var(--muted);font-weight:700;margin:14px 0 8px;text-transform:uppercase;letter-spacing:.04em;}
   .date-row{display:flex;gap:8px;overflow-x:auto;padding-bottom:6px;scrollbar-width:none;}
   .date-row::-webkit-scrollbar{display:none;}
-  .date-chip{flex:0 0 auto;padding:10px 14px;border-radius:12px;border:1px solid var(--line);background:var(--surface);color:var(--text);font-size:13px;font-weight:600;white-space:nowrap;cursor:pointer;}
+  .date-chip{flex:0 0 auto;padding:8px 14px;border-radius:12px;border:1px solid var(--line);background:var(--surface);color:var(--text);font-size:13px;font-weight:600;white-space:nowrap;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:1px;line-height:1.15;}
   .date-chip.on{background:var(--yellow);color:#111;border-color:var(--yellow);}
+  .date-chip .dc-main{font-size:13px;font-weight:700;}
+  .date-chip .dc-hint{font-size:10px;font-weight:600;opacity:.65;}
+  .date-chip.on .dc-hint{opacity:.8;}
   .time-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;}
   .time-chip{padding:10px 4px;border-radius:12px;border:1px solid var(--line);background:var(--surface);color:var(--text);font-size:12.5px;font-weight:600;cursor:pointer;}
   .time-chip.on{background:var(--yellow);color:#111;border-color:var(--yellow);}
@@ -3933,9 +3936,12 @@ function _dateKey(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart
 function _dateLabel(d,i){
   const days=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
   const mons=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  if(i===0) return 'Today';
-  if(i===1) return 'Tmrw';
-  return days[d.getDay()]+' '+d.getDate()+' '+mons[d.getMonth()];
+  const dayDate = days[d.getDay()]+' '+d.getDate()+' '+mons[d.getMonth()];
+  let hint='';
+  if(i===0) hint='Today';
+  else if(i===1) hint='Tomorrow';
+  // two-line chip: day+date on top, optional hint below
+  return `<span class="dc-main">${dayDate}</span>${hint?`<span class="dc-hint">${hint}</span>`:''}`;
 }
 const _TIME_SLOTS=['9:00 AM','10:00 AM','11:00 AM','12:00 PM','1:00 PM','2:00 PM','3:00 PM','4:00 PM','5:00 PM','6:00 PM'];
 
