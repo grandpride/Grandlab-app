@@ -4041,6 +4041,40 @@ async function doCheckout(method){
         payment_method:method, payment_status: method==='counter'?'unpaid':'unpaid'})});
     if(r.ok){
       const orderRow=(await r.json())[0];
+      // ALSO create a gl_bookings row so the appointment flows into the
+      // existing sheet → job order → POS pipeline (same as staff bookings).
+      try{
+        // build scheduled_at from picked date + time (best effort)
+        let schedISO=null;
+        if(SVC_SEL.date){
+          let hh=9, mm=0;
+          if(SVC_SEL.time){
+            const mt=SVC_SEL.time.match(/(\d+):(\d+)\s*(AM|PM)/i);
+            if(mt){ hh=Number(mt[1])%12 + (/PM/i.test(mt[3])?12:0); mm=Number(mt[2]); }
+          }
+          schedISO = SVC_SEL.date+'T'+String(hh).padStart(2,'0')+':'+String(mm).padStart(2,'0')+':00';
+        }
+        const bkPaid = (method!=='counter'); // online = will be paid; counter = pay at outlet
+        await fetch(`${SUPA_URL}/rest/v1/gl_bookings`,{
+          method:"POST",headers:authHeaders(),
+          body:JSON.stringify({
+            customer_id:SESSION.user.id,
+            vehicle_id:car?.id||null,
+            service_id:s.id,
+            service_name:s.name,
+            car_type:(car?.car_type||car?.type||null),
+            scheduled_at:schedISO,
+            status:'upcoming',
+            total_price:amt,
+            payment_type:(method==='counter'?'outlet':'online'),
+            amount_paid:0,
+            balance_due:amt,
+            paid_in_full:false,
+            source:'APP',
+            notes:(carLabel?('Plate: '+carLabel+' · '):'')+note+' · Ref: '+orderRef
+          })
+        });
+      }catch(e){ /* booking mirror is best-effort; order already created */ }
       // multi-use package handling (only finalize package on PAID or counter; for online we still create on return)
       if(method==='counter'){
         await afterOrderCreated(s, car, carLabel);
