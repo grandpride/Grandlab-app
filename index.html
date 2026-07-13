@@ -4083,7 +4083,6 @@ async function doCheckout(method){
             total_price:amt,
             payment_type:(method==='counter'?'outlet':'online'),
             amount_paid:0,
-            paid_in_full:false,
             source:'APP',
             notes:(carLabel?('Plate: '+carLabel+' · '):'')+note+' · Ref: '+orderRef
           })
