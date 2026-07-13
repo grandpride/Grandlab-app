@@ -4083,7 +4083,7 @@ async function doCheckout(method){
             total_price:amt,
             payment_type:(method==='counter'?'deposit':'full'),
             amount_paid:0,
-            source:'APP',
+            source:'app',
             notes:(carLabel?('Plate: '+carLabel+' · '):'')+note+' · Ref: '+orderRef
           })
         });
