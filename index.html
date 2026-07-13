@@ -1034,7 +1034,9 @@ const APP_VERSION = "1.0.0";
 // DOKU Checkout Edge Function base URL. Use the .functions.supabase.co format
 // to match the webhook path (/doku/notify) configured in the DOKU dashboard.
 // Leave blank to disable online payment (only "Pay at outlet" shows).
-const SENANGPAY_FN = "https://eychljpzorzmaveixlnu.supabase.co/functions/v1/doku";
+// SANDBOX MODE — points at doku-sandbox function for free test payments.
+// TO GO LIVE: change "doku-sandbox" back to "doku" below.
+const SENANGPAY_FN = "https://eychljpzorzmaveixlnu.supabase.co/functions/v1/doku-sandbox";
 const IS_LIVE = true;
 // Set to true once OTP (WhatsApp/SMS) is connected & working.
 // While false: the Sign in button is hidden, everyone uses guest mode.
