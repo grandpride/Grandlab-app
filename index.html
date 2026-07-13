@@ -4173,6 +4173,12 @@ async function testCompleteTopup(){
     await fetch(`${SUPA_URL}/rest/v1/gl_profiles?id=eq.${SESSION.user.id}`,{
       method:'PATCH',headers:authHeaders(),
       body:JSON.stringify({wallet:newWallet,points:newPoints})});
+    // record wallet transaction history
+    try{
+      await fetch(`${SUPA_URL}/rest/v1/gl_wallet_txns`,{
+        method:'POST',headers:authHeaders(),
+        body:JSON.stringify({owner_id:SESSION.user.id, amount:credit, note:'Top-up (RM'+Number(ord.topup_amount).toFixed(2)+(Number(ord.topup_bonus||0)>0?' + RM'+Number(ord.topup_bonus).toFixed(2)+' bonus':'')+')', kind:'topup'})});
+    }catch(e){}
     if(PROFILE){ PROFILE.wallet=newWallet; PROFILE.points=newPoints; }
     toast('Top-up +RM'+credit.toFixed(2)+(p>0?' · +'+p+' G Coin':'')+' ✓ (test)');
     try{ await fetchProfile(); }catch(e){}
