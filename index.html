@@ -3965,12 +3965,21 @@ function openDateSheet(){
       <div class="date-row" id="dateRow">${dateChips}</div>
       <div class="date-sec-label">Time</div>
       <div class="time-grid" id="timeGrid">${timeChips}</div>
-      <button class="btn btn-primary" style="margin-top:16px;width:100%" onclick="_dateNext()">Continue to payment</button>
+      <button class="btn btn-primary" id="bkContinue" style="margin-top:16px;width:100%" onclick="_dateNext()">Continue to payment</button>
       <button class="pay-cancel" onclick="closeDateSheet()">Cancel</button>
     </div>`;
   sheet.onclick=e=>{ if(e.target===sheet) closeDateSheet(); };
   document.body.appendChild(sheet);
   requestAnimationFrame(()=>sheet.classList.add('show'));
+  _updateContinueBtn();
+}
+// Enable "Continue" only when a valid (non-past) time is selected.
+function _updateContinueBtn(){
+  const btn=document.getElementById('bkContinue'); if(!btn) return;
+  const ok=!!SVC_SEL.time;
+  btn.disabled=!ok;
+  btn.style.opacity = ok ? '1' : '.4';
+  btn.style.pointerEvents = ok ? 'auto' : 'none';
 }
 // Build time-slot chips (past slots disabled for today, 30-min lead buffer).
 function _buildTimeChips(){
@@ -3995,15 +4004,26 @@ function _pickDate(k){
   document.querySelectorAll('#dateRow .date-chip').forEach(b=>{
     b.classList.toggle('on', b.getAttribute('data-dk')===k);
   });
+  // if the selected time is no longer valid for this date, clear it
+  if(SVC_SEL.time){
+    const todayKey=_dateKey(new Date());
+    if(k===todayKey){
+      const now=new Date(); const cutoff=now.getHours()*60+now.getMinutes()+30;
+      const m=SVC_SEL.time.match(/(\d+):(\d+)\s*(AM|PM)/i);
+      if(m){ const mins=(Number(m[1])%12+(/PM/i.test(m[3])?12:0))*60+Number(m[2]); if(mins<cutoff) SVC_SEL.time=""; }
+    }
+  }
   // rebuild ONLY the time grid (past-slot availability depends on the date)
   const grid=document.getElementById('timeGrid');
   if(grid) grid.innerHTML=_buildTimeChips();
+  _updateContinueBtn();
 }
 function _pickTime(t){
   SVC_SEL.time=t;
   document.querySelectorAll('#timeGrid .time-chip').forEach(b=>{
     b.classList.toggle('on', b.getAttribute('data-tk')===t);
   });
+  _updateContinueBtn();
 }
 function closeDateSheet(){
   const o=document.querySelector('.date-sheet');
