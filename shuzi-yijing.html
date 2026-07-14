@@ -410,13 +410,70 @@
   <p class="note">※ 四柱与五行分布依东八区标准时排定，已与权威万年历逐条校验。适用 1950–2035 年。此为准确的排盘数据；至于旺衰、喜用、吉凶断语属命理诠释，未包含在内。</p>
 </div>
 
-<!-- ============ 三世书·财运篇 ============ -->
+<!-- ============ 三世书 ============ -->
 <div class="card hidden" id="card-sanshi">
-  <label class="fld">三世书 · 财运篇（出生年尾数 + 农历月查财禄）</label>
-  <input id="ss-day" type="text" placeholder="出生日期 例：19900512" inputmode="numeric" style="margin-bottom:8px;">
-  <button class="calc" id="ss-btn">查 财 运</button>
-  <div id="ss-result"><p class="empty">填出生日期后点「查财运」</p></div>
-  <p class="note">※ 以出生年尾数配农历月对照十二财禄，立春前出生按上一年计。前世今生批文需完整原文，暂未收录，日后补充。三世书属传统术数，无科学依据。</p>
+  <div class="tabs" style="margin-bottom:14px;flex-wrap:wrap;">
+    <div class="tab active" id="ss-tab-all">✦ 一键总览</div>
+    <div class="tab" id="ss-tab-cai">财运篇</div>
+    <div class="tab" id="ss-tab-fulu">前世福禄篇</div>
+    <div class="tab" id="ss-tab-shouyi">前世手艺篇</div>
+    <div class="tab" id="ss-tab-tuohua">前世托化篇</div>
+    <div class="tab" id="ss-tab-shouming">前世寿命篇</div>
+  </div>
+
+  <!-- 一键总览 -->
+  <div id="ss-all-mode">
+    <label class="fld">一键出完整前世今生报告（填一次生日，五篇一起算）</label>
+    <input id="ss-all-day" type="text" placeholder="出生日期 例：19900512" inputmode="numeric" style="margin-bottom:8px;">
+    <button class="calc" id="ss-all-btn">✦ 生 成 完 整 报 告</button>
+    <div id="ss-all-result"><p class="empty">填出生日期后点「生成完整报告」，一次看齐前世福禄、手艺、托化、寿命与今世财运</p></div>
+    <p class="note">※ 汇整《三世书》财运、前世福禄、前世手艺、前世托化、前世寿命五篇原文。传统术数，无科学依据，仅供参考。</p>
+  </div>
+
+  <!-- 财运篇 -->
+  <div id="ss-cai-mode" class="hidden">
+    <label class="fld">财运篇（出生年尾数 + 农历月查财禄）</label>
+    <input id="ss-day" type="text" placeholder="出生日期 例：19900512" inputmode="numeric" style="margin-bottom:8px;">
+    <button class="calc" id="ss-btn">查 财 运</button>
+    <div id="ss-result"><p class="empty">填出生日期后点「查财运」</p></div>
+    <p class="note">※ 以出生年尾数配农历月对照十二财禄，立春前出生按上一年计。三世书属传统术数，无科学依据。</p>
+  </div>
+
+  <!-- 前世福禄篇 -->
+  <div id="ss-fulu-mode" class="hidden">
+    <label class="fld">前世福禄篇（按农历生月、生日查前世之禄，看对现世的影响）</label>
+    <input id="ss-fl-day" type="text" placeholder="出生日期 例：19900512" inputmode="numeric" style="margin-bottom:8px;">
+    <button class="calc" id="ss-fl-btn">查 前 世 福 禄</button>
+    <div id="ss-fl-result"><p class="empty">填出生日期后点「查前世福禄」</p></div>
+    <p class="note">※ 以农历生月、生日查十二禄（建除满平定执破危成收开闭），录自《三世书》原文。传统术数，无科学依据，仅供参考。</p>
+  </div>
+
+  <!-- 前世手艺篇 -->
+  <div id="ss-shouyi-mode" class="hidden">
+    <label class="fld">前世手艺篇（按农历生月、生日查前世手艺，看对现世事业的影响）</label>
+    <input id="ss-sy-day" type="text" placeholder="出生日期 例：19900512" inputmode="numeric" style="margin-bottom:8px;">
+    <button class="calc" id="ss-sy-btn">查 前 世 手 艺</button>
+    <div id="ss-sy-result"><p class="empty">填出生日期后点「查前世手艺」</p></div>
+    <p class="note">※ 以农历生月、生日查前世手艺（十二相），录自《三世书》原文。传统术数，无科学依据，仅供参考。</p>
+  </div>
+
+  <!-- 前世托化篇 -->
+  <div id="ss-tuohua-mode" class="hidden">
+    <label class="fld">前世托化篇（按生肖查前世托化，看今生命运）</label>
+    <input id="ss-th-day" type="text" placeholder="出生日期 例：19900512" inputmode="numeric" style="margin-bottom:8px;">
+    <button class="calc" id="ss-th-btn">查 前 世 托 化</button>
+    <div id="ss-th-result"><p class="empty">填出生日期后点「查前世托化」</p></div>
+    <p class="note">※ 以生肖（立春分界）查前世托化，录自《三世书》原文。传统术数，无科学依据，仅供参考。</p>
+  </div>
+
+  <!-- 前世寿命篇 -->
+  <div id="ss-shouming-mode" class="hidden">
+    <label class="fld">前世寿命篇（按农历生月、生日查前世寿限，看对现世的影响）</label>
+    <input id="ss-sm-day" type="text" placeholder="出生日期 例：19900512" inputmode="numeric" style="margin-bottom:8px;">
+    <button class="calc" id="ss-sm-btn">查 前 世 寿 命</button>
+    <div id="ss-sm-result"><p class="empty">填出生日期后点「查前世寿命」</p></div>
+    <p class="note">※ 以农历生月、生日查八限（童相福官迁疾夫奴），录自《三世书》原文。传统术数，无科学依据，仅供参考。</p>
+  </div>
 </div>
 
 <!-- ============ 姓名·五格 ============ -->
@@ -1339,6 +1396,304 @@ $("ss-btn").onclick=()=>{
       <div class="small">命年尾数 ${yearLast===0?"0(十)":yearLast} · 农历 ${lmonth} 月</div>
     </div>
     <div class="reading"><h4>◇ 财运解读</h4><p>${desc}</p></div>`;
+};
+
+/* ========== 三世书·前世福禄篇 ========== */
+// 子标签切换
+function ssSetMode(m){
+  ["all","cai","fulu","shouyi","tuohua","shouming"].forEach(x=>{
+    $("ss-tab-"+x).classList.toggle("active",x===m);
+    $("ss-"+x+"-mode").classList.toggle("hidden",x!==m);
+  });
+}
+$("ss-tab-all").onclick=()=>ssSetMode("all");
+$("ss-tab-cai").onclick=()=>ssSetMode("cai");
+$("ss-tab-fulu").onclick=()=>ssSetMode("fulu");
+$("ss-tab-shouyi").onclick=()=>ssSetMode("shouyi");
+$("ss-tab-tuohua").onclick=()=>ssSetMode("tuohua");
+$("ss-tab-shouming").onclick=()=>ssSetMode("shouming");
+// 十二禄
+// 三世书各篇「正向生活建议」——积极、实用、无害，不指定庙宇法事
+// 通用行善正念（各篇通用底部）
+const SS_ZHENGNIAN="三世书讲「前世因、今世果」，但更强调「今生所作，可改来世」——命格是倾向，不是定局。传统认为多行善、存善念、济助他人、孝亲敬长，本身就能积福转运。与其执着化解，不如从当下的善行与心态做起。";
+
+// 前世福禄篇：按十二禄给建议
+const FULU_ADVICE={
+"建禄":"命带福气，宜珍惜顺境、广结善缘，把福分用在正途，别因顺遂而懈怠。",
+"除禄":"劳碌型命格，宜量入为出、稳健理财，别为小财耗尽心力；晚年自有回甘。",
+"满禄":"少年辛苦晚年好，宜早立自强之心，靠自己打拼；中晚年是收成期，值得耐心等待。",
+"平禄":"平顺是福，宜知足常乐、莫强求，守住健康与家庭，安稳本身就是好命。",
+"定禄":"福厚之命，宜低调惜福、多助人，把好运化为善缘，福气会更长久。",
+"执禄":"性急易冲动，宜修心养性、遇事缓一缓；早年财来财去，宜养成储蓄习惯。",
+"破禄":"早年多波折，宜沉住气、稳扎稳打，中年后转好；宜养宽心，莫钻牛角尖。",
+"危禄":"宜诚实待人、离乡发展更佳；早年财不聚不必忧，晚年自有兴隆。",
+"成禄":"衣禄不缺，但晚年宜防大破财，理财宜保守、勿投机，留有余地最稳妥。",
+"收禄":"温和有才之命，宜发挥文艺才能；感情上多包容沟通，晚年和乐。",
+"开禄":"聪明多学，宜专注一技之长；六亲较冷淡，宜主动经营亲情、莫太自我。",
+"闭禄":"大器晚成型，宜早年多积累、莫气馁，中年自有成就；遇事宽心，逢凶能化吉。"
+};
+
+// 前世手艺篇：按地支给建议（顺着手艺命格）
+const SHOUYI_ADVICE={
+"子":"宜从商或专业发展，把前世的修行心用在踏实做事上，行善积德更添福。",
+"丑":"宜守成、修身，才华要用在正处；莫因才傲物，谦和待人是福。",
+"寅":"聪明宜勤，别只图悠闲；把智慧用在利人利己的事上，忙中也有福。",
+"卯":"宜专注一业、莫频繁转换；富贵在于坚持，脚踏实地自有荣华。",
+"辰":"文才可贵，宜低调务实；莫恃才自伤，谦逊待人能保平安。",
+"巳":"读书求艺宜有恒，别半途而废；勤能补拙，一分耕耘一分收获。",
+"午":"宜行善助人、发挥专长；广积善缘，福寿自然双全。",
+"未":"能力出众宜济世助人；口才是天赋，用在正途能得人敬重。",
+"申":"宜多行善、常存善念；心宽则命宽，勤俭持家自有余粮。",
+"酉":"做事顺遂宜守本分，别轻易改名换业；踏实经营，财源自来。",
+"戌":"人生起伏莫强求，宜珍惜眼前人；夫妻家庭和睦是最大的福。",
+"亥":"莫因境遇落差而怨天；宜放下前尘、专注当下，勤恳务农经商皆能安身。"
+};
+
+// 前世托化篇：按现世生肖给建议
+const TUOHUA_ADVICE={
+"马":"福贵之相，宜把握青年运势、努力向学；显达之后莫忘回馈六亲。",
+"羊":"晚景转佳型，宜稳扎稳打、莫急于求成；福禄在后头，值得耐心。",
+"猴":"早慧之命，宜专注学业事业；衣食天定，安心发挥所长即可。",
+"鸡":"逍遥有福，宜把握中年发展；祖业根基不足，宜自立自强。",
+"狗":"兴家立业之命，但花甲后宜防刑克；宜早修善缘、家宅和睦以化解。",
+"猪":"平安是福，宜离乡或换环境求发展；晚年衣食安然，宜知足惜福。",
+"鼠":"劳碌但有福，宜中年稳健理财；晚年添寿添福，宜保养身体、心宽长寿。",
+"牛":"做事较难成，宜有耐心、莫强求；亲缘较薄宜自立，晚年反而胜从前。",
+"虎":"衣食无缺，宜出外发展、贵人相助；晚运招财，宜广结善缘。",
+"兔":"中年安稳，宜守成经营；祖业不足宜自立，成家立业后福满门庭。",
+"龙":"福贵衣食全，是有福之命；宜惜福行善、安心守成，福泽绵长。",
+"蛇":"骨格清高之命，宜发挥才华、正直立身；名声可扬，宜守正念、莫恃才傲物。"
+};
+
+// 前世寿命篇：按八限给建议（重健康与心态，不谈死亡吉凶）
+const SHOUMING_ADVICE={
+"童限":"宜重视幼时体质调养、平安成长；家中长辈宜多关爱照顾，平安即是福。",
+"相貌":"宜注意高处安全、外出谨慎；心态平和、遇事不慌，自能趋吉。",
+"福德":"宜重视身体保养、定期体检，尤其防病于未然；作息规律是长寿之本。",
+"官禄":"宜谨慎饮食、远离不良习惯；身心平衡，事业健康两不误。",
+"迁移":"宜保持心情开朗、劳逸结合；多接触自然、调养身心，福寿自增。",
+"疾厄":"宜格外注重健康、避免争执冲突；平安和气，远离是非最为要紧。",
+"夫妻":"宜经营和睦家庭、夫妻互相扶持；家和万事兴，晚年多子女承欢。",
+"奴婢":"长寿之相，宜保养有道、心态豁达；晚年含饴弄孙，宜广结善缘、颐养天年。"
+};
+const SS_LU12=["建禄","除禄","满禄","平禄","定禄","执禄","破禄","危禄","成禄","收禄","开禄","闭禄"];
+// 前世福禄批文
+const QIANSHI_FULU={
+"建禄":{shi:"建禄禄半列，百事能谋成；门庭经书熟，定是幸福人。",now:"现世春风得意，利官近贵，衣食丰足，一生清闲，名利双全。女人操持旺相之命，亦是早年发达之命。"},
+"除禄":{shi:"除禄禄难求，百计枉用心；改姓名产地，才得少许禄。",now:"现世骨肉刑伤，为人劳碌，手足无时停，早年财币不聚，多收入多支出，财来财去晚来兴隆。女人心性好静，一生安稳有幸。"},
+"满禄":{shi:"满禄禄有余，命带无刑伤；不用身劳苦，就得世间财。",now:"现世衣禄难为，六亲少靠，自立成家，少年劳碌，晚年大利。女人中年与晚年牺牲利益，操持之命。"},
+"平禄":{shi:"平禄禄悠悠，无灾亦无患；努力枉白费，命定是平庸。",now:"现世心直口快，一生衣禄丰足，自然善闲游嬉戏，不受人欺，六亲有人靠，妻招年长，配偶和合，长寿之命。"},
+"定禄":{shi:"定禄由天定，莫要苦中求；努力亦枉然，三生也无祸。",now:"现世一生近贵，万事如意，财缘通，福禄有余，发福发贵之命。女人是福寿无虚之命。"},
+"执禄":{shi:"执禄命多遭，困苦总难免；早年财流水，晚景难积聚。",now:"现世性情心急，有口无心，有事难藏，易笑易怒反复无常，父母有刑，重拜双亲。女人管夫，命硬三分，子息长。"},
+"破禄":{shi:"破禄福禄无，此是孤独身；门庭云遮月，何日见月明。",now:"现世为人聪明伶俐，初年做事颠倒，中年财息足用，晚景反倒难财。女人养畜如意，发福之命。"},
+"危禄":{shi:"危禄命如何，居道衣禄多；出家方为妙，一生拜佛前。",now:"现世为人诚实，一生利近贵，家道兴宁，衣食足用，早年财物不聚，晚景兴隆，离祖创业最宜。女人贤良，旺夫之命。"},
+"成禄":{shi:"成禄禄绵长，行事有主张；尚避风霜雨，晚景定安康。",now:"现世衣禄不少，不惹是非，夫妻无刑，儿女见迟最好，虽有祖禄财币，但晚景会有大破耗，小心为宜。女有操持之命。"},
+"收禄":{shi:"收禄是不同，此人不平庸；中年逍遥福，晚年运大通。",now:"现世为人心性温和，衣禄财利丰盈，通文艺有才能，男女有再婚花烛重明之嫌，后来夫妻和睦，百年偕老。女人温柔体贴之命。"},
+"开禄":{shi:"开禄最聪明，作事近贵人；衣禄天注定，悠然自丰享。",now:"现世多学才成，衣食足用，男招好妻，身闲心苦，多喜多忧，六亲冷淡，凡事自作自为。女人兴旺贤能之命。"},
+"闭禄":{shi:"闭禄苦中求，何时月照命；祖基也难立，中年衣食盈。",now:"现世为人心性宽，文武缘通，有权柄及谋略，早年平平，中年有成就，成事逢凶化吉。女人旺夫发达之命。"}
+};
+// 查表：农历生月、生日 -> 十二禄。禄index=(日-1-(月-1)) mod 12
+function qianshiLu(lmonth,lday){const idx=(((lday-1)-(lmonth-1))%12+12)%12;return SS_LU12[idx];}
+const SS_GOOD_LU=new Set(["建禄","满禄","定禄","成禄","收禄","开禄"]);
+$("ss-fl-btn").onclick=()=>{
+  const R=$("ss-fl-result");
+  const dd=($("ss-fl-day").value||"").replace(/[^0-9]/g,"");
+  if(dd.length<8){R.innerHTML='<p class="empty">请输入完整出生日期（如 19900512）。</p>';return;}
+  const[y,mo,d]=[+dd.slice(0,4),+dd.slice(4,6),+dd.slice(6,8)];
+  if(y<1950||y>2035){R.innerHTML='<p class="empty">精确范围 1950–2035。</p>';return;}
+  // 转农历
+  const l=zwSolarToLunar(y,mo,d);
+  if(!l){R.innerHTML='<p class="empty">农历转换失败。</p>';return;}
+  const lu=qianshiLu(l.lm,l.ld);
+  const info=QIANSHI_FULU[lu];
+  const good=SS_GOOD_LU.has(lu);
+  R.innerHTML=`
+    <div class="verdict ${good?"good":"mid"}" style="margin-bottom:14px;">
+      <div class="big">${lu}</div>
+      <div class="small">农历 ${l.lm}月${l.ld}日${l.isLeap?"(闰)":""}</div>
+    </div>
+    <div class="reading"><h4>◇ 前世之禄</h4><p style="font-size:13px;line-height:1.7;font-family:'STKaiti','KaiTi',serif;color:var(--ink);">${info.shi}</p></div>
+    <div class="reading" style="margin-top:10px;"><h4>◇ 影响现世</h4><p style="font-size:12.5px;line-height:1.7;">${info.now}</p></div>
+    <div class="reading" style="margin-top:10px;border-color:var(--jade);"><h4 style="color:var(--jade);">◇ 建议</h4><p style="font-size:12.5px;line-height:1.7;">${FULU_ADVICE[lu]||""}</p><p style="font-size:11.5px;line-height:1.7;color:var(--muted);margin-top:8px;">${SS_ZHENGNIAN}</p></div>`;
+};
+
+/* ========== 三世书·前世手艺篇 ========== */
+const SS_DIZHI=["子","丑","寅","卯","辰","巳","午","未","申","酉","戌","亥"];
+const SHOUYI_PIWEN={
+"子":{shi:"此命带刑伤，君是僧道人；若不依命来，门庭头风光。",now:"前世命里带刑伤，现世应是恶君郎；前世应向僧道行，现世注定富成商。"},
+"丑":{shi:"此身多富贵，经文满腹热；若然无冲克，晚景转皇君。",now:"前世此命带富贵，现世定为九流人；前世辅了好君皇，现世为儿伤自身。"},
+"寅":{shi:"此相甚聪明，万事也能通；一生悠然身，到处献爱心。",now:"前世生相甚聪明，现世只可入佛门；前世自在悠闲身，现世忙碌苦生计。"},
+"卯":{shi:"此相注为师，官位示好求；万物轮回中，一生富荣华。",now:"前世为师官位在，现世门庭苦难荣；前世相中多富贵，轮回之中变穷郎。"},
+"辰":{shi:"此命朝中客，经文满腹熟；若然无冲克，晚景辅皇君。",now:"前世身为朝中客，现世定为九流人；前世辅了好君皇，现世为儿伤自身。"},
+"巳":{shi:"此命苦难求，读书半是成；遇乡寻手作，一生劳不停。",now:"前世苦中难作乐，现世富贵心聪明；前世遇乡劳不停，现世朝中百人敬。"},
+"午":{shi:"相中为术士，作耕亦为宜；行善乐助人，外乡也相传。",now:"前世此命为术士，现世应为他人奴；前世行善传外乡，现世福寿双全相。"},
+"未":{shi:"生相为大夫，救世济民在；万代外乡传，一生无忧愁。",now:"前世是救世大夫，现世为唱戏小生；前世一生无忧愁，现世口能辩万官。"},
+"申":{shi:"刑妻克儿相，命为乞儿郎；拜佛常烧香，好保命平安。",now:"前世刑妻并克儿，现世门庭头六亲；前世遇乡为乞郎，现世拥有万贯粮。"},
+"酉":{shi:"船夫命相宜，衣禄急难求；不宜改户名，晚景银压来。",now:"前世命定为船夫，现世做事定顺利；前世衣禄苦难求，现世财若泉水流。"},
+"戌":{shi:"命生火危相，夫妻早分离；得儿亦归天，此是苦命身。",now:"前世是灾厄之命，现世为幸福之人；前世夫妻早分离，现世夫妻白头偕老。"},
+"亥":{shi:"此命是不同，公侯卿相左；金银万贯有，自身是迁道。",now:"前世是卿相公侯，现世是作业贫农；前世金银万贯，现世门庭难荣。"}
+};
+// 查表：地支index=(出生日-1 + 生月-1) mod 12
+function shouyiZhi(lmonth,lday){return SS_DIZHI[(((lday-1)+(lmonth-1))%12+12)%12];}
+$("ss-sy-btn").onclick=()=>{
+  const R=$("ss-sy-result");
+  const dd=($("ss-sy-day").value||"").replace(/[^0-9]/g,"");
+  if(dd.length<8){R.innerHTML='<p class="empty">请输入完整出生日期（如 19900512）。</p>';return;}
+  const[y,mo,d]=[+dd.slice(0,4),+dd.slice(4,6),+dd.slice(6,8)];
+  if(y<1950||y>2035){R.innerHTML='<p class="empty">精确范围 1950–2035。</p>';return;}
+  const l=zwSolarToLunar(y,mo,d);
+  if(!l){R.innerHTML='<p class="empty">农历转换失败。</p>';return;}
+  const zhi=shouyiZhi(l.lm,l.ld);
+  const info=SHOUYI_PIWEN[zhi];
+  R.innerHTML=`
+    <div class="verdict mid" style="margin-bottom:14px;">
+      <div class="big">前世手艺 · ${zhi}相</div>
+      <div class="small">农历 ${l.lm}月${l.ld}日${l.isLeap?"(闰)":""}</div>
+    </div>
+    <div class="reading"><h4>◇ 前世手艺</h4><p style="font-size:13px;line-height:1.7;font-family:'STKaiti','KaiTi',serif;color:var(--ink);">${info.shi}</p></div>
+    <div class="reading" style="margin-top:10px;"><h4>◇ 影响现世事业</h4><p style="font-size:12.5px;line-height:1.7;">${info.now}</p></div>
+    <div class="reading" style="margin-top:10px;border-color:var(--jade);"><h4 style="color:var(--jade);">◇ 建议</h4><p style="font-size:12.5px;line-height:1.7;">${SHOUYI_ADVICE[zhi]||""}</p><p style="font-size:11.5px;line-height:1.7;color:var(--muted);margin-top:8px;">${SS_ZHENGNIAN}</p></div>`;
+};
+
+/* ========== 三世书·前世托化篇 ========== */
+const SS_SHENGXIAO=["鼠","牛","虎","兔","龙","蛇","马","羊","猴","鸡","狗","猪"];
+const TUOHUA={
+"马":{qian:"鼠",shi:"前世鼠化现世马，一生富贵又荣华；到了年将二三十，金榜题名显六亲。"},
+"羊":{qian:"牛",shi:"前世牛化现世羊，一生荣华事事能；到了晚景大不同，那时福禄源源生。"},
+"猴":{qian:"虎",shi:"前世虎化现世猴，一生衣食天安排；到了年近十五六，才高学业早成名。"},
+"鸡":{qian:"兔",shi:"前世兔化现世鸡，一生逍遥本似仙；到了年近三十六，那时财禄丰足到。"},
+"狗":{qian:"龙",shi:"前世龙化现世狗，兴家立业福泽改；到了年近花甲时，那时刑克一齐来。"},
+"猪":{qian:"蛇",shi:"前世蛇化现世猪，一生事事报平安；换名离祖方为妙，晚景衣食好安然。"},
+"鼠":{qian:"马",shi:"前世马化现世鼠，一生劳碌福不轻；中年财息好安然，晚景添寿更加福。"},
+"牛":{qian:"羊",shi:"前世羊化现世牛，一生做事事难成；兄弟叔侄也难靠，晚景衣食胜从前。"},
+"虎":{qian:"猴",shi:"前世猴化现世虎，此格推来衣食全；出外中来为指引，老时招得四方财。"},
+"兔":{qian:"鸡",shi:"前世鸡化现世兔，中年事业多安稳；祖业根基不周全，家定成时福满列。"},
+"龙":{qian:"狗",shi:"前世狗化现世龙，一生福贵衣食全；丰衣足食自安心，此是世间大富家。"},
+"蛇":{qian:"猪",shi:"前世猪化现世蛇，一生骨格最清高；紫袍金带高堂坐，名扬天下人人敬。"}
+};
+$("ss-th-btn").onclick=()=>{
+  const R=$("ss-th-result");
+  const dd=($("ss-th-day").value||"").replace(/[^0-9]/g,"");
+  if(dd.length<8){R.innerHTML='<p class="empty">请输入完整出生日期（如 19900512）。</p>';return;}
+  const[y,mo,d]=[+dd.slice(0,4),+dd.slice(4,6),+dd.slice(6,8)];
+  if(y<1950||y>2035){R.innerHTML='<p class="empty">精确范围 1950–2035。</p>';return;}
+  // 生肖用节气年（立春分界）
+  let sy=y;
+  try{const B=computeBazi(y,mo,d,12,0);if(B&&B.year){const gi=["子","丑","寅","卯","辰","巳","午","未","申","酉","戌","亥"].indexOf(B.year[1]);if(gi>=0){const now=SS_SHENGXIAO[gi];render(now);return;}}}catch(e){}
+  // 兜底：直接年份算
+  const sx=SS_SHENGXIAO[((y-4)%12+12)%12];render(sx);
+  function render(now){
+    const info=TUOHUA[now];
+    R.innerHTML=`
+      <div class="verdict good" style="margin-bottom:14px;">
+        <div class="big">现世属${now} · 前世属${info.qian}</div>
+        <div class="small">前世${info.qian}托化现世${now}</div>
+      </div>
+      <div class="reading"><h4>◇ 前世托化</h4><p style="font-size:13px;line-height:1.8;font-family:'STKaiti','KaiTi',serif;color:var(--ink);">${info.shi}</p></div>
+      <div class="reading" style="margin-top:10px;border-color:var(--jade);"><h4 style="color:var(--jade);">◇ 建议</h4><p style="font-size:12.5px;line-height:1.7;">${TUOHUA_ADVICE[now]||""}</p><p style="font-size:11.5px;line-height:1.7;color:var(--muted);margin-top:8px;">${SS_ZHENGNIAN}</p></div>
+      <p class="note" style="margin-top:8px;">生肖以立春分界，立春前出生按上一年生肖计。</p>`;
+  }
+};
+
+/* ========== 三世书·前世寿命篇 ========== */
+const SM_LIMITS=["童限","相貌","福德","官禄","迁移","疾厄","夫妻","奴婢"];
+const SM_BASE=[1,2,3,4,9,10,11,12]; // 子月各限对应日
+const SHOUMING={
+"童限":{age:"婴幼夭折限",qian:"前世是富家或贫家孩子，阴年为贫家孩子，阳年富家孩子，被水溺死，阴年为扑水溺，阳年为河水溺死，死后阴年为埋葬，阳年为火葬。",now:"现世寿终为83岁。有二子送终，二女披麻。死时天时为乌云密布，棺木坚硬，风光大葬。"},
+"相貌":{age:"前世死时15~24岁",qian:"前世死时15~24岁，为相貌限。阴年为贫家之人，阳年属富家之人，从高处摔死。阴年为埋葬，阳年为火葬。",now:"现世寿终为85岁，死时大雨连绵。有一子送终，二女披麻。棺木俱备，有一和尚共五人送终。"},
+"福德":{age:"前世死时25~35岁",qian:"前世死时25~35岁，为福德限。阴年为贫家之子，阳年为富家人。病死。阴年为埋葬，阳年为火葬。",now:"现世寿终为76岁。死时门照床前。有四子送终，一女披麻。棺木不全，共有八人送终。"},
+"官禄":{age:"前世死时36~50岁",qian:"前世死时36~50岁，为官禄限。阴年为贫家人，阳年为富家人。服毒而死。阴年为埋葬，阳年为火葬。",now:"现世寿终为65岁，死时是冬天，天气非常寒冷。有五子送终，三女披麻。衣棺完备，共有七人送终。"},
+"迁移":{age:"前世死时51~58岁",qian:"前世死时51~58岁，为迁移限。阴年为贫家人，阳年为富家人。吊死，死后阴年为埋葬，阳年为火葬。",now:"现世寿终为89岁。此时天气半凉半热。有三子送终，三女披麻，棺木完备。共有九人送终。"},
+"疾厄":{age:"前世死时59岁",qian:"前世死时59岁，为疾厄限。阴年为贫家人，阳年为富家人，被人打死。死后阴为埋葬，阳为火葬。",now:"现世寿终为96岁，死时天气炎热，有二子一女披麻，棺木全俱。共有三人送终。"},
+"夫妻":{age:"前世死时66~76岁",qian:"前世死时66~76岁，为夫妻限。阴年为贫家人，阳年为富家人，被人杀死，死后阴年为埋葬，阳年为火葬。",now:"现世寿终为92岁，死时是春季，阴雨天。有七子送终，二女披麻，棺木欠缺。共有十人送终。"},
+"奴婢":{age:"前世死时77~100岁",qian:"前世死时77~100岁，为奴婢限。阴年为贫家人，阳年为富家人。疾死。死后阴年为埋葬，阳年为火葬。",now:"现世寿终为79岁，死时是夏季，电闪雷鸣，有四子五女披麻。棺木全备，共有七人送终。"}
+};
+// 查表：出生日归约1-12，找匹配的限位
+function shoumingLimit(lmonth,lday){
+  const day=((lday-1)%12)+1;
+  for(let i=0;i<8;i++){if(((SM_BASE[i]-1+(lmonth-1))%12)+1===day)return {limit:SM_LIMITS[i],day};}
+  return {limit:null,day};
+}
+$("ss-sm-btn").onclick=()=>{
+  const R=$("ss-sm-result");
+  const dd=($("ss-sm-day").value||"").replace(/[^0-9]/g,"");
+  if(dd.length<8){R.innerHTML='<p class="empty">请输入完整出生日期（如 19900512）。</p>';return;}
+  const[y,mo,d]=[+dd.slice(0,4),+dd.slice(4,6),+dd.slice(6,8)];
+  if(y<1950||y>2035){R.innerHTML='<p class="empty">精确范围 1950–2035。</p>';return;}
+  const l=zwSolarToLunar(y,mo,d);
+  if(!l){R.innerHTML='<p class="empty">农历转换失败。</p>';return;}
+  const {limit}=shoumingLimit(l.lm,l.ld);
+  if(!limit){
+    R.innerHTML=`<div class="verdict mid" style="margin-bottom:14px;"><div class="big">此日不在八限</div><div class="small">农历 ${l.lm}月${l.ld}日</div></div>
+      <div class="reading"><p style="font-size:12.5px;">按《三世书》原表，此生日不落在八寿限之内，古籍未列对应批文，宜参邻近之限或综观全命。</p></div>`;
+    return;
+  }
+  const info=SHOUMING[limit];
+  R.innerHTML=`
+    <div class="verdict good" style="margin-bottom:14px;">
+      <div class="big">${limit}</div>
+      <div class="small">农历 ${l.lm}月${l.ld}日 · ${info.age}</div>
+    </div>
+    <div class="reading"><h4>◇ 前世（寿限）</h4><p style="font-size:12.5px;line-height:1.7;">${info.qian}</p></div>
+    <div class="reading" style="margin-top:10px;"><h4>◇ 影响现世</h4><p style="font-size:12.5px;line-height:1.7;">${info.now}</p></div>
+    <div class="reading" style="margin-top:10px;border-color:var(--jade);"><h4 style="color:var(--jade);">◇ 建议</h4><p style="font-size:12.5px;line-height:1.7;">${SHOUMING_ADVICE[limit]||""}</p><p style="font-size:11.5px;line-height:1.7;color:var(--muted);margin-top:8px;">${SS_ZHENGNIAN}</p></div>`;
+};
+
+/* ========== 三世书·一键总览 ========== */
+$("ss-all-btn").onclick=()=>{
+  const R=$("ss-all-result");
+  const dd=($("ss-all-day").value||"").replace(/[^0-9]/g,"");
+  if(dd.length<8){R.innerHTML='<p class="empty">请输入完整出生日期（如 19900512）。</p>';return;}
+  const[y,mo,d]=[+dd.slice(0,4),+dd.slice(4,6),+dd.slice(6,8)];
+  if(y<1950||y>2035){R.innerHTML='<p class="empty">精确范围 1950–2035。</p>';return;}
+  const l=zwSolarToLunar(y,mo,d);
+  if(!l){R.innerHTML='<p class="empty">农历转换失败。</p>';return;}
+  const lunarTxt=`农历 ${l.lm}月${l.ld}日${l.isLeap?"(闰)":""}`;
+  let html=`<div class="verdict good" style="margin-bottom:14px;"><div class="big">前世今生 · 完整报告</div><div class="small">${lunarTxt}</div></div>`;
+  // 1. 前世托化
+  let sx="";
+  try{const B=computeBazi(y,mo,d,12,0);if(B&&B.year){const gi=["子","丑","寅","卯","辰","巳","午","未","申","酉","戌","亥"].indexOf(B.year[1]);if(gi>=0)sx=SS_SHENGXIAO[gi];}}catch(e){}
+  if(!sx)sx=SS_SHENGXIAO[((y-4)%12+12)%12];
+  const th=TUOHUA[sx];
+  html+=`<div class="reading" style="margin-bottom:10px;"><h4 style="color:var(--jade);">◇ 前世托化（现世属${sx}）</h4>
+    <p style="font-size:12.5px;line-height:1.7;">前世属<b>${th.qian}</b>。${th.shi}</p>
+    <p style="font-size:12px;color:var(--muted);margin-top:6px;">${TUOHUA_ADVICE[sx]||""}</p></div>`;
+  // 2. 前世福禄
+  const lu=qianshiLu(l.lm,l.ld);const flInfo=QIANSHI_FULU[lu];
+  html+=`<div class="reading" style="margin-bottom:10px;"><h4 style="color:var(--jade);">◇ 前世福禄（${lu}）</h4>
+    <p style="font-size:12.5px;line-height:1.7;font-family:'STKaiti','KaiTi',serif;">${flInfo.shi}</p>
+    <p style="font-size:12.5px;line-height:1.7;margin-top:4px;">${flInfo.now}</p>
+    <p style="font-size:12px;color:var(--muted);margin-top:6px;">${FULU_ADVICE[lu]||""}</p></div>`;
+  // 3. 前世手艺
+  const zhi=shouyiZhi(l.lm,l.ld);const syInfo=SHOUYI_PIWEN[zhi];
+  html+=`<div class="reading" style="margin-bottom:10px;"><h4 style="color:var(--jade);">◇ 前世手艺（${zhi}相）</h4>
+    <p style="font-size:12.5px;line-height:1.7;font-family:'STKaiti','KaiTi',serif;">${syInfo.shi}</p>
+    <p style="font-size:12.5px;line-height:1.7;margin-top:4px;">${syInfo.now}</p>
+    <p style="font-size:12px;color:var(--muted);margin-top:6px;">${SHOUYI_ADVICE[zhi]||""}</p></div>`;
+  // 4. 前世寿命
+  const {limit}=shoumingLimit(l.lm,l.ld);
+  if(limit){const smInfo=SHOUMING[limit];
+    html+=`<div class="reading" style="margin-bottom:10px;"><h4 style="color:var(--jade);">◇ 前世寿命（${limit}）</h4>
+      <p style="font-size:12.5px;line-height:1.7;">${smInfo.qian}</p>
+      <p style="font-size:12.5px;line-height:1.7;margin-top:4px;">${smInfo.now}</p>
+      <p style="font-size:12px;color:var(--muted);margin-top:6px;">${SHOUMING_ADVICE[limit]||""}</p></div>`;
+  } else {
+    html+=`<div class="reading" style="margin-bottom:10px;"><h4 style="color:var(--jade);">◇ 前世寿命</h4>
+      <p style="font-size:12px;color:var(--muted);">此生日不落在《三世书》八寿限之内，古籍未列对应批文。</p></div>`;
+  }
+  // 5. 今世财运（复用财运篇逻辑）
+  try{
+    const B=computeBazi(y,mo,d,12,0);
+    const jq=JIEQI[y];const lc=bz_dec(jq[0]);const nowV=bz_mins(mo,d,12,0);const lichunV=bz_mins(lc.mo,lc.d,lc.h,lc.mi);
+    let syear=y;if(nowV<lichunV)syear=y-1;
+    const yearLast=syear%10;const lmonth=ZHI_TO_LMONTH[B.month[1]];
+    const cai=sanshiCaiyun(yearLast,lmonth);const caiName=SS_LU_NAME[cai]||cai;const caiDesc=SS_LU_DESC[cai]||"";
+    html+=`<div class="reading" style="margin-bottom:10px;"><h4 style="color:var(--jade);">◇ 今世财运（${caiName}）</h4>
+      <p style="font-size:12.5px;line-height:1.7;">${caiDesc}</p></div>`;
+  }catch(e){}
+  // 正念结尾
+  html+=`<div class="reading" style="border-color:var(--gold);"><p style="font-size:11.5px;line-height:1.7;color:var(--muted);">${SS_ZHENGNIAN}</p></div>`;
+  R.innerHTML=html;
 };
 
 /* ========== 姓名·五格剖象 ========== */
