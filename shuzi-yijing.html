@@ -469,6 +469,7 @@
     <div class="tab" id="ss-tab-xiongdi">兄弟相刑</div>
     <div class="tab" id="ss-tab-fuqi">夫妻运</div>
     <div class="tab" id="ss-tab-zixi">子息多寡</div>
+    <div class="tab" id="ss-tab-wuyu">屋宇田产</div>
   </div>
 
   <!-- 一键总览 -->
@@ -621,6 +622,15 @@
     <button class="calc" id="ss-zx-btn">查 子 息</button>
     <div id="ss-zx-result"><p class="empty">填出生日期与时辰后点「查子息」</p></div>
     <p class="note">※ 以出生日干配出生时辰（时支），定十二长生位，查子女缘分，录自《三世书》原文。传统术数，无科学依据，仅供参考。</p>
+  </div>
+
+  <!-- 屋宇田产 -->
+  <div id="ss-wuyu-mode" class="hidden">
+    <label class="fld">屋宇田产（按出生年支 + 农历生月，查房产屋宇）</label>
+    <input id="ss-wy-day" type="text" placeholder="出生日期 例：19900512" inputmode="numeric" style="margin-bottom:8px;">
+    <button class="calc" id="ss-wy-btn">查 屋 宇</button>
+    <div id="ss-wy-result"><p class="empty">填出生日期后点「查屋宇」</p></div>
+    <p class="note">※ 以出生年地支配农历生月，定十二宅（建/除/满/平/定/执/破/危/成/收/开/闭宅），查房产屋宇，录自《三世书》原文。传统术数，无科学依据，仅供参考。</p>
   </div>
 </div>
 
@@ -1564,7 +1574,7 @@ $("ss-btn").onclick=()=>{
 /* ========== 三世书·前世福禄篇 ========== */
 // 子标签切换
 function ssSetMode(m){
-  ["all","cai","fulu","shouyi","tuohua","shouming","minggong","yueyun","shichen","hunyin","xiongdi","fuqi","zixi"].forEach(x=>{
+  ["all","cai","fulu","shouyi","tuohua","shouming","minggong","yueyun","shichen","hunyin","xiongdi","fuqi","zixi","wuyu"].forEach(x=>{
     $("ss-tab-"+x).classList.toggle("active",x===m);
     $("ss-"+x+"-mode").classList.toggle("hidden",x!==m);
   });
@@ -1581,6 +1591,8 @@ $("ss-tab-shichen").onclick=()=>ssSetMode("shichen");
 $("ss-tab-hunyin").onclick=()=>ssSetMode("hunyin");
 $("ss-tab-xiongdi").onclick=()=>ssSetMode("xiongdi");
 $("ss-tab-fuqi").onclick=()=>ssSetMode("fuqi");
+$("ss-tab-zixi").onclick=()=>ssSetMode("zixi");
+$("ss-tab-wuyu").onclick=()=>ssSetMode("wuyu");
 $("ss-tab-zixi").onclick=()=>ssSetMode("zixi");
 // 十二禄
 // 三世书各篇「正向生活建议」——积极、实用、无害，不指定庙宇法事
@@ -2082,6 +2094,45 @@ $("ss-zx-btn").onclick=()=>{
       <div class="small">日干${dayGan} · ${SHZ[+sc]}时 · ${cs}位</div>
     </div>
     <div class="reading"><h4>◇ 子女缘分</h4><p style="font-size:13px;line-height:1.9;font-family:'STKaiti','KaiTi',serif;color:var(--ink);">${info.shi}</p></div>`;
+};
+
+/* ========== 三世书·屋宇田产 ========== */
+const WUYU_ZHAI=["建宅","除宅","满宅","平宅","定宅","执宅","破宅","危宅","成宅","收宅","开宅","闭宅"];
+// 各生年支的建宅起始月（截图验证144格）
+const WUYU_START={"子":7,"丑":4,"寅":10,"卯":7,"辰":4,"巳":1,"午":10,"未":7,"申":1,"酉":4,"戌":1,"亥":11};
+const WUYU={
+"建宅":{shi:"建宅旺人丁，自立成新房；若然小修整，疾病两三场。",good:1},
+"除宅":{shi:"除宅保平安，此居三代旺；离祖方不妙，久居足衣粮。",good:1},
+"满宅":{shi:"满宅金满库，代代不愁穷；若然无刑伤，家计能亨通。",good:1},
+"平宅":{shi:"平宅最吉祥，建宅宜向东；向南见血光，背向财满仓。",good:1},
+"定宅":{shi:"定宅克儿郎，建宅有灾丙；迁移见人疾，小修家禽伤。",good:0},
+"执宅":{shi:"执宅福无穷，造居三十九；财息衣长久，万代极品隆。",good:1},
+"破宅":{shi:"破宅见血流，祖居难言吉；人命宜远移，可免命灾殊。",good:0},
+"危宅":{shi:"危宅不安宁，建屋要迟延；否则命难保，定住祖居宜。",good:0},
+"成宅":{shi:"成宅命最强，祖业最为宜；离乡见灾殃，万物欣向荣。",good:1},
+"收宅":{shi:"收宅居两姓，更主有财星；离祖方发福，保守不足食。",good:1},
+"开宅":{shi:"开宅有惊险，家人有添丁；建居万顷田，新造也荣昌。",good:1},
+"闭宅":{shi:"闭宅无人居，刑克入黄泉；重修方保命，命运胜从前。",good:0}
+};
+function wuyuZhai(yearZhi,lmonth){const idx=((lmonth-WUYU_START[yearZhi])%12+12)%12;return WUYU_ZHAI[idx];}
+$("ss-wy-btn").onclick=()=>{
+  const R=$("ss-wy-result");
+  const dd=($("ss-wy-day").value||"").replace(/[^0-9]/g,"");
+  if(dd.length<8){R.innerHTML='<p class="empty">请输入完整出生日期（如 19900512）。</p>';return;}
+  const[y,mo,d]=[+dd.slice(0,4),+dd.slice(4,6),+dd.slice(6,8)];
+  if(y<1950||y>2035){R.innerHTML='<p class="empty">精确范围 1950–2035。</p>';return;}
+  const l=zwSolarToLunar(y,mo,d);
+  if(!l){R.innerHTML='<p class="empty">农历转换失败。</p>';return;}
+  const B=computeBazi(y,mo,d,12,0);
+  if(!B){R.innerHTML='<p class="empty">推算失败。</p>';return;}
+  const yearZhi=B.year[1];
+  const zhai=wuyuZhai(yearZhi,l.lm);const info=WUYU[zhai];
+  R.innerHTML=`
+    <div class="verdict ${info.good?"good":"mid"}" style="margin-bottom:14px;">
+      <div class="big">${zhai}${info.good?"（吉）":""}</div>
+      <div class="small">${B.year[0]}${yearZhi}年 · ${yearZhi}生年 · 农历${l.lm}月</div>
+    </div>
+    <div class="reading"><h4>◇ 屋宇田产</h4><p style="font-size:13px;line-height:1.9;font-family:'STKaiti','KaiTi',serif;color:var(--ink);">${info.shi}</p></div>`;
 };
 
 /* ========== 三世书·一键总览 ========== */
