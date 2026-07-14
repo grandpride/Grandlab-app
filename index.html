@@ -4423,6 +4423,17 @@ async function fetchOrders(){
   return [];
 }
 
+// Completed POS transactions for this customer (the shop rang them up at the
+// counter). Read from gl_payments where customer_id matches. Shown in "Past".
+async function fetchPosPayments(){
+  if(!SESSION?.user?.id) return [];
+  try{
+    const r=await fetch(`${SUPA_URL}/rest/v1/gl_payments?select=id,invoice_no,customer_name,plate,net_paid,method,paid_at,sale_date,items,voided&customer_id=eq.${SESSION.user.id}&voided=eq.false&order=paid_at.desc`,{headers:authHeaders()});
+    if(r.ok) return await r.json();
+  }catch(e){}
+  return [];
+}
+
 let ORDERS=[];
 async function renderOrders(which){
   which=which||'available';
@@ -4430,6 +4441,11 @@ async function renderOrders(which){
   if(!VEHICLES.length) try{ if(!IS_GUEST&&SESSION?.user?.id) await fetchVehicles(); }catch(e){}
   const available=ORDERS.filter(o=>o.status==='upcoming');
   const past=ORDERS.filter(o=>o.status==='completed'||o.status==='cancelled');
+  // completed POS counter sales (from gl_payments) — shown in Past
+  let posPays=[];
+  if(which==='past'){
+    try{ if(!IS_GUEST && SESSION?.user?.id) posPays=await fetchPosPayments(); }catch(e){}
+  }
   // maintenance reminders due soon (from service records the POS writes)
   let reminders=[];
   if(which==='available'){
@@ -4454,6 +4470,26 @@ async function renderOrders(which){
       ${(!isPaid && SANDBOX_TEST)?`<button class="order-cancel" style="border-color:#51cf66;color:#51cf66" onclick="testMarkPaid('${o.order_ref}')">🧪 Mark paid (test)</button>`:''}
     </div>`;
   };
+  // Card for a completed POS counter sale (from gl_payments)
+  const posCard=(p)=>{
+    let items=[];
+    try{ items = typeof p.items==='string' ? JSON.parse(p.items) : (Array.isArray(p.items)?p.items:[]); }catch(e){ items=[]; }
+    const svcList = items.length ? items.map(it=>esc(it.desc||it.name||'Item')+(it.qty>1?(' ×'+it.qty):'')).join(', ') : 'Service';
+    const when = p.paid_at||p.sale_date;
+    return `
+    <div class="order-card">
+      <div class="order-top">
+        <div class="order-svc">${esc((items[0]&&(items[0].desc||items[0].name))||'Service')}</div>
+        <div class="order-status completed">Completed</div>
+      </div>
+      <div class="order-badges"><span class="pay-badge paid">Paid</span></div>
+      ${p.plate?`<div class="order-meta">🚗 ${esc(p.plate)}</div>`:''}
+      <div class="order-meta">📅 ${when?esc(fmtDate(when)):'—'}</div>
+      ${items.length>1?`<div class="order-meta">🧾 ${svcList}</div>`:''}
+      <div class="order-meta">💵 RM${money(Number(p.net_paid||0))}${p.method?(' · '+esc(p.method)):''}</div>
+      ${p.invoice_no?`<div class="order-meta" style="opacity:.6">Invoice ${esc(String(p.invoice_no))}</div>`:''}
+    </div>`;
+  };
   const reminderCard=(r)=>`
     <div class="maint-reminder">
       <div class="maint-rem-top">
@@ -4472,7 +4508,11 @@ async function renderOrders(which){
       : (reminders.length?'':'<div class="guest-banner" style="margin-top:16px">No upcoming jobs. Book an appointment below.</div>');
     body = remHtml + apptHtml;
   } else {
-    body = past.length ? past.map(card).join('') : '<div class="guest-banner" style="margin-top:16px">No past jobs yet.</div>';
+    // Past = cancelled/completed app orders + completed POS counter sales
+    const orderCards = past.map(card);
+    const posCards = posPays.map(posCard);
+    const allPast = orderCards.concat(posCards);
+    body = allPast.length ? allPast.join('') : '<div class="guest-banner" style="margin-top:16px">No past jobs yet.</div>';
   }
   appRoot.innerHTML=`
     <div class="app-scroll">
