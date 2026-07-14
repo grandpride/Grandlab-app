@@ -462,6 +462,7 @@
     <div class="tab" id="ss-tab-shouyi">前世手艺篇</div>
     <div class="tab" id="ss-tab-tuohua">前世托化篇</div>
     <div class="tab" id="ss-tab-shouming">前世寿命篇</div>
+    <div class="tab" id="ss-tab-minggong">命宫之星</div>
   </div>
 
   <!-- 一键总览 -->
@@ -516,6 +517,24 @@
     <button class="calc" id="ss-sm-btn">查 前 世 寿 命</button>
     <div id="ss-sm-result"><p class="empty">填出生日期后点「查前世寿命」</p></div>
     <p class="note">※ 以农历生月、生日查八限（童相福官迁疾夫奴），录自《三世书》原文。传统术数，无科学依据，仅供参考。</p>
+  </div>
+
+  <!-- 命宫之星 -->
+  <div id="ss-minggong-mode" class="hidden">
+    <label class="fld">命宫之星（按农历生月 + 出生时辰，查命宫落在哪颗星）</label>
+    <input id="ss-mg-day" type="text" placeholder="出生日期 例：19900512" inputmode="numeric" style="margin-bottom:8px;">
+    <select id="ss-mg-sc" style="margin-bottom:8px;">
+      <option value="">— 选出生时辰 —</option>
+      <option value="0">子时 23:00–01:00</option><option value="1">丑时 01:00–03:00</option>
+      <option value="2">寅时 03:00–05:00</option><option value="3">卯时 05:00–07:00</option>
+      <option value="4">辰时 07:00–09:00</option><option value="5">巳时 09:00–11:00</option>
+      <option value="6">午时 11:00–13:00</option><option value="7">未时 13:00–15:00</option>
+      <option value="8">申时 15:00–17:00</option><option value="9">酉时 17:00–19:00</option>
+      <option value="10">戌时 19:00–21:00</option><option value="11">亥时 21:00–23:00</option>
+    </select>
+    <button class="calc" id="ss-mg-btn">查 命 宫 之 星</button>
+    <div id="ss-mg-result"><p class="empty">填出生日期与时辰后点「查命宫之星」</p></div>
+    <p class="note">※ 以农历生月配出生时辰，定命宫地支、查十二星（天贵/天厄/天难/天破/天奸/天文/天福/天驿/天孤/天刃/天灵/天寿），录自《三世书》原文。传统术数，无科学依据，仅供参考。</p>
   </div>
 </div>
 
@@ -1459,7 +1478,7 @@ $("ss-btn").onclick=()=>{
 /* ========== 三世书·前世福禄篇 ========== */
 // 子标签切换
 function ssSetMode(m){
-  ["all","cai","fulu","shouyi","tuohua","shouming"].forEach(x=>{
+  ["all","cai","fulu","shouyi","tuohua","shouming","minggong"].forEach(x=>{
     $("ss-tab-"+x).classList.toggle("active",x===m);
     $("ss-"+x+"-mode").classList.toggle("hidden",x!==m);
   });
@@ -1470,6 +1489,7 @@ $("ss-tab-fulu").onclick=()=>ssSetMode("fulu");
 $("ss-tab-shouyi").onclick=()=>ssSetMode("shouyi");
 $("ss-tab-tuohua").onclick=()=>ssSetMode("tuohua");
 $("ss-tab-shouming").onclick=()=>ssSetMode("shouming");
+$("ss-tab-minggong").onclick=()=>ssSetMode("minggong");
 // 十二禄
 // 三世书各篇「正向生活建议」——积极、实用、无害，不指定庙宇法事
 // 通用行善正念（各篇通用底部）
@@ -1695,6 +1715,48 @@ $("ss-sm-btn").onclick=()=>{
     <div class="reading"><h4>◇ 前世（寿限）</h4><p style="font-size:12.5px;line-height:1.7;">${info.qian}</p></div>
     <div class="reading" style="margin-top:10px;"><h4>◇ 影响现世</h4><p style="font-size:12.5px;line-height:1.7;">${info.now}</p></div>
     <div class="reading" style="margin-top:10px;border-color:var(--jade);"><h4 style="color:var(--jade);">◇ 建议</h4><p style="font-size:12.5px;line-height:1.7;">${SHOUMING_ADVICE[limit]||""}</p><p style="font-size:11.5px;line-height:1.7;color:var(--muted);margin-top:8px;">${SS_ZHENGNIAN}</p></div>`;
+};
+
+/* ========== 三世书·命宫之星 ========== */
+const MG_DIZHI=["子","丑","寅","卯","辰","巳","午","未","申","酉","戌","亥"];
+const MINGGONG_STAR={
+"子":{star:"天贵星",shi:"命宫落在天贵星，一生事事顺通；志气轩昂命不凡，安然自在福向荣。",desc:"命主富贵，一生清洁，记忆机敏，创造有巧妙，四方多艺。大事难成，小事不拘，乃是公卿之命。有刑克，重妻，番成上贵。初限幸福，中年离异，晚年福禄齐美。"},
+"丑":{star:"天厄星",shi:"命宫落在天厄星，营谋作事运未通；病疾相缠万寿长，劳劳碌碌是生涯。",desc:"命主带疾病，做事迟延，会受聪明所误，失去得仁和。最宜离祖他乡就业，不然会多灾多难，四十而大发，事事顺利，晚景大有机，幸福从天降。"},
+"寅":{star:"天难星",shi:"命宫轮到天难星，出外做事运亨通；文武双全扬天下，平生做事人人钦。",desc:"命主聪明伶俐，有富贵之称。为人意志刚，技艺满身，一生人人敬仰，能操权柄，而行正道，自为成功。初限不理想，晚景安逸。女人畜养如意发福之命。"},
+"卯":{star:"天破星",shi:"命宫若遇天破星，衣禄满载也成空；本是人间大富侈，谁知天灾破黄金。",desc:"命主衣禄财息虽聚易散，祖业稀零，自立自管。儿女有利，见迟方好，兄弟虽有，难为得力。初年财物耗散虽荣，晚年丰隆。女人有内助旺相之命。"},
+"辰":{star:"天奸星",shi:"命宫若遇天奸星，营谋做事最多诈；表里不一两面刀，一翻一覆最难调。",desc:"命主做事刁巧，机谋多诈，骨肉少力，六亲冷淡，儿女早见刑克，心怀暗毒，利己掠人，指东道西，言而无信。初年做事颠倒，中年兴旺，晚年财息足用。"},
+"巳":{star:"天文星",shi:"命宫若遇天文星，聪明伶俐技压雄；男女配合最畅旺，经文满腹看成功。",desc:"命主聪明伶俐，精通文武，衣禄不少，儿女再娶嫁，花烛重之嫌。心直口快，志气轩昂，做事多美，利名显达，必登大位。早年离祖发达，晚景大有良机，幸福之命。"},
+"午":{star:"天福星",shi:"命宫若逢天福星，祖业根基最坚固；志气宽宏心明朗，衣禄丰足家道兴。",desc:"命主含蓄清雅，谋略出众，祖基坚实，财源丰厚，利近贵，谋事通达，遇凶化吉，贵人提拔，堆金聚阵，大富之命。女有操持旺相之命。"},
+"未":{star:"天驿星",shi:"时逢天驿主命强，离祖远移几曾停；生来难得一时静，四海奔劳始得宁。",desc:"命主离乡背井，奔走他方，一生劳劳碌碌，手足不停，身心不闲，做事有头无尾，心性暴躁，子多刑，六亲冷淡。男命带固执之性格，女命兴邻和睦，晚族显达，长寿之命。"},
+"申":{star:"天孤星",shi:"命宫不幸遇天孤，兄弟叔侄难相助；男人犯此最伤子，女人犯此刑夫君。",desc:"命主孤单，男女寡居独宿。刑克重，为人猛烈，易快易冷，反目无情，财来财去，有财无库，劳碌雪霜一生，难为子息。命主最宜出家，为僧作道。女人容美艳丽，富贵之命。"},
+"酉":{star:"天刃星",shi:"人性太刚为天刃，争强好斗我为尊；弄枪舞刀雄心重，能领将兵入战场。",desc:"命主心性气刚硬，不屈人前，做事依己而为。幼年见灾，父母重拜，兄弟骨肉少靠，子女有刑伤，做事不肯忍让，语言不还，只由己见。男人建家立业，颇为荣幸之命。"},
+"戌":{star:"天灵星",shi:"天灵心性最温和，一生利宫近贵人；能说会道最灵巧，技艺照得四方名。",desc:"命主性巧聪明，机谋多变，和气春风，功名易求，口俐舌能，有藏衣禄，平稳足用，但多学少成，六亲冷淡，须事不中，为人平等，不贪不取，晚景旺相不俗之命也。"},
+"亥":{star:"天寿星",shi:"天寿赐人寿福长，识轻就重心温良；一闻自省心明慧，愁散之时喜气扬。",desc:"命主长寿健康，心问好善，做事公平，为人正直，衣禄有余，清闲快乐，才智出众。初限富贵，中年平平，末运大旺，有为人之心，无伤人之意。女人旺夫发福之命。"}
+};
+// 查表：命宫地支idx=(3-(生月-1)-时辰idx) mod 12
+function minggongStar(lmonth,scIdx){
+  const idx=((3-(lmonth-1)-scIdx)%12+12)%12;
+  return MG_DIZHI[idx];
+}
+$("ss-mg-btn").onclick=()=>{
+  const R=$("ss-mg-result");
+  const dd=($("ss-mg-day").value||"").replace(/[^0-9]/g,"");
+  if(dd.length<8){R.innerHTML='<p class="empty">请输入完整出生日期（如 19900512）。</p>';return;}
+  const sc=$("ss-mg-sc").value;
+  if(sc===""){R.innerHTML='<p class="empty">请选择出生时辰。</p>';return;}
+  const[y,mo,d]=[+dd.slice(0,4),+dd.slice(4,6),+dd.slice(6,8)];
+  if(y<1950||y>2035){R.innerHTML='<p class="empty">精确范围 1950–2035。</p>';return;}
+  const l=zwSolarToLunar(y,mo,d);
+  if(!l){R.innerHTML='<p class="empty">农历转换失败。</p>';return;}
+  const zhi=minggongStar(l.lm,+sc);
+  const info=MINGGONG_STAR[zhi];
+  R.innerHTML=`
+    <div class="verdict good" style="margin-bottom:14px;">
+      <div class="big">命宫 · ${info.star}</div>
+      <div class="small">农历 ${l.lm}月 · ${MG_DIZHI[+sc]}时 · 命宫在${zhi}宫</div>
+    </div>
+    <div class="reading"><h4>◇ 命宫之星</h4><p style="font-size:13px;line-height:1.8;font-family:'STKaiti','KaiTi',serif;color:var(--ink);">${info.shi}</p></div>
+    <div class="reading" style="margin-top:10px;"><h4>◇ 详解</h4><p style="font-size:12.5px;line-height:1.7;">${info.desc}</p></div>`;
 };
 
 /* ========== 三世书·一键总览 ========== */
