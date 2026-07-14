@@ -468,6 +468,7 @@
     <div class="tab" id="ss-tab-hunyin">婚姻运</div>
     <div class="tab" id="ss-tab-xiongdi">兄弟相刑</div>
     <div class="tab" id="ss-tab-fuqi">夫妻运</div>
+    <div class="tab" id="ss-tab-zixi">子息多寡</div>
   </div>
 
   <!-- 一键总览 -->
@@ -602,6 +603,24 @@
     <button class="calc" id="ss-fq-btn">查 夫 妻 运</button>
     <div id="ss-fq-result"><p class="empty">填出生日期后点「查夫妻运」</p></div>
     <p class="note">※ 以出生年干支纳音五行配农历生月，定十二长生位，查夫妻缘分，录自《三世书》原文。传统术数，无科学依据，仅供参考。</p>
+  </div>
+
+  <!-- 子息多寡 -->
+  <div id="ss-zixi-mode" class="hidden">
+    <label class="fld">子息多寡（按日干 + 出生时辰，查子女缘）</label>
+    <input id="ss-zx-day" type="text" placeholder="出生日期 例：19900512" inputmode="numeric" style="margin-bottom:8px;">
+    <select id="ss-zx-sc" style="margin-bottom:8px;">
+      <option value="">— 选出生时辰 —</option>
+      <option value="0">子时 23:00–01:00</option><option value="1">丑时 01:00–03:00</option>
+      <option value="2">寅时 03:00–05:00</option><option value="3">卯时 05:00–07:00</option>
+      <option value="4">辰时 07:00–09:00</option><option value="5">巳时 09:00–11:00</option>
+      <option value="6">午时 11:00–13:00</option><option value="7">未时 13:00–15:00</option>
+      <option value="8">申时 15:00–17:00</option><option value="9">酉时 17:00–19:00</option>
+      <option value="10">戌时 19:00–21:00</option><option value="11">亥时 21:00–23:00</option>
+    </select>
+    <button class="calc" id="ss-zx-btn">查 子 息</button>
+    <div id="ss-zx-result"><p class="empty">填出生日期与时辰后点「查子息」</p></div>
+    <p class="note">※ 以出生日干配出生时辰（时支），定十二长生位，查子女缘分，录自《三世书》原文。传统术数，无科学依据，仅供参考。</p>
   </div>
 </div>
 
@@ -1545,7 +1564,7 @@ $("ss-btn").onclick=()=>{
 /* ========== 三世书·前世福禄篇 ========== */
 // 子标签切换
 function ssSetMode(m){
-  ["all","cai","fulu","shouyi","tuohua","shouming","minggong","yueyun","shichen","hunyin","xiongdi","fuqi"].forEach(x=>{
+  ["all","cai","fulu","shouyi","tuohua","shouming","minggong","yueyun","shichen","hunyin","xiongdi","fuqi","zixi"].forEach(x=>{
     $("ss-tab-"+x).classList.toggle("active",x===m);
     $("ss-"+x+"-mode").classList.toggle("hidden",x!==m);
   });
@@ -1562,6 +1581,7 @@ $("ss-tab-shichen").onclick=()=>ssSetMode("shichen");
 $("ss-tab-hunyin").onclick=()=>ssSetMode("hunyin");
 $("ss-tab-xiongdi").onclick=()=>ssSetMode("xiongdi");
 $("ss-tab-fuqi").onclick=()=>ssSetMode("fuqi");
+$("ss-tab-zixi").onclick=()=>ssSetMode("zixi");
 // 十二禄
 // 三世书各篇「正向生活建议」——积极、实用、无害，不指定庙宇法事
 // 通用行善正念（各篇通用底部）
@@ -2019,6 +2039,49 @@ $("ss-fq-btn").onclick=()=>{
       <div class="small">${B.year[0]}${B.year[1]}年 · 纳音${nayin}(${wx}) · 农历${l.lm}月</div>
     </div>
     <div class="reading"><h4>◇ 夫妻缘分</h4><p style="font-size:13px;line-height:1.9;font-family:'STKaiti','KaiTi',serif;color:var(--ink);">${info.shi}</p></div>`;
+};
+
+/* ========== 三世书·子息多寡 ========== */
+// 十天干长生诀：阳干顺行·阴干逆行，长生地支
+const CS_GAN_YANG={"甲":11,"丙":2,"戊":2,"庚":5,"壬":8}; // 长生地支idx,顺
+const CS_GAN_YIN={"乙":6,"丁":9,"己":9,"辛":0,"癸":3};  // 长生地支idx,逆
+function zixiPos(dayGan,shiZhiIdx){
+  if(CS_GAN_YANG[dayGan]!==undefined)return ((shiZhiIdx-CS_GAN_YANG[dayGan])%12+12)%12;
+  return ((CS_GAN_YIN[dayGan]-shiZhiIdx)%12+12)%12;
+}
+const ZIXI={
+"长生":{shi:"长生应是有几子，初一到中有四子；十六之后二子存，子荣华贵万事兴。",count:"多子"},
+"沐浴":{shi:"沐浴一双保吉祥，头子文武事事能；心贤重存是二子，兄弟为事有商量。",count:"二子"},
+"冠带":{shi:"冠带三子不相和，长子依财坎弱邻；次子官高不看人，后子忠厚善待人。",count:"三子"},
+"临官":{shi:"临宫三子大吉昌，三子重孝在堂前；合力重建好家园，有福同享难齐当。",count:"三子"},
+"帝旺":{shi:"帝旺五子各显能，同声同气坐一船；一头有难百呼应，五子各心不坏谋。",count:"五子"},
+"衰":{shi:"衰中三子命若何，长子身强康中长；次子本是僧道人，后子人间一富翁。",count:"三子"},
+"病":{shi:"病中一子福不轻，生性蓄善心聪明；少年诗书满腹熟，晚年定为富甲人。",count:"一子"},
+"死":{shi:"死宫到老没儿郎，前世种下恶因果；来世怎会有好报，万物造化这般奇。",count:"无子"},
+"墓":{shi:"墓地之子难保命，夫妇三世姻缘定；行善积德永不为，本有一子变无子。",count:"少子"},
+"绝":{shi:"绝中取养他人子，前世作恶现世当；幸而现世积善德，本来无子变有子。",count:"养子"},
+"胎":{shi:"胎中头女有姑娘，头女旺夫兼益子；次女带来大富贵，随后男女命平平。",count:"先女"},
+"养":{shi:"养中三子只留一，母爱子孝万人敬；失子不知何方去，终老之时二子送。",count:"留一"}
+};
+$("ss-zx-btn").onclick=()=>{
+  const R=$("ss-zx-result");
+  const dd=($("ss-zx-day").value||"").replace(/[^0-9]/g,"");
+  if(dd.length<8){R.innerHTML='<p class="empty">请输入完整出生日期（如 19900512）。</p>';return;}
+  const sc=$("ss-zx-sc").value;
+  if(sc===""){R.innerHTML='<p class="empty">请选择出生时辰。</p>';return;}
+  const[y,mo,d]=[+dd.slice(0,4),+dd.slice(4,6),+dd.slice(6,8)];
+  if(y<1950||y>2035){R.innerHTML='<p class="empty">精确范围 1950–2035。</p>';return;}
+  const B=computeBazi(y,mo,d,12,0);
+  if(!B){R.innerHTML='<p class="empty">推算失败。</p>';return;}
+  const dayGan=B.day[0];
+  const pos=zixiPos(dayGan,+sc);const cs=CHANGSHENG[pos];const info=ZIXI[cs];
+  const SHZ=["子","丑","寅","卯","辰","巳","午","未","申","酉","戌","亥"];
+  R.innerHTML=`
+    <div class="verdict good" style="margin-bottom:14px;">
+      <div class="big">子息 · ${cs}（${info.count}）</div>
+      <div class="small">日干${dayGan} · ${SHZ[+sc]}时 · ${cs}位</div>
+    </div>
+    <div class="reading"><h4>◇ 子女缘分</h4><p style="font-size:13px;line-height:1.9;font-family:'STKaiti','KaiTi',serif;color:var(--ink);">${info.shi}</p></div>`;
 };
 
 /* ========== 三世书·一键总览 ========== */
