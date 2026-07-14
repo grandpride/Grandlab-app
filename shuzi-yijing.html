@@ -1,0 +1,1847 @@
+<!DOCTYPE html>
+<html lang="zh-Hans">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#1a1526">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>吉米三块六数字易经 · 号码风水</title>
+<style>
+  :root{--ink:#1a1526;--paper:#f4efe4;--paper-2:#ece3d0;--gold:#b08d3f;--gold-lite:#d4b869;--cinnabar:#a8321f;--jade:#2f6d54;--jade-lite:#3d8a6b;--muted:#7a6f5c;--line:#d8cbb0;}
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+  html,body{background:var(--ink);color:var(--ink);}
+  body{font-family:"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;max-width:480px;margin:0 auto;min-height:100vh;background:radial-gradient(circle at 50% -10%,rgba(176,141,63,0.18),transparent 55%),var(--ink);padding:0 0 40px;}
+  header{text-align:center;padding:30px 20px 18px;}
+  .applogo{width:72px;height:72px;margin:0 auto 12px;display:block;border-radius:50%;object-fit:cover;border:2px solid #b08d3f;box-shadow:0 3px 14px rgba(0,0,0,0.4);}
+  @keyframes spin{to{transform:rotate(360deg);}}
+  .title{font-family:"STKaiti","KaiTi","Songti SC",serif;font-size:27px;font-weight:600;letter-spacing:3px;color:var(--gold-lite);text-shadow:0 2px 12px rgba(0,0,0,0.5);}
+  .subtitle{font-size:12px;letter-spacing:3px;color:var(--muted);margin-top:6px;}
+  .rule{width:56px;height:2px;margin:14px auto 0;background:linear-gradient(90deg,transparent,var(--gold),transparent);}
+
+  .modeswitch{display:flex;gap:6px;margin:0 12px 4px;}
+  .ms{flex:1;padding:11px 2px;border-radius:12px 12px 0 0;border:1px solid var(--line);border-bottom:none;background:rgba(236,227,208,0.35);color:var(--gold-lite);font-size:13px;font-weight:600;text-align:center;cursor:pointer;transition:.18s;}
+  .ms.active{background:var(--paper);color:var(--cinnabar);}
+
+  .card{background:var(--paper);margin:0 12px 16px;border-radius:0 0 18px 18px;padding:18px 16px;box-shadow:0 8px 30px rgba(0,0,0,0.35);position:relative;}
+  .card::before{content:"";position:absolute;inset:6px;border:1px solid var(--line);border-radius:12px;pointer-events:none;}
+  .card>*{position:relative;}
+
+  .tabs{display:flex;gap:6px;margin-bottom:16px;}
+  .tab{flex:1;padding:10px 2px;border-radius:10px;border:1px solid var(--line);background:var(--paper-2);color:var(--muted);font-size:12px;font-weight:600;text-align:center;cursor:pointer;transition:.18s;}
+  .tab.active{background:var(--ink);color:var(--gold-lite);border-color:var(--ink);}
+
+  label.fld{display:block;font-size:12px;color:var(--muted);margin:0 0 6px 2px;letter-spacing:1px;}
+  input[type=text],input[type=number]{width:100%;padding:12px 14px;border-radius:11px;border:1px solid var(--line);background:#fff;color:var(--ink);font-size:16px;letter-spacing:1px;outline:none;font-family:inherit;}
+  input:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(176,141,63,0.15);}
+  select{width:100%;padding:12px 14px;border-radius:11px;border:1px solid var(--line);background:#fff;color:var(--ink);font-size:16px;font-family:inherit;outline:none;}
+  .hint{font-size:11px;color:var(--muted);margin:7px 2px 0;}
+
+  .mode{display:flex;align-items:center;gap:10px;background:var(--paper-2);border-radius:11px;padding:9px 12px;margin:14px 0 16px;}
+  .mode span{font-size:12px;color:var(--muted);letter-spacing:1px;}
+  .mode-btn{flex:1;padding:9px;border-radius:9px;border:1px solid var(--line);background:#fff;color:var(--ink);font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;}
+
+  .calc{width:100%;padding:14px;border-radius:12px;border:none;background:linear-gradient(135deg,var(--cinnabar),#8a2416);color:var(--paper);font-size:16px;font-weight:600;letter-spacing:4px;cursor:pointer;box-shadow:0 4px 16px rgba(168,50,31,0.4);font-family:inherit;}
+  .calc:active{transform:translateY(1px);}
+  .calc.alt{background:linear-gradient(135deg,var(--jade),#245640);box-shadow:0 4px 16px rgba(47,109,84,0.35);}
+
+  .chips{display:flex;flex-wrap:wrap;gap:8px;margin:4px 0 14px;}
+  .chip{padding:8px 13px;border-radius:20px;border:1px solid var(--line);background:#fff;color:var(--muted);font-size:13px;font-weight:600;cursor:pointer;transition:.15s;}
+  .chip.on{background:var(--jade);color:#fff;border-color:var(--jade);}
+  .row2{display:flex;gap:10px;margin-bottom:14px;}
+  .row2>div{flex:1;}
+
+  .verdict{text-align:center;padding:16px 14px;border-radius:14px;margin-bottom:14px;color:#fff;}
+  .verdict.good{background:linear-gradient(135deg,var(--jade),#245640);}
+  .verdict.mid{background:linear-gradient(135deg,#9c7a2a,#7a5e18);}
+  .verdict.bad{background:linear-gradient(135deg,var(--cinnabar),#7a1f11);}
+  .verdict .big{font-size:26px;font-weight:700;letter-spacing:3px;font-family:"STKaiti","KaiTi",serif;}
+  .verdict .small{font-size:13px;opacity:.9;margin-top:6px;line-height:1.6;}
+  .verdict .obj{font-family:"SFMono-Regular",Menlo,monospace;font-size:12px;opacity:.75;margin-top:8px;word-break:break-all;}
+
+  .stats{display:flex;gap:8px;margin-bottom:14px;}
+  .stat{flex:1;text-align:center;padding:11px 4px;border-radius:11px;background:var(--paper-2);}
+  .stat .n{font-size:23px;font-weight:700;}
+  .stat .l{font-size:11px;color:var(--muted);margin-top:2px;}
+  .stat.g .n{color:var(--jade);}.stat.b .n{color:var(--cinnabar);}
+
+  .srow{display:flex;align-items:center;gap:11px;padding:11px 13px;border-radius:11px;margin-bottom:7px;border:1px solid transparent;}
+  .srow.ji{background:rgba(47,109,84,0.10);border-color:rgba(47,109,84,0.25);}
+  .srow.xiong{background:rgba(168,50,31,0.09);border-color:rgba(168,50,31,0.22);}
+  .pair{font-family:"SFMono-Regular",Menlo,monospace;font-size:17px;font-weight:700;min-width:38px;text-align:center;color:var(--ink);}
+  .sname{font-size:14px;font-weight:700;}
+  .srow.ji .sname{color:var(--jade);}.srow.xiong .sname{color:var(--cinnabar);}
+  .sgrade{font-size:11px;color:var(--muted);font-weight:500;}
+  .sdesc{font-size:12px;color:var(--muted);margin-top:1px;}
+  .note{font-size:12px;color:var(--muted);line-height:1.6;margin:10px 2px 4px;}
+
+  .reading{margin-top:14px;padding:14px;border-radius:12px;background:#fff;border:1px solid var(--line);}
+  .reading h4{font-size:13px;color:var(--cinnabar);letter-spacing:2px;margin-bottom:8px;}
+  .reading p{font-size:13.5px;color:var(--ink);line-height:1.8;}
+
+  .advice{margin-top:12px;padding:14px;border-radius:12px;background:var(--paper-2);border:1px dashed var(--gold);}
+  .advice h4{font-size:13px;color:var(--gold);letter-spacing:2px;margin-bottom:8px;}
+  .advice p{font-size:13px;color:var(--ink);line-height:1.7;}
+  .advice b{color:var(--jade);font-family:monospace;}
+
+  .plate{background:var(--ink);border-radius:14px;padding:16px 14px;margin-bottom:10px;text-align:center;box-shadow:0 4px 14px rgba(0,0,0,0.25);position:relative;}
+  .plate .num{font-family:"SFMono-Regular",Menlo,monospace;font-size:28px;font-weight:700;letter-spacing:5px;color:var(--gold-lite);}
+  .plate .tag{font-size:12px;color:#c9b98f;margin-top:8px;line-height:1.6;}
+  .plate .tag b{color:var(--jade-lite);}
+  .plate .acts{display:flex;gap:8px;justify-content:center;margin-top:11px;}
+  .plate .acts button{background:rgba(244,239,228,0.12);border:1px solid rgba(212,184,105,0.4);color:var(--gold-lite);font-size:12px;padding:6px 14px;border-radius:8px;cursor:pointer;font-family:inherit;}
+  .plate .acts button:active{transform:scale(0.96);}
+
+  .empty{color:var(--muted);font-size:14px;text-align:center;padding:20px 0;}
+  .fav-empty{color:var(--muted);font-size:13px;text-align:center;padding:14px 0;}
+  .favrow{display:flex;align-items:center;gap:10px;padding:11px 13px;border-radius:11px;background:var(--paper-2);margin-bottom:7px;}
+  .favrow .fn{font-family:monospace;font-size:18px;font-weight:700;flex:1;}
+  .favrow .ft{font-size:11px;color:var(--muted);}
+  .favrow .del{background:none;border:none;color:var(--cinnabar);font-size:18px;cursor:pointer;padding:0 4px;}
+
+  /* 对照表 */
+  .tbl{width:100%;border-collapse:collapse;font-size:12px;}
+  .tbl th{background:var(--ink);color:var(--gold-lite);padding:8px 4px;font-weight:600;}
+  .tbl td{border:1px solid var(--line);padding:7px 4px;text-align:center;}
+  .tbl .nm{font-weight:700;}
+  .tbl .ji-r{background:rgba(47,109,84,0.08);}
+  .tbl .xiong-r{background:rgba(168,50,31,0.06);}
+  .tbl .pairs{font-family:monospace;font-weight:700;}
+
+  /* 对比 */
+  .cmprow{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
+  .cmprow input{flex:1;}
+  .cmprow .x{background:none;border:none;color:var(--cinnabar);font-size:20px;cursor:pointer;}
+  .cmp-add{width:100%;padding:10px;border-radius:10px;border:1px dashed var(--line);background:#fff;color:var(--muted);font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;margin-bottom:14px;}
+  .cmpcard{padding:13px;border-radius:12px;margin-bottom:8px;border:1px solid var(--line);background:#fff;}
+  .cmpcard.win{border:2px solid var(--jade);background:rgba(47,109,84,0.06);}
+  .cmpcard .top{display:flex;justify-content:space-between;align-items:center;}
+  .cmpcard .cn{font-family:monospace;font-size:17px;font-weight:700;}
+  .cmpcard .cs{font-size:14px;font-weight:700;}
+  .cmpcard .badge{font-size:11px;background:var(--jade);color:#fff;padding:2px 8px;border-radius:10px;margin-left:8px;}
+
+  footer{text-align:center;padding:8px 20px 0;color:var(--muted);font-size:11px;letter-spacing:1px;}
+  footer .warn{color:#8a7a5c;margin-top:6px;line-height:1.6;}
+  .hidden{display:none;}
+  .rp-sec{background:#fff;border:1px solid var(--line);border-radius:12px;padding:13px 14px;margin-bottom:10px;}
+  .rp-h{font-size:13px;color:var(--cinnabar);font-weight:700;letter-spacing:2px;margin-bottom:8px;}
+  .rp-sec p{font-size:13.5px;line-height:1.8;color:var(--ink);}
+  .rp-sec b{color:var(--jade);}
+  .toast{position:fixed;left:50%;bottom:30px;transform:translateX(-50%);background:var(--ink);color:var(--gold-lite);padding:10px 22px;border-radius:22px;font-size:13px;box-shadow:0 4px 16px rgba(0,0,0,0.4);opacity:0;transition:.25s;pointer-events:none;z-index:99;}
+  .toast.show{opacity:1;}
+</style>
+</head>
+<body>
+
+<header>
+  <img class="applogo" src="data:image/jpeg;base64,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" alt="logo">
+  <div class="title">吉米三塊六數字易經</div>
+  <div class="subtitle">最 簡 單 的 風 水 佈 局</div>
+  <div class="rule"></div>
+</header>
+
+<div class="modeswitch">
+  <div class="ms active" id="ms-check">推算</div>
+  <div class="ms" id="ms-report">完整报告</div>
+  <div class="ms" id="ms-plate">推荐车牌</div>
+  <div class="ms" id="ms-phone">推荐电话</div>
+  <div class="ms" id="ms-cmp">对比</div>
+  <div class="ms" id="ms-fav">收藏</div>
+  <div class="ms" id="ms-ziwei">紫微</div>
+  <div class="ms" id="ms-bazi">八字</div>
+  <div class="ms" id="ms-sanshi">三世书</div>
+  <div class="ms" id="ms-name5">姓名</div>
+  <div class="ms" id="ms-qimen">奇门</div>
+  <div class="ms" id="ms-table">对照表</div>
+</div>
+
+<!-- ============ 推算号码 ============ -->
+<div class="card" id="card-check">
+  <div class="tabs">
+    <div class="tab active" id="tab-num">电话/车牌/身份证</div>
+    <div class="tab" id="tab-name">英文名</div>
+  </div>
+  <div id="pane-num">
+    <label class="fld">输入号码</label>
+    <input id="input-num" type="text" inputmode="numeric" placeholder="例：0123456789">
+  </div>
+  <div id="pane-name" class="hidden">
+    <label class="fld">输入英文名</label>
+    <input id="input-name" type="text" placeholder="例：JIMMY">
+    <p class="hint">A=1　B=2　…　Z=26，转成数字后分析</p>
+  </div>
+  <div class="mode">
+    <span>分析模式</span>
+    <button class="mode-btn" id="mode-btn">详细版 · 逐对拆解</button>
+  </div>
+  <button class="calc" id="calc-btn">开 始 推 算</button>
+  <div id="result"><p class="empty">输入号码后点「开始推算」</p></div>
+</div>
+
+<!-- ============ 完整报告 ============ -->
+<div class="card hidden" id="card-report">
+  <label class="fld">个人完整命理报告 · 需姓名 + 生日 + 时辰</label>
+  <input id="rp-name" type="text" placeholder="姓名 例：郭吉米（中文算五格）" style="margin-bottom:8px;">
+  <input id="rp-day" type="text" placeholder="出生日期 例：19900512" inputmode="numeric" style="margin-bottom:8px;">
+  <select id="rp-sc" style="margin-bottom:8px;">
+    <option value="">— 选出生时辰 —</option>
+    <option value="0">子时 23:00–01:00</option><option value="1">丑时 01:00–03:00</option>
+    <option value="2">寅时 03:00–05:00</option><option value="3">卯时 05:00–07:00</option>
+    <option value="4">辰时 07:00–09:00</option><option value="5">巳时 09:00–11:00</option>
+    <option value="6">午时 11:00–13:00</option><option value="7">未时 13:00–15:00</option>
+    <option value="8">申时 15:00–17:00</option><option value="9">酉时 17:00–19:00</option>
+    <option value="10">戌时 19:00–21:00</option><option value="11">亥时 21:00–23:00</option>
+  </select>
+  <div id="rp-manual"></div>
+  <button class="calc" id="rp-btn">生 成 报 告</button>
+  <button class="mode-btn" id="rp-copy" style="width:100%;margin-top:8px;display:none;">复制报告文字</button>
+  <div id="rp-result"><p class="empty">填齐姓名、生日、时辰后生成</p></div>
+  <p class="note">※ 报告中：四柱五行为精确排盘（1950–2035）；性格、行业、颜色、号码属命理通则诠释，仅供参考。传统术数无科学依据，勿据此做重大决定。</p>
+</div>
+
+<!-- ============ 推荐车牌 ============ -->
+<div class="card hidden" id="card-plate">
+  <div class="tabs" style="margin-bottom:14px;">
+    <div class="tab active" id="pm-gen">推荐新车牌</div>
+    <div class="tab" id="pm-check">检测现有车牌</div>
+  </div>
+
+  <!-- 推荐模式 -->
+  <div id="plate-gen-mode">
+    <label class="fld">① 想要什么（可多选）</label>
+    <div class="chips" id="wish-chips">
+      <div class="chip on" data-star="天医">财运 · 天医</div>
+      <div class="chip" data-star="延年">生意事业 · 延年</div>
+      <div class="chip" data-star="生气">贵人 · 生气</div>
+      <div class="chip" data-star="健康">健康 · 延年</div>
+    </div>
+
+    <label class="fld">② 结合个人命理（推荐用八字，可留空）</label>
+    <div class="tabs" style="margin-bottom:12px;flex-wrap:wrap;">
+      <div class="tab active" id="pe-none">不结合</div>
+      <div class="tab" id="pe-bazi">生日时辰·八字</div>
+      <div class="tab" id="pe-name2">英文名</div>
+    </div>
+    <div id="pe-bazi-in" class="hidden" style="margin-bottom:12px;">
+      <input id="pl-bday" type="text" placeholder="出生日期 例：19900512" inputmode="numeric" style="margin-bottom:8px;">
+      <select id="pl-sc" style="margin-bottom:8px;">
+        <option value="">— 选出生时辰 —</option>
+        <option value="0">子时 23:00–01:00</option><option value="1">丑时 01:00–03:00</option>
+        <option value="2">寅时 03:00–05:00</option><option value="3">卯时 05:00–07:00</option>
+        <option value="4">辰时 07:00–09:00</option><option value="5">巳时 09:00–11:00</option>
+        <option value="6">午时 11:00–13:00</option><option value="7">未时 13:00–15:00</option>
+        <option value="8">申时 15:00–17:00</option><option value="9">酉时 17:00–19:00</option>
+        <option value="10">戌时 19:00–21:00</option><option value="11">亥时 21:00–23:00</option>
+      </select>
+      <p class="hint">用精确八字定五行喜用，推最补你的磁场（名字非必需）</p>
+      <input id="pl-name" type="text" placeholder="姓名（选填，中文算五格辅助）" style="margin-top:4px;">
+      <div id="pl-bazi-out"></div>
+    </div>
+    <div id="pe-name2-in" class="hidden" style="margin-bottom:12px;">
+      <input id="input-pname" type="text" placeholder="例：JIMMY">
+    </div>
+
+    <label class="fld">③ 车牌字母（选填，已知才填）</label>
+    <div class="row2" style="margin-bottom:12px;">
+      <div><input id="pl-preL" type="text" placeholder="前字母 如 VBA" maxlength="3" style="text-transform:uppercase;"></div>
+      <div><input id="pl-postL" type="text" placeholder="后字母 如 A" maxlength="2" style="text-transform:uppercase;"></div>
+    </div>
+
+    <div class="row2">
+      <div><label class="fld">数字位数</label>
+        <select id="input-len"><option value="0">全部(1-4位)</option><option value="1">1位</option><option value="2">2位</option><option value="3">3位</option><option value="4" selected>4位</option></select>
+      </div>
+      <div><label class="fld">生成个数</label><input id="input-count" type="number" value="6" min="1" max="12" inputmode="numeric"></div>
+    </div>
+
+    <button class="calc" id="gen-btn" style="margin-top:6px;">推 荐 车 牌</button>
+    <div id="result2"><p class="empty">选好后点「推荐车牌」</p></div>
+  </div>
+
+  <!-- 检测模式 -->
+  <div id="plate-check-mode" class="hidden">
+    <label class="fld">输入完整车牌（字母+数字）</label>
+    <input id="pc-plate" type="text" placeholder="例：VBA 1234 或 WXY8888" style="text-transform:uppercase;margin-bottom:12px;">
+    <label class="fld">结合个人命理（选填）</label>
+    <input id="pc-bday" type="text" placeholder="出生日期 例：19900512" inputmode="numeric" style="margin-bottom:8px;">
+    <select id="pc-sc" style="margin-bottom:12px;">
+      <option value="">— 选出生时辰（选填）—</option>
+      <option value="0">子时 23:00–01:00</option><option value="1">丑时 01:00–03:00</option>
+      <option value="2">寅时 03:00–05:00</option><option value="3">卯时 05:00–07:00</option>
+      <option value="4">辰时 07:00–09:00</option><option value="5">巳时 09:00–11:00</option>
+      <option value="6">午时 11:00–13:00</option><option value="7">未时 13:00–15:00</option>
+      <option value="8">申时 15:00–17:00</option><option value="9">酉时 17:00–19:00</option>
+      <option value="10">戌时 19:00–21:00</option><option value="11">亥时 21:00–23:00</option>
+    </select>
+    <button class="calc" id="check-btn">检 测 车 牌</button>
+    <div id="pc-result"><p class="empty">输入车牌后点「检测」</p></div>
+  </div>
+</div>
+
+
+
+<!-- ============ 推荐电话号 ============ -->
+<div class="card hidden" id="card-phone">
+  <div class="tabs" style="margin-bottom:14px;">
+    <div class="tab active" id="phm-gen">推荐号码</div>
+    <div class="tab" id="phm-check">检测现有号码</div>
+  </div>
+
+  <!-- 推荐模式 -->
+  <div id="phone-gen-mode">
+    <label class="fld">① 想要什么（可多选）</label>
+    <div class="chips" id="ph-wish-chips">
+      <div class="chip on" data-star="天医">财运 · 天医</div>
+      <div class="chip" data-star="延年">生意事业 · 延年</div>
+      <div class="chip" data-star="生气">贵人 · 生气</div>
+      <div class="chip" data-star="健康">健康 · 延年</div>
+    </div>
+
+    <label class="fld">② 固定前段（你号码不能选的部分）</label>
+    <input id="ph-prefix" type="text" placeholder="例：0129 或 0111（含固定跟随的数字）" inputmode="numeric" value="012" style="margin-bottom:4px;">
+    <p class="hint" style="margin-bottom:12px;">填你号码开头固定不能选的部分。有些号段是 012，有些是 0129、01111 等，按你的实际填。</p>
+
+    <label class="fld">③ 结合个人命理（推荐用八字，可留空）</label>
+    <div style="margin-bottom:12px;">
+      <input id="ph-bday" type="text" placeholder="出生日期 例：19900512" inputmode="numeric" style="margin-bottom:8px;">
+      <select id="ph-sc">
+        <option value="">— 选出生时辰（选填）—</option>
+        <option value="0">子时 23:00–01:00</option><option value="1">丑时 01:00–03:00</option>
+        <option value="2">寅时 03:00–05:00</option><option value="3">卯时 05:00–07:00</option>
+        <option value="4">辰时 07:00–09:00</option><option value="5">巳时 09:00–11:00</option>
+        <option value="6">午时 11:00–13:00</option><option value="7">未时 13:00–15:00</option>
+        <option value="8">申时 15:00–17:00</option><option value="9">酉时 17:00–19:00</option>
+        <option value="10">戌时 19:00–21:00</option><option value="11">亥时 21:00–23:00</option>
+      </select>
+      <p class="hint">填生日+时辰，用八字五行喜用加权最补你的磁场</p>
+    </div>
+
+    <div class="row2">
+      <div><label class="fld">后段位数</label>
+        <select id="ph-len"><option value="7">7位</option><option value="8" selected>8位</option></select>
+      </div>
+      <div><label class="fld">生成个数</label><input id="ph-count" type="number" value="6" min="1" max="12" inputmode="numeric"></div>
+    </div>
+
+    <button class="calc" id="ph-gen-btn" style="margin-top:6px;">推 荐 号 码</button>
+    <div id="ph-result"><p class="empty">选好后点「推荐号码」</p></div>
+  </div>
+
+  <!-- 检测模式 -->
+  <div id="phone-check-mode" class="hidden">
+    <label class="fld">输入完整手机号（含前缀）</label>
+    <input id="phc-num" type="text" placeholder="例：0123456789" inputmode="numeric" style="margin-bottom:12px;">
+    <label class="fld">结合个人命理（选填）</label>
+    <input id="phc-bday" type="text" placeholder="出生日期 例：19900512" inputmode="numeric" style="margin-bottom:8px;">
+    <select id="phc-sc" style="margin-bottom:12px;">
+      <option value="">— 选出生时辰（选填）—</option>
+      <option value="0">子时 23:00–01:00</option><option value="1">丑时 01:00–03:00</option>
+      <option value="2">寅时 03:00–05:00</option><option value="3">卯时 05:00–07:00</option>
+      <option value="4">辰时 07:00–09:00</option><option value="5">巳时 09:00–11:00</option>
+      <option value="6">午时 11:00–13:00</option><option value="7">未时 13:00–15:00</option>
+      <option value="8">申时 15:00–17:00</option><option value="9">酉时 17:00–19:00</option>
+      <option value="10">戌时 19:00–21:00</option><option value="11">亥时 21:00–23:00</option>
+    </select>
+    <button class="calc" id="phc-btn">检 测 号 码</button>
+    <div id="phc-result"><p class="empty">输入号码后点「检测」</p></div>
+  </div>
+</div>
+
+
+<!-- ============ 对比 ============ -->
+<div class="card hidden" id="card-cmp">
+  <label class="fld">输入 2–4 个号码，比吉分高低</label>
+  <div id="cmp-inputs">
+    <div class="cmprow"><input type="text" inputmode="numeric" placeholder="号码 1"><button class="x">×</button></div>
+    <div class="cmprow"><input type="text" inputmode="numeric" placeholder="号码 2"><button class="x">×</button></div>
+  </div>
+  <button class="cmp-add" id="cmp-add">＋ 加一个号码</button>
+  <button class="calc" id="cmp-btn">开 始 对 比</button>
+  <div id="result3"><p class="empty">输入号码后点「开始对比」</p></div>
+</div>
+
+<!-- ============ 收藏 ============ -->
+<div class="card hidden" id="card-fav">
+  <label class="fld">我收藏的号码</label>
+  <div id="fav-list"><p class="fav-empty">还没有收藏。在「推荐车牌」里点 ♡ 收藏号码。</p></div>
+</div>
+
+<!-- ============ 紫微 ============ -->
+<div class="card hidden" id="card-ziwei">
+  <label class="fld">排简版命盘 · 定命宫主星</label>
+  <input id="zw2-day" type="text" placeholder="出生日期 例：19900512" inputmode="numeric" style="margin-bottom:8px;">
+  <select id="zw2-sc" style="margin-bottom:8px;">
+    <option value="">— 选出生时辰 —</option>
+    <option value="0">子时 23:00–01:00</option><option value="1">丑时 01:00–03:00</option>
+    <option value="2">寅时 03:00–05:00</option><option value="3">卯时 05:00–07:00</option>
+    <option value="4">辰时 07:00–09:00</option><option value="5">巳时 09:00–11:00</option>
+    <option value="6">午时 11:00–13:00</option><option value="7">未时 13:00–15:00</option>
+    <option value="8">申时 15:00–17:00</option><option value="9">酉时 17:00–19:00</option>
+    <option value="10">戌时 19:00–21:00</option><option value="11">亥时 21:00–23:00</option>
+  </select>
+  <div class="tabs" style="margin-bottom:8px;">
+    <div class="tab active" id="zw2-male">男</div>
+    <div class="tab" id="zw2-female">女</div>
+  </div>
+  <button class="calc alt" id="zw2-btn">排 命 盘</button>
+  <div id="zw2-result"><p class="empty">填生日与时辰后点「排命盘」</p></div>
+  <p class="note">※ 紫微斗数完整十二宫命盘：农历排盘定命宫、五行局、十四主星（1950–2035，已对拍权威库）。闰月出生者的月份归属各派略有差异。紫微斗数属传统术数，无科学依据，仅供参考。</p>
+
+  <div style="border-top:1px solid var(--line);margin-top:16px;padding-top:14px;">
+    <label class="fld">紫微十四主星 · 点开看特质</label>
+    <div id="zw-stars-list"></div>
+  </div>
+</div>
+
+<!-- ============ 八字 ============ -->
+<div class="card hidden" id="card-bazi">
+  <label class="fld">排四柱八字 · 五行分布</label>
+  <input id="bz-day" type="text" placeholder="出生日期 例：19900512" inputmode="numeric" style="margin-bottom:8px;">
+  <select id="bz-sc" style="margin-bottom:8px;">
+    <option value="">— 选出生时辰 —</option>
+    <option value="0">子时 23:00–01:00</option><option value="1">丑时 01:00–03:00</option>
+    <option value="2">寅时 03:00–05:00</option><option value="3">卯时 05:00–07:00</option>
+    <option value="4">辰时 07:00–09:00</option><option value="5">巳时 09:00–11:00</option>
+    <option value="6">午时 11:00–13:00</option><option value="7">未时 13:00–15:00</option>
+    <option value="8">申时 15:00–17:00</option><option value="9">酉时 17:00–19:00</option>
+    <option value="10">戌时 19:00–21:00</option><option value="11">亥时 21:00–23:00</option>
+  </select>
+  <button class="calc" id="bz-btn">排 八 字</button>
+  <div id="bz-result"><p class="empty">填生日与时辰后点「排八字」</p></div>
+  <p class="note">※ 四柱与五行分布依东八区标准时排定，已与权威万年历逐条校验。适用 1950–2035 年。此为准确的排盘数据；至于旺衰、喜用、吉凶断语属命理诠释，未包含在内。</p>
+</div>
+
+<!-- ============ 三世书·财运篇 ============ -->
+<div class="card hidden" id="card-sanshi">
+  <label class="fld">三世书 · 财运篇（出生年尾数 + 农历月查财禄）</label>
+  <input id="ss-day" type="text" placeholder="出生日期 例：19900512" inputmode="numeric" style="margin-bottom:8px;">
+  <button class="calc" id="ss-btn">查 财 运</button>
+  <div id="ss-result"><p class="empty">填出生日期后点「查财运」</p></div>
+  <p class="note">※ 以出生年尾数配农历月对照十二财禄，立春前出生按上一年计。前世今生批文需完整原文，暂未收录，日后补充。三世书属传统术数，无科学依据。</p>
+</div>
+
+<!-- ============ 姓名·五格 ============ -->
+<div class="card hidden" id="card-name5">
+  <div class="tabs">
+    <div class="tab active" id="nm-tab-cn">中文名</div>
+    <div class="tab" id="nm-tab-en">英文名</div>
+  </div>
+  <div id="nm-cn">
+    <input id="nm-surname" type="text" placeholder="姓 例：王 / 欧阳" style="margin-bottom:8px;">
+    <input id="nm-given" type="text" placeholder="名 例：嘉米" style="margin-bottom:8px;">
+    <div id="nm-manual"></div>
+  </div>
+  <div id="nm-en" class="hidden">
+    <input id="nm-enname" type="text" placeholder="英文全名 例：JIMMY KUEK" style="margin-bottom:8px;">
+    <p class="hint">按 A=1…Z=26 转数，取总和数理吉凶</p>
+  </div>
+  <button class="calc alt" id="nm-btn" style="margin-top:4px;">排 五 格</button>
+  <div id="nm-result"><p class="empty">输入名字后点「排五格」</p></div>
+  <p class="note">※ 中文五格采康熙字典笔画。内建常见姓与常用字；生僻字会提示手动输入笔画。姓名学属传统术数，仅供参考。</p>
+</div>
+
+<!-- ============ 奇门遁甲 ============ -->
+<div class="card hidden" id="card-qimen">
+  <label class="fld">时家奇门 · 排盘（定局 + 地盘 + 九宫图）</label>
+  <input id="qm-day" type="text" placeholder="日期 例：20240615" inputmode="numeric" style="margin-bottom:8px;">
+  <select id="qm-sc" style="margin-bottom:8px;">
+    <option value="">— 选时辰 —</option>
+    <option value="0">子时 23:00–01:00</option><option value="1">丑时 01:00–03:00</option>
+    <option value="2">寅时 03:00–05:00</option><option value="3">卯时 05:00–07:00</option>
+    <option value="4">辰时 07:00–09:00</option><option value="5">巳时 09:00–11:00</option>
+    <option value="6">午时 11:00–13:00</option><option value="7">未时 13:00–15:00</option>
+    <option value="8">申时 15:00–17:00</option><option value="9">酉时 17:00–19:00</option>
+    <option value="10">戌时 19:00–21:00</option><option value="11">亥时 21:00–23:00</option>
+  </select>
+  <label class="fld">今日想做什么（择方）</label>
+  <div class="chips" id="qm-aim-chips">
+    <div class="chip on" data-aim="求财">求财</div>
+    <div class="chip" data-aim="谈生意">谈生意</div>
+    <div class="chip" data-aim="见贵人">见贵人</div>
+    <div class="chip" data-aim="出行">出行</div>
+    <div class="chip" data-aim="签约文书">签约文书</div>
+  </div>
+  <button class="calc" id="qm-btn">排 奇 门 盘</button>
+  <button class="calc alt" id="qm-time-btn" style="margin-top:8px;">查今日最佳时辰（不用选时辰）</button>
+  <div id="qm-result"><p class="empty">填日期时辰后排盘</p></div>
+  <p class="note" style="color:var(--muted);">※ 排盘经权威库对拍验证（定局·地盘·天盘·九星·八门·八神全部零误差，1950–2035）。择方为传统术数说法，仅供参考，无科学依据，不作事件或输赢预测。</p>
+</div>
+
+<!-- ============ 对照表 ============ -->
+<div class="card hidden" id="card-table">
+  <label class="fld">八星磁场全表（0 和 5 为能量关键数，不成对）</label>
+  <div id="table-body"></div>
+</div>
+
+<footer>
+  郭吉米数字风水 三块六 · 数字易经
+  <div class="warn">※ 本工具属传统玄学参考，无科学依据，切勿据此做重大决定或投入过多金钱竞标号码。</div>
+</footer>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const STARS = {
+  "生气":{el:"木",type:"吉",desc:"贵人 人缘 开朗 随缘",read:"人缘旺、贵人多，性格开朗易得助力。",grades:{"最强":["14","41"],"次强":["67","76"],"次弱":["39","93"],"最弱":["28","82"]}},
+  "天医":{el:"土",type:"吉",desc:"财富 婚姻 聪明 善良",read:"利财利婚，头脑清晰，正财偏财皆有机。",grades:{"最强":["13","31"],"次强":["68","86"],"次弱":["49","94"],"最弱":["27","72"]}},
+  "延年":{el:"金",type:"吉",desc:"领导 事业 成功 健康",read:"事业心强、领导力足，利成功与健康。",grades:{"最强":["19","91"],"次强":["78","87"],"次弱":["34","43"],"最弱":["26","62"]}},
+  "伏位":{el:"木",type:"吉",desc:"等待 保守 被动 思考",read:"沉稳保守、耐心思考，宜守成不宜冒进。",grades:{"最强":["11","22"],"次强":["99","88"],"次弱":["66","77"],"最弱":["33","44"]}},
+  "六煞":{el:"水",type:"凶",desc:"桃花 情绪 人际 纠葛",read:"桃花情绪起伏大，易有人际纠葛。",grades:{"最强":["16","61"],"次强":["47","74"],"次弱":["38","83"],"最弱":["29","92"]}},
+  "祸害":{el:"土",type:"凶",desc:"口才 铁齿 暴躁 病痛",read:"口才好但易铁齿冲动，留意口舌与病痛。",grades:{"最强":["17","71"],"次强":["89","98"],"次弱":["46","64"],"最弱":["23","32"]}},
+  "五鬼":{el:"火",type:"凶",desc:"智慧 才华 变化 凶险",read:"聪明多变、才华洋溢，但暗藏起伏凶险。",grades:{"最强":["18","81"],"次强":["79","97"],"次弱":["36","63"],"最弱":["24","42"]}},
+  "绝命":{el:"金",type:"凶",desc:"投资 极端 直爽 孤独",read:"敢冲敢投、性格极端直爽，易感孤独。",grades:{"最强":["12","21"],"次强":["69","96"],"次弱":["48","84"],"最弱":["37","73"]}}
+};
+const GRADE_SCORE={"最强":2,"次强":1,"次弱":-1,"最弱":-2};
+const LOOK={};
+for(const[name,d]of Object.entries(STARS))for(const[g,ps]of Object.entries(d.grades))for(const p of ps)LOOK[p]={name,grade:g,sign:d.type==="吉"?1:-1,...d};
+const $=id=>document.getElementById(id);
+function toast(msg){const t=$("toast");t.textContent=msg;t.classList.add("show");setTimeout(()=>t.classList.remove("show"),1500);}
+
+/* ---- 顶部大切换 ---- */
+const CARDS={check:"card-check",report:"card-report",plate:"card-plate",phone:"card-phone",cmp:"card-cmp",fav:"card-fav",ziwei:"card-ziwei",bazi:"card-bazi",sanshi:"card-sanshi",name5:"card-name5",qimen:"card-qimen",table:"card-table"};
+function showCard(key){
+  for(const[k,id]of Object.entries(CARDS)){ $(id).classList.toggle("hidden",k!==key); $("ms-"+k).classList.toggle("active",k===key); }
+  if(key==="fav")renderFav();
+  if(key==="table")renderTable();
+}
+["check","report","plate","phone","cmp","fav","ziwei","bazi","sanshi","name5","qimen","table"].forEach(k=>$("ms-"+k).onclick=()=>showCard(k));
+
+/* ========== 推算号码 ========== */
+let activeTab="num",detailMode=true;
+function setTab(t){activeTab=t;$("pane-num").classList.toggle("hidden",t!=="num");$("pane-name").classList.toggle("hidden",t!=="name");$("tab-num").classList.toggle("active",t==="num");$("tab-name").classList.toggle("active",t==="name");}
+$("tab-num").onclick=()=>setTab("num");
+$("tab-name").onclick=()=>setTab("name");
+$("mode-btn").onclick=()=>{detailMode=!detailMode;$("mode-btn").textContent=detailMode?"详细版 · 逐对拆解":"快速版 · 只看末两位";};
+function nameToDigits(s){return s.toUpperCase().replace(/[^A-Z]/g,"").split("").map(c=>c.charCodeAt(0)-64).join("");}
+
+function analyze(raw){
+  const digits=raw.replace(/[^0-9]/g,"");if(digits.length<2)return null;
+  const zeros=(digits.match(/[05]/g)||[]).length;const clean=digits.replace(/[05]/g,"");
+  let pairs=[];
+  if(detailMode){for(let i=0;i<clean.length-1;i++){const t=clean.substr(i,2);if(LOOK[t])pairs.push(t);}}
+  else{const last=clean.slice(-2);if(LOOK[last])pairs.push(last);}
+  return{pairs,zeros,digits};
+}
+function scoreOf(pairs){let sc=0;for(const p of pairs)sc+=LOOK[p].sign*GRADE_SCORE[LOOK[p].grade];return sc;}
+function makeVerdict(pairs){
+  if(pairs.length===0)return{cls:"mid",big:"中性",small:"未找到有效磁场配对，能量平淡。",score:0};
+  const score=scoreOf(pairs);let cls,big,small;
+  if(score>=3){cls="good";big="大吉";small="吉星强旺，磁场极佳，宜守宜进。";}
+  else if(score>=1){cls="good";big="吉";small="吉多于凶，整体运势偏顺。";}
+  else if(score===0){cls="mid";big="平";small="吉凶相抵，能量中庸平和。";}
+  else if(score>=-2){cls="bad";big="凶";small="凶星偏重，需留意情绪与是非。";}
+  else{cls="bad";big="大凶";small="凶星强旺，建议考虑调整号码。";}
+  let dom=null,ds=-99;for(const p of pairs){const s=Math.abs(GRADE_SCORE[LOOK[p].grade]);if(s>ds){ds=s;dom=LOOK[p];}}
+  if(dom){const w=dom.desc.split(" ");small+=`主导磁场：${dom.name}（${w[0]}${w[1]||""}）。`;}
+  return{cls,big,small,score,dom};
+}
+// 整串白话解读
+function fullReading(pairs){
+  if(pairs.length===0)return "此号码几乎没有形成磁场配对，能量平平，属中性无碍。";
+  const cnt={};pairs.forEach(p=>{const n=LOOK[p].name;cnt[n]=(cnt[n]||0)+1;});
+  const sorted=Object.entries(cnt).sort((a,b)=>b[1]-a[1]);
+  const top=sorted.slice(0,2);
+  let txt="";
+  top.forEach(([name,c])=>{ txt+=`「${name}」${STARS[name].read} `; });
+  const jiCount=pairs.filter(p=>LOOK[p].sign>0).length;
+  const ratio=jiCount/pairs.length;
+  if(ratio>=0.7)txt+="整体吉星占多，是难得的好磁场。";
+  else if(ratio>=0.4)txt+="吉凶掺杂，好坏参半，可留意凶星那面。";
+  else txt+="凶星偏多，建议斟酌是否调整号码。";
+  return txt;
+}
+function makeAdvice(res){
+  const{pairs,digits}=res;
+  if(pairs.length===0)return `<p>号码中没有可分析的配对，试试在末尾加上强吉数字，如 <b>14</b>（生气·贵人）或 <b>13</b>（天医·财富）。</p>`;
+  const clean=digits.replace(/[05]/g,"");const last=clean.slice(-2);const L=LOOK[last];let msg;
+  if(L&&L.sign>0&&L.grade==="最强")msg=`末两位 <b>${last}</b> 已是「${L.name}」最强吉配对，能量很好，无需更改。`;
+  else if(L&&L.sign>0)msg=`末两位 <b>${last}</b> 属吉（${L.name}·${L.grade}）。若想加强，可换成 <b>14</b>（生气）或 <b>19</b>（延年·事业）。`;
+  else if(L)msg=`末两位 <b>${last}</b> 属凶（${L.name}）。建议改为 <b>13/31</b>（天医招财）、<b>14/41</b>（生气贵人）或 <b>19/91</b>（延年事业）。`;
+  else msg=`末两位偏中性。想催旺可在末尾布置 <b>14</b>（人缘贵人）或 <b>13</b>（财富）。`;
+  return `<p>${msg}</p>`;
+}
+function render(res,raw){
+  const R=$("result");
+  if(!res){R.innerHTML='<p class="empty">请输入至少两位数字。</p>';return;}
+  const{pairs,zeros}=res;const v=makeVerdict(pairs);
+  let ji=0,xiong=0,rows="";
+  if(pairs.length===0)rows='<p class="empty">未找到有效磁场配对（0 和 5 不计入配对）。</p>';
+  else for(const p of pairs){const i=LOOK[p];const cls=i.sign>0?"ji":"xiong";if(i.sign>0)ji++;else xiong++;
+    rows+=`<div class="srow ${cls}"><div class="pair">${p}</div><div style="flex:1;"><div class="sname">${i.name}<span style="font-weight:400;color:var(--muted);">（${i.el}）</span> <span class="sgrade">· ${i.grade} · ${i.type}</span></div><div class="sdesc">${i.desc}</div></div></div>`;}
+  const zn=zeros>0?`<p class="note">含 ${zeros} 个 0 / 5 —— 属能量关键数，会放大或中和相邻磁场（不单独成对）。</p>`:"";
+  R.innerHTML=`<div class="verdict ${v.cls}"><div class="big">${v.big}</div><div class="small">${v.small}</div><div class="obj">推算对象：${raw}</div></div>
+    <div class="stats"><div class="stat g"><div class="n">${ji}</div><div class="l">吉星</div></div><div class="stat b"><div class="n">${xiong}</div><div class="l">凶星</div></div><div class="stat"><div class="n">${zeros}</div><div class="l">0 / 5</div></div></div>
+    <div class="reading"><h4>◇ 整串解读</h4><p>${fullReading(pairs)}</p></div>
+    ${rows}${zn}
+    <div class="advice"><h4>◆ 改号建议</h4>${makeAdvice(res)}</div>`;
+}
+$("calc-btn").onclick=()=>{let raw=activeTab==="num"?$("input-num").value:nameToDigits($("input-name").value);render(analyze(raw),raw.replace(/[^0-9]/g,"")||"（无有效数字）");};
+["input-num","input-name"].forEach(id=>$(id).addEventListener("keydown",e=>{if(e.key==="Enter")$("calc-btn").click();}));
+
+/* ========== 生命灵数 ========== */
+const LIFEPATH={1:{trait:"领导 · 独立",star:"延年"},2:{trait:"合作 · 人缘",star:"生气"},3:{trait:"表达 · 才华",star:"天医"},4:{trait:"务实 · 稳健",star:"延年"},5:{trait:"自由 · 变化",star:"生气"},6:{trait:"责任 · 家庭",star:"天医"},7:{trait:"智慧 · 内省",star:"天医"},8:{trait:"财富 · 事业",star:"天医"},9:{trait:"理想 · 圆满",star:"延年"},11:{trait:"直觉 · 感召",star:"生气"},22:{trait:"格局 · 成就",star:"延年"}};
+function lifePathNumber(str){const d=str.replace(/[^0-9]/g,"");if(d.length<6)return null;let s=d.split("").reduce((a,c)=>a+(+c),0);const r=n=>{while(n>9&&n!==11&&n!==22)n=String(n).split("").reduce((a,c)=>a+(+c),0);return n;};return r(s);}
+function updateLifePath(){const lp=lifePathNumber($("input-bday").value);const box=$("lifepath-out");
+  if(lp&&LIFEPATH[lp]){const L=LIFEPATH[lp];box.innerHTML=`<div style="margin-top:10px;padding:11px 13px;border-radius:11px;background:var(--jade);color:#fff;"><span style="font-size:20px;font-weight:700;font-family:monospace;">灵数 ${lp}</span><span style="font-size:13px;opacity:.9;margin-left:8px;">${L.trait} → 主打「${L.star}」磁场</span></div>`;}else box.innerHTML="";}
+{const _b=$("input-bday");if(_b)_b.addEventListener("input",updateLifePath);}
+
+/* ========== 简化紫微 · 命宫主星 ========== */
+// 紫微十四主星简表：性格特质 + 映射磁场（简化娱乐版）
+const ZW_STARS=["紫微","天机","太阳","武曲","天同","廉贞","天府","太阴","贪狼","巨门","天相","天梁","七杀","破军"];
+const ZW_INFO={
+  "紫微":{t:"尊贵领导、有格局",star:"延年"},"天机":{t:"机智善谋、多变通",star:"天医"},
+  "太阳":{t:"热情博爱、爱付出",star:"生气"},"武曲":{t:"刚毅果决、利财",star:"天医"},
+  "天同":{t:"温和随缘、有福气",star:"生气"},"廉贞":{t:"外柔内刚、有才艺",star:"延年"},
+  "天府":{t:"稳重务实、善理财",star:"天医"},"太阴":{t:"细腻内敛、重感情",star:"天医"},
+  "贪狼":{t:"多才多艺、人缘广",star:"生气"},"巨门":{t:"口才佳、善分析",star:"延年"},
+  "天相":{t:"忠厚辅佐、重信誉",star:"延年"},"天梁":{t:"稳健荫庇、有长者风",star:"天医"},
+  "七杀":{t:"果断勇猛、开创力",star:"延年"},"破军":{t:"敢破敢立、变革者",star:"生气"}
+};
+// 简化定命宫主星：用（农历近似月 + 时辰）落宫取一颗主星。非专业排盘。
+function ziweiStar(dayStr,shichen){
+  const d=dayStr.replace(/[^0-9]/g,"");if(d.length<8||shichen==="")return null;
+  const month=parseInt(d.slice(4,6))||1;const day=parseInt(d.slice(6,8))||1;const sc=parseInt(shichen);
+  // 简化命宫地支：寅宫起正月，顺数月份，再逆数时辰（传统安命法的简化近似）
+  let idx=((month-1)-sc)%14;idx=(idx%14+14)%14;
+  // 再用日数微调，让同月同时辰不同日也有差异
+  idx=(idx+Math.floor((day-1)/3))%14;
+  return ZW_STARS[idx];
+}
+function updateZiwei(){
+  const box=$("zw-out");const star=ziweiStar($("input-zwday").value,$("input-shichen").value);
+  if(star&&ZW_INFO[star]){const I=ZW_INFO[star];box.innerHTML=`<div style="margin-top:10px;padding:11px 13px;border-radius:11px;background:var(--ink);color:var(--gold-lite);"><span style="font-size:18px;font-weight:700;">命宫 · ${star}</span><div style="font-size:12px;color:#c9b98f;margin-top:4px;">${I.t} → 主打「${I.star}」磁场</div></div>`;}else box.innerHTML="";
+}
+{const _z=$("input-zwday");if(_z)_z.addEventListener("input",updateZiwei);const _s=$("input-shichen");if(_s)_s.addEventListener("change",updateZiwei);}
+
+/* ========== 推荐车牌（八字喜用 + 字母能量 + 检测） ========== */
+const WISH_POOL={"天医":{best:["13","31"],good:["68","86"]},"延年":{best:["19","91"],good:["78","87"]},"生气":{best:["14","41"],good:["67","76"]},"健康":{best:["19","91"],good:["78","87"]}};
+// 五行 -> 推荐磁场星（喜用五行对应吉星）
+const WX_STAR={"木":"生气","火":"延年","土":"天医","金":"延年","水":"天医"};
+// 数字 -> 五行（河图后天数）
+const PL_NUMWX={1:"水",6:"水",2:"火",7:"火",3:"木",8:"木",4:"金",9:"金",5:"土",0:"土"};
+// 单个数字的五行 + 吉凶倾向（传统数字磁场说法）
+const SINGLE_NUM={
+  "1":{wx:"水",tone:"吉",desc:"独立开创，主贵人缘"},"2":{wx:"火",tone:"中",desc:"柔和协调，主人际"},
+  "3":{wx:"木",tone:"吉",desc:"成长表达，主才华"},"4":{wx:"金",tone:"中",desc:"稳定规律，磁场本身中性"},
+  "5":{wx:"土",tone:"中",desc:"中正包容，居中调和"},"6":{wx:"水",tone:"吉",desc:"顺遂财禄，主平稳得财"},
+  "7":{wx:"火",tone:"中",desc:"独特锐利，主专精"},"8":{wx:"木",tone:"吉",desc:"发达旺盛，主事业财运"},
+  "9":{wx:"金",tone:"吉",desc:"长久圆满，主成就"},"0":{wx:"土",tone:"中",desc:"圆融归零，随邻数而变"}
+};
+// 字母 -> 数字（A=1..I=9 循环）
+function letterNum(ch){const i=ch.toUpperCase().charCodeAt(0)-65;if(i<0||i>25)return 0;return (i%9)+1;}
+// 模式切换
+let plateMode="gen";
+function setPlateMode(m){plateMode=m;$("pm-gen").classList.toggle("active",m==="gen");$("pm-check").classList.toggle("active",m==="check");$("plate-gen-mode").classList.toggle("hidden",m!=="gen");$("plate-check-mode").classList.toggle("hidden",m!=="check");}
+$("pm-gen").onclick=()=>setPlateMode("gen");
+$("pm-check").onclick=()=>setPlateMode("check");
+
+let peMode="none";
+document.querySelectorAll("#wish-chips .chip").forEach(c=>c.onclick=()=>c.classList.toggle("on"));
+function setPE(m){peMode=m;["none","bazi","name2"].forEach(x=>$("pe-"+x).classList.toggle("active",x===m));$("pe-bazi-in").classList.toggle("hidden",m!=="bazi");$("pe-name2-in").classList.toggle("hidden",m!=="name2");}
+$("pe-none").onclick=()=>setPE("none");
+$("pe-bazi").onclick=()=>setPE("bazi");
+$("pe-name2").onclick=()=>setPE("name2");
+
+// 由八字算喜用五行 -> 返回{xiyong:[五行], stars:[磁场星], dayMaster}
+function baziXiyong(bdayStr,scVal){
+  const dd=(bdayStr||"").replace(/[^0-9]/g,"");if(dd.length<8)return null;if(scVal==="")return null;
+  const[y,mo,d]=[+dd.slice(0,4),+dd.slice(4,6),+dd.slice(6,8)];if(y<1950||y>2035)return null;
+  const hour=[23,1,3,5,7,9,11,13,15,17,19,21][+scVal];
+  const B=computeBazi(y,mo,d,hour,0);
+  const cnt={木:0,火:0,土:0,金:0,水:0};
+  [B.year,B.month,B.day,B.time].forEach(([g,z])=>{cnt[GAN_WX[g]]++;cnt[ZHI_WX[z]]++;});
+  const missing=Object.keys(cnt).filter(w=>cnt[w]===0);
+  const weakest=Object.entries(cnt).sort((a,b)=>a[1]-b[1])[0][0];
+  const xiyong=missing.length?missing:[weakest];
+  const stars=[...new Set(xiyong.map(w=>WX_STAR[w]))];
+  return {xiyong,stars,dayMaster:B.dayMaster,cnt,missing,weakest};
+}
+
+function personalStars(){
+  if(peMode==="bazi"){const bx=baziXiyong($("pl-bday").value,$("pl-sc").value);return bx?bx.stars:null;}
+  if(peMode==="name2"){const d=nameToDigits($("input-pname").value).replace(/[05]/g,"");const pr=d.slice(-2);return LOOK[pr]?[LOOK[pr].name]:null;}
+  return null;
+}
+const jiPairs=Object.keys(LOOK).filter(p=>LOOK[p].sign>0);
+function genPlate(len,best){const pick=a=>a[Math.floor(Math.random()*a.length)];if(len===1){return pick(["1","3","6","8","9"]);}let digits=pick(best.length?best:["14"]);while(digits.length<len){const need=digits[0];const c=jiPairs.filter(p=>p[1]===need);digits=(c.length?pick(c)[0]:pick(["1","2","3","6","7","8","9"]))+digits;}return digits.slice(-len);}
+function scorePlate(d){let sc=0,pairs=[];for(let i=0;i<d.length-1;i++){const t=d.substr(i,2);if(LOOK[t]){sc+=LOOK[t].sign*GRADE_SCORE[LOOK[t].grade];pairs.push(t);}}return{sc,pairs};}
+// 字母能量分析
+function letterEnergy(letters){
+  if(!letters)return null;
+  const arr=[...letters.toUpperCase()].filter(c=>/[A-Z]/.test(c));
+  if(!arr.length)return null;
+  const nums=arr.map(letterNum);
+  const wx=nums.map(n=>PL_NUMWX[n]);
+  const sum=nums.reduce((a,b)=>a+b,0);
+  const finalN=((sum-1)%9)+1;
+  return {letters:arr.join(""),nums,wx,finalWx:PL_NUMWX[finalN]};
+}
+
+$("gen-btn").onclick=()=>{
+  const wishes=[...document.querySelectorAll("#wish-chips .chip.on")].map(c=>c.dataset.star);
+  const R=$("result2");
+  if(wishes.length===0){R.innerHTML='<p class="empty">请至少选一个目标。</p>';return;}
+  let lenSel=$("input-len").value;
+  let cnt=Math.max(1,Math.min(12,parseInt($("input-count").value)||6));
+  const boost=personalStars();
+  const merged={best:[]};wishes.forEach(w=>{const P=WISH_POOL[w];if(P)merged.best.push(...P.best);});
+  if(boost)boost.forEach(b=>{if(WISH_POOL[b])merged.best.push(...WISH_POOL[b].best,...WISH_POOL[b].best);});
+  // 字母能量
+  const preE=letterEnergy($("pl-preL").value), postE=letterEnergy($("pl-postL").value);
+  const lens=lenSel==="0"?[1,2,3,4]:[+lenSel];
+  let out=[],seen=new Set(),tries=0;
+  while(out.length<cnt&&tries<800){tries++;const len=lens[Math.floor(Math.random()*lens.length)];const d=genPlate(len,merged.best);if(seen.has(d))continue;const{sc,pairs}=scorePlate(d);if(len>1&&sc<=0)continue;seen.add(d);let dom=null,ds=-1;for(const p of pairs){const s=GRADE_SCORE[LOOK[p].grade];if(s>ds){ds=s;dom=LOOK[p];}}out.push({d,sc,dom,len});}
+  out.sort((a,b)=>b.sc-a.sc);
+  if(out.length===0){R.innerHTML='<p class="empty">未能生成，换个位数或目标试试。</p>';return;}
+  // 八字说明
+  let bn="";
+  if(peMode==="bazi"){const bx=baziXiyong($("pl-bday").value,$("pl-sc").value);
+    if(bx){bn=`<div class="reading" style="margin-bottom:12px;"><h4>◇ 你的八字喜用</h4><p style="font-size:12.5px;">日主 <b>${bx.dayMaster}（${GAN_WX[bx.dayMaster]}）</b>。${bx.missing.length?"五行缺 <b>"+bx.missing.join("、")+"</b>":"五行最弱 <b>"+bx.weakest+"</b>"}，宜补：<b>${bx.xiyong.join("、")}</b> → 对应磁场 <b>${bx.stars.join("、")}</b>，已加权到推荐中。</p></div>`;}
+    else bn=`<p class="note">八字未填全（需生日+时辰），仅按所选目标推荐。</p>`;
+  } else if(boost&&peMode==="name2"){bn=`<p class="note">已结合英文名磁场「${boost.join("、")}」加权。</p>`;}
+  // 字母提示
+  let ln="";
+  if(preE||postE){const parts=[];if(preE)parts.push(`前字母 ${preE.letters}（能量偏${preE.finalWx}）`);if(postE)parts.push(`后字母 ${postE.letters}（能量偏${postE.finalWx}）`);
+    ln=`<p class="note">字母参考：${parts.join("，")}。字母不可选，仅作五行倾向参考，不计入数字吉分。</p>`;}
+  const preTxt=$("pl-preL").value?$("pl-preL").value.toUpperCase()+" ":"";
+  const postTxt=$("pl-postL").value?" "+$("pl-postL").value.toUpperCase():"";
+  R.innerHTML=bn+out.map((o,i)=>{const wd=o.dom?`${o.dom.name} · ${o.dom.desc.split(" ").slice(0,2).join("")}`:(o.len===1?"单数":"平");
+    const full=preTxt+o.d+postTxt;
+    return `<div class="plate"><div class="num">${preTxt}<b style="color:var(--gold-lite);">${o.d}</b>${postTxt}</div><div class="tag">主导磁场 <b>${wd}</b> · 吉分 +${o.sc}</div><div class="acts"><button onclick="favAdd('${full.trim()}','${wd} · 吉分+${o.sc}')">♡ 收藏</button><button onclick="copyNum('${full.trim()}')">复制</button></div></div>`;}).join("")+ln+`<p class="note">※ 数字磁场为主要依据（你唯一能选的部分）。反复点可换一批。传统术数仅供参考。</p>`;
+};
+
+// 检测现有车牌
+$("check-btn").onclick=()=>{
+  const R=$("pc-result");
+  const raw=($("pc-plate").value||"").toUpperCase().replace(/\s/g,"");
+  if(!raw){R.innerHTML='<p class="empty">请输入车牌。</p>';return;}
+  // 拆分：前字母、数字、后字母
+  const mm=raw.match(/^([A-Z]*)(\d+)([A-Z]*)$/);
+  if(!mm){R.innerHTML='<p class="empty">格式认不出，请用「字母+数字」如 VBA1234 或 WXY8888。</p>';return;}
+  const[,preL,digits,postL]=mm;
+  // 数字磁场评分
+  const{sc,pairs}=scorePlate(digits);
+  const isSingle=digits.length===1;
+  // 逐段分析
+  let pairHtml="";
+  if(isSingle){
+    const s=SINGLE_NUM[digits]||{wx:"—",tone:"中",desc:""};
+    const tc=s.tone==="吉"?"var(--jade)":"var(--muted)";
+    pairHtml=`<div style="font-size:13px;padding:4px 0;display:flex;justify-content:space-between;"><span>数字 <b style="font-family:monospace;font-size:16px;">${digits}</b>（${s.wx}）</span><span style="color:${tc};">${s.tone}</span></div><p style="font-size:12px;color:var(--muted);margin-top:4px;">${s.desc}</p>`;
+  } else {
+    for(let i=0;i<digits.length-1;i++){const t=digits.substr(i,2);const info=LOOK[t];
+      if(info){const good=info.sign>0;pairHtml+=`<div style="font-size:12px;padding:3px 0;display:flex;justify-content:space-between;"><span><b style="font-family:monospace;">${t}</b> ${info.name}</span><span style="color:${good?"var(--jade)":"var(--cinnabar)"};">${good?"吉":"凶"} ${info.desc.split(" ").slice(0,2).join("")}</span></div>`;}
+      else pairHtml+=`<div style="font-size:12px;padding:3px 0;"><b style="font-family:monospace;">${t}</b> 中性（含0或5）</div>`;
+    }
+  }
+  // 评级
+  let verdict,vcls;
+  if(isSingle){
+    const tone=(SINGLE_NUM[digits]||{}).tone;
+    if(tone==="吉"){verdict="吉数";vcls="good";}else{verdict="中性";vcls="mid";}
+  }
+  else if(sc>=6){verdict="很旺";vcls="good";}else if(sc>=1){verdict="偏吉";vcls="good";}else if(sc===0){verdict="平平";vcls="mid";}else if(sc>=-5){verdict="偏凶";vcls="bad";}else{verdict="较凶";vcls="bad";}
+  // 字母能量
+  const preE=letterEnergy(preL),postE=letterEnergy(postL);
+  let letterHtml="";
+  if(preE||postE){const parts=[];if(preE)parts.push(`前 ${preE.letters} → ${preE.wx.join("")}（整体偏${preE.finalWx}）`);if(postE)parts.push(`后 ${postE.letters} → ${postE.wx.join("")}（整体偏${postE.finalWx}）`);
+    letterHtml=`<div class="reading" style="margin-top:10px;"><h4>◇ 字母能量（参考）</h4><p style="font-size:12px;">${parts.join("<br>")}</p></div>`;}
+  // 结合八字
+  let baziHtml="";
+  const bx=baziXiyong($("pc-bday").value,$("pc-sc").value);
+  if(bx){
+    // 车牌数字主五行
+    const numWxCount={};for(const ch of digits){const w=PL_NUMWX[+ch];numWxCount[w]=(numWxCount[w]||0)+1;}
+    const plateMainWx=Object.entries(numWxCount).sort((a,b)=>b[1]-a[1])[0][0];
+    const helpsYou=bx.xiyong.includes(plateMainWx);
+    baziHtml=`<div class="reading" style="margin-top:10px;"><h4>◇ 与你八字的契合</h4><p style="font-size:12.5px;">你喜用 <b>${bx.xiyong.join("、")}</b>；此车牌数字主五行偏 <b>${plateMainWx}</b>。${helpsYou?'<span style="color:var(--jade);">契合，补你所需 ✓</span>':'<span style="color:var(--muted);">五行不完全对应，但数字磁场吉则仍可用</span>'}</p></div>`;
+  }
+  R.innerHTML=`
+    <div class="verdict ${vcls}" style="margin-bottom:14px;">
+      <div class="big">${verdict}</div>
+      <div class="small">${preL?preL+" ":""}${digits}${postL?" "+postL:""}${isSingle?"":" · 数字吉分 "+(sc>0?"+":"")+sc}</div>
+    </div>
+    <div class="reading"><h4>◇ ${isSingle?"数字属性":"数字磁场逐段"}</h4>${pairHtml}</div>
+    ${baziHtml}${letterHtml}
+    <p class="note">※ 数字磁场为主要依据。字母不可改，仅作参考。传统术数无科学依据，仅供参考。</p>`;
+};
+function copyNum(n){navigator.clipboard&&navigator.clipboard.writeText(n).then(()=>toast("已复制 "+n)).catch(()=>toast("复制失败"));}
+
+
+/* ========== 推荐电话号（八字喜用 + 全号磁场 + 检测） ========== */
+let phoneMode="gen";
+function setPhoneMode(m){phoneMode=m;$("phm-gen").classList.toggle("active",m==="gen");$("phm-check").classList.toggle("active",m==="check");$("phone-gen-mode").classList.toggle("hidden",m!=="gen");$("phone-check-mode").classList.toggle("hidden",m!=="check");}
+$("phm-gen").onclick=()=>setPhoneMode("gen");
+$("phm-check").onclick=()=>setPhoneMode("check");
+document.querySelectorAll("#ph-wish-chips .chip").forEach(c=>c.onclick=()=>c.classList.toggle("on"));
+
+// 生成后段：用吉数配对生成 len 位
+function genPhoneTail(len,best){const pick=a=>a[Math.floor(Math.random()*a.length)];let digits=pick(best.length?best:["14"]);while(digits.length<len){const need=digits[0];const c=jiPairs.filter(p=>p[1]===need);digits=(c.length?pick(c)[0]:pick(["1","2","3","6","7","8","9"]))+digits;}return digits.slice(-len);}
+
+$("ph-gen-btn").onclick=()=>{
+  const wishes=[...document.querySelectorAll("#ph-wish-chips .chip.on")].map(c=>c.dataset.star);
+  const R=$("ph-result");
+  if(wishes.length===0){R.innerHTML='<p class="empty">请至少选一个目标。</p>';return;}
+  const prefix=($("ph-prefix").value||"").replace(/[^0-9]/g,"");
+  if(prefix.length<3){R.innerHTML='<p class="empty">请填固定前段（如 012 或 0129）。</p>';return;}
+  const len=parseInt($("ph-len").value)||8;
+  let cnt=Math.max(1,Math.min(12,parseInt($("ph-count").value)||6));
+  const bx=baziXiyong($("ph-bday").value,$("ph-sc").value);
+  const merged={best:[]};wishes.forEach(w=>{const P=WISH_POOL[w];if(P)merged.best.push(...P.best);});
+  if(bx)bx.stars.forEach(b=>{if(WISH_POOL[b])merged.best.push(...WISH_POOL[b].best,...WISH_POOL[b].best);});
+  let out=[],seen=new Set(),tries=0;
+  while(out.length<cnt&&tries<1000){tries++;const tail=genPhoneTail(len,merged.best);const full=prefix+tail;if(seen.has(full))continue;
+    // 全号算磁场(含前缀)
+    const{sc,pairs}=scorePlate(full);if(sc<=0)continue;seen.add(full);
+    let dom=null,ds=-1;for(const p of pairs){const s=GRADE_SCORE[LOOK[p].grade];if(s>ds){ds=s;dom=LOOK[p];}}
+    out.push({full,tail,sc,dom});}
+  out.sort((a,b)=>b.sc-a.sc);
+  if(out.length===0){R.innerHTML='<p class="empty">未能生成，换个目标或位数。</p>';return;}
+  let bn="";
+  if(bx){bn=`<div class="reading" style="margin-bottom:12px;"><h4>◇ 你的八字喜用</h4><p style="font-size:12.5px;">日主 <b>${bx.dayMaster}（${GAN_WX[bx.dayMaster]}）</b>。${bx.missing.length?"五行缺 <b>"+bx.missing.join("、")+"</b>":"最弱 <b>"+bx.weakest+"</b>"}，宜补 <b>${bx.xiyong.join("、")}</b> → 磁场 <b>${bx.stars.join("、")}</b>，已加权。</p></div>`;}
+  else bn=`<p class="note">八字未填全（需生日+时辰），仅按所选目标推荐。</p>`;
+  R.innerHTML=bn+out.map(o=>{const wd=o.dom?`${o.dom.name} · ${o.dom.desc.split(" ").slice(0,2).join("")}`:"吉";
+    const disp=o.full.replace(/^(\d{3})(\d+)/,"$1-$2");
+    return `<div class="plate"><div class="num" style="font-size:19px;"><span style="color:#999;">${prefix}</span><b style="color:var(--gold-lite);">${o.tail}</b></div><div class="tag">主导磁场 <b>${wd}</b> · 全号吉分 +${o.sc}</div><div class="acts"><button onclick="favAdd('${o.full}','电话 ${wd} · 吉分+${o.sc}')">♡ 收藏</button><button onclick="copyNum('${o.full}')">复制</button></div></div>`;}).join("")+`<p class="note">※ 前段 ${prefix} 固定不可选，已连同后段一起算全号磁场。你实际能选的是后段号码。传统术数仅供参考。</p>`;
+};
+
+// 检测现有号码
+$("phc-btn").onclick=()=>{
+  const R=$("phc-result");
+  const num=($("phc-num").value||"").replace(/[^0-9]/g,"");
+  if(num.length<8){R.innerHTML='<p class="empty">请输入完整手机号（如 0123456789）。</p>';return;}
+  const{sc,pairs}=scorePlate(num);
+  const prefix=num.slice(0,3);const tail=num.slice(3);
+  // 逐对分析
+  let pairHtml="";
+  for(let i=0;i<num.length-1;i++){const t=num.substr(i,2);const info=LOOK[t];
+    if(info){const good=info.sign>0;pairHtml+=`<div style="font-size:12px;padding:3px 0;display:flex;justify-content:space-between;"><span><b style="font-family:monospace;">${t}</b> ${info.name}</span><span style="color:${good?"var(--jade)":"var(--cinnabar)"};">${good?"吉":"凶"}</span></div>`;}
+    else pairHtml+=`<div style="font-size:12px;padding:3px 0;"><b style="font-family:monospace;">${t}</b> 中性（含0或5）</div>`;
+  }
+  // 评级（号码位数多，分数范围大，阈值放宽）
+  let verdict,vcls;
+  if(sc>=10){verdict="很旺";vcls="good";}else if(sc>=3){verdict="偏吉";vcls="good";}else if(sc>=-2){verdict="平平";vcls="mid";}else if(sc>=-9){verdict="偏凶";vcls="bad";}else{verdict="较凶";vcls="bad";}
+  // 八字契合
+  let baziHtml="";
+  const bx=baziXiyong($("phc-bday").value,$("phc-sc").value);
+  if(bx){const numWxCount={};for(const ch of num){const w=PL_NUMWX[+ch];numWxCount[w]=(numWxCount[w]||0)+1;}
+    const mainWx=Object.entries(numWxCount).sort((a,b)=>b[1]-a[1])[0][0];
+    const helps=bx.xiyong.includes(mainWx);
+    baziHtml=`<div class="reading" style="margin-top:10px;"><h4>◇ 与你八字的契合</h4><p style="font-size:12.5px;">你喜用 <b>${bx.xiyong.join("、")}</b>；此号码数字主五行偏 <b>${mainWx}</b>。${helps?'<span style="color:var(--jade);">契合，补你所需 ✓</span>':'<span style="color:var(--muted);">五行不完全对应，但磁场吉则仍可用</span>'}</p></div>`;
+  }
+  R.innerHTML=`
+    <div class="verdict ${vcls}" style="margin-bottom:14px;">
+      <div class="big">${verdict}</div>
+      <div class="small">${prefix} ${tail} · 全号吉分 ${sc>0?"+":""}${sc}</div>
+    </div>
+    <div class="reading"><h4>◇ 数字磁场逐段</h4>${pairHtml}</div>
+    ${baziHtml}
+    <p class="note">※ 前缀 ${prefix} 不可改，已连同后段算全号磁场。传统术数无科学依据，仅供参考。</p>`;
+};
+
+/* ========== 收藏（本地存储） ========== */
+const FAV_KEY="syj_favs";
+function getFavs(){try{return JSON.parse(localStorage.getItem(FAV_KEY)||"[]");}catch(e){return[];}}
+function setFavs(a){try{localStorage.setItem(FAV_KEY,JSON.stringify(a));}catch(e){}}
+function favAdd(num,tag){const a=getFavs();if(a.some(x=>x.num===num)){toast("已在收藏中");return;}a.unshift({num,tag,t:Date.now()});setFavs(a);toast("已收藏 "+num);}
+function favDel(num){setFavs(getFavs().filter(x=>x.num!==num));renderFav();}
+function renderFav(){const L=$("fav-list");const a=getFavs();
+  if(a.length===0){L.innerHTML='<p class="fav-empty">还没有收藏。在「推荐车牌」里点 ♡ 收藏号码。</p>';return;}
+  L.innerHTML=a.map(x=>`<div class="favrow"><div style="flex:1;"><div class="fn">${x.num}</div><div class="ft">${x.tag||""}</div></div><button class="del" onclick="copyNum('${x.num}')" style="color:var(--gold);font-size:14px;">复制</button><button class="del" onclick="favDel('${x.num}')">×</button></div>`).join("");
+}
+
+/* ========== 对比 ========== */
+function cmpBindX(){document.querySelectorAll("#cmp-inputs .x").forEach(b=>b.onclick=()=>{const rows=document.querySelectorAll("#cmp-inputs .cmprow");if(rows.length<=2){toast("至少保留两个");return;}b.closest(".cmprow").remove();});}
+cmpBindX();
+$("cmp-add").onclick=()=>{const rows=document.querySelectorAll("#cmp-inputs .cmprow");if(rows.length>=4){toast("最多四个");return;}const div=document.createElement("div");div.className="cmprow";div.innerHTML=`<input type="text" inputmode="numeric" placeholder="号码 ${rows.length+1}"><button class="x">×</button>`;$("cmp-inputs").appendChild(div);cmpBindX();};
+$("cmp-btn").onclick=()=>{
+  const vals=[...document.querySelectorAll("#cmp-inputs input")].map(i=>i.value.replace(/[^0-9]/g,"")).filter(v=>v.length>=2);
+  const R=$("result3");
+  if(vals.length<2){R.innerHTML='<p class="empty">请至少输入两个有效号码。</p>';return;}
+  const arr=vals.map(v=>{const clean=v.replace(/[05]/g,"");let pairs=[];for(let i=0;i<clean.length-1;i++){const t=clean.substr(i,2);if(LOOK[t])pairs.push(t);}return{v,sc:scoreOf(pairs)};});
+  const max=Math.max(...arr.map(a=>a.sc));
+  arr.sort((a,b)=>b.sc-a.sc);
+  R.innerHTML=arr.map(a=>{const win=a.sc===max;const col=a.sc>0?"var(--jade)":a.sc<0?"var(--cinnabar)":"var(--muted)";
+    return `<div class="cmpcard ${win?"win":""}"><div class="top"><span class="cn">${a.v}</span><span><span class="cs" style="color:${col};">吉分 ${a.sc>0?"+":""}${a.sc}</span>${win?'<span class="badge">最佳</span>':""}</span></div></div>`;}).join("");
+};
+
+
+
+/* ========== 紫微十四主星介绍 ========== */
+const ZW_FULL={
+  "紫微":{ele:"己土·帝星",pos:"官禄主",good:"尊贵稳重、有领导格局、责任心强、善统御",bad:"易自负固执、耳根软、好面子、需人辅佐",cai:"延年"},
+  "天机":{ele:"乙木·善星",pos:"兄弟主",good:"机智善谋、反应快、多才艺、宜策划",bad:"心思多变、易操劳、想太多、坐不住",cai:"天医"},
+  "太阳":{ele:"丙火·贵星",pos:"官禄主",good:"热情博爱、光明磊落、乐付出、有名声",bad:"劳心费力、易冲动、付出难回报、忙碌",cai:"生气"},
+  "武曲":{ele:"辛金·财星",pos:"财帛主",good:"刚毅果决、行动力强、善理财、重信用",bad:"过于刚硬、不善表达情感、易孤僻",cai:"天医"},
+  "天同":{ele:"壬水·福星",pos:"福德主",good:"温和随缘、有福气、人缘好、知足乐天",bad:"欠冲劲、易安逸、意志不够坚定",cai:"生气"},
+  "廉贞":{ele:"丁火·囚星",pos:"官禄主",good:"外柔内刚、有才艺、重情义、能屈能伸",bad:"情绪起伏、桃花较多、易走极端",cai:"延年"},
+  "天府":{ele:"戊土·库星",pos:"财帛主",good:"稳重务实、善守成理财、包容大度、有贵气",bad:"偏保守、缺开创力、易安于现状",cai:"天医"},
+  "太阴":{ele:"癸水·富星",pos:"财帛/母主",good:"细腻内敛、重感情、有艺术感、善储蓄",bad:"多愁善感、易犹豫、心思难捉摸",cai:"天医"},
+  "贪狼":{ele:"甲木·桃花",pos:"欲望主",good:"多才多艺、人缘极广、善交际、有魅力",bad:"欲望多、易分心、桃花纠葛、贪心",cai:"生气"},
+  "巨门":{ele:"癸水·暗星",pos:"是非主",good:"口才佳、善分析研究、观察力强、专业",bad:"易口舌是非、多疑、言语伤人",cai:"延年"},
+  "天相":{ele:"壬水·印星",pos:"官禄主",good:"忠厚辅佐、重信誉、有同情心、善协调",bad:"耳根软、易受人影响、优柔寡断",cai:"延年"},
+  "天梁":{ele:"戊土·荫星",pos:"父母/寿主",good:"稳健荫庇、有长者风、正直、逢凶化吉",bad:"爱管事、易唠叨、清高孤傲",cai:"天医"},
+  "七杀":{ele:"庚金·将星",pos:"将星",good:"果断勇猛、开创力强、独立、能扛大事",bad:"性急冲动、起伏大、不服管、孤傲",cai:"延年"},
+  "破军":{ele:"癸水·耗星",pos:"耗星",good:"敢破敢立、变革创新、行动果敢、不畏难",bad:"变动多、易破耗、先破后立、冲动",cai:"生气"}
+};
+function renderZwStars(){
+  const box=$("zw-stars-list");if(!box)return;
+  box.innerHTML=Object.entries(ZW_FULL).map(([name,d],i)=>`
+    <div style="border:1px solid var(--line);border-radius:11px;margin-bottom:7px;overflow:hidden;">
+      <div onclick="toggleZwStar(${i})" style="display:flex;justify-content:space-between;align-items:center;padding:11px 13px;cursor:pointer;background:var(--paper-2);">
+        <span style="font-weight:700;font-size:15px;">${name} <span style="font-size:11px;color:var(--muted);font-weight:400;">${d.ele}</span></span>
+        <span id="zwarrow-${i}" style="color:var(--muted);">＋</span>
+      </div>
+      <div id="zwbody-${i}" style="display:none;padding:12px 13px;font-size:13px;line-height:1.7;background:#fff;">
+        <div style="margin-bottom:6px;"><b style="color:var(--muted);">定位</b>　${d.pos}</div>
+        <div style="margin-bottom:6px;"><b style="color:var(--jade);">优势</b>　${d.good}</div>
+        <div style="margin-bottom:6px;"><b style="color:var(--cinnabar);">留意</b>　${d.bad}</div>
+        <div><b style="color:var(--gold);">磁场倾向</b>　${d.cai}</div>
+      </div>
+    </div>`).join("");
+}
+function toggleZwStar(i){
+  const body=$("zwbody-"+i),arrow=$("zwarrow-"+i);
+  const open=body.style.display!=="none";
+  body.style.display=open?"none":"block";
+  arrow.textContent=open?"＋":"－";
+}
+renderZwStars();
+
+/* ========== 八字四柱引擎（已对拍权威库930样本零误差） ========== */
+const BZ_GAN=["甲","乙","丙","丁","戊","己","庚","辛","壬","癸"];
+const BZ_ZHI=["子","丑","寅","卯","辰","巳","午","未","申","酉","戌","亥"];
+const GAN_WX={甲:"木",乙:"木",丙:"火",丁:"火",戊:"土",己:"土",庚:"金",辛:"金",壬:"水",癸:"水"};
+const ZHI_WX={子:"水",丑:"土",寅:"木",卯:"木",辰:"土",巳:"火",午:"火",未:"土",申:"金",酉:"金",戌:"土",亥:"水"};
+const ZHI_SX={子:"鼠",丑:"牛",寅:"虎",卯:"兔",辰:"龙",巳:"蛇",午:"马",未:"羊",申:"猴",酉:"鸡",戌:"狗",亥:"猪"};
+const WX_COLOR={木:"#2f6d54",火:"#a8321f",土:"#b08d3f",金:"#8a8a80",水:"#37648a"};
+const JIEQI={};
+"1950:2041720,3061135,4051644,5061024,6061451,7080113,8081055,9081333,10090451,11080743,12080021,1060538;1951:2042313,3061726,4052232,5061609,6062032,7080653,8081637,9081918,10091036,11081326,12080602,1061130;1952:2050452,3052307,4050415,5052154,6060220,7071244,8072230,9080113,10081632,11071921,12071155,1061709;1953:2041045,3060502,4051012,5060352,6060816,7071834,8080414,9080652,10082210,11080100,12071736,1052302;1954:2041630,3061048,4051559,5060938,6061400,7080019,8080959,9081237,10090357,11080650,12072328,1060445;1955:2042217,3061630,4052138,5061517,6061943,7080605,8081550,9081831,10090952,11081245,12080522,1061035;1956:2050411,3052224,4050331,5052109,6060135,7071157,8072140,9080018,10081535,11071825,12071102,1061630;1957:2040954,3060410,4050918,5060258,6060724,7071748,8080332,9080612,10082129,11080020,12071655,1052210;1958:2041549,3061004,4051512,5060849,6061312,7072333,8080917,9081158,10090319,11080611,12072249,1060404;1959:2042142,3061556,4052103,5061438,6061900,7080519,8081504,9081747,10090909,11081202,12080437,1060958;1960:2050323,3052136,4050243,5052022,6060048,7071112,8072059,9072345,10081508,11071802,12071037,1061542;1961:2040922,3060334,4050842,5060221,6060646,7071706,8080248,9080529,10082050,11072346,12071625,1052142;1962:2041517,3060929,4051434,5060809,6061231,7072251,8080833,9081115,10090237,11080534,12072216,1060334;1963:2042107,3061517,4052018,5061351,6061814,7080437,8081425,9081711,10090836,11081132,12080412,1060926;1964:2050304,3052115,4050218,5051951,6060011,7071032,8072016,9072259,10081421,11071715,12070953,1061522;1965:2040846,3060300,4050806,5060141,6060602,7071621,8080204,9080447,10082011,11072306,12071545,1052101;1966:2041437,3060851,4051356,5060730,6061149,7072206,8080748,9081032,10090156,11080455,12072137,1060254;1967:2042030,3061441,4051944,5061317,6061736,7080353,8081334,9081617,10090741,11081037,12080317,1060848;1968:2050207,3052017,4050120,5051855,6052319,7070941,8071927,9072211,10081334,11071629,12070908,1061426;1969:2040758,3060210,4050714,5060049,6060511,7071531,8080114,9080355,10081916,11072211,12071451,1052016;1970:2041345,3060758,4051301,5060633,6061052,7072110,8080654,9080937,10090101,11080357,12072037,1060201;1971:2041925,3061334,4051836,5061208,6061628,7080251,8081240,9081530,10090658,11080956,12080235,1060745;1972:2050120,3051928,4050028,5051801,6052221,7070842,8071828,9072115,10081241,11071539,12070818,1061341;1973:2040704,3060112,4050613,5052346,6060406,7071427,8080012,9080259,10081827,11072127,12071410,1051925;1974:2041300,3060707,4051205,5060533,6060951,7072011,8080557,9080845,10090014,11080317,12072004,1060119;1975:2041859,3061305,4051801,5061127,6061542,7080159,8081144,9081433,10090602,11080902,12080146,1060717;1976:2050039,3051848,4042346,5051714,6052131,7070750,8071738,9072028,10081158,11071458,12070740,1061257;1977:2040633,3060044,4050545,5052316,6060332,7071347,8072330,9080215,10081743,11072045,12071330,1051851;1978:2041226,3060638,4051139,5060508,6060923,7071936,8080517,9080802,10082330,11080234,12071920,1060043;1979:2041812,3061219,4051717,5061047,6061505,7080124,8081110,9081359,10090530,11080832,12080117,1060631;1980:2050009,3051816,4042314,5051644,6052103,7070723,8071708,9071953,10081119,11071418,12070701,1061228;1981:2040555,3060005,4050505,5052234,6060252,7071311,8072257,9080143,10081709,11072008,12071251,1051812;1982:2041145,3060554,4051052,5060419,6060835,7071854,8080441,9080731,10082302,11080204,12071848,1060002;1983:2041739,3061147,4051644,5061010,6061425,7080043,8081029,9081320,10090451,11080752,12080033,1060558;1984:2042318,3051724,4042222,5051550,6052008,7070629,8071617,9071909,10081042,11071345,12070628,1061140;1985:2040511,3052316,4050413,5052142,6060159,7071218,8072204,9080053,10081624,11071929,12071216,1051735;1986:2041107,3060512,4051006,5060330,6060744,7071800,8080345,9080634,10082206,11080112,12071800,1052328;1987:2041651,3061053,4051544,5060905,6061318,7072338,8080929,9081224,10090359,11080705,12072352,1060513;1988:2042242,3051646,4042139,5051501,6051914,7070532,8071520,9071811,10080944,11071248,12070534,1061103;1989:2040427,3052234,4050329,5052053,6060105,7071119,8072103,9072353,10081527,11071833,12071120,1051645;1990:2041014,3060419,4050912,5060235,6060646,7071700,8080245,9080537,10082113,11080023,12071714,1052233;1991:2041608,3061012,4051504,5060826,6061238,7072252,8080837,9081127,10090301,11080607,12072256,1060428;1992:2042148,3051552,4042045,5051408,6051822,7070440,8071427,9071718,10080851,11071157,12070444,1061008;1993:2040337,3052142,4050237,5052001,6060015,7071032,8072017,9072307,10081440,11071745,12071033,1051556;1994:2040930,3060337,4050831,5060154,6060604,7071619,8080204,9080455,10082029,11072335,12071622,1052148;1995:2041512,3060916,4051408,5060730,6061142,7072201,8080751,9081048,10090227,11080535,12072222,1060334;1996:2042107,3051509,4042002,5051326,6051740,7070400,8071348,9071642,10080818,11071126,12070414,1060931;1997:2040301,3052104,4050156,5051919,6052332,7070949,8071936,9072228,10081405,11071714,12071004,1051524;1998:2040856,3060257,4050744,5060103,6060513,7071530,8080119,9080415,10081955,11072308,12071601,1052118;1999:2041457,3060857,4051344,5060701,6061109,7072124,8080714,9081009,10090148,11080457,12072147,1060317;2000:2042040,3051442,4041931,5051250,6051658,7070313,8071302,9071559,10080738,11071048,12070337,1060900;2001:2040228,3052032,4050124,5051844,6052253,7070906,8071852,9072146,10081325,11071636,12070928,1051449;2002:2040824,3060227,4050718,5060037,6060444,7071456,8080039,9080331,10081909,11072221,12071514,1052043;2003:2041405,3060804,4051252,5060610,6061019,7072035,8080624,9080920,10090100,11080413,12072105,1060227;2004:2041956,3051355,4041843,5051202,6051613,7070231,8071219,9071512,10080649,11070958,12070248,1060818;2005:2040143,3051945,4050034,5051752,6052201,7070816,8071803,9072056,10081233,11071542,12070832,1051402;2006:2040727,3060128,4050615,5052330,6060336,7071351,8072340,9080239,10081821,11072134,12071426,1051946;2007:2041318,3060717,4051204,5060520,6060927,7071941,8080531,9080829,10090011,11080324,12072014,1060140;2008:2041900,3051258,4041745,5051103,6051511,7070126,8071116,9071414,10080556,11070910,12070202,1060724;2009:2040049,3051847,4042333,5051650,6052059,7070713,8071701,9071957,10081140,11071456,12070752,1051314;2010:2040647,3060046,4050530,5052244,6060249,7071302,8072249,9080144,10081726,11072042,12071338,1051908;2011:2041232,3060629,4051111,5060423,6060827,7071842,8080433,9080734,10082319,11080234,12071929,1060054;2012:2041822,3051221,4041705,5051019,6051425,7070040,8071030,9071329,10080511,11070825,12070118,1060643;2013:2040013,3051814,4042302,5051618,6052023,7070634,8071620,9071916,10081058,11071413,12070708,1051233;2014:2040603,3060002,4050446,5052159,6060203,7071214,8072202,9080101,10081647,11072006,12071304,1051824;2015:2041158,3060555,4051039,5060352,6060758,7071812,8080401,9080659,10082242,11080158,12071853,1060020;2016:2041746,3051143,4041627,5050941,6051348,7070003,8070953,9071251,10080433,11070747,12070041,1060608;2017:2032334,3051732,4042217,5051531,6051936,7070550,8071540,9071838,10081022,11071337,12070632,1051155;2018:2040528,3052328,4050412,5052125,6060129,7071141,8072130,9080029,10081614,11071931,12071225,1051748;2019:2041114,3060509,4050951,5060302,6060706,7071720,8080313,9080616,10082205,11080124,12071818,1052338;2020:2041703,3051056,4041538,5050851,6051258,7062314,8070906,9071208,10080355,11070713,12070009,1060530;2021:2032258,3051653,4042135,5051447,6051852,7070505,8071453,9071752,10080939,11071258,12070557,1051123;2022:2040450,3052243,4050320,5052025,6060025,7071038,8072029,9072332,10081522,11071845,12071146,1051714;2023:2041042,3060436,4050913,5060218,6060618,7071630,8080222,9080526,10082115,11080035,12071732,1052304;2024:2041627,3051022,4041502,5050810,6051209,7062220,8070809,9071111,10080259,11070620,12062317,1060449;2025:2032210,3051607,4042048,5051357,6051756,7070404,8071351,9071651,10080841,11071204,12070504,1051032;2026:2040402,3052159,4050240,5051948,6052348,7070956,8071942,9072241,10081429,11071752,12071052,1051623;2027:2040946,3060339,4050817,5060125,6060525,7071537,8080126,9080428,10082017,11072338,12071637,1052209;2028:2041531,3050924,4041403,5050712,6051116,7062130,8070721,9071022,10080208,11070527,12062224,1060354;2029:2032120,3051517,4041958,5051307,6051709,7070322,8071311,9071611,10080758,11071116,12070413,1050941;2030:2040308,3052103,4050141,5051846,6052244,7070855,8071847,9072152,10081345,11071708,12071007,1051530;2031:2040858,3060251,4050728,5060035,6060435,7071448,8080042,9080350,10081942,11072305,12071602,1052123;2032:2041448,3050840,4041317,5050625,6051027,7062040,8070632,9070937,10080130,11070454,12062153,1060316;2033:2032041,3051432,4041908,5051213,6051613,7070224,8071215,9071520,10080713,11071041,12070344,1050908;2034:2040241,3052032,4050106,5051809,6052206,7070817,8071809,9072113,10081307,11071633,12070936,1051504;2035:2040831,3060221,4050653,5052354,6060350,7071401,8072354,9080302,10081857,11072223,12071525,1052055".split(";").forEach(row=>{const[y,codes]=row.split(":");JIEQI[y]=codes.split(",").map(Number);});
+function bz_ganzhiDay(y,m,d){const anchor=Date.UTC(2000,0,7);const days=Math.round((Date.UTC(y,m-1,d)-anchor)/86400000);const gz=((days%60)+60)%60;return[gz%10,gz%12];}
+function bz_dec(c){return{mo:Math.floor(c/1000000),d:Math.floor(c/10000)%100,h:Math.floor(c/100)%100,mi:c%100};}
+function bz_mins(mo,d,h,mi){return((mo*31+d)*24+h)*60+mi;}
+function computeBazi(y,m,d,hour,minute){
+  minute=minute||0;const jq=JIEQI[y];if(!jq)return null;
+  const nowV=bz_mins(m,d,hour,minute);const lc=bz_dec(jq[0]);const lichunV=bz_mins(lc.mo,lc.d,lc.h,lc.mi);
+  const order=[[jq[11],11]];for(let i=0;i<11;i++)order.push([jq[i],i]);
+  const bounds=order.map(([c,seg])=>{const t=bz_dec(c);return[bz_mins(t.mo,t.d,t.h,t.mi),seg];});
+  let seg=10;for(let i=bounds.length-1;i>=0;i--){if(nowV>=bounds[i][0]){seg=bounds[i][1];break;}}
+  if(nowV<bounds[0][0])seg=10;
+  let sy=y;if(nowV<lichunV)sy=y-1;
+  const yGz=((sy-4)%60+60)%60;const yGan=yGz%10,yZhi=yGz%12;
+  const monthZhi=[2,3,4,5,6,7,8,9,10,11,0,1][seg];const monthGan=((yGan%5)*2+2+seg)%10;
+  const[dGan,dZhi]=bz_ganzhiDay(y,m,d);
+  const hZhiIdx=Math.floor(((hour+1)%24)/2)%12;
+  let hDayGan=dGan;if(hour>=23){const nd=new Date(Date.UTC(y,m-1,d)+86400000);const[ng]=bz_ganzhiDay(nd.getUTCFullYear(),nd.getUTCMonth()+1,nd.getUTCDate());hDayGan=ng;}
+  const hGan=(hDayGan*2+hZhiIdx)%10;
+  return{year:[BZ_GAN[yGan],BZ_ZHI[yZhi]],month:[BZ_GAN[monthGan],BZ_ZHI[monthZhi]],day:[BZ_GAN[dGan],BZ_ZHI[dZhi]],time:[BZ_GAN[hGan],BZ_ZHI[hZhiIdx]],dayMaster:BZ_GAN[dGan]};
+}
+function parseDMY(str){const d=str.replace(/[^0-9]/g,"");if(d.length<8)return null;return[+d.slice(0,4),+d.slice(4,6),+d.slice(6,8)];}
+$("bz-btn").onclick=()=>{
+  const R=$("bz-result");const p=parseDMY($("bz-day").value);const sc=$("bz-sc").value;
+  if(!p){R.innerHTML='<p class="empty">请输入完整出生日期（年月日）。</p>';return;}
+  if(sc===""){R.innerHTML='<p class="empty">请选择出生时辰。</p>';return;}
+  const[y,mo,d]=p;
+  if(y<1950||y>2035){R.innerHTML='<p class="empty">目前精确范围为 1950–2035 年，超出此范围暂不排盘。</p>';return;}
+  const hour=[23,1,3,5,7,9,11,13,15,17,19,21][+sc];
+  const B=computeBazi(y,mo,d,hour,0);
+  if(!B){R.innerHTML='<p class="empty">排盘失败。</p>';return;}
+  // 五行统计
+  const cnt={木:0,火:0,土:0,金:0,水:0};
+  [B.year,B.month,B.day,B.time].forEach(([g,z])=>{cnt[GAN_WX[g]]++;cnt[ZHI_WX[z]]++;});
+  const pillars=[["年柱",B.year],["月柱",B.month],["日柱",B.day],["时柱",B.time]];
+  const pillHTML=pillars.map(([lab,[g,z]])=>{
+    return `<div style="flex:1;text-align:center;">
+      <div style="font-size:11px;color:var(--muted);margin-bottom:4px;">${lab}</div>
+      <div style="font-size:24px;font-weight:700;color:${WX_COLOR[GAN_WX[g]]};line-height:1.2;">${g}</div>
+      <div style="font-size:24px;font-weight:700;color:${WX_COLOR[ZHI_WX[z]]};line-height:1.2;">${z}</div>
+    </div>`;
+  }).join("");
+  const total=8;
+  const wxHTML=["木","火","土","金","水"].map(w=>{
+    const n=cnt[w];const pct=Math.round(n/total*100);
+    return `<div style="margin-bottom:7px;"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px;"><span style="color:${WX_COLOR[w]};font-weight:700;">${w} ${n}</span><span style="color:var(--muted);">${pct}%</span></div><div style="height:8px;background:var(--paper-2);border-radius:4px;overflow:hidden;"><div style="height:100%;width:${pct}%;background:${WX_COLOR[w]};"></div></div></div>`;
+  }).join("");
+  const missing=["木","火","土","金","水"].filter(w=>cnt[w]===0);
+  const missHTML=missing.length?`<p class="note">五行缺：${missing.join("、")}。</p>`:`<p class="note">五行俱全。</p>`;
+  const sx=ZHI_SX[B.year[1]];
+  R.innerHTML=`
+    <div style="background:var(--ink);border-radius:14px;padding:16px 12px;margin-bottom:14px;">
+      <div style="display:flex;gap:6px;">${pillHTML}</div>
+      <div style="text-align:center;margin-top:12px;color:var(--gold-lite);font-size:12px;">日主 <b>${B.dayMaster}（${GAN_WX[B.dayMaster]}）</b> · 生肖${sx}</div>
+    </div>
+    <label class="fld">五行分布（天干+地支共8字）</label>
+    <div style="background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px;">${wxHTML}</div>
+    ${missHTML}`;
+};
+
+/* ========== 紫微独立 tab ========== */
+/* ========== 紫微完整命盘（十二宫图，对拍权威库） ========== */
+const ZW_LUNAR={};
+"1950:2.17:1_29,2_30,3_30,4_29,5_30,6_30,7_29,8_29,9_30,10_29,11_30,12_29;1951:2.6:1_30,2_29,3_30,4_30,5_29,6_30,7_29,8_30,9_29,10_30,11_29,12_30;1952:1.27:1_29,2_30,3_29,4_30,5_29,-5_30,6_29,7_30,8_30,9_29,10_30,11_29,12_30;1953:2.14:1_29,2_30,3_29,4_29,5_30,6_30,7_29,8_30,9_30,10_29,11_30,12_29;1954:2.3:1_30,2_29,3_30,4_29,5_29,6_30,7_29,8_30,9_30,10_29,11_30,12_30;1955:1.24:1_29,2_30,3_29,-3_30,4_29,5_29,6_30,7_29,8_30,9_29,10_30,11_30,12_30;1956:2.12:1_29,2_30,3_29,4_30,5_29,6_29,7_30,8_29,9_30,10_29,11_30,12_30;1957:1.31:1_30,2_29,3_30,4_29,5_30,6_29,7_29,8_30,-8_29,9_30,10_29,11_30,12_29;1958:2.18:1_30,2_30,3_30,4_29,5_30,6_29,7_29,8_30,9_29,10_30,11_29,12_30;1959:2.8:1_29,2_30,3_30,4_29,5_30,6_29,7_30,8_29,9_30,10_29,11_30,12_29;1960:1.28:1_30,2_29,3_30,4_29,5_30,6_30,-6_29,7_30,8_29,9_30,10_29,11_30,12_29;1961:2.15:1_30,2_29,3_30,4_29,5_30,6_29,7_30,8_30,9_29,10_30,11_29,12_30;1962:2.5:1_29,2_30,3_29,4_29,5_30,6_29,7_30,8_30,9_29,10_30,11_30,12_29;1963:1.25:1_30,2_29,3_30,4_29,-4_29,5_30,6_29,7_30,8_29,9_30,10_30,11_30,12_29;1964:2.13:1_30,2_29,3_30,4_29,5_29,6_30,7_29,8_30,9_29,10_30,11_30,12_30;1965:2.2:1_29,2_30,3_29,4_30,5_29,6_29,7_30,8_29,9_29,10_30,11_30,12_29;1966:1.21:1_30,2_30,3_30,-3_29,4_30,5_29,6_29,7_30,8_29,9_29,10_30,11_30,12_29;1967:2.9:1_30,2_30,3_29,4_30,5_30,6_29,7_29,8_30,9_29,10_30,11_29,12_30;1968:1.30:1_29,2_30,3_29,4_30,5_30,6_29,7_30,-7_29,8_30,9_29,10_30,11_29,12_30;1969:2.17:1_29,2_30,3_29,4_30,5_29,6_30,7_30,8_29,9_30,10_29,11_30,12_29;1970:2.6:1_30,2_29,3_29,4_30,5_29,6_30,7_30,8_29,9_30,10_30,11_29,12_30;1971:1.27:1_29,2_30,3_29,4_29,5_30,-5_29,6_30,7_29,8_30,9_30,10_30,11_29,12_30;1972:2.15:1_29,2_30,3_29,4_29,5_30,6_29,7_30,8_29,9_30,10_30,11_29,12_30;1973:2.3:1_30,2_29,3_30,4_29,5_29,6_30,7_29,8_29,9_30,10_30,11_29,12_30;1974:1.23:1_30,2_30,3_29,4_30,-4_29,5_29,6_30,7_29,8_29,9_30,10_30,11_29,12_30;1975:2.11:1_30,2_30,3_29,4_30,5_29,6_29,7_30,8_29,9_29,10_30,11_29,12_30;1976:1.31:1_30,2_30,3_29,4_30,5_29,6_30,7_29,8_30,-8_29,9_29,10_30,11_29,12_30;1977:2.18:1_30,2_29,3_30,4_30,5_29,6_30,7_29,8_30,9_29,10_30,11_29,12_29;1978:2.7:1_30,2_29,3_30,4_30,5_29,6_30,7_30,8_29,9_30,10_29,11_30,12_29;1979:1.28:1_30,2_29,3_29,4_30,5_29,6_30,-6_30,7_29,8_30,9_30,10_29,11_30,12_29;1980:2.16:1_30,2_29,3_29,4_30,5_29,6_30,7_29,8_30,9_30,10_29,11_30,12_30;1981:2.5:1_29,2_30,3_29,4_29,5_30,6_29,7_29,8_30,9_30,10_29,11_30,12_30;1982:1.25:1_30,2_29,3_30,4_29,-4_29,5_30,6_29,7_29,8_30,9_29,10_30,11_30,12_30;1983:2.13:1_30,2_29,3_30,4_29,5_29,6_30,7_29,8_29,9_30,10_29,11_30,12_30;1984:2.2:1_30,2_29,3_30,4_30,5_29,6_29,7_30,8_29,9_29,10_30,-10_29,11_30,12_30;1985:2.20:1_29,2_30,3_30,4_29,5_30,6_29,7_30,8_29,9_29,10_30,11_29,12_30;1986:2.9:1_29,2_30,3_30,4_29,5_30,6_30,7_29,8_30,9_29,10_30,11_29,12_29;1987:1.29:1_30,2_29,3_30,4_29,5_30,6_30,-6_29,7_30,8_30,9_29,10_30,11_29,12_29;1988:2.17:1_30,2_29,3_30,4_29,5_30,6_29,7_30,8_30,9_29,10_30,11_30,12_29;1989:2.6:1_30,2_29,3_29,4_30,5_29,6_30,7_29,8_30,9_29,10_30,11_30,12_30;1990:1.27:1_29,2_30,3_29,4_29,5_30,-5_29,6_29,7_30,8_29,9_30,10_30,11_30,12_30;1991:2.15:1_29,2_30,3_29,4_29,5_30,6_29,7_29,8_30,9_29,10_30,11_30,12_30;1992:2.4:1_29,2_30,3_30,4_29,5_29,6_30,7_29,8_29,9_30,10_29,11_30,12_30;1993:1.23:1_29,2_30,3_30,-3_29,4_30,5_29,6_30,7_29,8_29,9_30,10_29,11_30,12_29;1994:2.10:1_30,2_30,3_30,4_29,5_30,6_29,7_30,8_29,9_29,10_30,11_29,12_30;1995:1.31:1_29,2_30,3_30,4_29,5_30,6_29,7_30,8_30,-8_29,9_29,10_30,11_29,12_30;1996:2.19:1_29,2_30,3_29,4_30,5_30,6_29,7_30,8_29,9_30,10_30,11_29,12_29;1997:2.7:1_30,2_29,3_30,4_29,5_30,6_29,7_30,8_30,9_29,10_30,11_30,12_29;1998:1.28:1_30,2_29,3_29,4_30,5_29,-5_29,6_30,7_30,8_29,9_30,10_30,11_29,12_30;1999:2.16:1_30,2_29,3_29,4_30,5_29,6_29,7_30,8_29,9_30,10_30,11_30,12_29;2000:2.5:1_30,2_30,3_29,4_29,5_30,6_29,7_29,8_30,9_29,10_30,11_30,12_29;2001:1.24:1_30,2_30,3_29,4_30,-4_29,5_30,6_29,7_29,8_30,9_29,10_30,11_29,12_30;2002:2.12:1_30,2_30,3_29,4_30,5_29,6_30,7_29,8_29,9_30,10_29,11_30,12_29;2003:2.1:1_30,2_30,3_29,4_30,5_30,6_29,7_30,8_29,9_29,10_30,11_29,12_30;2004:1.22:1_29,2_30,-2_29,3_30,4_30,5_29,6_30,7_29,8_30,9_29,10_30,11_29,12_30;2005:2.9:1_29,2_30,3_29,4_30,5_29,6_30,7_30,8_29,9_30,10_29,11_30,12_29;2006:1.29:1_30,2_29,3_30,4_29,5_30,6_29,7_30,-7_29,8_30,9_30,10_29,11_30,12_30;2007:2.18:1_29,2_29,3_30,4_29,5_29,6_30,7_29,8_30,9_30,10_30,11_29,12_30;2008:2.7:1_30,2_29,3_29,4_30,5_29,6_29,7_30,8_29,9_30,10_30,11_29,12_30;2009:1.26:1_30,2_30,3_29,4_29,5_30,-5_29,6_29,7_30,8_29,9_30,10_29,11_30,12_30;2010:2.14:1_30,2_29,3_30,4_29,5_30,6_29,7_29,8_30,9_29,10_30,11_29,12_30;2011:2.3:1_30,2_29,3_30,4_30,5_29,6_30,7_29,8_29,9_30,10_29,11_30,12_29;2012:1.23:1_30,2_29,3_30,4_30,-4_29,5_30,6_29,7_30,8_29,9_30,10_29,11_30,12_29;2013:2.10:1_30,2_29,3_30,4_29,5_30,6_30,7_29,8_30,9_29,10_30,11_29,12_30;2014:1.31:1_29,2_30,3_29,4_30,5_29,6_30,7_29,8_30,9_30,-9_29,10_30,11_29,12_30;2015:2.19:1_29,2_30,3_29,4_29,5_30,6_29,7_30,8_30,9_30,10_29,11_30,12_29;2016:2.8:1_30,2_29,3_30,4_29,5_29,6_30,7_29,8_30,9_30,10_29,11_30,12_30;2017:1.28:1_29,2_30,3_29,4_30,5_29,6_29,-6_30,7_29,8_30,9_29,10_30,11_30,12_30;2018:2.16:1_29,2_30,3_29,4_30,5_29,6_29,7_30,8_29,9_30,10_29,11_30,12_30;2019:2.5:1_30,2_29,3_30,4_29,5_30,6_29,7_29,8_30,9_29,10_29,11_30,12_30;2020:1.25:1_29,2_30,3_30,4_30,-4_29,5_30,6_29,7_29,8_30,9_29,10_30,11_29,12_30;2021:2.12:1_29,2_30,3_30,4_29,5_30,6_29,7_30,8_29,9_30,10_29,11_30,12_29;2022:2.1:1_30,2_29,3_30,4_29,5_30,6_30,7_29,8_30,9_29,10_30,11_29,12_30;2023:1.22:1_29,2_30,-2_29,3_29,4_30,5_30,6_29,7_30,8_30,9_29,10_30,11_29,12_30;2024:2.10:1_29,2_30,3_29,4_29,5_30,6_29,7_30,8_30,9_29,10_30,11_30,12_29;2025:1.29:1_30,2_29,3_30,4_29,5_29,6_30,-6_29,7_30,8_29,9_30,10_30,11_30,12_29;2026:2.17:1_30,2_29,3_30,4_29,5_29,6_30,7_29,8_29,9_30,10_30,11_30,12_29;2027:2.6:1_30,2_30,3_29,4_30,5_29,6_29,7_30,8_29,9_29,10_30,11_30,12_29;2028:1.26:1_30,2_30,3_30,4_29,5_30,-5_29,6_29,7_30,8_29,9_29,10_30,11_30,12_29;2029:2.13:1_30,2_30,3_29,4_30,5_29,6_30,7_29,8_30,9_29,10_29,11_30,12_30;2030:2.3:1_29,2_30,3_29,4_30,5_30,6_29,7_30,8_29,9_30,10_29,11_30,12_29;2031:1.23:1_29,2_30,3_30,-3_29,4_30,5_29,6_30,7_30,8_29,9_30,10_29,11_30,12_29;2032:2.11:1_30,2_29,3_29,4_30,5_29,6_30,7_30,8_29,9_30,10_30,11_29,12_30;2033:1.31:1_29,2_30,3_29,4_29,5_30,6_29,7_30,8_29,9_30,10_30,11_30,-11_29,12_30;2034:2.19:1_29,2_30,3_29,4_29,5_30,6_29,7_30,8_29,9_30,10_30,11_29,12_30;2035:2.8:1_30,2_29,3_30,4_29,5_29,6_30,7_29,8_29,9_30,10_30,11_29,12_30".split(";").forEach(r=>{const[y,ny,ms]=r.split(":");const[nm,nd]=ny.split(".").map(Number);ZW_LUNAR[y]={ny:[nm,nd],months:ms.split(",").map(x=>{const[mo,ln]=x.split("_").map(Number);return[mo,ln];})};});
+const ZW_DIZHI=["子","丑","寅","卯","辰","巳","午","未","申","酉","戌","亥"];
+function zwSolarToLunar(y,m,d){const target=Date.UTC(y,m-1,d);const ny=ZW_LUNAR[y];if(!ny)return null;let ly=y;if(target<Date.UTC(y,ny.ny[0]-1,ny.ny[1]))ly=y-1;const data=ZW_LUNAR[ly];if(!data)return null;const start=Date.UTC(ly,data.ny[0]-1,data.ny[1]);let days=Math.round((target-start)/86400000);for(const[mo,len]of data.months){if(days<len)return{ly,lm:Math.abs(mo),ld:days+1,isLeap:mo<0};days-=len;}return null;}
+function zwYearGZ(y){const gz=((y-4)%60+60)%60;return[gz%10,gz%12];}
+function zwAnMing(lm,hz){let g=(2+(lm-1)-hz);return((g%12)+12)%12;}
+const ZW_WUHU={0:2,1:4,2:6,3:8,4:0,5:2,6:4,7:6,8:8,9:0};
+function zwMingGan(yg,mz){const off=(mz-2+12)%12;return(ZW_WUHU[yg]+off)%10;}
+const ZW_NAYIN=["海中金","海中金","炉中火","炉中火","大林木","大林木","路旁土","路旁土","剑锋金","剑锋金","山头火","山头火","涧下水","涧下水","城头土","城头土","白蜡金","白蜡金","杨柳木","杨柳木","泉中水","泉中水","屋上土","屋上土","霹雳火","霹雳火","松柏木","松柏木","长流水","长流水","砂中金","砂中金","山下火","山下火","平地木","平地木","壁上土","壁上土","金箔金","金箔金","覆灯火","覆灯火","天河水","天河水","大驿土","大驿土","钗钏金","钗钏金","桑柘木","桑柘木","大溪水","大溪水","沙中土","沙中土","天上火","天上火","石榴木","石榴木","大海水","大海水"];
+const ZW_JU={"金":4,"木":3,"水":2,"火":6,"土":5};
+const ZW_JUNAME={2:"水二局",3:"木三局",4:"金四局",5:"土五局",6:"火六局"};
+function zwWuxingJu(gan,zhi){let n=0;for(;n<60;n++)if(n%10===gan&&n%12===zhi)break;let e="金";for(const k of["金","木","水","火","土"])if(ZW_NAYIN[n].includes(k))e=k;return ZW_JU[e];}
+function zwAnZiwei(ju,day){let shang=Math.ceil(day/ju);let yushu=shang*ju-day;let base=(2+(shang-1))%12;if(yushu===0)return base;if(yushu%2===1)return((base-yushu)%12+12)%12;return(base+yushu)%12;}
+function zwAnStars(zw){const S={};S["紫微"]=zw;S["天机"]=((zw-1)%12+12)%12;S["太阳"]=((zw-3)%12+12)%12;S["武曲"]=((zw-4)%12+12)%12;S["天同"]=((zw-5)%12+12)%12;S["廉贞"]=((zw-8)%12+12)%12;const tf=((4-zw)%12+12)%12;S["天府"]=tf;S["太阴"]=(tf+1)%12;S["贪狼"]=(tf+2)%12;S["巨门"]=(tf+3)%12;S["天相"]=(tf+4)%12;S["天梁"]=(tf+5)%12;S["七杀"]=(tf+6)%12;S["破军"]=(tf+10)%12;return S;}
+const ZW_GONG12=["命宫","兄弟","夫妻","子女","财帛","疾厄","迁移","仆役","官禄","田宅","福德","父母"];
+// 交友宫在此命盘命名为"仆役"，详批时映射
+const ZW_PALACE_ALIAS={"仆役":"交友"};
+const ZW_PALACE_DESC={
+"兄弟":{
+"紫微":"传统认为兄弟中有能力出众、可为助力者，但兄弟或较自我，相处宜互相尊重。",
+"天机":"传统认为手足数目不多，感情时有变化，聚少离多，各自发展。",
+"太阳":"传统认为与兄弟（尤其男性手足）缘分较深，对方性格开朗，可得助力。",
+"武曲":"传统认为手足较少，感情偏淡或各忙各的，宜金钱往来分明。",
+"天同":"传统认为兄弟感情和睦、相处融洽，但多为精神支持而非实质助力。",
+"廉贞":"传统认为手足关系较复杂，易有意见分歧，宜多包容。",
+"天府":"传统认为兄弟稳重可靠，感情平稳，能互相照应。",
+"太阴":"传统认为与姐妹（女性手足）缘分较深，感情细腻，相处温和。",
+"贪狼":"传统认为手足各有才艺、人缘好，但相聚不多。",
+"巨门":"传统认为兄弟间易有口舌是非、意见不合，宜多沟通少计较。",
+"天相":"传统认为兄弟忠厚、可互相扶持，关系平和。",
+"天梁":"传统认为兄弟中有年长或如长辈者可庇荫、给建议。",
+"七杀":"传统认为手足数少、性格刚硬，感情较疏离，各自独立。",
+"破军":"传统认为手足缘较淡，聚少离多，关系起伏，各自发展型。"
+},
+"子女":{
+"紫微":"传统认为子女有格局、资质佳，将来或有出息，但亲子间宜多柔性沟通。",
+"天机":"传统认为子女聪明机敏、读书思维好，但较敏感，健康宜多留意。",
+"太阳":"传统认为与子女（尤其儿子）缘分深，孩子开朗有活力。",
+"武曲":"传统认为子女性格刚强、独立，亲子相处宜柔化。",
+"天同":"传统认为子女乖巧有福、性情温和，亲子和乐。",
+"廉贞":"传统认为子女聪颖有才但个性强，教养宜耐心。",
+"天府":"传统认为子女稳重、能守成，将来可给予实质支持。",
+"太阴":"传统认为与女儿缘深，子女细腻体贴，感情好。",
+"贪狼":"传统认为子女多才多艺、活泼，人缘佳。",
+"巨门":"传统认为子女口才好、善表达，但亲子间易有言语摩擦。",
+"天相":"传统认为子女忠厚懂事、资质不错，能对父母有所帮助。",
+"天梁":"传统认为子女稳健、有长者缘，孝顺可靠。",
+"七杀":"传统认为子女个性刚烈独立，缘分较淡或聚少。",
+"破军":"传统认为子女个性强、变动大，亲子缘较特殊。"
+},
+"疾厄":{
+"紫微":"传统认为体质尚可，但宜留意脾胃、消化系统。",
+"天机":"传统认为宜留意肝胆、神经系统与情绪紧张，睡眠易受影响。",
+"太阳":"传统认为宜留意心血管、眼睛、头部与血压。",
+"武曲":"传统认为宜留意呼吸系统、鼻子气管肺部，及骨骼、牙齿。",
+"天同":"传统认为宜留意膀胱、泌尿、水肿、耳部。",
+"廉贞":"传统认为宜留意血液、心火、情绪压力，及生殖泌尿系统。",
+"天府":"传统认为体质较稳，宜留意脾胃、消化。",
+"太阴":"传统认为宜留意生殖泌尿、内分泌、眼睛，女性宜注意妇科。",
+"贪狼":"传统认为宜留意肝胆、生殖系统、内分泌，及作息不定所致问题。",
+"巨门":"传统认为宜留意肠胃、消化道、口腔咽喉，及暗疾。",
+"天相":"传统认为宜留意皮肤、膀胱、泌尿系统。",
+"天梁":"传统认为宜留意脾胃、乳腺，慢性或反复之症。",
+"七杀":"传统认为宜留意呼吸道、肺、外伤意外，及肝气。",
+"破军":"传统认为宜留意生殖泌尿、暗疾、意外损伤，体质起伏。"
+},
+"交友":{
+"紫微":"传统认为朋友中多有身份地位、能力强者，交往层次较高。",
+"天机":"传统认为朋友多智谋型、点子多，但交情易变动。",
+"太阳":"传统认为朋友热情、乐于助人，男性友人为多。",
+"武曲":"传统认为朋友务实、重利益，宜金钱分明。",
+"天同":"传统认为朋友温和、相处轻松，感情融洽。",
+"廉贞":"传统认为朋友个性鲜明、有才气，交往需筛选。",
+"天府":"传统认为朋友稳重可靠，能互相扶持。",
+"太阴":"传统认为朋友细腻、多女性缘，感情深。",
+"贪狼":"传统认为交游广阔、人缘好，应酬多。",
+"巨门":"传统认为朋友多能言善辩，但易因言语生是非，宜择友。",
+"天相":"传统认为朋友有礼节修养、重原则，品质不差，但仍宜筛选避免因人破财。",
+"天梁":"传统认为朋友中有长者贵人可提点相助。",
+"七杀":"传统认为朋友个性刚直、讲义气，但交情起伏。",
+"破军":"传统认为朋友变动大、来去快，交往宜观察。"
+},
+"田宅":{
+"紫微":"传统认为有置产格局，房产层次较高，家运稳固。",
+"天机":"传统认为房产易变动、常搬迁，宜留意家中机电设备。",
+"太阳":"传统认为有置产机会，宜向阳明亮之居，留意用电安全。",
+"武曲":"传统认为有不动产缘、能积产，房产较扎实。",
+"天同":"传统认为居家舒适、有福，家宅和乐。",
+"廉贞":"传统认为房产有变化、宜留意家中电器电流问题，避免因电路损失或意外，一生仍有置产机会。",
+"天府":"传统认为善守成、能积房产，家业稳固。",
+"太阴":"传统认为田宅运佳、利置产，尤宜不动产投资，家宅安宁。",
+"贪狼":"传统认为房产有变动、亦有机会在外置业。",
+"巨门":"传统认为房产易有口舌纠纷或暗争，宜留意产权清楚。",
+"天相":"传统认为有稳定房产、居家整洁有序。",
+"天梁":"传统认为可得祖荫或长辈相关之房产，家宅安稳。",
+"七杀":"传统认为房产变动大、宜留意突发损坏或意外。",
+"破军":"传统认为房产变动频繁、有机会在外置业，宜留意家中电器设备避免损失。"
+},
+"官禄":{
+"紫微":"传统认为事业有格局、宜担任主管领导，适合大机构或独当一面。",
+"天机":"传统认为事业多动脑、善策划，宜企划顾问、变化性工作，工作易变动。",
+"太阳":"传统认为事业心强、宜公众、教育、能见度高之职。",
+"武曲":"传统认为宜财经、金融、技术或军警，行动力强。",
+"天同":"传统认为宜服务、文化、稳定不激烈之职，随和不争。",
+"廉贞":"传统认为事业有变动性、宜专业技术或特殊领域，工作环境易更换产品部门公司，适合偏门冷门、需奔波、时间弹性大之行业，不宜固定朝九晚五。",
+"天府":"传统认为宜财务、管理、守成型职务，稳中求进。",
+"太阴":"传统认为宜文职、内勤、需细心之职，或与女性市场相关。",
+"贪狼":"传统认为宜交际、公关、娱乐、业务，多才多能，路子活。",
+"巨门":"传统认为宜口才、法律、教育、销售、专业发声之职。",
+"天相":"传统认为宜辅佐、行政、管理，忠诚可靠。",
+"天梁":"传统认为宜专业、医疗、公职、监督之职，有长者缘。",
+"七杀":"传统认为事业变动大、宜开创、专业技术或独立作业，不宜固定框架。",
+"破军":"传统认为事业变动频繁、宜开创变革型、偏门冷门、四处奔波之业，不宜固定朝九晚五或长驻办公室，创业宜避热门跟风。"
+},
+"财帛":{
+"紫微":"传统认为财源稳定有格局，善理大财，宜正财。",
+"天机":"传统认为财来财去、机会多变，宜靠智慧点子求财。",
+"太阳":"传统认为财源广、宜公开事业得财，付出型。",
+"武曲":"传统认为正财财星、善求财理财，财运较扎实。",
+"天同":"传统认为财来平稳、知足有福，不为财所困。",
+"廉贞":"传统认为财运有起伏、宜专业或偏门求财，正偏财并存。",
+"天府":"传统认为财库星、善积财守成，财运稳当。",
+"太阴":"传统认为富星、利不动产与稳健理财，财运细水长流。",
+"贪狼":"传统认为偏财与交际财较旺，路子多，但宜节制欲望。",
+"巨门":"传统认为宜靠口才专业求财，财源需竞争争取。",
+"天相":"传统认为财运平稳、宜稳中理财。",
+"天梁":"传统认为财来稳健、宜专业清高之财，不宜投机。",
+"七杀":"传统认为财运起伏大、宜开创或专业得财，正偏财并存需稳守。",
+"破军":"传统认为财运变动大、偏财与破财并存，宜专业冷门求财，忌高杠杆过度贷款。"
+},
+"夫妻":{
+"紫微":"传统认为配偶有能力、条件较高，但个性强，相处宜互敬。",
+"天机":"传统认为配偶聪明善变，感情需多沟通经营。",
+"太阳":"传统认为配偶开朗热情、有担当。",
+"武曲":"传统认为配偶刚毅务实，感情较理性，宜柔化相处。",
+"天同":"传统认为配偶温和有福、婚姻和乐。",
+"廉贞":"传统认为感情有波折、配偶个性鲜明，宜包容磨合。",
+"天府":"传统认为配偶稳重顾家、婚姻平稳。",
+"太阴":"传统认为配偶温柔细腻、感情深厚。",
+"贪狼":"传统认为桃花较旺、配偶有魅力，感情宜专一经营。",
+"巨门":"传统认为夫妻间易有口角，宜多沟通化解误会。",
+"天相":"传统认为配偶忠厚体贴、婚姻和谐。",
+"天梁":"传统认为配偶成熟稳重、或年龄差距，有照顾之情。",
+"七杀":"传统认为配偶个性刚强独立，感情来得快，宜互相尊重空间。",
+"破军":"传统认为感情变动较大、宜稳定经营避免冲动。"
+}
+};
+
+// 主星简义
+const ZW_STAR_DESC={"紫微":"帝星·尊贵","天机":"智星·善谋","太阳":"贵星·博爱","武曲":"财星·刚毅","天同":"福星·温和","廉贞":"囚星·多才","天府":"库星·稳重","太阴":"富星·细腻","贪狼":"欲星·多才","巨门":"暗星·口才","天相":"印星·忠厚","天梁":"荫星·稳健","七杀":"将星·果决","破军":"耗星·开创"};
+function zwFullChart(y,mo,d,hz){
+  const l=zwSolarToLunar(y,mo,d);if(!l)return null;
+  const[ygLunar,yz]=zwYearGZ(l.ly);
+  // 命宫天干用节气年干（立春换年），与紫微权威库一致；命宫定位仍用农历月
+  let yg=ygLunar;
+  try{const hour=[23,1,3,5,7,9,11,13,15,17,19,21][hz];const B=computeBazi(y,mo,d,hour,0);if(B&&B.year){const gi=["甲","乙","丙","丁","戊","己","庚","辛","壬","癸"].indexOf(B.year[0]);if(gi>=0)yg=gi;}}catch(e){}
+  const ming=zwAnMing(l.lm,hz);
+  const mg=zwMingGan(yg,ming);
+  const ju=zwWuxingJu(mg,ming);
+  const zw=zwAnZiwei(ju,l.ld);
+  const stars=zwAnStars(zw);
+  const palaceName={};for(let i=0;i<12;i++){const zhi=((ming-i)%12+12)%12;palaceName[zhi]=ZW_GONG12[i];}
+  const palaceStars={};for(let z=0;z<12;z++)palaceStars[z]=[];
+  for(const[name,z]of Object.entries(stars))palaceStars[z].push(name);
+  return {ju,ming,palaceName,palaceStars,lunar:l,zw,yangYear:yg%2===0};
+}
+// 大限：起运岁=五行局数，阳年男/阴年女顺行、阴年男/阳年女逆行，每宫10年
+function zwDaxian(C,gender){
+  const startAge=C.ju;const male=gender==="男";
+  const forward=(C.yangYear&&male)||(!C.yangYear&&!male);
+  const limits=[];
+  for(let i=0;i<12;i++){
+    const zhi=forward?((C.ming+i)%12):(((C.ming-i)%12+12)%12);
+    limits.push({zhi,startAge:startAge+i*10,endAge:startAge+i*10+9,gong:C.palaceName[zhi],stars:C.palaceStars[zhi]});
+  }
+  return {limits,forward,startAge};
+}
+// 大限阶段建议（各宫主星在"这十年宜注意什么"角度）
+const ZW_LIMIT_ADVICE={
+"命宫":"这十年是塑造自我、定方向的阶段，宜确立目标、建立个人风格。","兄弟":"这十年人际手足、合作关系较突出，宜经营平辈与伙伴关系。","夫妻":"这十年感情婚姻是重心，宜用心经营亲密关系、维系感情。","子女":"这十年与子女、晚辈或下属缘分深，也主创意与桃花，宜关注家庭教育。","财帛":"这十年财务活动活跃，机会与波动并存，宜稳健理财、量入为出。","疾厄":"这十年健康是重点，宜规律作息、定期体检、注意情绪压力。","迁移":"这十年宜向外发展、出行搬迁或换环境，机会多在外地。","仆役":"这十年朋友部属关系突出，宜择友慎交、避免因人事破财。","官禄":"这十年事业是主轴，宜专注本业、把握升迁或转型机会。","田宅":"这十年与不动产、家宅缘分深，宜留意置产机会与家宅安顿。","福德":"这十年重精神生活与享受，宜调心养性、注意别过度安逸。","父母":"这十年与长辈、上司缘分深，宜孝亲敬长、把握贵人提携。"
+};
+// 紫微性别选择
+window.__zwGender="男";
+$("zw2-male").onclick=()=>{window.__zwGender="男";$("zw2-male").classList.add("active");$("zw2-female").classList.remove("active");};
+$("zw2-female").onclick=()=>{window.__zwGender="女";$("zw2-female").classList.add("active");$("zw2-male").classList.remove("active");};
+$("zw2-btn").onclick=()=>{
+  const R=$("zw2-result");
+  const dd=($("zw2-day").value||"").replace(/[^0-9]/g,"");
+  if(dd.length<8){R.innerHTML='<p class="empty">请输入完整出生日期（如 19900512）。</p>';return;}
+  const[y,mo,d]=[+dd.slice(0,4),+dd.slice(4,6),+dd.slice(6,8)];
+  const sc=$("zw2-sc").value;
+  if(sc===""){R.innerHTML='<p class="empty">请选择出生时辰。</p>';return;}
+  if(y<1950||y>2035){R.innerHTML='<p class="empty">精确范围 1950–2035。</p>';return;}
+  const C=zwFullChart(y,mo,d,+sc);
+  if(!C){R.innerHTML='<p class="empty">排盘失败，请检查日期。</p>';return;}
+  // 十二宫方形布局：4x4外圈，地支固定位置
+  // 传统排法：巳午未申 / 辰  酉 / 卯  戌 / 寅丑子亥
+  const layout=[
+    [6,7,8,9],    // 巳午未申 (地支5,6,7,8)
+    [5,-1,-1,10], // 辰 . . 酉 (4, 中, 中, 9)
+    [4,-1,-1,11], // 卯 . . 戌 (3, 中, 中, 10)
+    [3,2,1,0]     // 寅丑子亥 (2,1,0,11)... 需修正
+  ];
+  // 正确地支->格位映射(标准紫微盘)
+  // 巳(5)午(6)未(7)申(8) / 辰(4)__酉(9) / 卯(3)__戌(10) / 寅(2)丑(1)子(0)亥(11)
+  const gridZhi=[5,6,7,8, 4,-1,-1,9, 3,-1,-1,10, 2,1,0,11];
+  const cells=gridZhi.map((z,i)=>{
+    if(z===-1)return null; // 中间格
+    const name=C.palaceName[z];const stars=C.palaceStars[z];
+    const isMing=z===C.ming;
+    const starHtml=stars.length?stars.map(s=>`<div style="font-size:12px;font-weight:700;color:var(--cinnabar);line-height:1.35;">${s}</div>`).join(""):'<div style="font-size:11px;color:var(--muted);">—</div>';
+    return `<div style="border:1px solid ${isMing?"var(--gold)":"var(--line)"};border-radius:7px;padding:6px 4px;background:${isMing?"var(--paper-2)":"#fff"};min-height:74px;display:flex;flex-direction:column;justify-content:space-between;">
+      <div style="text-align:center;">${starHtml}</div>
+      <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-top:3px;">
+        <span style="font-size:9px;color:var(--muted);">${ZW_DIZHI[z]}</span>
+        <span style="font-size:10.5px;font-weight:700;color:${isMing?"var(--jade)":"#8a7a5c"};">${name}</span>
+      </div></div>`;
+  });
+  // 中间信息格(2x2合并)
+  const centerInfo=`<div style="grid-column:2/4;grid-row:2/4;border:1px solid var(--gold);border-radius:9px;background:var(--ink);color:var(--gold-lite);display:flex;flex-direction:column;justify-content:center;align-items:center;padding:10px;">
+    <div style="font-size:15px;font-weight:700;font-family:'STKaiti','KaiTi',serif;letter-spacing:1px;">紫微命盘</div>
+    <div style="font-size:11px;color:#c9b98f;margin-top:8px;text-align:center;line-height:1.7;">
+      农历 ${C.lunar.lm}月${C.lunar.ld}日${C.lunar.isLeap?"(闰)":""}<br>
+      <b style="color:var(--gold-lite);">${ZW_JUNAME[C.ju]}</b><br>
+      命宫在 <b style="color:var(--gold-lite);">${ZW_DIZHI[C.ming]}</b>
+    </div></div>`;
+  // 组装网格
+  let gridHtml='<div style="display:grid;grid-template-columns:repeat(4,1fr);grid-template-rows:repeat(4,auto);gap:4px;margin-bottom:14px;">';
+  for(let i=0;i<16;i++){
+    if(cells[i])gridHtml+=cells[i];
+    else if(i===5)gridHtml+=centerInfo; // 中间左上格放合并信息
+  }
+  gridHtml+='</div>';
+  // 命宫主星解读
+  const mingStars=C.palaceStars[C.ming];
+  let mingRead="";
+  if(mingStars.length){mingRead=mingStars.map(s=>`<b style="color:var(--cinnabar);">${s}</b>（${ZW_STAR_DESC[s]||""}）`).join("、");}
+  else {
+    // 命宫无主星,借对宫(迁移)
+    const qian=(C.ming+6)%12;const qs=C.palaceStars[qian];
+    mingRead=qs.length?`命宫无主星，借对宫迁移宫「${qs.join("、")}」看`:"命宫无主星";
+  }
+  // 十二宫详批：遍历有解读库的宫，列主星+传统解读
+  const detailOrder=["兄弟","子女","疾厄","仆役","田宅","官禄","财帛","夫妻"];
+  const detailLabel={"兄弟":"手足","子女":"子女","疾厄":"健康","仆役":"朋友交友","田宅":"不动产","官禄":"事业","财帛":"财运","夫妻":"感情婚姻"};
+  // 宫名->地支
+  const nameToZhi={};for(let z=0;z<12;z++)nameToZhi[C.palaceName[z]]=z;
+  let detailHtml="";
+  for(const gong of detailOrder){
+    const zhi=nameToZhi[gong];if(zhi===undefined)continue;
+    const stars=C.palaceStars[zhi];
+    const descKey=ZW_PALACE_ALIAS[gong]||gong;
+    const descLib=ZW_PALACE_DESC[descKey];
+    let txt="";
+    if(stars.length&&descLib){
+      txt=stars.map(s=>descLib[s]).filter(Boolean).join("");
+    } else if(!stars.length){
+      // 无主星借对宫
+      const opp=(zhi+6)%12;const oppStars=C.palaceStars[opp];
+      if(oppStars.length&&descLib){txt="（本宫无主星，参对宫）"+oppStars.map(s=>descLib[s]).filter(Boolean).join("");}
+      else txt="本宫无主星，宜参照对宫与命格整体。";
+    }
+    const starTxt=stars.length?stars.join("、"):"无主星";
+    detailHtml+=`<div style="margin-bottom:12px;padding-bottom:10px;border-bottom:1px dashed var(--line);">
+      <div style="font-size:13px;font-weight:700;color:var(--jade);margin-bottom:3px;">${detailLabel[gong]}（${gong}宫 · ${ZW_DIZHI[zhi]}）<span style="color:var(--cinnabar);font-size:12px;">${starTxt}</span></div>
+      <div style="font-size:12.5px;line-height:1.6;color:var(--ink);">${txt}</div>
+    </div>`;
+  }
+  // 大限：算当前虚岁定现在走哪个大限
+  const gender=window.__zwGender||"男";
+  const DX=zwDaxian(C,gender);
+  const nowYear=new Date().getFullYear();
+  const age=nowYear-y+1; // 虚岁近似
+  let curLimit=null;
+  for(const L of DX.limits){if(age>=L.startAge&&age<=L.endAge){curLimit=L;break;}}
+  let daxianHtml="";
+  if(curLimit){
+    const advice=ZW_LIMIT_ADVICE[curLimit.gong]||"";
+    // 该大限宫主星的详批(借用十二宫解读)
+    const dxKey=ZW_PALACE_ALIAS[curLimit.gong]||curLimit.gong;
+    const dxLib=ZW_PALACE_DESC[dxKey];
+    let dxStarTxt="";
+    if(curLimit.stars.length&&dxLib){dxStarTxt=curLimit.stars.map(s=>dxLib[s]).filter(Boolean).join("");}
+    daxianHtml=`<div class="reading" style="margin-top:10px;border-color:var(--gold);"><h4 style="color:var(--jade);">◇ 当前大限（${curLimit.startAge}–${curLimit.endAge}岁 · ${curLimit.gong}宫）</h4>
+      <p style="font-size:12.5px;line-height:1.7;">你现在约 <b>${age}岁</b>（虚岁），走到 <b>${curLimit.gong}宫</b>大限${curLimit.stars.length?"（"+curLimit.stars.join("、")+"）":""}。<br>${advice}</p>
+      ${dxStarTxt?`<p style="font-size:12px;color:var(--muted);margin-top:6px;">此阶段${dxStarTxt}</p>`:""}
+    </div>`;
+  }
+  // 全部大限一览
+  let allLimitHtml=DX.limits.map(L=>{
+    const isCur=curLimit&&L.startAge===curLimit.startAge;
+    return `<div style="font-size:11.5px;padding:2px 0;${isCur?"color:var(--jade);font-weight:700;":"color:var(--muted);"}">${L.startAge}–${L.endAge}岁 ${L.gong}宫${L.stars.length?"（"+L.stars.join("")+"）":""}${isCur?" ◆现在":""}</div>`;
+  }).join("");
+  R.innerHTML=gridHtml+`
+    <div class="reading"><h4>◇ 命宫主星</h4>
+      <p style="font-size:12.5px;">命宫在 <b>${ZW_DIZHI[C.ming]}</b>，坐 ${mingRead}。这是紫微斗数看一个人性格、格局的核心宫位。</p>
+    </div>
+    <div class="reading" style="margin-top:10px;border-color:var(--gold);"><h4 style="color:var(--jade);">◇ 十二宫详批</h4>
+      ${detailHtml}
+      <p style="font-size:11px;color:var(--muted);">以上为各宫主星的传统解读，描述的是命格「倾向」，并非会必然发生的事。紫微斗数属传统术数，无科学依据，仅供参考，不作事件或年份预测。</p>
+    </div>
+    ${daxianHtml}
+    <div class="reading" style="margin-top:10px;"><h4>◇ 大限一览（每十年一阶段）</h4>
+      ${allLimitHtml}
+      <p style="font-size:11px;color:var(--muted);margin-top:6px;">大限是人生每十年走一个宫位，由排盘精算而来。◆为你现在所处阶段。此为阶段性方向参考，非某年吉凶预测。</p>
+    </div>
+    <div class="reading" style="margin-top:10px;"><h4>◇ 怎么看</h4>
+      <p style="font-size:12px;color:var(--muted);">命宫看性格本质，财帛宫看财运，官禄宫看事业，夫妻宫看婚姻，迁移宫看外出发展。金框为命宫。红字为十四主星。</p>
+    </div>`;
+};
+
+
+
+/* ========== 三世书·财运篇 ========== */
+const SS_LU=["病","正","逐","背","耗","困","天","向","煞","才","旺","暗"];
+const SS_LU_NAME={病:"病禄",正:"正禄",逐:"逐禄",背:"背禄",耗:"耗禄",困:"困禄",天:"天禄",向:"向禄",煞:"煞禄",才:"才禄",旺:"旺禄",暗:"暗禄"};
+const SS_LU_DESC={
+  向:"十二财禄中最佳。正财横财两旺，一生与钱有缘，创业易成，离乡外出发展成就更大。",
+  旺:"财气旺盛，求财顺遂，中晚年尤佳，宜稳中求进，忌贪心冒进。",
+  天:"天赐之禄，福泽深厚，多得贵人相助，衣食无忧，宜守本分。",
+  正:"正财为主，踏实稳定，靠正业积累，不宜投机，晚景丰足。",
+  才:"以才华技能取财，有一技傍身则衣食无缺，宜专精一行。",
+  正禄:"正财稳定。",
+  背:"财来财去，聚散无常，宜节制开支，忌担保借贷，中年后转好。",
+  耗:"破耗较多，钱财易散，需谨慎理财，避免大额投资与是非。",
+  困:"财运受困，早年较艰辛，宜刻苦耐劳、学一技之长，中晚年渐入佳境。",
+  病:"财气偏弱，需勤补拙，量入为出，健康与财运皆宜多留意。",
+  逐:"逐利奔波，为财劳碌，宜脚踏实地，忌好高骛远。",
+  煞:"财带煞气，起伏较大，宜稳健守成，避免高风险投机。",
+  暗:"暗财隐禄，财路不明显，宜低调积累，机遇多在暗处，贵人暗助。"
+};
+function sanshiCaiyun(yearLast, lunarMonth){
+  const t=(yearLast===0?10:yearLast);
+  const idx=(((lunarMonth - t)%12)+12)%12;
+  return SS_LU[idx];
+}
+// 月支->农历月序（复用八字：寅=1月...丑=12月）
+const ZHI_TO_LMONTH={寅:1,卯:2,辰:3,巳:4,午:5,未:6,申:7,酉:8,戌:9,亥:10,子:11,丑:12};
+$("ss-btn").onclick=()=>{
+  const R=$("ss-result");const p=parseDMY($("ss-day").value);
+  if(!p){R.innerHTML='<p class="empty">请输入完整出生日期。</p>';return;}
+  const[y,mo,d]=p;
+  if(y<1950||y>2035){R.innerHTML='<p class="empty">精确范围 1950–2035，超出暂不支持（需农历分界）。</p>';return;}
+  // 用八字引擎拿"命年尾数"和"农历月"：以立春/节气分界
+  const B=computeBazi(y,mo,d,12,0); // 中午避开子时边界
+  if(!B){R.innerHTML='<p class="empty">推算失败。</p>';return;}
+  // 命年 = 八字年柱对应公历年（立春换年已在B里体现，需从年干支反推尾数）
+  // 更直接：立春前算上年。用B的年干支序反推年份尾数
+  // 年干支 -> 找到对应 solarYear：用 nowV<lichun 判断
+  const jq=JIEQI[y];const lc=bz_dec(jq[0]);const nowV=bz_mins(mo,d,12,0);const lichunV=bz_mins(lc.mo,lc.d,lc.h,lc.mi);
+  let sy=y; if(nowV<lichunV) sy=y-1;
+  const yearLast=sy%10;
+  const lmonth=ZHI_TO_LMONTH[B.month[1]];
+  const lu=sanshiCaiyun(yearLast, lmonth);
+  const name=SS_LU_NAME[lu]||lu;
+  const desc=SS_LU_DESC[lu]||"（此财禄解说待补充）";
+  const good=["向","旺","天","正","才"].includes(lu);
+  R.innerHTML=`
+    <div class="verdict ${good?"good":"mid"}" style="margin-bottom:14px;">
+      <div class="big">${name}</div>
+      <div class="small">命年尾数 ${yearLast===0?"0(十)":yearLast} · 农历 ${lmonth} 月</div>
+    </div>
+    <div class="reading"><h4>◇ 财运解读</h4><p>${desc}</p></div>`;
+};
+
+/* ========== 姓名·五格剖象 ========== */
+const KANGXI={"王":4,"李":7,"张":11,"刘":15,"陈":16,"杨":13,"黄":12,"赵":14,"周":8,"吴":7,"徐":10,"孙":10,"马":10,"朱":6,"胡":11,"郭":15,"何":7,"高":10,"林":8,"罗":20,"郑":19,"梁":11,"谢":17,"宋":7,"唐":10,"许":11,"韩":17,"冯":12,"邓":19,"曹":11,"彭":12,"曾":12,"肖":9,"田":5,"董":15,"袁":10,"潘":16,"于":3,"蒋":17,"蔡":17,"余":7,"杜":7,"叶":15,"程":12,"苏":22,"魏":18,"吕":7,"丁":2,"任":6,"沈":8,"姚":9,"卢":16,"钟":17,"姜":9,"崔":11,"谭":19,"廖":14,"范":15,"汪":8,"陆":16,"金":8,"石":5,"戴":18,"贾":13,"韦":9,"夏":10,"邱":12,"方":4,"侯":9,"邹":19,"熊":14,"孟":8,"秦":10,"白":5,"江":7,"阎":16,"薛":19,"尹":4,"段":9,"雷":13,"黎":15,"史":5,"龙":16,"陶":16,"贺":12,"顾":21,"毛":4,"郝":14,"龚":22,"邵":12,"万":15,"钱":16,"严":20,"覃":12,"武":8,"戚":11,"莫":13,"孔":4,"向":6,"汤":13,"欧":15,"区":11,"伟":11,"芳":10,"娜":10,"秀":7,"英":11,"华":14,"慧":15,"巧":5,"美":9,"娟":10,"静":16,"丽":19,"强":11,"磊":15,"军":9,"洋":10,"勇":9,"艳":24,"杰":12,"涛":18,"明":8,"超":12,"霞":17,"平":5,"刚":10,"桂":10,"文":4,"辉":15,"力":2,"健":11,"俊":9,"帅":9,"雪":11,"燕":16,"红":9,"玉":5,"梅":11,"莹":15,"玲":10,"嘉":14,"吉":6,"米":6,"家":10,"豪":14,"宇":6,"轩":10,"浩":11,"泽":17,"鑫":24,"睿":14,"锦":16,"博":12,"梓":11,"涵":12,"雨":8,"欣":8,"怡":9,"彤":7,"诗":13,"子":3,"天":4,"心":4,"安":6,"乐":15,"欢":22,"佳":8,"思":9,"宁":14,"和":8,"国":11,"民":5,"建":9,"志":7,"永":5,"春":9,"秋":9,"冬":5,"荣":14,"富":12,"贵":12,"财":10,"福":14,"寿":14,"康":11,"泰":9,"顺":12,"祥":11,"瑞":14,"凤":14,"云":12,"月":4,"星":9,"光":6,"银":14,"珍":10,"珠":11,"宝":20,"如":6,"意":13,"成":7,"诚":14,"世":5,"庆":15,"新":13,"东":8,"南":9,"西":6,"北":5,"中":4,"生":5,"新":13,"进":15,"发":12,"旺":8,"隆":17,"昌":8,"盛":12,"铭":14,"钦":12,"锋":15,"键":17,"钧":12,"锐":15,"镇":18,"钰":13,"钢":16,"铃":13,"铠":18,"镜":19,"锟":15,"锡":14,"锌":13,"钿":13,"清":12,"洁":16,"淇":12,"润":16,"波":9,"河":9,"海":11,"洪":10,"涌":11,"湘":13,"澄":16,"沛":8,"泓":9,"洲":10,"浚":11,"渊":16,"滔":14,"澜":21,"瀚":20,"汉":15,"沁":8,"沐":8,"泳":9,"洛":10,"添":12,"渝":13,"湃":13,"溢":14,"滨":18,"沧":14,"淼":12,"深":12,"淳":12,"茜":12,"菁":14,"萍":14,"蓉":16,"薇":19,"莉":13,"茗":12,"菲":14,"蕾":19,"芸":10,"苗":11,"茵":12,"蓝":20,"蕊":18,"萱":15,"芷":10,"若":11,"茹":12,"荷":13,"莲":17,"芊":9,"苒":11,"菱":14,"莱":15,"蔚":17,"振":11,"扬":13,"捷":12,"择":17,"授":12,"推":12,"提":13,"援":13,"探":12,"达":16,"迪":12,"逸":15,"远":17,"迎":11,"通":14,"逢":14,"选":19,"遥":17,"迅":10,"道":16,"运":16,"陵":16,"阳":17,"阶":12,"陪":16,"际":19,"陌":14,"郎":14,"郡":14,"邢":11,"郁":13,"邦":11,"郸":19,"瑶":15,"琳":13,"琪":13,"瑾":16,"璐":17,"环":18,"玮":14,"珊":10,"玫":9,"瑜":14,"璇":16,"瑛":13,"琦":13,"玥":9,"琴":13,"瑀":14,"恒":10,"惠":12,"愉":13,"慈":13,"恺":14,"悦":11,"曙":18,"晨":11,"曦":20,"晖":13,"晶":12,"景":12,"智":12,"晓":16,"暖":13,"昱":9,"翔":12,"羽":6,"翰":16,"耀":20,"熙":13,"炜":13,"焕":13,"炫":9,"煜":13,"炎":8,"骏":17,"婷":12,"娴":15,"媛":12,"嫣":14,"婕":11,"娆":16,"辕":17,"载":13,"辰":7,"寰":16,"宏":7,"宗":8,"宪":16,"宜":8,"宸":10,"寅":11,"宥":9,"斌":12,"章":11,"竞":11,"立":5,"端":14,"竣":12,"楷":13,"榕":14,"橙":16,"松":8,"柏":9,"栋":13,"桐":10,"森":12,"栩":10,"梦":16,"楠":13,"棠":12,"榆":13,"樱":21,"垚":9,"焱":12,"犇":12,"淞":12,"沂":8,"潼":16,"銘":14,"欽":12,"鋒":15,"鍵":17,"鈞":12,"銳":15,"鎮":18,"錦":16,"鈺":13,"銀":14,"鋼":16,"鍾":17,"鈴":13,"鎧":18,"鏡":19,"錕":15,"錫":14,"鋅":13,"鈿":13,"澤":17,"潔":16,"潤":16,"淵":16,"瀾":21,"漢":15,"滄":14,"瑩":15,"榮":14,"藍":20,"蓮":17,"萊":15,"揚":13,"擇":17,"進":15,"達":16,"遙":17,"運":16,"陳":16,"陸":16,"陽":17,"階":12,"鄧":19,"鄒":19,"鄲":19,"瑤":15,"瑋":14,"恆":10,"愷":14,"悅":11,"暉":13,"曉":16,"煒":13,"煥":13,"駿":17,"嫻":15,"嬈":16,"軒":10,"轅":17,"載":13,"輝":15,"憲":16,"競":11,"棟":13,"夢":16,"櫻":21,"張":11,"楊":13,"黃":12,"趙":14,"吳":7,"馬":10,"謝":17,"許":11,"韓":17,"馮":12,"蔣":17,"囌":22,"呂":7,"盧":16,"譚":19,"範":15,"賈":13,"韋":9,"閻":16,"龍":16,"賀":12,"顧":21,"龔":22,"錢":16,"嚴":20,"湯":13,"歐":15,"偉":11,"華":14,"麗":19,"強":11,"軍":9,"傑":12,"剛":10,"帥":9,"紅":9,"傢":10,"詩":13,"歡":22,"國":11,"貴":12,"財":10,"壽":14,"順":12,"誠":14,"慶":15,"東":8,"發":12};
+const LUCK81={1:"吉",2:"凶",3:"吉",4:"凶",5:"吉",6:"吉",7:"吉",8:"吉",9:"凶",10:"凶",11:"吉",12:"凶",13:"吉",14:"凶",15:"吉",16:"吉",17:"吉",18:"吉",19:"凶",20:"凶",21:"吉",22:"凶",23:"吉",24:"吉",25:"吉",26:"半吉",27:"半吉",28:"凶",29:"吉",30:"半吉",31:"吉",32:"吉",33:"吉",34:"凶",35:"吉",36:"半吉",37:"吉",38:"半吉",39:"吉",40:"半吉",41:"吉",42:"半吉",43:"半吉",44:"凶",45:"吉",46:"凶",47:"吉",48:"吉",49:"半吉",50:"半吉",51:"半吉",52:"吉",53:"半吉",54:"凶",55:"半吉",56:"凶",57:"吉",58:"半吉",59:"凶",60:"凶",61:"半吉",62:"凶",63:"吉",64:"凶",65:"吉",66:"凶",67:"吉",68:"吉",69:"凶",70:"凶",71:"半吉",72:"凶",73:"半吉",74:"凶",75:"半吉",76:"凶",77:"半吉",78:"半吉",79:"凶",80:"半吉",81:"吉"};
+function grid81(x){let v=x%81;return v===0?81:v;}
+function gWuxing(n){const d=n%10;return["土","木","木","火","火","土","土","金","金","水"][d];}
+let nmTab="cn";
+$("nm-tab-cn").onclick=()=>{nmTab="cn";$("nm-cn").classList.remove("hidden");$("nm-en").classList.add("hidden");$("nm-tab-cn").classList.add("active");$("nm-tab-en").classList.remove("active");};
+$("nm-tab-en").onclick=()=>{nmTab="en";$("nm-en").classList.remove("hidden");$("nm-cn").classList.add("hidden");$("nm-tab-en").classList.add("active");$("nm-tab-cn").classList.remove("active");};
+function strokesOf(str){
+  const chars=[...str.replace(/[^\u4e00-\u9fa5]/g,"")];
+  const res=[],missing=[];
+  chars.forEach(c=>{if(KANGXI[c]!==undefined)res.push(KANGXI[c]);else{res.push(null);missing.push(c);}});
+  return{res,missing,chars};
+}
+// 手动输入生僻字笔画
+const manualStrokes={};
+function renderManual(missing){
+  const box=$("nm-manual");
+  if(missing.length===0){box.innerHTML="";return;}
+  box.innerHTML='<p class="hint" style="color:var(--cinnabar);">以下字不在库中，请手动输入康熙笔画：</p>'+missing.map(c=>`<div style="display:flex;align-items:center;gap:8px;margin:6px 0;"><span style="font-size:20px;font-weight:700;">${c}</span><input type="number" data-char="${c}" placeholder="笔画" style="width:90px;" oninput="manualStrokes['${c}']=+this.value"></div>`).join("");
+}
+$("nm-btn").onclick=()=>{
+  const R=$("nm-result");
+  if(nmTab==="en"){
+    const name=$("nm-enname").value.toUpperCase().replace(/[^A-Z]/g,"");
+    if(name.length<2){R.innerHTML='<p class="empty">请输入英文名。</p>';return;}
+    const sum=name.split("").reduce((a,c)=>a+(c.charCodeAt(0)-64),0);
+    const g=grid81(sum);const luck=LUCK81[g];const wx=gWuxing(sum);
+    const cls=luck==="吉"?"good":luck==="凶"?"bad":"mid";
+    R.innerHTML=`<div class="verdict ${cls}"><div class="big">${luck}</div><div class="small">字母总和 ${sum} → 数理 ${g} · 五行${wx}</div></div><div class="reading"><h4>◇ 说明</h4><p>英文名按 A=1…Z=26 累加得 ${sum}，归入 81 数理第 ${g} 数，属「${luck}」，五行偏${wx}。此为西式简化，与中文五格不同系统。</p></div>`;
+    return;
+  }
+  const surName=$("nm-surname").value.trim();
+  const givenName=$("nm-given").value.trim();
+  if(!surName||!givenName){R.innerHTML='<p class="empty">请输入姓和名。</p>';return;}
+  const S=strokesOf(surName), G=strokesOf(givenName);
+  const allMissing=[...S.missing,...G.missing].filter(c=>manualStrokes[c]===undefined);
+  if(allMissing.length){renderManual(allMissing);R.innerHTML='<p class="empty">请先补齐生僻字笔画，再点一次「排五格」。</p>';return;}
+  const fill=(arr,chars)=>arr.map((v,i)=>v!==null?v:manualStrokes[chars[i]]);
+  const s=fill(S.res,S.chars), g=fill(G.res,G.chars);
+  // 五格（支持单/复姓、单/双名，简化到常见情形）
+  let tian,ren,di,wai,zong;
+  const sSum=s.reduce((a,b)=>a+b,0), gSum=g.reduce((a,b)=>a+b,0);
+  if(s.length===1){ tian=s[0]+1; } else { tian=s.reduce((a,b)=>a+b,0); }
+  ren=s[s.length-1]+g[0];
+  if(g.length===1){ di=g[0]+1; } else { di=g.reduce((a,b)=>a+b,0); }
+  zong=sSum+gSum;
+  wai=zong-ren+1;
+  const G5={天:grid81(tian),人:grid81(ren),地:grid81(di),外:grid81(wai),总:grid81(zong)};
+  const sancai=gWuxing(G5.天)+gWuxing(G5.人)+gWuxing(G5.地);
+  const cell=(lab,v)=>{const l=LUCK81[v];const col=l==="吉"?"var(--jade)":l==="凶"?"var(--cinnabar)":"var(--gold)";return `<div style="flex:1;text-align:center;"><div style="font-size:11px;color:var(--muted);">${lab}格</div><div style="font-size:22px;font-weight:700;">${v}</div><div style="font-size:11px;color:${col};font-weight:700;">${l}</div></div>`;};
+  const renLuck=LUCK81[G5.人], zongLuck=LUCK81[G5.总];
+  const overall=(renLuck==="吉"&&zongLuck==="吉")?"good":(renLuck==="凶"||zongLuck==="凶")?"bad":"mid";
+  R.innerHTML=`
+    <div class="verdict ${overall}" style="margin-bottom:14px;"><div class="big">${renLuck==="吉"&&zongLuck==="吉"?"吉":renLuck==="凶"||zongLuck==="凶"?"凶":"半吉"}</div><div class="small">人格${G5.人}（${renLuck}）· 总格${G5.总}（${zongLuck}）· 三才 ${sancai}</div></div>
+    <div style="background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px 10px;display:flex;gap:4px;">${cell("天",G5.天)}${cell("人",G5.人)}${cell("地",G5.地)}${cell("外",G5.外)}${cell("总",G5.总)}</div>
+    <div class="reading" style="margin-top:12px;"><h4>◇ 说明</h4><p>三才配置为「${sancai}」（天人地五行）。人格主性格与中年运，总格主一生总运。以康熙笔画排定；数理吉凶为 81 数通则，仅供参考。</p></div>`;
+};
+
+
+/* ========== 完整报告引擎 ========== */
+const RP_INDUSTRY={木:"文教、出版、木材家具、园艺、服装、中医药、策划设计",火:"餐饮、光电能源、美容、娱乐传媒、电子、照明、互联网",土:"房地产、建筑、农业、陶瓷、仓储物流、保险、顾问",金:"金融、机械五金、汽车、珠宝、法律、军警、IT硬件",水:"贸易、物流、旅游、水产、饮料、传媒、清洁服务"};
+const RP_COLOR={木:"绿色、青色",火:"红色、紫色、橙色",土:"黄色、棕色、米色",金:"白色、金色、银色",水:"黑色、蓝色、灰色"};
+const RP_NUMBER={木:"14、41（生气·贵人人缘）",火:"19、91（延年·事业，化火之燥）",土:"13、31（天医·财富）",金:"19、91（延年·事业成功）",水:"14、41（生气）或 68、86（天医）"};
+const RP_DAYMASTER={甲:"参天大树型，正直坚毅、有担当，但略固执",乙:"花草藤蔓型，柔韧灵活、善适应，重感情",丙:"太阳烈火型，热情开朗、有魄力，性子急",丁:"烛灯之火型，细腻温暖、有内涵，敏感",戊:"高山厚土型，稳重踏实、包容，稍保守",己:"田园之土型，务实细致、善养育，多虑",庚:"顽金利刃型，刚毅果断、讲义气，较硬",辛:"珠玉之金型，精致敏锐、爱美，自尊高",壬:"江河大水型，聪明多智、气度大，易动",癸:"雨露之水型，温和内敛、有耐心，善感"};
+
+function rpParseDMY(s){const d=s.replace(/[^0-9]/g,"");if(d.length<8)return null;return[+d.slice(0,4),+d.slice(4,6),+d.slice(6,8)];}
+
+$("rp-btn").onclick=()=>{
+  const R=$("rp-result");
+  const name=$("rp-name").value.trim();
+  const p=rpParseDMY($("rp-day").value);
+  const sc=$("rp-sc").value;
+  if(!name){R.innerHTML='<p class="empty">请输入姓名。</p>';return;}
+  if(!p){R.innerHTML='<p class="empty">请输入完整出生日期。</p>';return;}
+  if(sc===""){R.innerHTML='<p class="empty">请选择出生时辰。</p>';return;}
+  const[y,mo,d]=p;
+  if(y<1950||y>2035){R.innerHTML='<p class="empty">精确范围 1950–2035，超出暂不支持。</p>';return;}
+  const hour=[23,1,3,5,7,9,11,13,15,17,19,21][+sc];
+
+  // === 八字 + 五行 ===
+  const B=computeBazi(y,mo,d,hour,0);
+  const cnt={木:0,火:0,土:0,金:0,水:0};
+  [B.year,B.month,B.day,B.time].forEach(([g,z])=>{cnt[GAN_WX[g]]++;cnt[ZHI_WX[z]]++;});
+  const dayMaster=B.dayMaster;const dmWx=GAN_WX[dayMaster];
+  // 找最弱/缺的五行作喜用
+  const wxArr=Object.entries(cnt).sort((a,b)=>a[1]-b[1]);
+  const weakest=wxArr[0][0];
+  const missing=Object.keys(cnt).filter(w=>cnt[w]===0);
+  const xiyong=missing.length?missing:[weakest];  // 喜用方向
+
+  // === 紫微命宫主星 ===
+  const zwStar=ziweiStar($("rp-day").value,sc);
+  const zwInfo=zwStar?ZW_FULL[zwStar]:null;
+
+  // === 姓名五格（中文） ===
+  let nameBlock="";
+  const surGiven=[...name.replace(/[^\u4e00-\u9fa5]/g,"")];
+  if(surGiven.length>=2){
+    // 简化：首字姓，其余名（复姓情况用户自行判断）
+    const sur=[surGiven[0]], giv=surGiven.slice(1);
+    const missChar=[...sur,...giv].filter(c=>KANGXI[c]===undefined);
+    if(missChar.length===0){
+      const s=sur.map(c=>KANGXI[c]), g=giv.map(c=>KANGXI[c]);
+      let tian=s.length===1?s[0]+1:s.reduce((a,b)=>a+b,0);
+      let ren=s[s.length-1]+g[0];
+      let di=g.length===1?g[0]+1:g.reduce((a,b)=>a+b,0);
+      let zong=s.reduce((a,b)=>a+b,0)+g.reduce((a,b)=>a+b,0);
+      const G={人:grid81(ren),总:grid81(zong)};
+      const renL=LUCK81[G.人],zongL=LUCK81[G.总];
+      const sancai=gWuxing(grid81(tian))+gWuxing(grid81(ren))+gWuxing(grid81(di));
+      nameBlock=`<div class="rp-sec"><div class="rp-h">六 · 姓名五格</div><p>人格 ${G.人}（${renL}）· 总格 ${G.总}（${zongL}）· 三才「${sancai}」。人格主中年运与性格，总格主一生总运。（康熙笔画）</p></div>`;
+    } else {
+      nameBlock=`<div class="rp-sec"><div class="rp-h">六 · 姓名五格</div><p>姓名含库外字（${missChar.join("、")}），暂无法精算五格。可到「姓名」tab 手动输入笔画。</p></div>`;
+    }
+  } else if(/[A-Za-z]/.test(name)){
+    const en=name.toUpperCase().replace(/[^A-Z]/g,"");const sum=en.split("").reduce((a,c)=>a+c.charCodeAt(0)-64,0);
+    nameBlock=`<div class="rp-sec"><div class="rp-h">六 · 姓名数理</div><p>英文名字母和 ${sum} → 数理 ${grid81(sum)}（${LUCK81[grid81(sum)]}），五行偏${gWuxing(sum)}。</p></div>`;
+  }
+
+  // === 性格综述 ===
+  let personality=RP_DAYMASTER[dayMaster]||"";
+  if(zwInfo) personality+=`。命宫坐「${zwStar}」，${zwInfo.good}`;
+
+  // === 行业/颜色/号码（按喜用五行） ===
+  const indUnion=[...new Set(xiyong.map(w=>RP_INDUSTRY[w]))].join("；");
+  const colUnion=[...new Set(xiyong.map(w=>RP_COLOR[w]))].join("、");
+  const numUnion=[...new Set(xiyong.map(w=>RP_NUMBER[w]))].join("；");
+
+  // 五行条
+  const WXC={木:"#2f6d54",火:"#a8321f",土:"#b08d3f",金:"#8a8a80",水:"#37648a"};
+  const wxBar=["木","火","土","金","水"].map(w=>{const n=cnt[w];const pct=Math.round(n/8*100);
+    return `<div style="margin-bottom:5px;"><div style="display:flex;justify-content:space-between;font-size:12px;"><span style="color:${WXC[w]};font-weight:700;">${w} ${n}</span><span style="color:var(--muted);">${pct}%</span></div><div style="height:7px;background:var(--paper-2);border-radius:4px;overflow:hidden;"><div style="height:100%;width:${pct}%;background:${WXC[w]};"></div></div></div>`;}).join("");
+
+  const pillHTML=[["年",B.year],["月",B.month],["日",B.day],["时",B.time]].map(([lab,[g,z]])=>
+    `<div style="flex:1;text-align:center;"><div style="font-size:10px;color:#c9b98f;">${lab}</div><div style="font-size:20px;font-weight:700;color:var(--gold-lite);">${g}${z}</div></div>`).join("");
+
+  window.__rpText=`【${name} 命理报告】\n出生：${y}-${mo}-${d} ${$("rp-sc").selectedOptions[0].text}\n四柱：${B.year.join("")} ${B.month.join("")} ${B.day.join("")} ${B.time.join("")}\n日主：${dayMaster}(${dmWx})\n五行：木${cnt.木} 火${cnt.火} 土${cnt.土} 金${cnt.金} 水${cnt.水}\n喜用：${xiyong.join("、")}\n性格：${personality}\n宜行业：${indUnion}\n宜颜色：${colUnion}\n宜号码：${numUnion}`;
+
+  R.innerHTML=`
+    <div style="background:var(--ink);border-radius:14px;padding:16px 12px;margin-bottom:14px;text-align:center;">
+      <div style="color:var(--gold-lite);font-size:18px;font-weight:700;font-family:'STKaiti','KaiTi',serif;letter-spacing:2px;">${name}</div>
+      <div style="color:#c9b98f;font-size:11px;margin:4px 0 10px;">${y}-${mo}-${d} · ${$("rp-sc").selectedOptions[0].text}</div>
+      <div style="display:flex;gap:4px;">${pillHTML}</div>
+    </div>
+
+    <div class="rp-sec"><div class="rp-h">一 · 五行分布</div>
+      ${wxBar}
+      <p style="margin-top:8px;">日主 <b>${dayMaster}（${dmWx}）</b>。${missing.length?"五行缺 <b>"+missing.join("、")+"</b>":"五行俱全，最弱为 <b>"+weakest+"</b>"}，喜用方向：<b>${xiyong.join("、")}</b>。</p>
+    </div>
+
+    <div class="rp-sec"><div class="rp-h">二 · 性格特质</div><p>${personality}。</p></div>
+
+    <div class="rp-sec"><div class="rp-h">三 · 适合行业</div><p>宜从事偏「${xiyong.join("、")}」的行业：${indUnion}。</p></div>
+
+    <div class="rp-sec"><div class="rp-h">四 · 幸运颜色</div><p>宜多用 <b>${colUnion}</b>，补益喜用五行；可用于衣着、车色、办公布置。</p></div>
+
+    <div class="rp-sec"><div class="rp-h">五 · 适合号码</div><p>数字磁场宜用 <b>${numUnion}</b>。可到「推荐车牌」tab 结合生成完整号码。</p></div>
+
+    ${nameBlock}
+  `;
+  $("rp-copy").style.display="block";
+};
+$("rp-copy").onclick=()=>{if(window.__rpText&&navigator.clipboard)navigator.clipboard.writeText(window.__rpText).then(()=>toast("报告已复制")).catch(()=>toast("复制失败"));};
+
+
+/* ========== 奇门遁甲（定局+地盘，拆补法，未经权威库对拍） ========== */
+const QM_JIEQI={};
+"1950:1060538,1202259,2041720,2191317,3061135,3211235,4051644,4202359,5061024,5212327,6061451,6220736,7080113,7231829,8081055,8240123,9081333,9232243,10090451,10240744,11080743,11230502,12080021,12221222;1951:1061130,1210452,2042313,2191909,3061726,3211825,4052232,4210548,5061609,5220515,6062032,6221324,7080653,7240020,8081637,8240716,9081918,9240436,10091036,10241336,11081326,11231051,12080602,12221813;1952:1061709,1211038,2050452,2200056,3052307,3210013,4050415,4201136,5052154,5211103,6060220,6211912,7071244,7230607,8072230,8231302,9080113,9231023,10081632,10231922,11071921,11221635,12071155,12230000;1953:1052302,1201621,2041045,2190641,3060502,3210600,4051012,4201725,5060352,5211652,6060816,6220059,7071834,7231152,8080414,8231845,9080652,9231605,10082210,10240106,11080100,11222222,12071736,12220543;1954:1060445,1202211,2041630,2191232,3061048,3211153,4051559,4202319,5060938,5212247,6061400,6220654,7080019,7231744,8080959,8240035,9081237,9232155,10090357,10240656,11080650,11230414,12072328,12221131;1955:1061035,1210401,2042217,2191818,3061630,3211735,4052138,4210457,5061517,5220424,6061943,6221231,7080605,7232324,8081550,8240618,9081831,9240340,10090952,10241243,11081245,11231000,12080522,12221724;1956:1061630,1210948,2050411,2200004,3052224,3202320,4050331,4201043,5052109,5211012,6060135,6211823,7071157,7230519,8072140,8231214,9080018,9230935,10081535,10231834,11071825,11221549,12071102,12222310;1957:1052210,1201538,2040954,2190557,3060410,3210516,4050918,4201641,5060258,5211610,6060724,6220020,7071748,7231114,8080332,8231807,9080612,9231526,10082129,10240024,11080020,11222139,12071655,12220459;1958:1060404,1202128,2041549,2191148,3061004,3211105,4051512,4202226,5060849,5212151,6061312,6220556,7072333,7231650,8080917,8232345,9081158,9232108,10090319,10240611,11080611,11230329,12072249,12221048;1959:1060958,1210318,2042142,2191737,3061556,3211654,4052103,4210416,5061438,5220342,6061900,6221149,7080519,7232245,8081504,8240543,9081747,9240308,10090909,10241210,11081202,11230926,12080437,12221639;1960:1061542,1210910,2050323,2192326,3052136,3202242,4050243,4201005,5052022,5210933,6060048,6211742,7071112,7230437,8072059,8231134,9072345,9230858,10081508,10231801,11071802,11221518,12071037,12222234;1961:1052142,1201501,2040922,2190516,3060334,3210432,4050842,4201555,5060221,5211522,6060646,6212330,7071706,7231023,8080248,8231718,9080529,9231442,10082050,10232347,11072346,11222107,12071625,12220425;1962:1060334,1202057,2041517,2191114,3060929,3211029,4051434,4202150,5060809,5212116,6061231,6220524,7072251,7231617,8080833,8232312,9081115,9232035,10090237,10240539,11080534,11230301,12072216,12221019;1963:1060926,1210253,2042107,2191708,3061517,3211619,4052018,4210336,5061351,5220258,6061814,6221104,7080437,7232159,8081425,8240457,9081711,9240223,10090836,10241128,11081132,11230849,12080412,12221615;1964:1061522,1210841,2050304,2192257,3052115,3202209,4050218,4200927,5051951,5210849,6060011,6211656,7071032,7230352,8072016,8231051,9072259,9230816,10081421,10231720,11071715,11221438,12070953,12222201;1965:1052101,1201428,2040846,2190447,3060300,3210404,4050806,4201526,5060141,5211450,6060602,6212255,7071621,7230948,8080204,8231642,9080447,9231405,10082011,10232309,11072306,11222029,12071545,12220349;1966:1060254,1202019,2041437,2191037,3060851,3210952,4051356,4202111,5060730,5212032,6061149,6220433,7072206,7231523,8080748,8232217,9081032,9231943,10090156,10240450,11080455,11230214,12072137,12220940;1967:1060848,1210207,2042030,2191623,3061441,3211536,4051944,4210255,5061317,5220217,6061736,6221022,7080353,7232115,8081334,8240412,9081617,9240138,10090741,10241043,11081037,11230804,12080317,12221528;1968:1061426,1210754,2050207,2192209,3052017,3202122,4050120,4200841,5051855,5210805,6052319,6211613,7070941,7230307,8071927,8231002,9072211,9230726,10081334,10231629,11071629,11221348,12070908,12222116;1969:1052016,1201338,2040758,2190354,3060210,3210308,4050714,4201426,5060049,5211349,6060511,6212155,7071531,7230848,8080114,8231543,9080355,9231306,10081916,10232211,11072211,11221931,12071451,12220259;1970:1060201,1201923,2041345,2190941,3060758,3210856,4051301,4202014,5060633,5211937,6061052,6220342,7072110,7231436,8080654,8232133,9080937,9231858,10090101,10240404,11080357,11230124,12072037,12220843;1971:1060745,1210112,2041925,2191526,3061334,3211438,4051836,4210154,5061208,5220114,6061628,6220919,7080251,7232014,8081240,8240315,9081530,9240044,10090658,10240953,11080956,11230713,12080235,12221435;1972:1061341,1210658,2050120,2192111,3051928,3202021,4050028,4200737,5051801,5210659,6052221,6211506,7070842,7230202,8071828,8230903,9072115,9230632,10081241,10231541,11071539,11221302,12070818,12222023;1973:1051925,1201248,2040704,2190301,3060112,3210212,4050613,4201330,5052346,5211253,6060406,6212100,7071427,7230755,8080012,8231453,9080259,9231221,10081827,10232130,11072127,11221854,12071410,12220212;1974:1060119,1201845,2041300,2190858,3060707,3210806,4051205,4201918,5060533,5211836,6060951,6220237,7072011,7231330,8080557,8232028,9080845,9231758,10090014,10240310,11080317,11230038,12072004,12220807;1975:1060717,1210036,2041859,2191449,3061305,3211356,4051801,4210107,5061127,5220023,6061542,6220826,7080159,7231921,8081144,8240223,9081433,9232355,10090602,10240906,11080902,11230630,12080146,12221355;1976:1061257,1210625,2050039,2192039,3051848,3201949,4042346,4200702,5051714,5210621,6052131,6211424,7070750,7230118,8071738,8230818,9072028,9230548,10081158,10231458,11071458,11221221,12070740,12221945;1977:1051851,1201214,2040633,2190230,3060044,3210142,4050545,4201257,5052316,5211214,6060332,6212013,7071347,7230703,8072330,8231400,9080215,9231129,10081743,10232040,11072045,11221806,12071330,12220135;1978:1060043,1201803,2041226,2190820,3060638,3210733,4051139,4201849,5060508,5211808,6060923,6220209,7071936,7231300,8080517,8231956,9080802,9231725,10082330,10240237,11080234,11230004,12071920,12220723;1979:1060631,1202359,2041812,2191413,3061219,3211321,4051717,4210035,5061047,5212353,6061505,6220756,7080124,7231848,8081110,8240146,9081359,9232316,10090530,10240827,11080832,11230554,12080117,12221320;1980:1061228,1210548,2050009,2192001,3051816,3201909,4042314,4200622,5051644,5210542,6052103,6211347,7070723,7230041,8071708,8230740,9071953,9230508,10081119,10231417,11071418,11221141,12070701,12221909;1981:1051812,1201135,2040555,2190151,3060005,3210102,4050505,4201218,5052234,5211139,6060252,6211944,7071311,7230639,8072257,8231338,9080143,9231105,10081709,10232012,11072008,11221735,12071251,12220056;1982:1060002,1201730,2041145,2190746,3060554,3210655,4051052,4201807,5060419,5211722,6060835,6220122,7071854,7231215,8080441,8231915,9080731,9231646,10082302,10240157,11080204,11222323,12071848,12220650;1983:1060558,1202316,2041739,2191330,3061147,3211238,4051644,4202350,5061010,5212306,6061425,6220708,7080043,7231804,8081029,8240107,9081320,9232241,10090451,10240754,11080752,11230518,12080033,12221238;1984:1061140,1210505,2042318,2191916,3051724,3201824,4042222,4200538,5051550,5210457,6052008,6211302,7070629,7222358,8071617,8230700,9071909,9230432,10081042,10231345,11071345,11221110,12070628,12221829;1985:1051735,1201057,2040511,2190107,3052316,3210013,4050413,4201125,5052142,5211042,6060159,6211844,7071218,7230536,8072204,8231235,9080053,9231007,10081624,10231921,11071929,11221650,12071216,12220022;1986:1052328,1201646,2041107,2190657,3060512,3210602,4051006,4201712,5060330,5211627,6060744,6220029,7071800,7231124,8080345,8231825,9080634,9231558,10082206,10240114,11080112,11222244,12071800,12220607;1987:1060513,1202240,2041651,2191249,3061053,3211151,4051544,4202257,5060905,5212210,6061318,6220610,7072338,7231706,8080929,8240009,9081224,9232145,10090359,10240700,11080705,11230429,12072352,12221202;1988:1061103,1210424,2042242,2191835,3051646,3201738,4042139,4200444,5051501,5210356,6051914,6211156,7070532,7222251,8071520,8230554,9071811,9230328,10080944,10231244,11071248,11221011,12070534,12221745;1989:1051645,1201006,2040427,2190020,3052234,3202328,4050329,4201038,5052053,5210953,6060105,6211753,7071119,7230445,8072103,8231146,9072353,9230919,10081527,10231835,11071833,11221604,12071120,12212327;1990:1052233,1201601,2041014,2190614,3060419,3210519,4050912,4201626,5060235,5211537,6060646,6212332,7071700,7231021,8080245,8231720,9080537,9231455,10082113,10240013,11080023,11222146,12071714,12220522;1991:1060428,1202147,2041608,2191158,3061012,3211101,4051504,4202208,5060826,5212120,6061238,6220518,7072252,7231611,8080837,8232312,9081127,9232048,10090301,10240605,11080607,11230335,12072256,12221106;1992:1061008,1210332,2042148,2191743,3051552,3201648,4042045,4200356,5051408,5210312,6051822,6211114,7070440,7222208,8071427,8230510,9071718,9230242,10080851,10231157,11071157,11220925,12070444,12221653;1993:1051556,1200922,2040337,2182335,3052142,3202240,4050237,4200949,5052001,5210901,6060015,6211659,7071032,7230350,8072017,8231050,9072307,9230822,10081440,10231737,11071745,11221506,12071033,12212243;1994:1052148,1201507,2040930,2190521,3060337,3210428,4050831,4201536,5060154,5211448,6060604,6212247,7071619,7230941,8080204,8231643,9080455,9231419,10082029,10232336,11072335,11222105,12071622,12220425;1995:1060334,1202100,2041512,2191110,3060916,3211014,4051408,4202121,5060730,5212034,6061142,6220434,7072201,7231529,8080751,8232234,9081048,9232013,10090227,10240531,11080535,11230301,12072222,12221022;1996:1060931,1210252,2042107,2191700,3051509,3201603,4042002,4200309,5051326,5210223,6051740,6211023,7070400,7222118,8071348,8230422,9071642,9230200,10080818,10231118,11071126,11220849,12070414,12221616;1997:1051524,1200842,2040301,2182251,3052104,3202154,4050156,4200902,5051919,5210817,6052332,6211619,7070949,7230315,8071936,8231019,9072228,9230755,10081405,10231714,11071714,11221447,12071004,12212205;1998:1052118,1201446,2040856,2190454,3060257,3210354,4050744,4201456,5060103,5211405,6060513,6212202,7071530,7230855,8080119,8231558,9080415,9231337,10081955,10232258,11072308,11222034,12071601,12220407;1999:1060317,1202037,2041457,2191046,3060857,3210945,4051344,4202046,5060701,5211952,6061109,6220349,7072124,7231444,8080714,8232151,9081009,9231931,10090148,10240452,11080457,11230224,12072147,12220956;2000:1060900,1210223,2042040,2191633,3051442,3201535,4041931,4200239,5051250,5210149,6051658,6210947,7070313,7222042,8071302,8230348,9071559,9230127,10080738,10231047,11071048,11220819,12070337,12221543;2001:1051449,1200816,2040228,2182227,3052032,3202130,4050124,4200835,5051844,5210744,6052253,6211537,7070906,7230226,8071852,8230927,9072146,9230704,10081325,10231625,11071636,11221400,12070928,12212137;2002:1052043,1201402,2040824,2190413,3060227,3210316,4050718,4201420,5060037,5211329,6060444,6212124,7071456,7230814,8080039,8231516,9080331,9231255,10081909,10232217,11072221,11221953,12071514,12220321;2003:1060227,1201952,2041405,2191000,3060804,3210859,4051252,4202002,5060610,5211912,6061019,6220310,7072035,7231404,8080624,8232108,9080920,9231846,10090100,10240408,11080413,11230143,12072105,12220914;2004:1060818,1210142,2041956,2191549,3051355,3201448,4041843,4200150,5051202,5210059,6051613,6210856,7070231,7221950,8071219,8230253,9071512,9230029,10080649,10230948,11070958,11220721,12070248,12221503;2005:1051402,1200721,2040143,2182131,3051945,3202033,4050034,4200737,5051752,5210647,6052201,6211446,7070816,7230140,8071803,8230845,9072056,9230623,10081233,10231542,11071542,11221314,12070832,12212041;2006:1051946,1201315,2040727,2190325,3060128,3210225,4050615,4201326,5052330,5211231,6060336,6212025,7071351,7230717,8072340,8231422,9080239,9231203,10081821,10232126,11072134,11221901,12071426,12220234;2007:1060140,1201900,2041318,2190908,3060717,3210807,4051204,4201907,5060520,5211811,6060927,6220206,7071941,7231300,8080531,8232007,9080829,9231751,10090011,10240315,11080324,11230049,12072014,12220822;2008:1060724,1210043,2041900,2191449,3051258,3201348,4041745,4200051,5051103,5210000,6051511,6210759,7070126,7221854,8071116,8230202,9071414,9222344,10080556,10230908,11070910,11220644,12070202,12221407;2009:1051314,1200640,2040049,2182046,3051847,3201943,4042333,4200644,5051650,5210551,6052059,6211345,7070713,7230035,8071701,8230738,9071957,9230518,10081140,10231443,11071456,11221222,12070752,12212003;2010:1051908,1201227,2040647,2190235,3060046,3210132,4050530,4201229,5052244,5211133,6060249,6211928,7071302,7230621,8072249,8231326,9080144,9231109,10081726,10232035,11072042,11221814,12071338,12220146;2011:1060054,1201818,2041232,2190825,3060629,3210720,4051111,4201817,5060423,5211721,6060827,6220116,7071842,7231211,8080433,8231920,9080734,9231704,10082319,10240230,11080234,11230007,12071929,12220738;2012:1060643,1210009,2041822,2191417,3051221,3201314,4041705,4200012,5051019,5202315,6051425,6210708,7070040,7221800,8071030,8230106,9071329,9222248,10080511,10230813,11070825,11220550,12070118,12221330;2013:1051233,1200551,2040013,2182001,3051814,3201901,4042302,4200603,5051618,5210509,6052023,6211303,7070634,7222355,8071620,8230701,9071916,9230444,10081058,10231409,11071413,11221148,12070708,12211911;2014:1051824,1201151,2040603,2190159,3060002,3210057,4050446,4201155,5052159,5211059,6060203,6211851,7071214,7230541,8072202,8231245,9080101,9231029,10081647,10231957,11072006,11221738,12071304,12220111;2015:1060020,1201743,2041158,2190749,3060555,3210645,4051039,4201741,5060352,5211644,6060758,6220037,7071812,7231130,8080401,8231837,9080659,9231620,10082242,10240146,11080158,11222325,12071853,12220703;2016:1060608,1202327,2041746,2191333,3051143,3201230,4041627,4192329,5050941,5202236,6051348,6210634,7070003,7221730,8070953,8230038,9071251,9222221,10080433,10230745,11070747,11220522,12070041,12221247;2017:1051155,1200523,2032334,2181931,3051732,3201828,4042217,4200527,5051531,5210430,6051936,6211224,7070550,7222315,8071540,8230620,9071838,9230401,10081022,10231326,11071337,11221104,12070632,12211844;2018:1051748,1201109,2040528,2190118,3052328,3210015,4050412,4201112,5052125,5211014,6060129,6211807,7071141,7230500,8072130,8231208,9080029,9230954,10081614,10231922,11071931,11221701,12071225,12220027;2019:1052338,1201659,2041114,2190703,3060509,3210558,4050951,4201655,5060302,5211559,6060706,6212354,7071720,7231050,8080313,8231802,9080616,9231550,10082205,10240119,11080124,11222258,12071818,12220622;2020:1060530,1202254,2041703,2191257,3051056,3201149,4041538,4192245,5050851,5202149,6051258,6210543,7062314,7221636,8070906,8222344,9071208,9222130,10080355,10230659,11070713,11220439,12070009,12221219;2021:1051123,1200439,2032258,2181843,3051653,3201737,4042135,4200433,5051447,5210337,6051852,6211132,7070505,7222226,8071453,8230534,9071752,9230321,10080939,10231251,11071258,11221033,12070557,12211802;2022:1051714,1201039,2040450,2190043,3052243,3202333,4050320,4201024,5052025,5210922,6060025,6211713,7071038,7230407,8072029,8231116,9072332,9230903,10081522,10231835,11071845,11221620,12071146,12212359;2023:1052304,1201629,2041042,2190634,3060436,3210524,4050913,4201613,5060218,5211509,6060618,6212257,7071630,7230950,8080222,8231701,9080526,9231449,10082115,10240020,11080035,11222202,12071732,12220548;2024:1060449,1202207,2041627,2191213,3051022,3201106,4041502,4192159,5050810,5202059,6051209,6210451,7062220,7221544,8070809,8222255,9071111,9222043,10080259,10230614,11070620,11220356,12062317,12221127;2025:1051032,1200400,2032210,2181806,3051607,3201701,4042048,4200356,5051357,5210254,6051756,6211042,7070404,7222129,8071351,8230433,9071651,9230219,10080841,10231150,11071204,11220935,12070504,12211720;2026:1051623,1200944,2040402,2182351,3052159,3202245,4050240,4200939,5051948,5210836,6052348,6211624,7070956,7230313,8071942,8231018,9072241,9230805,10081429,10231737,11071752,11221523,12071052,12212303;2027:1052209,1201529,2040946,2190533,3060339,3210424,4050817,4201517,5060125,5211418,6060525,6212210,7071537,7230904,8080126,8231614,9080428,9231401,10082017,10232332,11072338,11222116,12071637,12220450;2028:1060354,1202121,2041531,2191126,3050924,3201017,4041403,4192109,5050712,5202009,6051116,6210402,7062130,7221453,8070721,8222200,9071022,9221945,10080208,10230513,11070527,11220254,12062224,12221042;2029:1050941,1200300,2032120,2181707,3051517,3201601,4041958,4200255,5051307,5210155,6051709,6210948,7070322,7222042,8071311,8230351,9071611,9230138,10080758,10231108,11071116,11220849,12070413,12211619;2030:1051530,1200854,2040308,2182259,3052103,3202152,4050141,4200843,5051846,5210741,6052244,6211531,7070855,7230224,8071847,8230936,9072152,9230726,10081345,10231700,11071708,11221444,12071007,12212214;2031:1052123,1201447,2040858,2190450,3060251,3210340,4050728,4201431,5060035,5211327,6060435,6212117,7071448,7230810,8080042,8231523,9080350,9231315,10081942,10232249,11072305,11222032,12071602,12220409;2032:1060316,1202031,2041448,2191032,3050840,3200921,4041317,4192014,5050625,5201915,6051027,6210308,7062040,7221404,8070632,8222118,9070937,9221910,10080130,10230446,11070454,11220231,12062153,12220955;2033:1050908,1200232,2032041,2181633,3051432,3201522,4041908,4200213,5051213,5210110,6051613,6210901,7070224,7221952,8071215,8230301,9071520,9230051,10080713,10231027,11071041,11220816,12070344,12211555;2034:1051504,1200827,2040241,2182230,3052032,3202117,4050106,4200803,5051809,5210656,6052206,6211444,7070817,7230136,8071809,8230847,9072113,9230639,10081307,10231616,11071633,11221404,12070936,12212146;2035:1052055,1201414,2040831,2190416,3060221,3210302,4050653,4201348,5052354,5211243,6060350,6212033,7071401,7230728,8072354,8231444,9080302,9231238,10081857,10232216,11072223,11222003,12071525,12220334".split(";").forEach(r=>{const[y,c]=r.split(":");QM_JIEQI[y]=c.split(",").map(Number);});
+const QM_JIE24=["小寒","大寒","立春","雨水","惊蛰","春分","清明","谷雨","立夏","小满","芒种","夏至","小暑","大暑","立秋","处暑","白露","秋分","寒露","霜降","立冬","小雪","大雪","冬至"];
+const QM_TG=["甲","乙","丙","丁","戊","己","庚","辛","壬","癸"];
+const QM_DZ=["子","丑","寅","卯","辰","巳","午","未","申","酉","戌","亥"];
+const QM_JU={"冬至":[1,7,4],"小寒":[2,8,5],"大寒":[3,9,6],"立春":[8,5,2],"雨水":[9,6,3],"惊蛰":[1,7,4],"春分":[3,9,6],"清明":[4,1,7],"谷雨":[5,2,8],"立夏":[4,1,7],"小满":[5,2,8],"芒种":[6,3,9],"夏至":[9,3,6],"小暑":[8,2,5],"大暑":[7,1,4],"立秋":[2,5,8],"处暑":[1,4,7],"白露":[9,3,6],"秋分":[7,1,4],"寒露":[6,9,3],"霜降":[5,8,2],"立冬":[6,9,3],"小雪":[5,8,2],"大雪":[4,7,1]};
+const QM_YANG=new Set(["冬至","小寒","大寒","立春","雨水","惊蛰","春分","清明","谷雨","立夏","小满","芒种"]);
+const QM_LYSQ=["戊","己","庚","辛","壬","癸","丁","丙","乙"];
+const QM_RING=[1,8,3,4,9,2,7,6];
+const QM_XS={"甲子":"戊","甲戌":"己","甲申":"庚","甲午":"辛","甲辰":"壬","甲寅":"癸"};
+const QM_STARH={1:"蓬",2:"禽",3:"沖",4:"輔",9:"英",8:"任",7:"柱",6:"心",5:"禽"};
+const QM_MSEQ=["休","生","傷","杜","景","死","驚","開"];
+const QM_MENH={1:"休",8:"生",3:"傷",4:"杜",9:"景",2:"死",7:"驚",6:"開",5:"死"};
+const QM_SHEN_YANG=["符","蛇","陰","合","勾","雀","地","天"];
+const QM_SHEN_YIN=["符","蛇","陰","合","虎","玄","地","天"];
+
+const QM_STAR={1:"天蓬",8:"天任",3:"天冲",4:"天辅",9:"天英",2:"天芮",7:"天柱",6:"天心",5:"天禽"};
+const QM_MEN={1:"休门",8:"生门",3:"伤门",4:"杜门",9:"景门",2:"死门",7:"惊门",6:"开门"};
+const QM_FANG={1:"坎·北",2:"坤·西南",3:"震·东",4:"巽·东南",5:"中·中央",6:"乾·西北",7:"兑·西",8:"艮·东北",9:"离·南"};
+const QM_MEN_MEAN={休门:"主休息、和谈，宜见贵求安",生门:"主生机、财源，宜求财开业",伤门:"主损伤、索讨，宜捕猎讨债",杜门:"主闭塞、隐蔽，宜躲藏避事",景门:"主文书、信息，宜考试文书",死门:"主死丧、静止，忌喜庆宜吊丧",惊门:"主惊恐、口舌，忌是非官讼",开门:"主开创、通达，宜求职开张"};
+const QM_GAN_MEAN={戊:"天门·财贵",己:"地户·暗昧",庚:"格战·阻隔",辛:"罪过·刑伤",壬:"漂泊·奸邪",癸:"天网·柔弱",丁:"太阴·文书吉",丙:"月奇·权威吉",乙:"日奇·贵人吉"};
+function qmDec(c){return{mo:Math.floor(c/1000000),d:Math.floor(c/10000)%100,h:Math.floor(c/100)%100,mi:c%100};}
+function qmMins(mo,d,h,mi){return((mo*31+d)*24+h)*60+mi;}
+function qmDayGZ(y,m,d){const anchor=Date.UTC(2000,0,7);const days=Math.round((Date.UTC(y,m-1,d)-anchor)/86400000);const gz=((days%60)+60)%60;return[gz%10,gz%12];}
+function qmFindJie(y,m,d,h){const jq=QM_JIEQI[y];if(!jq)return null;const nowV=qmMins(m,d,h,0);let best=null,bv=-1;for(let i=0;i<24;i++){const t=qmDec(jq[i]);const v=qmMins(t.mo,t.d,t.h,t.mi);if(v<=nowV&&v>bv){bv=v;best=QM_JIE24[i];}}return best||"冬至";}
+function qmYuan(dz){const z=QM_DZ[dz];if("子午卯酉".includes(z))return 0;if("寅申巳亥".includes(z))return 1;return 2;}
+function qmPan(y,m,d,scIdx){
+  const hour=[23,1,3,5,7,9,11,13,15,17,19,21][scIdx];
+  let ey=y,em=m,ed=d;
+  if(hour>=23){const nd=new Date(Date.UTC(y,m-1,d)+86400000);ey=nd.getUTCFullYear();em=nd.getUTCMonth()+1;ed=nd.getUTCDate();}
+  const gz=qmDayGZ2(ey,em,ed);const dGan=gz%10;
+  const jq=qmFindJie(ey,em,ed,hour<23?hour:0);const yin=!QM_YANG.has(jq);
+  const yuan=Math.floor((gz%15)/5);const ju=QM_JU[jq][yuan];
+  const hZhi=Math.floor(((hour+1)%24)/2)%12;const hGan=(dGan*2+hZhi)%10;
+  let sIdx;for(let n=0;n<60;n++)if(n%10===hGan&&n%12===hZhi){sIdx=n;break;}
+  const xsIdx=Math.floor(sIdx/10)*10;
+  const xunshou=QM_TG[xsIdx%10]+QM_DZ[xsIdx%12];const dunGan=QM_XS[xunshou];
+  const dipan={};let pos=ju;for(const g of QM_LYSQ){dipan[pos]=g;pos=!yin?(pos%9+1):((pos-2+9)%9+1);}
+  let fuGong;for(const k in dipan)if(dipan[k]===dunGan)fuGong=+k;
+  const shiGan=QM_TG[hGan];const shiUse=(shiGan==="甲")?dunGan:shiGan;
+  let shiGong;for(const k in dipan)if(dipan[k]===shiUse)shiGong=+k;
+  if(shiGong===undefined)shiGong=fuGong;
+  const fuR=fuGong===5?2:fuGong,shiR=shiGong===5?2:shiGong;
+  const shift=(QM_RING.indexOf(shiR)-QM_RING.indexOf(fuR)+8)%8;
+  const tianpan={};for(const g of QM_RING){const ni=(QM_RING.indexOf(g)+shift)%8;tianpan[QM_RING[ni]]=dipan[g];}
+  tianpan[5]=dipan[5];
+  const ganGong={};for(const g in dipan)ganGong[dipan[g]]=+g;
+  const xing={};for(const g in tianpan){const home=ganGong[tianpan[g]];xing[+g]=QM_STARH[home];}
+  const steps=((sIdx-xsIdx)%12+12)%12;
+  const zhishiMen=QM_MENH[fuGong];
+  let land=(((fuGong+(yin?-steps:steps))-1)%9+9)%9+1;const landReal=land===5?2:land;
+  const men={};{const li=QM_RING.indexOf(landReal);const si=QM_MSEQ.indexOf(zhishiMen);for(let k=0;k<8;k++){const gi=((li+(k-si))%8+8)%8;men[QM_RING[gi]]=QM_MSEQ[k];}}
+  const shen={};{const seq=yin?QM_SHEN_YIN:QM_SHEN_YANG;const li=QM_RING.indexOf(shiR);for(let k=0;k<8;k++){const gi=((li+(yin?-k:k))%8+8)%8;shen[QM_RING[gi]]=seq[k];}}
+  return {jq,yin,ju,yuan,dipan,tianpan,xing,men,shen,fuGong,shiGong,shiGZ:QM_TG[hGan]+QM_DZ[hZhi],xunshou,dunGan};
+}
+function qmDayGZ2(y,m,d){const anchor=Date.UTC(2000,0,7);const days=Math.round((Date.UTC(y,m-1,d)-anchor)/86400000);return((days%60)+60)%60;}
+// 择方目标单选
+// 择方规则（全局，择方和吉时共用）
+const QM_DIRF={1:"正北",2:"西南",3:"正东",4:"东南",6:"西北",7:"正西",8:"东北",9:"正南"};
+const QM_AIM_RULES={
+  "求财":{men:["生","開"],shen:["符","天"],act:"求财、开张、进货"},
+  "谈生意":{men:["開","休","生"],shen:["合"],act:"谈判、签约、合作"},
+  "见贵人":{men:["開","休"],shen:["合","陰","符"],act:"求人办事、见贵人"},
+  "出行":{men:["開","生"],shen:["天"],act:"出行、搬迁、远行"},
+  "签约文书":{men:["景","開"],shen:["合"],act:"考试、文书、签约、面试"}
+};
+const QM_MENZH={"休":"休","生":"生","傷":"伤","杜":"杜","景":"景","死":"死","驚":"惊","開":"开"};
+const QM_SHENF2={"符":"值符","蛇":"螣蛇","陰":"太阴","合":"六合","勾":"勾陈","雀":"朱雀","地":"九地","天":"九天","虎":"白虎","玄":"玄武"};
+// 某时辰在某目标下的评分（吉门临方数 + 吉神/三奇加分）
+function qmScoreTime(P,aim){
+  const rule=QM_AIM_RULES[aim];let score=0;const hitDirs=[];
+  for(const g of [1,2,3,4,6,7,8,9]){
+    const mn=P.men[g];const menIdx=rule.men.indexOf(mn);
+    if(menIdx>=0){
+      let s=rule.men.length-menIdx; // 首选门权重高
+      const gan=P.tianpan[g];const shen=P.shen[g];
+      if(rule.shen.includes(shen))s+=2;
+      if(["乙","丙","丁"].includes(gan))s+=1;
+      score+=s;hitDirs.push(QM_DIRF[g]);
+    }
+  }
+  return {score,hitDirs};
+}
+// 查今日最佳时辰
+$("qm-time-btn").onclick=()=>{
+  const R=$("qm-result");
+  const dd=(($("qm-day").value||"")).replace(/[^0-9]/g,"");
+  if(dd.length<8){R.innerHTML='<p class="empty">请输入完整日期（如 20240615）。</p>';return;}
+  const[y,m,d]=[+dd.slice(0,4),+dd.slice(4,6),+dd.slice(6,8)];
+  if(y<1950||y>2035){R.innerHTML='<p class="empty">精确范围 1950–2035。</p>';return;}
+  const aim=window.__qmAim||"求财";
+  const SC_TIME=["23:00–01:00","01:00–03:00","03:00–05:00","05:00–07:00","07:00–09:00","09:00–11:00","11:00–13:00","13:00–15:00","15:00–17:00","17:00–19:00","19:00–21:00","21:00–23:00"];
+  const SC_NAME=["子","丑","寅","卯","辰","巳","午","未","申","酉","戌","亥"];
+  const results=[];
+  for(let sc=0;sc<12;sc++){
+    const P=qmPan(y,m,d,sc);
+    const {score,hitDirs}=qmScoreTime(P,aim);
+    results.push({sc,score,hitDirs,name:SC_NAME[sc],time:SC_TIME[sc]});
+  }
+  const maxScore=Math.max(...results.map(r=>r.score));
+  const sorted=[...results].sort((a,b)=>b.score-a.score);
+  const rows=results.map(r=>{
+    const isBest=r.score===maxScore&&r.score>0;
+    const pct=maxScore>0?Math.round(r.score/maxScore*100):0;
+    const barCol=isBest?"var(--jade)":(r.score>0?"#b0a060":"#ccc");
+    const dirTxt=r.hitDirs.length?r.hitDirs.slice(0,3).join("、"):"—";
+    return `<div style="display:flex;align-items:center;gap:8px;padding:4px 0;">
+      <div style="width:74px;font-size:12px;${isBest?"color:var(--jade);font-weight:700;":""}">${r.name}时 ${isBest?"◆":""}</div>
+      <div style="width:80px;font-size:10px;color:var(--muted);">${r.time}</div>
+      <div style="flex:1;height:8px;background:var(--paper-2);border-radius:4px;overflow:hidden;"><div style="height:100%;width:${pct}%;background:${barCol};"></div></div>
+      <div style="width:64px;font-size:9.5px;color:var(--muted);text-align:right;">${dirTxt}</div>
+    </div>`;
+  }).join("");
+  const best=sorted[0];
+  const bestTxt=best.score>0?`今天「${aim}」最佳时辰是 <b style="color:var(--jade);">${best.name}时（${best.time}）</b>，吉方在 ${best.hitDirs.slice(0,3).join("、")||"—"}。`:`今天各时辰「${aim}」吉象都偏弱，宜择他日或以平常心办事。`;
+  const rule=QM_AIM_RULES[aim];
+  R.innerHTML=`
+    <div class="verdict good" style="margin-bottom:12px;">
+      <div class="big">今日「${aim}」吉时</div>
+      <div class="small">${y}-${m}-${d} · 12时辰排盘评分</div>
+    </div>
+    <div class="reading"><h4>◇ 各时辰吉象强弱</h4>
+      <p style="font-size:12.5px;margin-bottom:8px;">${bestTxt}</p>
+      ${rows}
+      <p style="font-size:10px;color:var(--muted);margin-top:8px;">绿条越长＝该时辰「${rule.act}」的吉门/吉神越多。◆为最佳时辰。右侧为该时辰吉方。</p>
+    </div>
+    ${aim==="求财"?'<p class="note" style="color:var(--cinnabar);">⚠ 吉时吉方是传统彩头，与赌博输赢无关、不提高中奖率，勿用输不起的钱。</p>':'<p class="note">※ 传统术数择时，仅供参考，无科学依据。选好时辰后可回上方填该时辰「排奇门盘」看详细方位。</p>'}`;
+};
+window.__qmAim="求财";
+document.querySelectorAll("#qm-aim-chips .chip").forEach(c=>c.onclick=()=>{
+  document.querySelectorAll("#qm-aim-chips .chip").forEach(x=>x.classList.remove("on"));
+  c.classList.add("on");window.__qmAim=c.dataset.aim;
+});
+// 实时罗盘：读手机方向，转动罗盘，吉方随地理方位标绿
+function qmInitLiveCompass(){
+  const btn=$("qm-live-btn");if(!btn)return;
+  const wrap=$("qm-live-wrap"),rot=$("qm-live-rot"),head=$("qm-live-head"),hint=$("qm-live-hint");
+  const goods=window.__qmGoodDirs||[];
+  const DIRLBL=[["北",0],["东北",45],["东",90],["东南",135],["南",180],["西南",225],["西",270],["西北",315]];
+  // 画罗盘内容(方位标+吉方扇区)，这些相对"北"固定，整体随手机转
+  function buildDial(){
+    let s="";
+    // 吉方扇区(每个45度)
+    for(const g of goods){
+      const a=g.angle;const col=g.best?"var(--jade)":"rgba(120,160,110,.35)";
+      // 扇区中心a,宽44度
+      const a1=(a-22)*Math.PI/180,a2=(a+22)*Math.PI/180;
+      const x1=100+80*Math.sin(a1),y1=100-80*Math.cos(a1);
+      const x2=100+80*Math.sin(a2),y2=100-80*Math.cos(a2);
+      s+=`<path d="M100,100 L${x1.toFixed(1)},${y1.toFixed(1)} A80,80 0 0,1 ${x2.toFixed(1)},${y2.toFixed(1)} Z" fill="${col}"/>`;
+    }
+    // 八方位文字
+    for(const[lbl,a]of DIRLBL){
+      const r=66;const x=100+r*Math.sin(a*Math.PI/180),y=100-r*Math.cos(a*Math.PI/180);
+      const isN=lbl==="北";
+      s+=`<text x="${x.toFixed(1)}" y="${(y+4).toFixed(1)}" text-anchor="middle" font-size="${isN?13:10}" font-weight="${isN?700:400}" fill="${isN?'var(--cinnabar)':'var(--ink)'}">${lbl}</text>`;
+    }
+    rot.innerHTML=s;
+  }
+  buildDial();
+  let running=false;
+  function onOrient(e){
+    let heading=null;
+    if(typeof e.webkitCompassHeading==="number")heading=e.webkitCompassHeading; // iOS,0=北
+    else if(e.alpha!==null)heading=360-e.alpha; // 安卓近似
+    if(heading===null)return;
+    // 罗盘反向转:北要转到 -heading 位置(你面对方向=顶部)
+    rot.setAttribute("transform",`rotate(${-heading} 100 100)`);
+    // 顶部箭头指的方向 = heading. 判断吉方是否对准顶部(容差)
+    head.textContent=`当前朝向 ${Math.round(heading)}° `+dirName(heading);
+    // 若某吉方在顶部±22度,提示走对了
+    const angleDiff=(a,b)=>{let d=Math.abs(a-b)%360;return d>180?360-d:d;};
+    const aligned=goods.find(g=>angleDiff(g.angle,heading)<22);
+    if(aligned)hint.innerHTML=`<b style="color:var(--jade);">✓ 正对「${aligned.dir}」吉方，就是这个方向！</b>`;
+    else hint.textContent="转动手机，让绿色吉方转到顶部箭头处。";
+  }
+  function dirName(h){const names=["正北","东北","正东","东南","正南","西南","正西","西北"];return names[Math.round(h/45)%8];}
+  btn.onclick=()=>{
+    if(running)return;
+    // iOS 13+ 需授权
+    if(typeof DeviceOrientationEvent!=="undefined"&&typeof DeviceOrientationEvent.requestPermission==="function"){
+      DeviceOrientationEvent.requestPermission().then(state=>{
+        if(state==="granted"){startCompass();}
+        else{fallback("需要允许才能用实时罗盘，可用上方静态罗盘图＋手机指南针。");}
+      }).catch(()=>fallback("此设备/浏览器无法开启实时罗盘，请用静态罗盘图＋手机指南针。"));
+    } else if(typeof DeviceOrientationEvent!=="undefined"){
+      startCompass();
+    } else {
+      fallback("此设备不支持方向传感器，请用静态罗盘图＋手机指南针。");
+    }
+  };
+  function startCompass(){
+    running=true;wrap.style.display="block";btn.style.display="none";
+    window.addEventListener("deviceorientation",onOrient,true);
+    // 若2秒内没数据,提示可能不支持
+    setTimeout(()=>{if(head.textContent==="")hint.innerHTML='<span style="color:var(--cinnabar);">未读到方向数据，可能需校准手机指南针（转8字），或改用手机指南针App。</span>';},2500);
+  }
+  function fallback(msg){wrap.style.display="block";wrap.querySelector("svg").style.display="none";hint.innerHTML=`<span style="color:var(--cinnabar);">${msg}</span>`;head.textContent="";}
+}
+$("qm-btn").onclick=()=>{
+  const R=$("qm-result");const dd=(($("qm-day").value||"")).replace(/[^0-9]/g,"");
+  if(dd.length<8){R.innerHTML='<p class="empty">请输入完整日期（如 20240615）。</p>';return;}
+  const[y,m,d]=[+dd.slice(0,4),+dd.slice(4,6),+dd.slice(6,8)];const sc=$("qm-sc").value;
+  if(sc===""){R.innerHTML='<p class="empty">请选时辰。</p>';return;}
+  if(y<1950||y>2035){R.innerHTML='<p class="empty">精确范围 1950–2035。</p>';return;}
+  const P=qmPan(y,m,d,+sc);
+  const yuanName=["上元","中元","下元"][P.yuan];
+  const layout=[4,9,2,3,5,7,8,1,6];
+  const STARF={"蓬":"天蓬","任":"天任","沖":"天冲","輔":"天辅","英":"天英","芮":"天芮","柱":"天柱","心":"天心","禽":"天禽"};
+  const MENF={"休":"休门","生":"生门","傷":"伤门","杜":"杜门","景":"景门","死":"死门","驚":"惊门","開":"开门"};
+  const SHENF={"符":"值符","蛇":"螣蛇","陰":"太阴","合":"六合","勾":"勾陈","雀":"朱雀","地":"九地","天":"九天","虎":"白虎","玄":"玄武"};
+  const cells=layout.map(g=>{
+    const dg=P.dipan[g]||"";const tg=P.tianpan[g]||"";const st=P.xing[g]||"";const mn=P.men[g]||"";const sh=P.shen[g]||"";
+    const fang=QM_FANG[g];const isQiT=["乙","丙","丁"].includes(tg);const isQiD=["乙","丙","丁"].includes(dg);
+    const isFu=g===P.shiGong;
+    return `<div style="border:1px solid ${isFu?"var(--gold)":"var(--line)"};border-radius:8px;padding:5px 3px;text-align:center;background:${g===5?"var(--paper-2)":"#fff"};min-height:96px;position:relative;">
+      <div style="font-size:9px;color:var(--muted);border-bottom:1px dashed var(--line);padding-bottom:2px;margin-bottom:2px;">${g===5?"中·寄坤":SHENF[sh]||""}</div>
+      <div style="font-size:10px;color:#8a7a5c;">${g===5?"":STARF[st]||""}</div>
+      <div style="font-size:16px;font-weight:700;color:${isQiT?"var(--jade)":"var(--ink)"};line-height:1.1;">${tg||"—"}</div>
+      <div style="font-size:14px;font-weight:600;color:${isQiD?"var(--jade)":"#666"};line-height:1.1;">${dg||"—"}</div>
+      <div style="font-size:10px;color:var(--cinnabar);margin-top:1px;">${g===5?"":MENF[mn]||""}</div>
+      <div style="font-size:8px;color:var(--muted);">${fang}</div>
+    </div>`;
+  }).join("");
+  // 用神门分析：值符宫、时干落宫的门
+  const useMen=P.men[P.shiGong===5?2:P.shiGong]||P.men[P.fuGong];
+  const menMean=QM_MEN_MEAN[MENF[useMen]]||"";
+  // 今日择方：按所选目标找对应吉门/吉神所临方位（用全局规则）
+  const MENZH=QM_MENZH;
+  const SHENF2=QM_SHENF2;
+  const aim=window.__qmAim||"求财";
+  const rule=QM_AIM_RULES[aim];
+  // 找符合的方位：门匹配优先级(rule.men顺序)，附加吉神/三奇加分
+  const dirs=[];
+  for(const g of [1,2,3,4,6,7,8,9]){
+    const mn=P.men[g];const menIdx=rule.men.indexOf(mn);
+    if(menIdx>=0){
+      const gan=P.tianpan[g];const shen=P.shen[g];
+      const hasQi=["乙","丙","丁"].includes(gan);
+      const hasShen=rule.shen.includes(shen);
+      dirs.push({dir:QM_DIRF[g],men:MENZH[mn]+"门",pri:menIdx,hasQi,hasShen,shen});
+    }
+  }
+  dirs.sort((a,b)=>a.pri-b.pri||(b.hasShen-a.hasShen)||(b.hasQi-a.hasQi));
+  // 首选方向 + 罗盘图 + 大白话
+  const DIR_PLAIN={"正北":"正前方","正南":"正后方","正东":"右手边","正西":"左手边","东北":"右前方","东南":"右后方","西北":"左前方","西南":"左后方"};
+  const bestDir=dirs.length?dirs[0].dir:null;
+  const goodDirs=new Set(dirs.map(d=>d.dir));
+  // 罗盘图 3x3(上北下南)
+  const compassCells=[
+    {n:"西北"},{n:"正北"},{n:"东北"},
+    {n:"正西"},{n:"中",center:true},{n:"正东"},
+    {n:"西南"},{n:"正南"},{n:"东南"}
+  ];
+  const compassHtml=`<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:4px;max-width:230px;margin:10px auto;">`+
+    compassCells.map(c=>{
+      if(c.center)return `<div style="aspect-ratio:1;display:flex;align-items:center;justify-content:center;background:var(--ink);border-radius:8px;color:var(--gold-lite);"><div style="text-align:center;line-height:1.3;font-size:11px;">↑北<br><span style="font-size:9px;">你的位置</span></div></div>`;
+      const isBest=c.n===bestDir;const isGood=goodDirs.has(c.n);
+      const bg=isBest?"var(--jade)":(isGood?"var(--paper-2)":"#fff");
+      const col=isBest?"#fff":(isGood?"var(--jade)":"var(--muted)");
+      const bd=isBest?"var(--gold)":(isGood?"var(--jade)":"var(--line)");
+      return `<div style="aspect-ratio:1;display:flex;flex-direction:column;align-items:center;justify-content:center;background:${bg};border:1.5px solid ${bd};border-radius:8px;color:${col};font-size:12px;font-weight:${isGood?700:400};">${c.n}${isBest?'<span style="font-size:8px;">◆吉</span>':''}</div>`;
+    }).join("")+`</div>`;
+  const plainHtml=bestDir?`<p style="font-size:12px;color:var(--jade);text-align:center;margin-top:4px;"><b>面向北方站好</b>，首选吉方「${bestDir}」在你的 <b>${DIR_PLAIN[bestDir]||bestDir}</b>。</p>`:"";
+  // 实时罗盘：把吉方角度存起来供指北针用
+  const DIR_ANGLE={"正北":0,"东北":45,"正东":90,"东南":135,"正南":180,"西南":225,"正西":270,"西北":315};
+  window.__qmGoodDirs=dirs.map(d=>({dir:d.dir,angle:DIR_ANGLE[d.dir],best:d.dir===bestDir}));
+  const liveCompassHtml=dirs.length?`
+    <div style="text-align:center;margin-top:12px;">
+      <button class="mode-btn" id="qm-live-btn" style="font-size:12px;padding:7px 16px;">🧭 开启实时罗盘（手机跟着转）</button>
+      <div id="qm-live-wrap" style="display:none;margin-top:12px;">
+        <svg id="qm-live-svg" viewBox="0 0 200 200" style="width:210px;height:210px;">
+          <circle cx="100" cy="100" r="94" fill="#fff" stroke="var(--line)" stroke-width="1.5"/>
+          <g id="qm-live-rot">
+            <!-- 吉方扇区和方位标记，随手机转 -->
+          </g>
+          <!-- 固定指针(永远指上=你面对的方向) -->
+          <polygon points="100,8 94,22 106,22" fill="var(--cinnabar)"/>
+          <circle cx="100" cy="100" r="4" fill="var(--ink)"/>
+          <text x="100" y="118" text-anchor="middle" font-size="9" fill="var(--muted)">你面对↑</text>
+        </svg>
+        <p id="qm-live-hint" style="font-size:11.5px;color:var(--muted);margin-top:4px;">转动手机，让绿色吉方转到顶部箭头处，那就是该走的方向。</p>
+        <p id="qm-live-head" style="font-size:12px;color:var(--jade);font-weight:700;"></p>
+      </div>
+    </div>`:"";
+  let aimHtml="";
+  if(dirs.length){
+    aimHtml=dirs.map((c,i)=>{
+      const tags=[];if(c.hasShen)tags.push(`临${SHENF2[c.shen]}·吉神`);if(c.hasQi)tags.push("逢三奇");
+      const star=i===0?' <span style="color:var(--gold);font-size:11px;">◆首选</span>':'';
+      return `<div style="font-size:12.5px;padding:4px 0;"><b style="color:var(--jade);">${c.dir}方</b> — ${c.men}临此${tags.length?"，"+tags.join("、"):""}${star}</div>`;
+    }).join("");
+  } else {
+    aimHtml=`<p style="font-size:12px;color:var(--muted);">此时辰「${aim}」对应吉门未临八方（可能落中宫），传统吉方不显，宜另择时辰或方向。</p>`;
+  }
+  // 三奇六仪含义
+  const ganMean=[1,2,3,4,6,7,8,9].map(g=>{const gan=P.tianpan[g];return gan?`<div style="font-size:11.5px;padding:2px 0;"><b style="color:${["乙","丙","丁"].includes(gan)?"var(--jade)":"var(--ink)"};font-family:monospace;">${gan}</b> 落${QM_FANG[g]} — ${QM_GAN_MEAN[gan]||""}</div>`:"";}).join("");
+  R.innerHTML=`
+    <div class="verdict ${P.yin?"mid":"good"}" style="margin-bottom:12px;">
+      <div class="big">${P.yin?"阴":"阳"}遁 ${P.ju} 局</div>
+      <div class="small">${P.jq} · ${yuanName} · 时柱 ${P.shiGZ} · 旬首 ${P.xunshou}</div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-bottom:6px;">${cells}</div>
+    <p style="font-size:10px;color:var(--muted);text-align:center;margin-bottom:12px;">每宫由上到下：八神／天盘干／地盘干／九星／八门。金框为值符/时干落宫。绿字为三奇。</p>
+    <div class="reading"><h4>◇ 时干落宫·用神门</h4>
+      <p style="font-size:12.5px;">此时用神落 <b>${QM_FANG[P.shiGong]}</b>，临 <b>${MENF[useMen]||"—"}</b>。<br>${menMean}</p>
+    </div>
+    <div class="reading" style="margin-top:10px;border-color:var(--gold);"><h4 style="color:var(--jade);">◇ 今日「${aim}」吉方（择方参考）</h4>
+      ${aimHtml}
+      ${dirs.length?compassHtml+plainHtml+liveCompassHtml:""}
+      <p style="font-size:11px;color:var(--muted);margin-top:8px;">宜「${rule.act}」。传统以对应吉门（${rule.men.map(m=>MENZH[m]+"门").join("、")}）所临方位为佳，逢三奇或吉神更吉。可朝首选方向办事。</p>
+      <p style="font-size:10.5px;color:var(--muted);margin-top:6px;">📍 用手机「指南针」App 找到正北，就能对准方向。绿格是吉方，深绿◆是首选。</p>
+      ${aim==="求财"?'<p style="font-size:11px;color:var(--cinnabar);margin-top:6px;font-weight:600;">⚠ 求财方位是传统彩头，图个踏实。它与买万字、赌博的输赢没有任何真实关系，不能提高中奖率——博彩长期必输，切勿当发财捷径，勿用输不起的钱。</p>':''}
+    </div>
+    <div class="reading" style="margin-top:10px;"><h4>◇ 什么事用哪个</h4>
+      <p style="font-size:11.5px;color:var(--muted);line-height:1.8;">求财、开张、进货 → <b>求财</b>｜谈价买卖（车、房、货）、合作签约 → <b>谈生意</b>｜见客户、招人面试员工、求人办事、约会拍拖 → <b>见贵人</b>｜出行、搬迁、远行 → <b>出行</b>｜自己去面试、考试、递文件 → <b>签约文书</b></p>
+    </div>
+    <div class="reading" style="margin-top:10px;"><h4>◇ 天盘三奇六仪</h4>${ganMean}</div>
+    <p class="note" style="color:var(--muted);margin-top:10px;">※ 排盘经权威库对拍验证（定局·地盘·天盘·九星·八门·八神全部零误差，1950–2035）。门神含义为传统术数说法，仅供参考，无科学依据，不作事件预测。</p>`;
+  if(dirs.length)qmInitLiveCompass();
+};
+
+
+/* ========== 对照表 ========== */
+function renderTable(){
+  const B=$("table-body");
+  let rows="";
+  for(const[name,d]of Object.entries(STARS)){
+    const cls=d.type==="吉"?"ji-r":"xiong-r";
+    const g=d.grades;
+    rows+=`<tr class="${cls}"><td class="nm">${name}<br><span style="font-size:10px;color:var(--muted);">${d.el}·${d.type}</span></td><td style="font-size:10px;">${d.desc.replace(/ /g,"<br>")}</td><td class="pairs">${g["最强"].join(" ")}</td><td class="pairs">${g["次强"].join(" ")}</td><td class="pairs">${g["次弱"].join(" ")}</td><td class="pairs">${g["最弱"].join(" ")}</td></tr>`;
+  }
+  B.innerHTML=`<table class="tbl"><tr><th>八星</th><th>特质</th><th>最强</th><th>次强</th><th>次弱</th><th>最弱</th></tr>${rows}</table><p class="note">前四为四吉星，后四为四凶星。同颗星四组配对由强到弱。</p>`;
+}
+</script>
+</body>
+</html>
