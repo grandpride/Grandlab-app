@@ -463,6 +463,7 @@
     <div class="tab" id="ss-tab-tuohua">前世托化篇</div>
     <div class="tab" id="ss-tab-shouming">前世寿命篇</div>
     <div class="tab" id="ss-tab-minggong">命宫之星</div>
+    <div class="tab" id="ss-tab-yueyun">十二月运程</div>
   </div>
 
   <!-- 一键总览 -->
@@ -535,6 +536,15 @@
     <button class="calc" id="ss-mg-btn">查 命 宫 之 星</button>
     <div id="ss-mg-result"><p class="empty">填出生日期与时辰后点「查命宫之星」</p></div>
     <p class="note">※ 以农历生月配出生时辰，定命宫地支、查十二星（天贵/天厄/天难/天破/天奸/天文/天福/天驿/天孤/天刃/天灵/天寿），录自《三世书》原文。传统术数，无科学依据，仅供参考。</p>
+  </div>
+
+  <!-- 十二月运程 -->
+  <div id="ss-yueyun-mode" class="hidden">
+    <label class="fld">十二月运程（按农历生月，查一生运程）</label>
+    <input id="ss-yy-day" type="text" placeholder="出生日期 例：19900512" inputmode="numeric" style="margin-bottom:8px;">
+    <button class="calc" id="ss-yy-btn">查 月 运 程</button>
+    <div id="ss-yy-result"><p class="empty">填出生日期后点「查月运程」</p></div>
+    <p class="note">※ 以农历生月查一生运程，录自《三世书》原文。传统术数，无科学依据，仅供参考。</p>
   </div>
 </div>
 
@@ -1478,7 +1488,7 @@ $("ss-btn").onclick=()=>{
 /* ========== 三世书·前世福禄篇 ========== */
 // 子标签切换
 function ssSetMode(m){
-  ["all","cai","fulu","shouyi","tuohua","shouming","minggong"].forEach(x=>{
+  ["all","cai","fulu","shouyi","tuohua","shouming","minggong","yueyun"].forEach(x=>{
     $("ss-tab-"+x).classList.toggle("active",x===m);
     $("ss-"+x+"-mode").classList.toggle("hidden",x!==m);
   });
@@ -1490,6 +1500,7 @@ $("ss-tab-shouyi").onclick=()=>ssSetMode("shouyi");
 $("ss-tab-tuohua").onclick=()=>ssSetMode("tuohua");
 $("ss-tab-shouming").onclick=()=>ssSetMode("shouming");
 $("ss-tab-minggong").onclick=()=>ssSetMode("minggong");
+$("ss-tab-yueyun").onclick=()=>ssSetMode("yueyun");
 // 十二禄
 // 三世书各篇「正向生活建议」——积极、实用、无害，不指定庙宇法事
 // 通用行善正念（各篇通用底部）
@@ -1757,6 +1768,38 @@ $("ss-mg-btn").onclick=()=>{
     </div>
     <div class="reading"><h4>◇ 命宫之星</h4><p style="font-size:13px;line-height:1.8;font-family:'STKaiti','KaiTi',serif;color:var(--ink);">${info.shi}</p></div>
     <div class="reading" style="margin-top:10px;"><h4>◇ 详解</h4><p style="font-size:12.5px;line-height:1.7;">${info.desc}</p></div>`;
+};
+
+/* ========== 三世书·十二月运程 ========== */
+const YUE_YUN={
+1:{zhi:"寅",shi:"寅月生人心忠厚，诗书满腹显功名；文韬武略金榜题，凡夫遇此得金银。"},
+2:{zhi:"卯",shi:"卯月出生性温良，衣禄钱财盛有余；中年发达自安然，贵人提拔登云霄。"},
+3:{zhi:"辰",shi:"辰月生人志不凡，为人心性自宽怀；平生攒聚万贯财，老来衣禄自安然。"},
+4:{zhi:"巳",shi:"巳月生人广交朋，才智出众人人敬；运行此时握官权，夫妻到老影相随。"},
+5:{zhi:"午",shi:"午月生人心善良，宜行正道得成名；名满天下众人钦，荣华富贵坐高堂。"},
+6:{zhi:"未",shi:"未月生人才艺能，为人显达放光芒；努力心坚终发福，贪财重色破家庭。"},
+7:{zhi:"申",shi:"申月生人志坚强，为人处世最细微；年少破财身劳苦，中年晚景旺财源。"},
+8:{zhi:"酉",shi:"酉月生人显机灵，文章艺深得财丰；早年才高大器成，一生远赖寿绵长。"},
+9:{zhi:"戌",shi:"戌月生人智锐敏，此人生后大发财；钱财用尽自然来，八字生成命富贵。"},
+10:{zhi:"亥",shi:"亥月生人有刑克，灾祸往往突而来；行善好施免忧愁，夫妇好比鸳鸯湖。"},
+11:{zhi:"子",shi:"子月生人性心急，发财障碍重重到；中年劳碌涉色情，晚运常享子孙福。"},
+12:{zhi:"丑",shi:"丑月生人足衣食，广朋交友出风头；莫管闲事免忧愁，时到发时莫欺人。"}
+};
+$("ss-yy-btn").onclick=()=>{
+  const R=$("ss-yy-result");
+  const dd=($("ss-yy-day").value||"").replace(/[^0-9]/g,"");
+  if(dd.length<8){R.innerHTML='<p class="empty">请输入完整出生日期（如 19900512）。</p>';return;}
+  const[y,mo,d]=[+dd.slice(0,4),+dd.slice(4,6),+dd.slice(6,8)];
+  if(y<1950||y>2035){R.innerHTML='<p class="empty">精确范围 1950–2035。</p>';return;}
+  const l=zwSolarToLunar(y,mo,d);
+  if(!l){R.innerHTML='<p class="empty">农历转换失败。</p>';return;}
+  const info=YUE_YUN[l.lm];
+  R.innerHTML=`
+    <div class="verdict good" style="margin-bottom:14px;">
+      <div class="big">农历 ${l.lm}月生（${info.zhi}月）</div>
+      <div class="small">农历 ${l.lm}月${l.ld}日${l.isLeap?"(闰)":""}</div>
+    </div>
+    <div class="reading"><h4>◇ 一生运程</h4><p style="font-size:13px;line-height:1.9;font-family:'STKaiti','KaiTi',serif;color:var(--ink);">${info.shi}</p></div>`;
 };
 
 /* ========== 三世书·一键总览 ========== */
