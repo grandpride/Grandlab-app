@@ -465,6 +465,7 @@
     <div class="tab" id="ss-tab-minggong">命宫之星</div>
     <div class="tab" id="ss-tab-yueyun">十二月运程</div>
     <div class="tab" id="ss-tab-shichen">十二时辰</div>
+    <div class="tab" id="ss-tab-hunyin">婚姻运</div>
   </div>
 
   <!-- 一键总览 -->
@@ -563,6 +564,15 @@
     <button class="calc" id="ss-shc-btn">查 时 辰 命 运</button>
     <div id="ss-shc-result"><p class="empty">选出生时辰后点「查时辰命运」</p></div>
     <p class="note">※ 以出生时辰查性情与命运，录自《三世书》原文。传统术数，无科学依据，仅供参考。</p>
+  </div>
+
+  <!-- 婚姻运 -->
+  <div id="ss-hunyin-mode" class="hidden">
+    <label class="fld">婚姻运（按出生年纳音 + 农历生月，查婚姻星宿）</label>
+    <input id="ss-hy-day" type="text" placeholder="出生日期 例：19900512" inputmode="numeric" style="margin-bottom:8px;">
+    <button class="calc" id="ss-hy-btn">查 婚 姻 运</button>
+    <div id="ss-hy-result"><p class="empty">填出生日期后点「查婚姻运」</p></div>
+    <p class="note">※ 以出生年干支纳音五行配农历生月，查十二婚姻星宿（和合/商量/忤逆/保守/入舍/离妻/重夫/重妻/克子/相嫌/隔山/求子），录自《三世书》原文。传统术数，无科学依据，仅供参考。</p>
   </div>
 </div>
 
@@ -1506,7 +1516,7 @@ $("ss-btn").onclick=()=>{
 /* ========== 三世书·前世福禄篇 ========== */
 // 子标签切换
 function ssSetMode(m){
-  ["all","cai","fulu","shouyi","tuohua","shouming","minggong","yueyun","shichen"].forEach(x=>{
+  ["all","cai","fulu","shouyi","tuohua","shouming","minggong","yueyun","shichen","hunyin"].forEach(x=>{
     $("ss-tab-"+x).classList.toggle("active",x===m);
     $("ss-"+x+"-mode").classList.toggle("hidden",x!==m);
   });
@@ -1520,6 +1530,7 @@ $("ss-tab-shouming").onclick=()=>ssSetMode("shouming");
 $("ss-tab-minggong").onclick=()=>ssSetMode("minggong");
 $("ss-tab-yueyun").onclick=()=>ssSetMode("yueyun");
 $("ss-tab-shichen").onclick=()=>ssSetMode("shichen");
+$("ss-tab-hunyin").onclick=()=>ssSetMode("hunyin");
 // 十二禄
 // 三世书各篇「正向生活建议」——积极、实用、无害，不指定庙宇法事
 // 通用行善正念（各篇通用底部）
@@ -1849,6 +1860,52 @@ $("ss-shc-btn").onclick=()=>{
     </div>
     <div class="reading"><h4>◇ 时辰命运</h4><p style="font-size:13px;line-height:1.9;font-family:'STKaiti','KaiTi',serif;color:var(--ink);">${info.shi}</p></div>
     <div class="reading" style="margin-top:10px;"><h4>◇ 详解</h4><p style="font-size:12.5px;line-height:1.7;">${info.desc}</p></div>`;
+};
+
+/* ========== 三世书·婚姻运 ========== */
+// 婚姻星宿12种 + 批文
+const HUN_XINGXIU={
+"和合":{shi:"夫妻皆相同，形景朝夕随；奴婢两旁差，命长齐延年。",good:1},
+"商量":{shi:"夫妻共商量，做事大吉昌；六亲难有靠，儿女远见妙。",good:1},
+"忤逆":{shi:"夫妻各思量，命硬犯重婚；破此小灾劫，为是结亲娘。",good:0},
+"保守":{shi:"夫妻最保守，邻里和睦处；儿女乖呵呵，婚姻更宜早。",good:1},
+"入舍":{shi:"夫妻和入舍，晚婚最为宜；相见有刑伤，两大得相当。",good:0},
+"离妻":{shi:"夫妻要分离，彼此各怀谋；若然无刑克，也只外来伤。",good:0},
+"重夫":{shi:"重夫有三房，头妻克伤亡；再娶弃君郎，到后保久长。",good:0},
+"重妻":{shi:"重妻随缘逢，子息不完全；命注重婚过，争吵分两床。",good:0},
+"克子":{shi:"夫妻情意和，天造没良缘；本是最美好，可惜不见儿。",good:0},
+"相嫌":{shi:"夫妻如牛郎，分隔两地遥；相见又匆忙，好妻守空房。",good:0},
+"隔山":{shi:"夫妻隔堵墙，刑害几度伤；同床各异梦，一世不保交。",good:0},
+"求子":{shi:"夫妻急求子，命注无商量；朝夕焚香愿，也是枉费心。",good:0}
+};
+// 纳音五行×生月->星宿 查表（截图读取）
+const HUN_XINGXIU_NAMES=["和合","商量","忤逆","保守","入舍","离妻","重夫","重妻","克子","相嫌","隔山","求子"];
+const HUN_ROWS={"金":[4,5,6,7,8,9,10,11,12,1,2,3],"木":[10,11,12,1,2,3,4,5,6,7,8,9],"水":[7,8,9,10,11,12,1,2,3,4,5,6],"火":[1,2,3,4,5,6,7,8,9,10,11,12],"土":[7,8,9,10,11,12,1,2,3,4,5,6]};
+function hunyinXingxiu(nayinWx,lmonth){const idx=HUN_ROWS[nayinWx].indexOf(lmonth);return idx>=0?HUN_XINGXIU_NAMES[idx]:null;}
+$("ss-hy-btn").onclick=()=>{
+  const R=$("ss-hy-result");
+  const dd=($("ss-hy-day").value||"").replace(/[^0-9]/g,"");
+  if(dd.length<8){R.innerHTML='<p class="empty">请输入完整出生日期（如 19900512）。</p>';return;}
+  const[y,mo,d]=[+dd.slice(0,4),+dd.slice(4,6),+dd.slice(6,8)];
+  if(y<1950||y>2035){R.innerHTML='<p class="empty">精确范围 1950–2035。</p>';return;}
+  const l=zwSolarToLunar(y,mo,d);
+  if(!l){R.innerHTML='<p class="empty">农历转换失败。</p>';return;}
+  // 年柱纳音五行（节气年）
+  const B=computeBazi(y,mo,d,12,0);
+  if(!B){R.innerHTML='<p class="empty">推算失败。</p>';return;}
+  const ganI=["甲","乙","丙","丁","戊","己","庚","辛","壬","癸"].indexOf(B.year[0]);
+  const zhiI=["子","丑","寅","卯","辰","巳","午","未","申","酉","戌","亥"].indexOf(B.year[1]);
+  let n=0;for(;n<60;n++)if(n%10===ganI&&n%12===zhiI)break;
+  const nayin=ZW_NAYIN[n];let wx="金";for(const k of["金","木","水","火","土"])if(nayin.includes(k))wx=k;
+  const xingxiu=hunyinXingxiu(wx,l.lm);
+  if(!xingxiu){R.innerHTML='<p class="empty">查算失败。</p>';return;}
+  const info=HUN_XINGXIU[xingxiu];
+  R.innerHTML=`
+    <div class="verdict ${info.good?"good":"mid"}" style="margin-bottom:14px;">
+      <div class="big">婚姻 · ${xingxiu}${info.good?"（吉）":""}</div>
+      <div class="small">${B.year[0]}${B.year[1]}年 · 纳音${nayin}(${wx}) · 农历${l.lm}月</div>
+    </div>
+    <div class="reading"><h4>◇ 婚姻星宿</h4><p style="font-size:13px;line-height:1.9;font-family:'STKaiti','KaiTi',serif;color:var(--ink);">${info.shi}</p></div>`;
 };
 
 /* ========== 三世书·一键总览 ========== */
