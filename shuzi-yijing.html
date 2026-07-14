@@ -467,6 +467,7 @@
     <div class="tab" id="ss-tab-shichen">十二时辰</div>
     <div class="tab" id="ss-tab-hunyin">婚姻运</div>
     <div class="tab" id="ss-tab-xiongdi">兄弟相刑</div>
+    <div class="tab" id="ss-tab-fuqi">夫妻运</div>
   </div>
 
   <!-- 一键总览 -->
@@ -592,6 +593,15 @@
     <button class="calc" id="ss-xd-btn">查 兄 弟 缘</button>
     <div id="ss-xd-result"><p class="empty">填出生日期后点「查兄弟缘」</p></div>
     <p class="note">※ 以出生年干支纳音五行配农历生月，定十二长生位（长生/沐浴/冠带/临官/帝旺/衰/病/死/墓/绝/胎/养），查兄弟缘分，录自《三世书》原文。传统术数，无科学依据，仅供参考。</p>
+  </div>
+
+  <!-- 夫妻运 -->
+  <div id="ss-fuqi-mode" class="hidden">
+    <label class="fld">夫妻运（按出生年纳音 + 农历生月，查夫妻缘分）</label>
+    <input id="ss-fq-day" type="text" placeholder="出生日期 例：19900512" inputmode="numeric" style="margin-bottom:8px;">
+    <button class="calc" id="ss-fq-btn">查 夫 妻 运</button>
+    <div id="ss-fq-result"><p class="empty">填出生日期后点「查夫妻运」</p></div>
+    <p class="note">※ 以出生年干支纳音五行配农历生月，定十二长生位，查夫妻缘分，录自《三世书》原文。传统术数，无科学依据，仅供参考。</p>
   </div>
 </div>
 
@@ -1535,7 +1545,7 @@ $("ss-btn").onclick=()=>{
 /* ========== 三世书·前世福禄篇 ========== */
 // 子标签切换
 function ssSetMode(m){
-  ["all","cai","fulu","shouyi","tuohua","shouming","minggong","yueyun","shichen","hunyin","xiongdi"].forEach(x=>{
+  ["all","cai","fulu","shouyi","tuohua","shouming","minggong","yueyun","shichen","hunyin","xiongdi","fuqi"].forEach(x=>{
     $("ss-tab-"+x).classList.toggle("active",x===m);
     $("ss-"+x+"-mode").classList.toggle("hidden",x!==m);
   });
@@ -1551,6 +1561,7 @@ $("ss-tab-yueyun").onclick=()=>ssSetMode("yueyun");
 $("ss-tab-shichen").onclick=()=>ssSetMode("shichen");
 $("ss-tab-hunyin").onclick=()=>ssSetMode("hunyin");
 $("ss-tab-xiongdi").onclick=()=>ssSetMode("xiongdi");
+$("ss-tab-fuqi").onclick=()=>ssSetMode("fuqi");
 // 十二禄
 // 三世书各篇「正向生活建议」——积极、实用、无害，不指定庙宇法事
 // 通用行善正念（各篇通用底部）
@@ -1970,6 +1981,44 @@ $("ss-xd-btn").onclick=()=>{
       <div class="small">${B.year[0]}${B.year[1]}年 · 纳音${nayin}(${wx}) · 农历${l.lm}月</div>
     </div>
     <div class="reading"><h4>◇ 兄弟缘分</h4><p style="font-size:13px;line-height:1.9;font-family:'STKaiti','KaiTi',serif;color:var(--ink);">${info.shi}</p></div>`;
+};
+
+/* ========== 三世书·夫妻运 ========== */
+const FUQI={
+"长生":{shi:"长生夫妻合，家计大吉昌；刑克是儿女，前程锦添花。",good:1},
+"沐浴":{shi:"夫妻见刑伤，两次却相宜；想要保长久，婚姻最宜迟。",good:0},
+"冠带":{shi:"夫妻俏白头，本命妻三房；近亲得一房，到老得同床。",good:1},
+"临官":{shi:"夫妻一团气，出入一双影；朝晚情话甜，也忌有灾殃。",good:1},
+"帝旺":{shi:"夫妻最相配，婚姻无刑伤；子女无克破，一生衣禄全。",good:1},
+"衰":{shi:"夫妻两为难，刑克不能言；命中多害破，难守至白头。",good:0},
+"病":{shi:"夫妻有难言，各自去思量；吵嘴三两场，难保一生长。",good:0},
+"死":{shi:"夫妻不吉祥，处事不像样；前世错姻缘，早晚分家园。",good:0},
+"墓":{shi:"夫妻如仇人，言语又不通；命带刑克害，齐齐冲分离。",good:0},
+"绝":{shi:"夫妻最难为，儿女见刑伤；远见方为妙，可保不分离。",good:0},
+"胎":{shi:"胎宫命孤单，幸而身带贵；男命妻两房，女人嫁两夫。",good:0},
+"养":{shi:"夫妻福禄全，前世固因缘；向老也爱人，财帛周身缠。",good:1}
+};
+$("ss-fq-btn").onclick=()=>{
+  const R=$("ss-fq-result");
+  const dd=($("ss-fq-day").value||"").replace(/[^0-9]/g,"");
+  if(dd.length<8){R.innerHTML='<p class="empty">请输入完整出生日期（如 19900512）。</p>';return;}
+  const[y,mo,d]=[+dd.slice(0,4),+dd.slice(4,6),+dd.slice(6,8)];
+  if(y<1950||y>2035){R.innerHTML='<p class="empty">精确范围 1950–2035。</p>';return;}
+  const l=zwSolarToLunar(y,mo,d);
+  if(!l){R.innerHTML='<p class="empty">农历转换失败。</p>';return;}
+  const B=computeBazi(y,mo,d,12,0);
+  if(!B){R.innerHTML='<p class="empty">推算失败。</p>';return;}
+  const gi=["甲","乙","丙","丁","戊","己","庚","辛","壬","癸"].indexOf(B.year[0]);
+  const zi=["子","丑","寅","卯","辰","巳","午","未","申","酉","戌","亥"].indexOf(B.year[1]);
+  let n=0;for(;n<60;n++)if(n%10===gi&&n%12===zi)break;
+  const nayin=ZW_NAYIN[n];let wx="金";for(const k of["金","木","水","火","土"])if(nayin.includes(k))wx=k;
+  const pos=changshengPos(wx,l.lm);const cs=CHANGSHENG[pos];const info=FUQI[cs];
+  R.innerHTML=`
+    <div class="verdict ${info.good?"good":"mid"}" style="margin-bottom:14px;">
+      <div class="big">夫妻 · ${cs}${info.good?"（吉）":""}</div>
+      <div class="small">${B.year[0]}${B.year[1]}年 · 纳音${nayin}(${wx}) · 农历${l.lm}月</div>
+    </div>
+    <div class="reading"><h4>◇ 夫妻缘分</h4><p style="font-size:13px;line-height:1.9;font-family:'STKaiti','KaiTi',serif;color:var(--ink);">${info.shi}</p></div>`;
 };
 
 /* ========== 三世书·一键总览 ========== */
