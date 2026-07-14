@@ -472,6 +472,15 @@
   <div id="ss-all-mode">
     <label class="fld">一键出完整前世今生报告（填一次生日，五篇一起算）</label>
     <input id="ss-all-day" type="text" placeholder="出生日期 例：19900512" inputmode="numeric" style="margin-bottom:8px;">
+    <select id="ss-all-sc" style="margin-bottom:8px;">
+      <option value="">— 出生时辰（选填，填了可多查2篇）—</option>
+      <option value="0">子时 23:00–01:00</option><option value="1">丑时 01:00–03:00</option>
+      <option value="2">寅时 03:00–05:00</option><option value="3">卯时 05:00–07:00</option>
+      <option value="4">辰时 07:00–09:00</option><option value="5">巳时 09:00–11:00</option>
+      <option value="6">午时 11:00–13:00</option><option value="7">未时 13:00–15:00</option>
+      <option value="8">申时 15:00–17:00</option><option value="9">酉时 17:00–19:00</option>
+      <option value="10">戌时 19:00–21:00</option><option value="11">亥时 21:00–23:00</option>
+    </select>
     <button class="calc" id="ss-all-btn">✦ 生 成 完 整 报 告</button>
     <div id="ss-all-result"><p class="empty">填出生日期后点「生成完整报告」，一次看齐前世福禄、手艺、托化、寿命与今世财运</p></div>
     <p class="note">※ 汇整《三世书》财运、前世福禄、前世手艺、前世托化、前世寿命五篇原文。传统术数，无科学依据，仅供参考。</p>
@@ -1960,6 +1969,39 @@ $("ss-all-btn").onclick=()=>{
     html+=`<div class="reading" style="margin-bottom:10px;"><h4 style="color:var(--jade);">◇ 今世财运（${caiName}）</h4>
       <p style="font-size:12.5px;line-height:1.7;">${caiDesc}</p></div>`;
   }catch(e){}
+  // 6. 十二月运程
+  const yy=YUE_YUN[l.lm];
+  if(yy)html+=`<div class="reading" style="margin-bottom:10px;"><h4 style="color:var(--jade);">◇ 十二月运程（${l.lm}月生）</h4>
+    <p style="font-size:12.5px;line-height:1.7;font-family:'STKaiti','KaiTi',serif;">${yy.shi}</p></div>`;
+  // 7. 婚姻运
+  try{
+    const B=computeBazi(y,mo,d,12,0);
+    const gi=["甲","乙","丙","丁","戊","己","庚","辛","壬","癸"].indexOf(B.year[0]);
+    const zi=["子","丑","寅","卯","辰","巳","午","未","申","酉","戌","亥"].indexOf(B.year[1]);
+    let n=0;for(;n<60;n++)if(n%10===gi&&n%12===zi)break;
+    const nayin=ZW_NAYIN[n];let wx="金";for(const k of["金","木","水","火","土"])if(nayin.includes(k))wx=k;
+    const xx=hunyinXingxiu(wx,l.lm);
+    if(xx){const hi=HUN_XINGXIU[xx];
+      html+=`<div class="reading" style="margin-bottom:10px;"><h4 style="color:var(--jade);">◇ 婚姻运（${xx}${hi.good?"·吉":""}）</h4>
+        <p style="font-size:12.5px;line-height:1.7;font-family:'STKaiti','KaiTi',serif;">${hi.shi}</p></div>`;
+    }
+  }catch(e){}
+  // 8+9. 需时辰的两篇（命宫之星、十二时辰）
+  const sc=$("ss-all-sc").value;
+  if(sc!==""){
+    // 命宫之星
+    const mgZhi=minggongStar(l.lm,+sc);const mg=MINGGONG_STAR[mgZhi];
+    html+=`<div class="reading" style="margin-bottom:10px;"><h4 style="color:var(--jade);">◇ 命宫之星（${mg.star}）</h4>
+      <p style="font-size:12.5px;line-height:1.7;font-family:'STKaiti','KaiTi',serif;">${mg.shi}</p>
+      <p style="font-size:12.5px;line-height:1.7;margin-top:4px;">${mg.desc}</p></div>`;
+    // 十二时辰
+    const sh=SHICHEN_YUN[+sc];
+    html+=`<div class="reading" style="margin-bottom:10px;"><h4 style="color:var(--jade);">◇ 时辰命运（${SHICHEN_NAME[+sc]}时）</h4>
+      <p style="font-size:12.5px;line-height:1.7;font-family:'STKaiti','KaiTi',serif;">${sh.shi}</p>
+      <p style="font-size:12.5px;line-height:1.7;margin-top:4px;">${sh.desc}</p></div>`;
+  } else {
+    html+=`<div class="reading" style="margin-bottom:10px;border-style:dashed;"><p style="font-size:12px;color:var(--muted);">◇ 选上方「出生时辰」，还可加查<b>命宫之星</b>与<b>十二时辰命运</b>两篇。</p></div>`;
+  }
   // 正念结尾
   html+=`<div class="reading" style="border-color:var(--gold);"><p style="font-size:11.5px;line-height:1.7;color:var(--muted);">${SS_ZHENGNIAN}</p></div>`;
   R.innerHTML=html;
