@@ -466,6 +466,7 @@
     <div class="tab" id="ss-tab-yueyun">十二月运程</div>
     <div class="tab" id="ss-tab-shichen">十二时辰</div>
     <div class="tab" id="ss-tab-hunyin">婚姻运</div>
+    <div class="tab" id="ss-tab-xiongdi">兄弟相刑</div>
   </div>
 
   <!-- 一键总览 -->
@@ -582,6 +583,15 @@
     <button class="calc" id="ss-hy-btn">查 婚 姻 运</button>
     <div id="ss-hy-result"><p class="empty">填出生日期后点「查婚姻运」</p></div>
     <p class="note">※ 以出生年干支纳音五行配农历生月，查十二婚姻星宿（和合/商量/忤逆/保守/入舍/离妻/重夫/重妻/克子/相嫌/隔山/求子），录自《三世书》原文。传统术数，无科学依据，仅供参考。</p>
+  </div>
+
+  <!-- 兄弟相刑 -->
+  <div id="ss-xiongdi-mode" class="hidden">
+    <label class="fld">兄弟相刑（按出生年纳音 + 农历生月，查兄弟缘分）</label>
+    <input id="ss-xd-day" type="text" placeholder="出生日期 例：19900512" inputmode="numeric" style="margin-bottom:8px;">
+    <button class="calc" id="ss-xd-btn">查 兄 弟 缘</button>
+    <div id="ss-xd-result"><p class="empty">填出生日期后点「查兄弟缘」</p></div>
+    <p class="note">※ 以出生年干支纳音五行配农历生月，定十二长生位（长生/沐浴/冠带/临官/帝旺/衰/病/死/墓/绝/胎/养），查兄弟缘分，录自《三世书》原文。传统术数，无科学依据，仅供参考。</p>
   </div>
 </div>
 
@@ -1525,7 +1535,7 @@ $("ss-btn").onclick=()=>{
 /* ========== 三世书·前世福禄篇 ========== */
 // 子标签切换
 function ssSetMode(m){
-  ["all","cai","fulu","shouyi","tuohua","shouming","minggong","yueyun","shichen","hunyin"].forEach(x=>{
+  ["all","cai","fulu","shouyi","tuohua","shouming","minggong","yueyun","shichen","hunyin","xiongdi"].forEach(x=>{
     $("ss-tab-"+x).classList.toggle("active",x===m);
     $("ss-"+x+"-mode").classList.toggle("hidden",x!==m);
   });
@@ -1540,6 +1550,7 @@ $("ss-tab-minggong").onclick=()=>ssSetMode("minggong");
 $("ss-tab-yueyun").onclick=()=>ssSetMode("yueyun");
 $("ss-tab-shichen").onclick=()=>ssSetMode("shichen");
 $("ss-tab-hunyin").onclick=()=>ssSetMode("hunyin");
+$("ss-tab-xiongdi").onclick=()=>ssSetMode("xiongdi");
 // 十二禄
 // 三世书各篇「正向生活建议」——积极、实用、无害，不指定庙宇法事
 // 通用行善正念（各篇通用底部）
@@ -1916,6 +1927,49 @@ $("ss-hy-btn").onclick=()=>{
       <div class="small">${B.year[0]}${B.year[1]}年 · 纳音${nayin}(${wx}) · 农历${l.lm}月</div>
     </div>
     <div class="reading"><h4>◇ 婚姻星宿</h4><p style="font-size:13px;line-height:1.9;font-family:'STKaiti','KaiTi',serif;color:var(--ink);">${info.shi}</p></div>`;
+};
+
+/* ========== 三世书·兄弟相刑 ========== */
+// 十二长生位（纳音五行×生月），复用婚姻的起始月逻辑
+const CHANGSHENG=["长生","沐浴","冠带","临官","帝旺","衰","病","死","墓","绝","胎","养"];
+// 各纳音五行长生起始月：金巳(4)/木亥(10)/水申(7)/火寅(1)/土申(7)
+const CS_START={"金":4,"木":10,"水":7,"火":1,"土":7};
+function changshengPos(wx,lmonth){return ((lmonth-CS_START[wx])%12+12)%12;} // 返回长生位idx(0-11)
+const XIONGDI={
+"长生":{shi:"长生兄弟富，亲朋两三重；不宜共一屋，各自把家荣。",good:1},
+"沐浴":{shi:"沐浴兄弟离，做事欠商量；单枪匹马创，各自把家荣。",good:0},
+"冠带":{shi:"冠带兄弟少，有事不宜急；各自身谋艺，团结有福气。",good:1},
+"临官":{shi:"临官兄弟旺，本来有灾厄；命里吉星照，惊险总能免。",good:1},
+"帝旺":{shi:"帝旺三兄弟，有事好商量；钱财共一室，全力建家园。",good:1},
+"衰":{shi:"兄弟临衰宫，此举要分离；若有和事人，可免各东西。",good:0},
+"病":{shi:"病宫无良兄，弟也有毒心；若然无兄弟，独自好营谋。",good:0},
+"死":{shi:"有兄如无兄，住正是隔邻；也不过壁谈，相见亦无言。",good:0},
+"墓":{shi:"墓宫兄弟刑，本有两三重；前世恶因业，打骂家便长。",good:0},
+"绝":{shi:"绝宫损兄长，纵有也伤亡；甚难有相助，家事各自知。",good:0},
+"胎":{shi:"胎宫兄难为，出外无人雇；须防刑克破，命注也不和。",good:0},
+"养":{shi:"养宫兄弟荣，出外有人敬；四海有名声，只嫌兄弟刑。",good:1}
+};
+$("ss-xd-btn").onclick=()=>{
+  const R=$("ss-xd-result");
+  const dd=($("ss-xd-day").value||"").replace(/[^0-9]/g,"");
+  if(dd.length<8){R.innerHTML='<p class="empty">请输入完整出生日期（如 19900512）。</p>';return;}
+  const[y,mo,d]=[+dd.slice(0,4),+dd.slice(4,6),+dd.slice(6,8)];
+  if(y<1950||y>2035){R.innerHTML='<p class="empty">精确范围 1950–2035。</p>';return;}
+  const l=zwSolarToLunar(y,mo,d);
+  if(!l){R.innerHTML='<p class="empty">农历转换失败。</p>';return;}
+  const B=computeBazi(y,mo,d,12,0);
+  if(!B){R.innerHTML='<p class="empty">推算失败。</p>';return;}
+  const gi=["甲","乙","丙","丁","戊","己","庚","辛","壬","癸"].indexOf(B.year[0]);
+  const zi=["子","丑","寅","卯","辰","巳","午","未","申","酉","戌","亥"].indexOf(B.year[1]);
+  let n=0;for(;n<60;n++)if(n%10===gi&&n%12===zi)break;
+  const nayin=ZW_NAYIN[n];let wx="金";for(const k of["金","木","水","火","土"])if(nayin.includes(k))wx=k;
+  const pos=changshengPos(wx,l.lm);const cs=CHANGSHENG[pos];const info=XIONGDI[cs];
+  R.innerHTML=`
+    <div class="verdict ${info.good?"good":"mid"}" style="margin-bottom:14px;">
+      <div class="big">兄弟 · ${cs}${info.good?"（吉）":""}</div>
+      <div class="small">${B.year[0]}${B.year[1]}年 · 纳音${nayin}(${wx}) · 农历${l.lm}月</div>
+    </div>
+    <div class="reading"><h4>◇ 兄弟缘分</h4><p style="font-size:13px;line-height:1.9;font-family:'STKaiti','KaiTi',serif;color:var(--ink);">${info.shi}</p></div>`;
 };
 
 /* ========== 三世书·一键总览 ========== */
