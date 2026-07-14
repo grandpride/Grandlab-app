@@ -471,6 +471,10 @@
     <div class="tab" id="ss-tab-zixi">子息多寡</div>
     <div class="tab" id="ss-tab-wuyu">屋宇田产</div>
     <div class="tab" id="ss-tab-xuetang">学业运</div>
+    <div class="tab" id="ss-tab-tiangan">天干福禄</div>
+    <div class="tab" id="ss-tab-dizhi">生肖命运</div>
+    <div class="tab" id="ss-tab-caiyun">一生财运</div>
+    <div class="tab" id="ss-tab-farm">农牧田业</div>
   </div>
 
   <!-- 一键总览 -->
@@ -641,6 +645,48 @@
     <button class="calc" id="ss-xt-btn">查 学 业 运</button>
     <div id="ss-xt-result"><p class="empty">填出生日期后点「查学业运」</p></div>
     <p class="note">※ 以出生年地支（三合局）配农历生月，定学堂宫（建/皆/空/破/向/合宫），查读书文昌运，录自《三世书》原文。传统术数，无科学依据，仅供参考。</p>
+  </div>
+
+  <!-- 天干福禄 -->
+  <div id="ss-tiangan-mode" class="hidden">
+    <label class="fld">天干福禄（按出生日天干，查一生福禄）</label>
+    <input id="ss-tg-day" type="text" placeholder="出生日期 例：19900512" inputmode="numeric" style="margin-bottom:8px;">
+    <button class="calc" id="ss-tg-btn">查 天 干 福 禄</button>
+    <div id="ss-tg-result"><p class="empty">填出生日期后点「查天干福禄」</p></div>
+    <p class="note">※ 以出生日的天干（甲乙丙丁戊己庚辛壬癸），查一生福禄形态，录自《三世书》原文。传统术数，无科学依据，仅供参考。</p>
+  </div>
+
+  <!-- 生肖命运 -->
+  <div id="ss-dizhi-mode" class="hidden">
+    <label class="fld">生肖命运（按出生年生肖地支，查一生命运）</label>
+    <input id="ss-dz-day" type="text" placeholder="出生日期 例：19900512" inputmode="numeric" style="margin-bottom:8px;">
+    <button class="calc" id="ss-dz-btn">查 生 肖 命 运</button>
+    <div id="ss-dz-result"><p class="empty">填出生日期后点「查生肖命运」</p></div>
+    <p class="note">※ 以出生年地支（生肖）查一生命运形态，录自《三世书》原文。传统术数，无科学依据，仅供参考。</p>
+  </div>
+
+  <!-- 一生财运 -->
+  <div id="ss-caiyun-mode" class="hidden">
+    <label class="fld">一生财运（按出生年支 + 农历生月，查财运星）</label>
+    <input id="ss-cy-day" type="text" placeholder="出生日期 例：19900512" inputmode="numeric" style="margin-bottom:8px;">
+    <button class="calc" id="ss-cy-btn">查 一 生 财 运</button>
+    <div id="ss-cy-result"><p class="empty">填出生日期后点「查一生财运」</p></div>
+    <p class="note">※ 以出生年地支配农历生月，定十二财星（向/因/背/正/暗/禄/煞/天/耗/逐/病/旺财），查一生财运，录自《三世书》原文。传统术数，无科学依据，仅供参考。</p>
+  </div>
+
+  <!-- 农牧田业 -->
+  <div id="ss-farm-mode" class="hidden">
+    <label class="fld">农牧田业（古法：查田产、蚕桑、牲畜之运）</label>
+    <input id="ss-fm-day" type="text" placeholder="出生日期 例：19900512" inputmode="numeric" style="margin-bottom:8px;">
+    <select id="ss-fm-type" style="margin-bottom:8px;">
+      <option value="tian">田业（田产家业）</option>
+      <option value="can">蚕桑（蚕丝财禄）</option>
+      <option value="niu">得牛（畜牧牛运）</option>
+      <option value="zhu">养猪（养猪兴隆）</option>
+    </select>
+    <button class="calc" id="ss-fm-btn">查 农 牧 田 业</button>
+    <div id="ss-fm-result"><p class="empty">选类别、填出生日期后点「查农牧田业」</p></div>
+    <p class="note">※ 古时农牧社会所用，以出生年地支配农历生月查田产、蚕桑、牲畜之运，录自《三世书》原文。今人可作田产家业运参考。传统术数，无科学依据，仅供参考。</p>
   </div>
 </div>
 
@@ -1584,7 +1630,7 @@ $("ss-btn").onclick=()=>{
 /* ========== 三世书·前世福禄篇 ========== */
 // 子标签切换
 function ssSetMode(m){
-  ["all","cai","fulu","shouyi","tuohua","shouming","minggong","yueyun","shichen","hunyin","xiongdi","fuqi","zixi","wuyu","xuetang"].forEach(x=>{
+  ["all","cai","fulu","shouyi","tuohua","shouming","minggong","yueyun","shichen","hunyin","xiongdi","fuqi","zixi","wuyu","xuetang","tiangan","dizhi","caiyun","farm"].forEach(x=>{
     $("ss-tab-"+x).classList.toggle("active",x===m);
     $("ss-"+x+"-mode").classList.toggle("hidden",x!==m);
   });
@@ -1603,6 +1649,14 @@ $("ss-tab-xiongdi").onclick=()=>ssSetMode("xiongdi");
 $("ss-tab-fuqi").onclick=()=>ssSetMode("fuqi");
 $("ss-tab-zixi").onclick=()=>ssSetMode("zixi");
 $("ss-tab-wuyu").onclick=()=>ssSetMode("wuyu");
+$("ss-tab-xuetang").onclick=()=>ssSetMode("xuetang");
+$("ss-tab-tiangan").onclick=()=>ssSetMode("tiangan");
+$("ss-tab-dizhi").onclick=()=>ssSetMode("dizhi");
+$("ss-tab-caiyun").onclick=()=>ssSetMode("caiyun");
+$("ss-tab-farm").onclick=()=>ssSetMode("farm");
+$("ss-tab-caiyun").onclick=()=>ssSetMode("caiyun");
+$("ss-tab-dizhi").onclick=()=>ssSetMode("dizhi");
+$("ss-tab-tiangan").onclick=()=>ssSetMode("tiangan");
 $("ss-tab-xuetang").onclick=()=>ssSetMode("xuetang");
 $("ss-tab-zixi").onclick=()=>ssSetMode("zixi");
 // 十二禄
@@ -2183,6 +2237,178 @@ $("ss-xt-btn").onclick=()=>{
     </div>
     <div class="reading"><h4>◇ 读书文昌</h4><p style="font-size:13px;line-height:1.9;font-family:'STKaiti','KaiTi',serif;color:var(--ink);">${info.shi}</p></div>
     <div class="reading" style="margin-top:10px;"><h4>◇ 解说</h4><p style="font-size:12.5px;line-height:1.7;">${info.jie}</p></div>`;
+};
+
+/* ========== 三世书·天干福禄 ========== */
+const TIANGAN_FULU={
+"甲":{shi:"甲干福轻命单薄，创业艰难衣不足；多招是非人灾厄，凶险过后就发福。",jie:"甲日生人早年福气较薄、创业辛苦，也易招是非。但熬过凶险之后就能发福。宜早年扎实积累、莫怕吃苦，苦尽甘来。",good:0},
+"乙":{shi:"万事如意事业成，福禄寿全最遂心；书诗熟读金榜题，加官晋升在眼前。",jie:"乙日生人事业顺遂、福禄寿俱全，最是称心如意。爱读书者更利功名，升迁在望。宜多读书进取，是福气圆满的好命。",good:1},
+"丙":{shi:"丙干出身皆微贱，有志谋事竟如愿；逢凶化吉运平和，排除万难一生福。",jie:"丙日生人出身或较平凡，但有志气、肯谋事，终能如愿。一生逢凶化吉、运势平和。宜立定志向、排除万难，靠奋斗得福。",good:1},
+"丁":{shi:"丁干自享宜先福，做事时有困难缠；富贵不是此命身，成功之时威望隆。",jie:"丁日生人能自享其福，做事偶有困难缠身。虽非大富大贵之命，但成功时威望很高。宜脚踏实地、重信誉，以德服人。",good:1},
+"戊":{shi:"戊干丰隆命运高，凡事遇吉财运通；常有福星来照命，孝子孝孙享晚年。",jie:"戊日生人命运丰隆、逢事多吉、财运亨通，常有福星高照，晚年更有孝子贤孙承欢。宜广结善缘、积福积德，是福厚晚吉的好命。",good:1},
+"己":{shi:"己干更有出头时，名扬四海家道隆；祖基丰厚终身用，名利双全权威高。",jie:"己日生人终有出头之日，声名远扬、家道兴隆，祖业根基厚实，名利双收、权威兼备。宜善用家底、稳中求进，是名利双全的好命。",good:1},
+"庚":{shi:"庚干出生是奇才，统率众人建大业；智略权谋势如电，功名利禄享安康。",jie:"庚日生人是难得的奇才，有领导力、能统率众人成大业，智谋过人、雷厉风行，功名利禄俱全、安康一生。宜发挥领导才干、放胆开创。",good:1},
+"辛":{shi:"辛干出生技艺精，白手兴家创大业；他日定有财盈余，平安一生乐逍遥。",jie:"辛日生人技艺精湛，能白手起家创大业，日后财源丰足、一生平安逍遥。宜精研一技之长、靠本事立身，是技艺致富的好命。",good:1},
+"壬":{shi:"壬干难有出头日，事事不得其心愿；温饱两餐少盈余，一生难得有富贵。",jie:"壬日生人较难出头、诸事不易顺心，日子多在温饱之间。宜知足惜福、稳守本分，凡事看开，平安即是福，多行善可转运。",good:0},
+"癸":{shi:"癸干到处是苦难，东奔西跑何日休；满身是才无用处，安分守本免凶祸。",jie:"癸日生人较为奔波劳碌、怀才却难施展。宜安分守己、脚踏实地，守住本分就能避开祸端。宜沉住气等待时机，行善积福转运。",good:0}
+};
+$("ss-tg-btn").onclick=()=>{
+  const R=$("ss-tg-result");
+  const dd=($("ss-tg-day").value||"").replace(/[^0-9]/g,"");
+  if(dd.length<8){R.innerHTML='<p class="empty">请输入完整出生日期（如 19900512）。</p>';return;}
+  const[y,mo,d]=[+dd.slice(0,4),+dd.slice(4,6),+dd.slice(6,8)];
+  if(y<1950||y>2035){R.innerHTML='<p class="empty">精确范围 1950–2035。</p>';return;}
+  const B=computeBazi(y,mo,d,12,0);
+  if(!B){R.innerHTML='<p class="empty">推算失败。</p>';return;}
+  const gan=B.day[0];const info=TIANGAN_FULU[gan];
+  R.innerHTML=`
+    <div class="verdict ${info.good?"good":"mid"}" style="margin-bottom:14px;">
+      <div class="big">${gan}日生 · 天干福禄</div>
+      <div class="small">日柱 ${B.day} · 日干${gan}</div>
+    </div>
+    <div class="reading"><h4>◇ 一生福禄</h4><p style="font-size:13px;line-height:1.9;font-family:'STKaiti','KaiTi',serif;color:var(--ink);">${info.shi}</p></div>
+    <div class="reading" style="margin-top:10px;"><h4>◇ 解说</h4><p style="font-size:12.5px;line-height:1.7;">${info.jie}</p></div>`;
+};
+
+/* ========== 三世书·生肖命运（十二地支）========== */
+const SX_NAME={"子":"鼠","丑":"牛","寅":"虎","卯":"兔","辰":"龙","巳":"蛇","午":"马","未":"羊","申":"猴","酉":"鸡","戌":"狗","亥":"猪"};
+const DIZHI_MING={
+"子":{shi:"子支显荣华，六亲缘如意；出外甚奔波，晚景天田庄。",jie:"子年（属鼠）生人一生显荣华、六亲缘分好，虽出外奔波，但晚景有田庄家业、安享清福。宜把握外出发展机会，晚福深厚。",good:1},
+"丑":{shi:"丑支心节和，做事手腕高；无须劳奔波，衣禄自安享。",jie:"丑年（属牛）生人性情平和、办事手腕高明，不必四处奔波，衣食自然安稳享用。宜稳扎稳打、以能力服人，是安稳有福的命。",good:1},
+"寅":{shi:"寅支万事顺，衣食靠自立；男女皆如意，功名定权威。",jie:"寅年（属虎）生人万事顺遂、靠自己立业，男女都称心，功名有权威。宜自立自强、把握机遇，前程光明。",good:1},
+"卯":{shi:"卯支需勤俭，谋事利达成；金榜存威名，一生衣禄盈。",jie:"卯年（属兔）生人宜勤俭持家，谋事顺利，利于功名、有威名，一生衣禄丰盈。宜勤俭立身、进取上学，福禄自来。",good:1},
+"辰":{shi:"辰支心聪明，出外靠贵人；谋事必能成，权高位扬名。",jie:"辰年（属龙）生人聪明伶俐、出外有贵人相助，谋事必成，能位高权重、扬名立万。宜广结贵人、大胆谋事，是显达之命。",good:1},
+"巳":{shi:"巳支和睦邻，儿孙最聪明；事业顺称心，一生乐助人。",jie:"巳年（属蛇）生人与邻和睦、儿孙聪明，事业顺心，一生乐于助人。宜广积善缘、乐善好施，是家和业顺的好命。",good:1},
+"午":{shi:"午支无休日，奔波枉用心；自立心欠强，营谋最顺畅。",jie:"午年（属马）生人一生较劳碌奔波，宜加强自立之心。只要肯用心经营，营谋反而顺畅。宜坚定志向、专注经营，忙中有得。",good:0},
+"未":{shi:"未支命贤贵，四方有出路；聪敏舌灵巧，可得侥幸财。",jie:"未年（属羊）生人命带贤贵、四方皆有出路，聪敏善言，能得意外之财。宜发挥口才与聪慧、广开财路，机遇处处。",good:1},
+"申":{shi:"申支自逍遥，事事能达成；不宜守祖屋，出外享安然。",jie:"申年（属猴）生人自在逍遥、事事能成，不适合守着祖屋，出外发展反而安然得福。宜离乡闯荡、把握机会，海阔天空。",good:1},
+"酉":{shi:"酉支享天禄，终身甚幸侥；早年财空空，老时福自盈。",jie:"酉年（属鸡）生人享有天禄、一生幸运。早年财较空，但越老福气越足。宜早年耐心积累、放长眼光，晚福丰盈。",good:1},
+"戌":{shi:"戌支命清高，兄弟两难为；财物亦欠周，到晚人佳景。",jie:"戌年（属狗）生人命格清高，与兄弟缘较薄，早中年财物不太宽裕，但到晚年是好光景。宜自立自强、不倚赖手足，苦尽甘来在晚年。",good:0},
+"亥":{shi:"亥支命带伤，早晚见灾丙；兄弟妻离散，行善保平安。",jie:"亥年（属猪）生人命中带些波折，需留意六亲缘分。古人谓多行善、心怀慈悲可保平安。宜广积善德、心存善念，善能化解、转危为安。",good:0}
+};
+$("ss-dz-btn").onclick=()=>{
+  const R=$("ss-dz-result");
+  const dd=($("ss-dz-day").value||"").replace(/[^0-9]/g,"");
+  if(dd.length<8){R.innerHTML='<p class="empty">请输入完整出生日期（如 19900512）。</p>';return;}
+  const[y,mo,d]=[+dd.slice(0,4),+dd.slice(4,6),+dd.slice(6,8)];
+  if(y<1950||y>2035){R.innerHTML='<p class="empty">精确范围 1950–2035。</p>';return;}
+  const B=computeBazi(y,mo,d,12,0);
+  if(!B){R.innerHTML='<p class="empty">推算失败。</p>';return;}
+  const zhi=B.year[1];const info=DIZHI_MING[zhi];
+  R.innerHTML=`
+    <div class="verdict ${info.good?"good":"mid"}" style="margin-bottom:14px;">
+      <div class="big">属${SX_NAME[zhi]}（${zhi}年）· 生肖命运</div>
+      <div class="small">${B.year[0]}${zhi}年 · 生肖${SX_NAME[zhi]}</div>
+    </div>
+    <div class="reading"><h4>◇ 一生命运</h4><p style="font-size:13px;line-height:1.9;font-family:'STKaiti','KaiTi',serif;color:var(--ink);">${info.shi}</p></div>
+    <div class="reading" style="margin-top:10px;"><h4>◇ 解说</h4><p style="font-size:12.5px;line-height:1.7;">${info.jie}</p></div>`;
+};
+
+/* ========== 三世书·一生财运 ========== */
+const CAIXING=["向财","因财","背财","正财","暗财","禄财","煞财","天财","耗财","逐财","病财","旺财"];
+function caiyunStar(zhiIdx,m){return ((zhiIdx-(m-1))%12+12)%12;}
+const CAIXING_DESC={
+"向财":{shi:"财运由天莫苦求，晨耕作业较相称；风调雨顺顺丰收，老年成事达成功。",jie:"财运属「向财」，宜脚踏实地。财不必强求，勤恳务实、按部就班最相称，晚年终能成事。宜勤勉本分、顺势而为，水到渠成。",good:1},
+"因财":{shi:"因财正义侮不及，孤独行商无人助；克父克母怎奈何，离祖兴家福禄宏。",jie:"财运属「因财」。经商宜独立自主、少倚赖他人，离乡背井闯荡反而福禄宏大。宜自立门户、外出发展，靠自己开创天地。",good:1},
+"背财":{shi:"背财利官近贵人，经商谋事皆如意；旺妻刑克总多劳，三十得子化凶灾。",jie:"财运属「背财」，吉。利于近贵人、当官经商都顺遂如意。宜广结贵人、经商谋事，是有贵人相助的好财运。",good:1},
+"正财":{shi:"手艺精能夫妻和，人际交往最安闲；聪明得财也光辉，六亲有禄进田庄。",jie:"财运属「正财」，吉。靠精湛手艺、良好人缘稳稳得财，夫妻和睦、六亲有福。宜精研一技、广结善缘，是踏实兴家的好财运。",good:1},
+"暗财":{shi:"暗财先是克儿郎，十成九败运来迟；初年不遂甚劳苦，老来枯木再逢春。",jie:"财运属「暗财」，大器晚成。早年较劳苦、运来得迟，但老来枯木逢春、时来运转。宜早年耐心积累、坚持不懈，晚福自来。",good:0},
+"禄财":{shi:"少年奔波苦劳碌，做事成败甚相称；三十岁后渐发福，先难后益得安然。",jie:"财运属「禄财」，先苦后甜。少年奔波劳碌，三十岁后渐入佳境、先难后易。宜早年多磨练积累，中年后自能安然发福。",good:1},
+"煞财":{shi:"一生做事强出头，七落八起渐兴旺；有财只是烟云过，晚景可得万贯财。",jie:"财运属「煞财」，起伏后兴。一生爱出头、七上八落，财来财去如烟云，但晚景能积得万贯家财。宜稳住心态、坚持到底，晚年财丰。",good:1},
+"天财":{shi:"出门常遇是横财，白手兴家在命中；兄弟六亲皆有靠，和顺安稳守平生。",jie:"财运属「天财」，吉。常遇意外之财，能白手兴家，六亲手足皆可倚靠，一生和顺安稳。宜把握机遇、和睦亲族，是横财与家和兼得的好命。",good:1},
+"耗财":{shi:"耗财本是此命序，六亲相克多劳苦；祖业难守他乡作，四十岁福不为迟。",jie:"财运属「耗财」，宜外出。早年守祖业较难、宜往他乡发展，四十岁后福气不迟。宜离乡打拼、莫守旧业，中年后自有福报。",good:0},
+"逐财":{shi:"逐财难守祖根基，出外经营路亨通；权柄握在掌中心，晚景财明享余年。",jie:"财运属「逐财」，出外得利。守祖业难，出外经营反而亨通、能掌权柄，晚景财丰安享。宜出外闯荡、把握权势，是离乡致富的好财运。",good:1},
+"病财":{shi:"财来财去终须有，妻子相助早发福；只嫌父母有刑伤，幸儿子女旺君郎。",jie:"财运属「病财」。财虽有进有出，但有贤内助相扶能早发福，子女也旺。宜夫妻同心、重视家庭，家和则财旺。",good:1},
+"旺财":{shi:"旺财多贵兼多福，诸事营谋皆畅旺；横财竟要推门来，一生富有天下荣。",jie:"财运属「旺财」，上上吉。多贵人多福气，做什么都顺、横财自来，一生富有荣华。宜放胆经营、把握良机，是财运最旺的好格局。",good:1}
+};
+$("ss-cy-btn").onclick=()=>{
+  const R=$("ss-cy-result");
+  const dd=($("ss-cy-day").value||"").replace(/[^0-9]/g,"");
+  if(dd.length<8){R.innerHTML='<p class="empty">请输入完整出生日期（如 19900512）。</p>';return;}
+  const[y,mo,d]=[+dd.slice(0,4),+dd.slice(4,6),+dd.slice(6,8)];
+  if(y<1950||y>2035){R.innerHTML='<p class="empty">精确范围 1950–2035。</p>';return;}
+  const l=zwSolarToLunar(y,mo,d);
+  if(!l){R.innerHTML='<p class="empty">农历转换失败。</p>';return;}
+  const B=computeBazi(y,mo,d,12,0);
+  if(!B){R.innerHTML='<p class="empty">推算失败。</p>';return;}
+  const zhiIdx=["子","丑","寅","卯","辰","巳","午","未","申","酉","戌","亥"].indexOf(B.year[1]);
+  const star=CAIXING[caiyunStar(zhiIdx,l.lm)];const info=CAIXING_DESC[star];
+  R.innerHTML=`
+    <div class="verdict ${info.good?"good":"mid"}" style="margin-bottom:14px;">
+      <div class="big">${star}${info.good?"（吉）":""}</div>
+      <div class="small">${B.year[0]}${B.year[1]}年 · 农历${l.lm}月</div>
+    </div>
+    <div class="reading"><h4>◇ 一生财运</h4><p style="font-size:13px;line-height:1.9;font-family:'STKaiti','KaiTi',serif;color:var(--ink);">${info.shi}</p></div>
+    <div class="reading" style="margin-top:10px;"><h4>◇ 解说</h4><p style="font-size:12.5px;line-height:1.7;">${info.jie}</p></div>`;
+};
+
+/* ========== 三世书·农牧田业 ========== */
+const FARM_COLS={
+  niu:["建牛","皆牛","皆牛","皆牛","空牛","库牛","破牛","合牛","合牛","合牛","向牛","向牛"],
+  zhu:["建猪","皆猪","皆猪","皆猪","空猪","库猪","破猪","合猪","合猪","合猪","向猪","向猪"],
+  tian:["建田","皆田","皆田","皆田","空田","库田","破田","合田","合田","合田","向田","向田"],
+  can:["建宫","皆宫","败宫","皆宫","破宫","空宫","库宫","向宫","合宫","合宫","向宫","建宫"]
+};
+const FARM_DATA={
+  niu:{name:"得牛",b:{
+    "建牛":{shi:"建牛有五头，作赫二牛行；牛强多发福，富贵常充足。",good:1},
+    "皆牛":{shi:"皆牛值命中，损伤五六头；相中多破财，人口多疾患。",good:0},
+    "空牛":{shi:"空牛落空亡，有也多遭殃；命中阻滞多，三春看犁田。",good:0},
+    "库牛":{shi:"库牛居利益，兴旺命吉祥；来年多发积，财禄不求人。",good:1},
+    "破牛":{shi:"破牛值命中，病中损十头；相共方保守，荣华永不休。",good:0},
+    "合牛":{shi:"合牛大吉祥，财谷积如山；田园雇人替，官高财禄强。",good:1},
+    "向牛":{shi:"向牛得余粮，田壮财物丰；用心勤饲养，家道保兴隆。",good:1}
+  }},
+  zhu:{name:"养猪",b:{
+    "建猪":{shi:"建猪兴旺得余粮，田壮财物最丰足；母养十五头，用心饲养能发福。",good:1},
+    "皆猪":{shi:"皆猪命推福无穷，门庭辛苦难显荣；兄弟姐妹皆无靠，出外劳作得点粮。",good:0},
+    "空猪":{shi:"空猪命犯是空亡，劳身伤神自把持；一生勤俭善持家，晚年也得金和钱。",good:0},
+    "库猪":{shi:"库猪生来福自宏，田园家业更荣昌；平生衣禄立足到，一生荣华胜大众。",good:1},
+    "破猪":{shi:"破猪刑克僻儿孙，初年求谋总难成；中年衣食胜从前，晚景金玉现堂春。",good:0},
+    "合猪":{shi:"合猪生来禄亨通，不用身劳禄不穷；身寒困苦皆躲过，晚景财源若水泉。",good:1},
+    "向猪":{shi:"向猪得余粮，用心勤饲养；家道渐兴隆，衣禄自安康。",good:1}
+  }},
+  tian:{name:"田业",b:{
+    "建田":{shi:"田业最丰足，耕作能发福；金银堆满屋，积累满仓谷。",good:1},
+    "皆田":{shi:"命中作耕强，田里索姻缘；白手兴家业，荣华享晚年。",good:1},
+    "空田":{shi:"空田命犯亡，田园多蝗虫；连年有灾殃，弃农足衣粮。",good:0},
+    "库田":{shi:"库田利益居，兴旺衣食堆；身强心满足，年年多发福。",good:1},
+    "破田":{shi:"命硬破田业，财谷不相当；产业多改换，出外置田庄。",good:0},
+    "合田":{shi:"命值遇合田，功名远播传；作耕人人助，一生衣禄荣。",good:1},
+    "向田":{shi:"向田进金银，一生不为穷；田业得丰收，男女皆相旺。",good:1}
+  }},
+  can:{name:"蚕桑",b:{
+    "建宫":{shi:"建宫蚕桑贵，桑叶立满枝；蚕丝是应时，发积他最富。",good:1},
+    "皆宫":{shi:"皆宫蚕叶盛，桑叶满林春；蚕虫才发富，家道万代昌。",good:1},
+    "败宫":{shi:"败宫桑叶稀，桑叶空枝头；蚕丝布成疏，福禄也多遭。",good:0},
+    "破宫":{shi:"破宫桑叶虚，桑叶梦中立；蚕丝不成师，此格谁能容。",good:0},
+    "空宫":{shi:"空宫蚕桑凋，桑叶有虫食；桑蚕不成双，命里注穷郎。",good:0},
+    "库宫":{shi:"库宫蚕桑丰，桑叶满林绿；蚕丝应时成，衣禄自然通。",good:1},
+    "向宫":{shi:"向宫蚕桑旺，桑叶绿满枝；用心勤养育，家业渐丰实。",good:1},
+    "合宫":{shi:"合宫蚕桑成，桑叶满园青；蚕丝年年好，财禄自然增。",good:1}
+  }}
+};
+function farmCol(zhiIdx,m){return ((m-(zhiIdx+1))%12+12)%12;}
+$("ss-fm-btn").onclick=()=>{
+  const R=$("ss-fm-result");
+  const dd=($("ss-fm-day").value||"").replace(/[^0-9]/g,"");
+  if(dd.length<8){R.innerHTML='<p class="empty">请输入完整出生日期（如 19900512）。</p>';return;}
+  const type=$("ss-fm-type").value;
+  const[y,mo,d]=[+dd.slice(0,4),+dd.slice(4,6),+dd.slice(6,8)];
+  if(y<1950||y>2035){R.innerHTML='<p class="empty">精确范围 1950–2035。</p>';return;}
+  const l=zwSolarToLunar(y,mo,d);
+  if(!l){R.innerHTML='<p class="empty">农历转换失败。</p>';return;}
+  const B=computeBazi(y,mo,d,12,0);
+  if(!B){R.innerHTML='<p class="empty">推算失败。</p>';return;}
+  const zhiIdx=["子","丑","寅","卯","辰","巳","午","未","申","酉","戌","亥"].indexOf(B.year[1]);
+  const star=FARM_COLS[type][farmCol(zhiIdx,l.lm)];
+  const set=FARM_DATA[type];const info=set.b[star];
+  R.innerHTML=`
+    <div class="verdict ${info.good?"good":"mid"}" style="margin-bottom:14px;">
+      <div class="big">${set.name} · ${star}${info.good?"（吉）":""}</div>
+      <div class="small">${B.year[0]}${B.year[1]}年 · 农历${l.lm}月</div>
+    </div>
+    <div class="reading"><h4>◇ ${set.name}运</h4><p style="font-size:13px;line-height:1.9;font-family:'STKaiti','KaiTi',serif;color:var(--ink);">${info.shi}</p></div>`;
 };
 
 /* ========== 三世书·一键总览 ========== */
