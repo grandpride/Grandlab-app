@@ -652,6 +652,12 @@
   .social-btn:active{transform:scale(.97);}
   .social-ic{font-size:22px;}
   .social-share-btn{width:100%;margin-top:10px;background:var(--surface2);border:1px solid var(--line);color:var(--text);border-radius:12px;padding:11px;font-size:13.5px;font-weight:600;cursor:pointer;}
+  .social-list{display:flex;flex-direction:column;gap:8px;}
+  .social-line{display:flex;align-items:center;gap:12px;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:13px 16px;text-decoration:none;color:var(--text);transition:.12s;}
+  .social-line:active{transform:scale(.985);}
+  .social-line-ic{font-size:22px;flex:0 0 auto;}
+  .social-line-nm{font-size:15px;font-weight:700;flex:1;}
+  .social-line-go{font-size:15px;color:var(--muted);flex:0 0 auto;}
   /* ===== booking calendar + slots ===== */
   .bk-section-label{display:block;font-size:13px;font-weight:700;margin:18px 0 10px;}
   .cal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
@@ -2467,17 +2473,6 @@ async function renderHome(){
         </div>
       </div>`:''}
 
-      <!-- social media row -->
-      ${(SOCIAL.facebook||SOCIAL.instagram||SOCIAL.tiktok)?`
-      <div class="sec-title">${esc(SOCIAL.title||'Follow us')}</div>
-      ${SOCIAL.shareReward?`<div class="social-reward">🎁 ${esc(SOCIAL.shareReward)}</div>`:''}
-      <div class="social-row">
-        ${SOCIAL.facebook?`<a class="social-btn fb" href="${esc(SOCIAL.facebook)}" target="_blank" rel="noopener"><span class="social-ic">📘</span><span>Facebook</span></a>`:''}
-        ${SOCIAL.instagram?`<a class="social-btn ig" href="${esc(SOCIAL.instagram)}" target="_blank" rel="noopener"><span class="social-ic">📸</span><span>Instagram</span></a>`:''}
-        ${SOCIAL.tiktok?`<a class="social-btn tt" href="${esc(SOCIAL.tiktok)}" target="_blank" rel="noopener"><span class="social-ic">🎵</span><span>TikTok</span></a>`:''}
-      </div>
-      <button class="social-share-btn" onclick="shareGrandlab()">↗ Share Grandlab with friends</button>`:''}
-
       <!-- OUR STORES -->
       ${STORES.length?`
       <div class="sec-title-row">
@@ -2490,6 +2485,17 @@ async function renderHome(){
           <div class="store-chip-nm">${esc(st.name||'')}</div>
         </div>`).join('')}
       </div>`:''}
+
+      <!-- OUR SOCIAL MEDIA (below stores) -->
+      ${(SOCIAL.facebook||SOCIAL.instagram||SOCIAL.tiktok)?`
+      <div class="sec-title" style="margin-top:22px">${esc(SOCIAL.title||'Our Social Media')}</div>
+      ${SOCIAL.shareReward?`<div class="social-reward">🎁 ${esc(SOCIAL.shareReward)}</div>`:''}
+      <div class="social-list">
+        ${SOCIAL.facebook?`<a class="social-line" href="${esc(SOCIAL.facebook)}" target="_blank" rel="noopener"><span class="social-line-ic">📘</span><span class="social-line-nm">Facebook</span><span class="social-line-go">↗</span></a>`:''}
+        ${SOCIAL.instagram?`<a class="social-line" href="${esc(SOCIAL.instagram)}" target="_blank" rel="noopener"><span class="social-line-ic">📸</span><span class="social-line-nm">Instagram</span><span class="social-line-go">↗</span></a>`:''}
+        ${SOCIAL.tiktok?`<a class="social-line" href="${esc(SOCIAL.tiktok)}" target="_blank" rel="noopener"><span class="social-line-ic">🎵</span><span class="social-line-nm">TikTok</span><span class="social-line-go">↗</span></a>`:''}
+      </div>
+      <button class="social-share-btn" onclick="shareGrandlab()">↗ Share Grandlab with friends</button>`:''}
 
       <!-- quick action cards removed (My Cars & History + Send gifts) -->
     </div>
