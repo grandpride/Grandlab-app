@@ -4773,7 +4773,7 @@ async function fetchWalletTxns(){
 async function fetchRedemptionHistory(){
   if(!SESSION?.user?.id) return [];
   try{
-    const r=await fetch(`${SUPA_URL}/rest/v1/gl_redemptions?select=reward_name,coin_cost,redeemed_at&owner_id=eq.${SESSION.user.id}&order=redeemed_at.desc&limit=20`,{headers:authHeaders()});
+    const r=await fetch(`${SUPA_URL}/rest/v1/gl_redemptions?select=*&owner_id=eq.${SESSION.user.id}&order=created_at.desc&limit=20`,{headers:authHeaders()});
     if(r.ok) return await r.json();
   }catch(e){}
   return [];
@@ -4800,7 +4800,7 @@ async function renderWallet(){
     kind:'money', note:(t.note||t.kind||'Transaction'), date:t.created_at, amount:Number(t.amount||0)
   }));
   redeems.forEach(r=>entries.push({
-    kind:'reward', note:'Redeemed: '+(r.reward_name||'Reward'), date:r.redeemed_at, coin:Number(r.coin_cost||0)
+    kind:'reward', note:'Redeemed: '+(r.reward_name||'Reward'), date:(r.redeemed_at||r.created_at), coin:Number(r.coin_cost||0)
   }));
   entries.sort((a,b)=> new Date(b.date||0) - new Date(a.date||0));
   const coinNm = STYLE.coinName||'G Coin';
