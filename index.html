@@ -2491,18 +2491,7 @@ async function renderHome(){
         </div>`).join('')}
       </div>`:''}
 
-      <!-- quick action cards -->
-      ${STYLE.homeShowCards!==false?`
-      <div class="home-cards">
-        <div class="hc" onclick="openMyPackages()">
-          <div class="hc-t">My Cars &amp; History</div>
-          <div class="hc-s">Packages, service log &amp; visit notes</div>
-        </div>
-        <div class="hc" onclick="showReferralQR()">
-          <div class="hc-t">${esc(STYLE.homeCard2Title||'Send gifts')}</div>
-          <div class="hc-s">${esc(STYLE.homeCard2Sub||'')}</div>
-        </div>
-      </div>`:''}
+      <!-- quick action cards removed (My Cars & History + Send gifts) -->
     </div>
     ${botnav('home')}`;
   // start auto-sliders
