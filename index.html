@@ -4760,6 +4760,16 @@ async function fetchWalletTxns(){
   return [];
 }
 
+// Reward redemptions (points spent on rewards) — shown in the wallet history.
+async function fetchRedemptionHistory(){
+  if(!SESSION?.user?.id) return [];
+  try{
+    const r=await fetch(`${SUPA_URL}/rest/v1/gl_redemptions?select=reward_name,coin_cost,redeemed_at&owner_id=eq.${SESSION.user.id}&order=redeemed_at.desc&limit=20`,{headers:authHeaders()});
+    if(r.ok) return await r.json();
+  }catch(e){}
+  return [];
+}
+
 /* wallet quick-action icon: uploaded image if set, else fallback symbol */
 function waIcon(key, fallback){
   const sz = Number(STYLE.walletIconSize)||54;
@@ -4772,12 +4782,34 @@ async function renderWallet(){
   const joined = p.created_at ? new Date(p.created_at).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}) : '—';
   let txns=[];
   try{ if(!IS_GUEST && SESSION?.user?.id) txns=await fetchWalletTxns(); }catch(e){}
-  const txnHtml = txns.length ? txns.map(t=>`
-    <div class="txn-row">
-      <div><div class="txn-note">${esc(t.note||t.kind||'Transaction')}</div>
-      <div class="txn-date">${t.created_at?new Date(t.created_at).toLocaleDateString('en-GB'):''}</div></div>
-      <div class="txn-amt ${Number(t.amount)<0?'neg':'pos'}">${Number(t.amount)<0?'-':'+'}RM ${Math.abs(Number(t.amount||0)).toFixed(2)}</div>
-    </div>`).join('') : `<div class="txn-row"><div><div class="txn-note">Opening balance</div><div class="txn-date">—</div></div><div class="txn-amt">RM 0.00</div></div>`;
+  // also pull reward redemptions (points spent) to show in the history
+  let redeems=[];
+  try{ if(!IS_GUEST && SESSION?.user?.id) redeems=await fetchRedemptionHistory(); }catch(e){}
+  // build a unified, date-sorted list of entries
+  const entries=[];
+  txns.forEach(t=>entries.push({
+    kind:'money', note:(t.note||t.kind||'Transaction'), date:t.created_at, amount:Number(t.amount||0)
+  }));
+  redeems.forEach(r=>entries.push({
+    kind:'reward', note:'Redeemed: '+(r.reward_name||'Reward'), date:r.redeemed_at, coin:Number(r.coin_cost||0)
+  }));
+  entries.sort((a,b)=> new Date(b.date||0) - new Date(a.date||0));
+  const coinNm = STYLE.coinName||'G Coin';
+  const txnHtml = entries.length ? entries.map(e=>{
+    const dateStr = e.date ? new Date(e.date).toLocaleDateString('en-GB') : '';
+    if(e.kind==='reward'){
+      return `<div class="txn-row">
+        <div><div class="txn-note">🎁 ${esc(e.note)}</div>
+        <div class="txn-date">${dateStr}</div></div>
+        <div class="txn-amt neg">-${e.coin} ${esc(coinNm)}</div>
+      </div>`;
+    }
+    return `<div class="txn-row">
+      <div><div class="txn-note">${esc(e.note)}</div>
+      <div class="txn-date">${dateStr}</div></div>
+      <div class="txn-amt ${e.amount<0?'neg':'pos'}">${e.amount<0?'-':'+'}RM ${Math.abs(e.amount).toFixed(2)}</div>
+    </div>`;
+  }).join('') : `<div class="txn-row"><div><div class="txn-note">Opening balance</div><div class="txn-date">—</div></div><div class="txn-amt">RM 0.00</div></div>`;
 
   appRoot.innerHTML=`
     <div class="app-scroll">
