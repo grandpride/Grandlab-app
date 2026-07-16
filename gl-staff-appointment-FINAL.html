@@ -591,8 +591,9 @@ async function onCarSelect(){
     if(c){ $('car').value=[c.make,c.model].filter(Boolean).join(' ');$('plate').value=c.plate||'';
       const t=$('bkType');
       if(t){
-        if(c.car_type){ const o=[...t.options].find(x=>x.value.toLowerCase()===String(c.car_type).toLowerCase()); t.value=o?o.value:c.car_type; }
-        else { t.value=''; if(c.model) resolveTypeFromModel_(c.model); }  // blank type → infer from model
+        t.value='';                                    // clear any prior car's type
+        if(c.car_type){ bkSetType(c.car_type); }        // stored type → set (adds option if missing)
+        else if(c.model){ resolveTypeFromModel_(c.model); }  // blank type → infer from model
       }
       await autoBalance(c.plate); }
   }
