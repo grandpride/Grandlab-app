@@ -446,7 +446,8 @@ button,input{font-family:inherit}
     <div class="dialog-b">
       <div style="font-size:13px;color:var(--ink2);margin-bottom:12px" id="etxWho"></div>
       <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px">Payment method</label>
-      <input id="etxMethod" class="cat-search" placeholder="e.g. Cash / TnG" style="margin-bottom:12px">
+      <select id="etxMethodSel" class="cat-search" style="margin-bottom:12px" onchange="etxMethodChange()"></select>
+      <input id="etxMethodOther" class="cat-search" placeholder="e.g. Cash RM50 + TnG RM30" style="margin-bottom:12px;display:none">
       <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px">Amount (RM)</label>
       <input id="etxAmount" class="cat-search" type="number" step="0.01" min="0" style="margin-bottom:12px">
       <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px">Sale date <span style="color:var(--ink3);font-weight:400">(backdate if keyed late)</span></label>
@@ -812,18 +813,37 @@ function openEditTx(i){
   const r=DASH_TX[i]; if(!r) return;
   window._editTx=r;
   $('etxWho').textContent=(r.customer_name||'—')+' · '+(r.plate||'—');
-  $('etxMethod').value=r.method||'';
+  // build the method dropdown from the standard METHODS + an "Other" fallback
+  const sel=$('etxMethodSel');
+  sel.innerHTML=METHODS.map(m=>`<option value="${m.k}">${m.label}</option>`).join('')
+    +'<option value="__other__">Split / Other (type it)</option>';
+  // match the stored method (by key or label) to a dropdown option; else "Other"
+  const stored=String(r.method||'').trim();
+  const hit=METHODS.find(m=>m.k===stored || m.label.toLowerCase()===stored.toLowerCase());
+  if(hit){ sel.value=hit.k; $('etxMethodOther').style.display='none'; $('etxMethodOther').value=''; }
+  else { sel.value='__other__'; $('etxMethodOther').style.display='block'; $('etxMethodOther').value=stored; }
   $('etxAmount').value=Number(r.net_paid)||0;
   // sale date: use sale_date if set, else the date part of paid_at
   const sd = r.sale_date || (r.paid_at? new Date(r.paid_at).toISOString().slice(0,10) : new Date().toISOString().slice(0,10));
   $('etxDate').value = String(sd).slice(0,10);
   $('etxModal').classList.add('show');
 }
+/* show the free-text box only when "Other" is picked */
+function etxMethodChange(){
+  const other=$('etxMethodSel').value==='__other__';
+  $('etxMethodOther').style.display=other?'block':'none';
+  if(other) setTimeout(()=>$('etxMethodOther').focus(),30);
+}
 async function saveEditTx(){
   const r=window._editTx; if(!r) return;
-  const method=$('etxMethod').value.trim();
+  // read method from the dropdown; if "Other", use the typed value
+  const selVal=$('etxMethodSel').value;
+  let method;
+  if(selVal==='__other__'){ method=$('etxMethodOther').value.trim(); }
+  else { const m=METHODS.find(x=>x.k===selVal); method=m?m.label:selVal; }  // store label, matches checkout
   const amt=parseFloat($('etxAmount').value);
   if(isNaN(amt)||amt<0){ alert('Enter a valid amount.'); return; }
+  if(!method){ alert('Choose or enter a payment method.'); return; }
   const saleDate=$('etxDate').value || null;
   const upd={method:method||null, net_paid:amt};
   if(saleDate){
