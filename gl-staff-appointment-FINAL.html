@@ -864,6 +864,10 @@ function buildNotes(phone,timeLabel){
   parts.push(`Phone: ${phone}`);
   parts.push(`Car: ${$('car').value.trim()}`);
   parts.push(`Plate: ${$('plate').value.trim()}`);
+  // all services (main + extras) — the sheet reads this to show every service.
+  // joined with ';;' so it survives the ' | ' note split. Only add when >1.
+  const _allSvcs=allServiceNames_();
+  if(_allSvcs.length>1) parts.push(`Services: ${_allSvcs.join(';;')}`);
   if(isCoating()) parts.push(`CoatingBalance: ${$('bal').value.trim()}`);
   const dep=parseFloat($('deposit').value);
   if(!isNaN(dep)&&dep>0){ parts.push(`Deposit: ${dep}`); if($('depDate').value) parts.push(`DepDate: ${fmtDate($('depDate').value)}`); }
