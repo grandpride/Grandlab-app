@@ -509,14 +509,21 @@ async function doLookup(){
     }).join('')+'<option value="__new__">+ Add new car</option>';
     onCarSelect();
   }else{
-    // not in profiles — check gl_walkin
-    const {data:wk}=await sb.from('gl_walkin').select('*').or(`phone.eq.+${phone},phone.eq.${phone}`).limit(1).maybeSingle();
-    if(wk){ fillFromWalkin_(wk); }
+    // not in profiles — check gl_walkin. Use the RPC so ALL of the customer's
+    // cars come back (a walk-in customer can have several rows, one per plate).
+    let cust=null, cars=[];
+    try{
+      const {data:c}=await sb.rpc('gl_lookup_customer',{p_phone:phone});
+      cust=Array.isArray(c)?c[0]:c;
+      const {data:cs}=await sb.rpc('gl_lookup_cars',{p_phone:phone});
+      cars=(cs||[]).filter(x=>x.plate||x.model);
+    }catch(e){}
+    if(cust||cars.length){ fillFromWalkinCars_(cust,cars); }
     else { $('lookup').className='lookup newc'; $('lookup').textContent='🆕 New customer — saved with booking'; CAR_PACKAGES=[]; renderPkgChips(); }
   }
 }
 
-/* Fill the booking form from a gl_walkin record. */
+/* Fill the booking form from a gl_walkin record (single car — used by plate lookup). */
 function fillFromWalkin_(wk){
   foundProfile=null; profileCars=[];
   $('lookup').className='lookup found';
@@ -528,6 +535,31 @@ function fillFromWalkin_(wk){
   if(wk.car_type){ const t=$('bkType'); if(t){ const o=[...t.options].find(x=>x.value.toLowerCase()===String(wk.car_type).toLowerCase()); t.value=o?o.value:wk.car_type; } }
   else if(wk.model){ resolveTypeFromModel_(wk.model); }
   CAR_PACKAGES=[]; renderPkgChips();
+}
+
+/* Fill the booking form for a walk-in customer with ALL their cars.
+   Walk-in cars have no gl_vehicles id, so give each a synthetic id ('w0','w1',…)
+   and store them in profileCars so the existing onCarSelect() can switch between
+   them. car_type may be blank in gl_walkin (e.g. plate-scanner edits didn't save
+   it) — onCarSelect falls back to model-based type resolution. */
+function fillFromWalkinCars_(cust,cars){
+  foundProfile=null;
+  const nm=cust?cust.name:(cars[0]&&cars[0].name)||'';
+  if(nm) $('name').value=nm;
+  const ph=cust?cust.phone:(cars[0]&&cars[0].phone)||'';
+  if(ph && !$('contact').value) $('contact').value=String(ph).replace(/^\+/,'');
+  // build walk-in car objects (synthetic ids so the dropdown + switch logic works)
+  profileCars=(cars||[]).map((c,i)=>({
+    id:'w'+i, make:'', model:c.model||'', plate:c.plate||'', car_type:c.car_type||'', _walkin:true
+  }));
+  $('lookup').className='lookup found';
+  $('lookup').textContent=`✓ ${nm||'(no name)'} (walk-in) · ${profileCars.length} car(s)`;
+  $('carSelect').innerHTML=profileCars.map(c=>{
+    const label=[c.make,c.model].filter(Boolean).join(' ')||'(car)';
+    return `<option value="${c.id}">${esc(label)} · ${esc(c.plate||'')}</option>`;
+  }).join('')+'<option value="__new__">+ Add new car</option>';
+  CAR_PACKAGES=[]; renderPkgChips();
+  if(profileCars.length){ $('carSelect').value=profileCars[0].id; onCarSelect(); }
 }
 /* look up a car type from the model name in gl_car_models and auto-select it.
    handles free-text models (e.g. "TESLA MODEL Y") that weren't picked from the dropdown. */
@@ -557,7 +589,11 @@ async function onCarSelect(){
     const c=profileCars.find(x=>x.id===v);
     $('carEntry').style.display='none';
     if(c){ $('car').value=[c.make,c.model].filter(Boolean).join(' ');$('plate').value=c.plate||'';
-      if(c.car_type){ const t=$('bkType'); if(t){ const o=[...t.options].find(x=>x.value.toLowerCase()===String(c.car_type).toLowerCase()); t.value=o?o.value:c.car_type; } }
+      const t=$('bkType');
+      if(t){
+        if(c.car_type){ const o=[...t.options].find(x=>x.value.toLowerCase()===String(c.car_type).toLowerCase()); t.value=o?o.value:c.car_type; }
+        else { t.value=''; if(c.model) resolveTypeFromModel_(c.model); }  // blank type → infer from model
+      }
       await autoBalance(c.plate); }
   }
   build();
