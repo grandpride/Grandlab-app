@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>GrandLab · Marketing Analysis</title>
+<link href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.47.0/tabler-icons.min.css" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0b0b0b; --card:#151515; --card2:#1c1c1a; --border:#2a2a26;
+    --gold:#F5C518; --text:#f4f4f0; --muted:#8a8a80; --muted2:#6a6a62;
+    --green:#16A34A; --green-bg:#12351e; --red:#e0533d; --red-bg:#3a1a14;
+    --amber:#d99a1c; --amber-bg:#33280c;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;font-size:15px;line-height:1.4}
+  a{color:inherit;text-decoration:none}
+  .hidden{display:none!important}
+
+  /* login gate */
+  #gate{position:fixed;inset:0;background:#080808;z-index:100;display:flex;align-items:center;justify-content:center;padding:24px}
+  #gate .box{max-width:380px;width:100%}
+  #gate .logo{font-weight:900;font-size:24px;letter-spacing:1px;margin-bottom:4px}
+  #gate .logo span{color:var(--gold)}
+  #gate .tag{color:var(--muted);font-size:13px;margin-bottom:20px}
+  #gate label{display:block;font-size:12px;color:var(--muted);margin:12px 0 5px;text-transform:uppercase;letter-spacing:.05em;font-weight:600}
+  #gate input{width:100%;background:#1e1e1a;border:1px solid var(--border);border-radius:12px;color:#fff;padding:13px 14px;font-size:15px;font-family:inherit}
+  #gate button{width:100%;margin-top:16px;background:var(--gold);color:#080808;border:none;border-radius:12px;padding:14px;font-weight:800;font-size:15px;font-family:inherit;cursor:pointer}
+  #gate .err{color:var(--red);font-size:12px;margin-top:8px;min-height:16px}
+
+  .hubback{position:fixed;top:12px;left:12px;z-index:20;background:rgba(20,20,20,.8);border:1px solid var(--border);color:var(--gold);font-size:12px;font-weight:700;padding:7px 12px;border-radius:20px;backdrop-filter:blur(4px)}
+
+  .wrap{max-width:640px;margin:0 auto;padding:56px 16px 40px}
+  .head{display:flex;align-items:baseline;justify-content:space-between;border-bottom:1px solid var(--border);padding-bottom:14px;margin-bottom:18px}
+  .brand{font-weight:900;font-size:20px;letter-spacing:.5px}
+  .brand b{color:var(--gold)}
+  .head small{color:var(--muted);font-size:12px;letter-spacing:.08em;text-transform:uppercase}
+
+  /* tabs */
+  .tabs{display:flex;gap:8px;margin-bottom:18px}
+  .tab{flex:1;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px;font-weight:700;font-size:14px;color:var(--muted);text-align:center;cursor:pointer}
+  .tab.on{background:var(--gold);color:#080808;border-color:var(--gold)}
+
+  /* form */
+  .card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:16px;margin-bottom:16px}
+  .card-t{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:700;margin-bottom:12px}
+  .field{margin-bottom:12px}
+  .field label{display:block;font-size:12px;color:var(--muted);margin-bottom:5px;text-transform:uppercase;letter-spacing:.04em;font-weight:600}
+  .field input, .field select{width:100%;background:var(--card2);border:1px solid var(--border);border-radius:11px;color:var(--text);padding:12px 13px;font-size:15px;font-family:inherit}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .seg{display:flex;gap:8px}
+  .seg .opt{flex:1;background:var(--card2);border:1px solid var(--border);border-radius:11px;padding:11px;text-align:center;font-weight:700;font-size:14px;cursor:pointer;color:var(--muted)}
+  .seg .opt.on{background:var(--gold);color:#080808;border-color:var(--gold)}
+  .btn{width:100%;background:var(--gold);color:#080808;border:none;border-radius:12px;padding:14px;font-weight:800;font-size:15px;font-family:inherit;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px}
+  .btn.sec{background:var(--card2);color:var(--text);border:1px solid var(--border)}
+  .msg{font-size:13px;min-height:18px;margin-top:8px}
+  .msg.ok{color:var(--green)}
+  .msg.err{color:var(--red)}
+
+  /* lead list */
+  .filters{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap}
+  .chip{background:var(--card2);border:1px solid var(--border);border-radius:20px;padding:7px 13px;font-size:13px;font-weight:600;color:var(--muted);cursor:pointer}
+  .chip.on{background:var(--gold);color:#080808;border-color:var(--gold)}
+  .lead{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:10px}
+  .lead-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:10px}
+  .lead-name{font-weight:800;font-size:16px}
+  .lead-meta{font-size:12px;color:var(--muted);margin-top:2px}
+  .lead-badge{font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;white-space:nowrap}
+  .b-talking{background:var(--amber-bg);color:var(--amber)}
+  .b-won{background:var(--green-bg);color:var(--green)}
+  .b-lost{background:var(--red-bg);color:var(--red)}
+  .stagebtns{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}
+  .sbtn{border:1px solid var(--border);background:var(--card2);border-radius:10px;padding:9px 6px;font-size:12px;font-weight:700;color:var(--muted);cursor:pointer;text-align:center}
+  .sbtn.on-talking{background:var(--amber);color:#080808;border-color:var(--amber)}
+  .sbtn.on-won{background:var(--green);color:#fff;border-color:var(--green)}
+  .sbtn.on-lost{background:var(--red);color:#fff;border-color:var(--red)}
+  .empty{text-align:center;color:var(--muted);padding:32px 12px;font-size:14px}
+  .status{text-align:center;color:var(--muted);padding:16px;font-size:13px}
+  .del{font-size:11px;color:var(--muted2);cursor:pointer;margin-top:8px;display:inline-flex;align-items:center;gap:4px}
+
+  /* toast */
+  .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(80px);background:#222;color:#fff;padding:12px 18px;border-radius:12px;font-size:14px;font-weight:600;opacity:0;transition:.25s;z-index:50;border:1px solid var(--border)}
+  .toast.show{transform:translateX(-50%) translateY(0);opacity:1}
+  .toast.err{background:#3a1a14;border-color:var(--red)}
+</style>
+</head>
+<body>
+
+<a class="hubback" href="https://grandpride.github.io/Grandlab-app/gl-hub.html">← Hub</a>
+
+<!-- login gate -->
+<div id="gate">
+  <div class="box">
+    <div class="logo">GRAND<span>LAB</span></div>
+    <div class="tag">Marketing Analysis — staff sign in</div>
+    <label>Email</label>
+    <input id="email" type="email" autocomplete="username" placeholder="reception@grandpride.com">
+    <label>Password</label>
+    <input id="pass" type="password" autocomplete="current-password" placeholder="Password">
+    <div class="err" id="gerr"></div>
+    <button onclick="doLogin()">Sign in</button>
+  </div>
+</div>
+
+<!-- app -->
+<div class="wrap">
+  <div class="head">
+    <div class="brand">GRAND<b>LAB</b></div>
+    <small>Marketing Analysis</small>
+  </div>
+
+  <div class="tabs">
+    <div class="tab on" id="tabAdd" onclick="showTab('add')">＋ Log a lead</div>
+    <div class="tab" id="tabList" onclick="showTab('list')">Leads <span id="leadCount"></span></div>
+  </div>
+
+  <!-- ===== ADD LEAD ===== -->
+  <div id="viewAdd">
+    <div class="card">
+      <div class="card-t">New lead from an ad</div>
+      <div class="field">
+        <label>Customer phone (WhatsApp)</label>
+        <input id="l_phone" type="tel" inputmode="numeric" placeholder="e.g. 60123456789">
+      </div>
+      <div class="field">
+        <label>Name</label>
+        <input id="l_name" placeholder="Customer name">
+      </div>
+      <div class="field">
+        <label>Ad channel</label>
+        <div class="seg" id="l_channel">
+          <div class="opt on" data-ch="facebook" onclick="pickChannel('facebook')"><i class="ti ti-brand-facebook"></i> Facebook</div>
+          <div class="opt" data-ch="instagram" onclick="pickChannel('instagram')"><i class="ti ti-brand-instagram"></i> Instagram</div>
+        </div>
+      </div>
+      <div class="field">
+        <label>Which ad / campaign</label>
+        <input id="l_campaign" list="campaignList" placeholder="Pick or type a campaign name">
+        <datalist id="campaignList"></datalist>
+      </div>
+      <div class="field">
+        <label>Note (optional)</label>
+        <input id="l_note" placeholder="e.g. asked about PPF price">
+      </div>
+      <button class="btn" onclick="saveLead()"><i class="ti ti-plus"></i> Save lead</button>
+      <div class="msg" id="addMsg"></div>
+    </div>
+  </div>
+
+  <!-- ===== LEAD LIST ===== -->
+  <div id="viewList" class="hidden">
+    <div class="filters" id="filters">
+      <div class="chip on" data-f="all" onclick="setFilter('all')">All</div>
+      <div class="chip" data-f="talking" onclick="setFilter('talking')">Talking</div>
+      <div class="chip" data-f="won" onclick="setFilter('won')">Won ✅</div>
+      <div class="chip" data-f="lost" onclick="setFilter('lost')">Lost ❌</div>
+    </div>
+    <div id="leadList"></div>
+    <div class="status" id="listStatus"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SUPABASE_URL="https://eychljpzorzmaveixlnu.supabase.co";
+const SUPABASE_ANON="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV5Y2hsanB6b3J6bWF2ZWl4bG51Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2NDk2NjQsImV4cCI6MjA5NzIyNTY2NH0.6dA1zhz5ZIwf8byFB8vhfOzPI-uPPdPihEr1b8GG_oA";
+const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON,{auth:{persistSession:true,autoRefreshToken:true,storageKey:'gl_auth'}});
+const $=id=>document.getElementById(id);
+const esc=s=>(s||'').toString().replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function toast(t,err){const e=$('toast');e.textContent=t;e.className='toast show'+(err?' err':'');setTimeout(()=>e.className='toast',1900);}
+
+let LEADS=[];        // all leads, cached
+let FILTER='all';
+let CHANNEL='facebook';
+let ME='';           // signed-in staff email (for logged_by)
+
+/* ---------- login ---------- */
+async function boot(){
+  const {data}=await sb.auth.getSession();
+  if(data&&data.session){
+    $('gate').classList.add('hidden');
+    ME=(data.session.user&&data.session.user.email)||'';
+    loadLeads();
+  }else{
+    $('gate').classList.remove('hidden');
+  }
+}
+async function doLogin(){
+  const email=$('email').value.trim(), pass=$('pass').value;
+  $('gerr').textContent='Signing in…';
+  const {error}=await sb.auth.signInWithPassword({email,password:pass});
+  if(error){ $('gerr').textContent='Login failed: '+error.message; return; }
+  $('gerr').textContent=''; $('gate').classList.add('hidden');
+  ME=email; loadLeads();
+}
+
+/* ---------- tabs ---------- */
+function showTab(t){
+  $('tabAdd').classList.toggle('on',t==='add');
+  $('tabList').classList.toggle('on',t==='list');
+  $('viewAdd').classList.toggle('hidden',t!=='add');
+  $('viewList').classList.toggle('hidden',t!=='list');
+  if(t==='list') renderLeads();
+}
+function pickChannel(ch){
+  CHANNEL=ch;
+  document.querySelectorAll('#l_channel .opt').forEach(o=>o.classList.toggle('on',o.dataset.ch===ch));
+}
+
+/* ---------- save a new lead ---------- */
+async function saveLead(){
+  const phone=($('l_phone').value||'').replace(/[^0-9]/g,'');
+  const name=$('l_name').value.trim();
+  const campaign=$('l_campaign').value.trim();
+  const note=$('l_note').value.trim();
+  if(!phone && !name){ $('addMsg').className='msg err'; $('addMsg').textContent='Enter at least a phone or name.'; return; }
+  $('addMsg').className='msg'; $('addMsg').textContent='Saving…';
+  const row={
+    phone:phone||null, name:name||null, channel:CHANNEL,
+    campaign:campaign||null, stage:'talking',
+    notes:note||null, logged_by:ME||null
+  };
+  const {error}=await sb.from('gl_leads').insert(row);
+  if(error){ $('addMsg').className='msg err'; $('addMsg').textContent='Save failed: '+error.message; return; }
+  $('addMsg').className='msg ok'; $('addMsg').textContent='✓ Lead saved.';
+  // clear the form (keep channel choice)
+  $('l_phone').value=''; $('l_name').value=''; $('l_campaign').value=''; $('l_note').value='';
+  await loadLeads();
+  setTimeout(()=>{ $('addMsg').textContent=''; }, 2500);
+}
+
+/* ---------- load + render leads ---------- */
+async function loadLeads(){
+  const {data,error}=await sb.from('gl_leads').select('*').order('created_at',{ascending:false}).limit(500);
+  if(error){ $('listStatus').textContent='Load error: '+error.message; return; }
+  LEADS=data||[];
+  // build the campaign datalist from past entries
+  const camps=[...new Set(LEADS.map(l=>l.campaign).filter(Boolean))];
+  $('campaignList').innerHTML=camps.map(c=>`<option value="${esc(c)}">`).join('');
+  $('leadCount').textContent=LEADS.length?('('+LEADS.length+')'):'';
+  renderLeads();
+}
+function setFilter(f){
+  FILTER=f;
+  document.querySelectorAll('#filters .chip').forEach(c=>c.classList.toggle('on',c.dataset.f===f));
+  renderLeads();
+}
+function renderLeads(){
+  const list=LEADS.filter(l=>FILTER==='all'||l.stage===FILTER);
+  if(!list.length){ $('leadList').innerHTML='<div class="empty">No leads'+(FILTER!=='all'?' in this filter':' yet — log one from the + tab')+'.</div>'; $('listStatus').textContent=''; return; }
+  const badge={talking:['b-talking','Talking'],won:['b-won','Won ✅'],lost:['b-lost','Lost ❌']};
+  $('leadList').innerHTML=list.map(l=>{
+    const [bc,bl]=badge[l.stage]||['b-talking','Talking'];
+    const when=fmtWhen(l.created_at);
+    const chIcon=l.channel==='instagram'?'ti-brand-instagram':'ti-brand-facebook';
+    return `<div class="lead">
+      <div class="lead-top">
+        <div>
+          <div class="lead-name">${esc(l.name||'(no name)')}</div>
+          <div class="lead-meta"><i class="ti ${chIcon}"></i> ${esc(l.campaign||'—')} · ${esc(l.phone||'no phone')}</div>
+          <div class="lead-meta">${when}${l.notes?' · '+esc(l.notes):''}</div>
+        </div>
+        <span class="lead-badge ${bc}">${bl}</span>
+      </div>
+      <div class="stagebtns">
+        <div class="sbtn ${l.stage==='talking'?'on-talking':''}" onclick="setStage('${l.id}','talking')">Talking</div>
+        <div class="sbtn ${l.stage==='won'?'on-won':''}" onclick="setStage('${l.id}','won')">Came to shop</div>
+        <div class="sbtn ${l.stage==='lost'?'on-lost':''}" onclick="setStage('${l.id}','lost')">Ghosted</div>
+      </div>
+      <span class="del" onclick="delLead('${l.id}')"><i class="ti ti-trash"></i> delete</span>
+    </div>`;
+  }).join('');
+  $('listStatus').textContent=list.length+' lead'+(list.length===1?'':'s');
+}
+function fmtWhen(ts){
+  if(!ts) return '';
+  const d=new Date(ts);
+  return d.toLocaleDateString('en-GB',{day:'2-digit',month:'short'})+' '+d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+}
+
+/* ---------- change a lead's stage ---------- */
+async function setStage(id,stage){
+  const lead=LEADS.find(l=>String(l.id)===String(id)); if(!lead) return;
+  const prev=lead.stage;
+  lead.stage=stage; lead.last_activity_at=new Date().toISOString();
+  renderLeads(); // optimistic
+  const {error}=await sb.from('gl_leads').update({stage:stage,last_activity_at:lead.last_activity_at}).eq('id',id);
+  if(error){ lead.stage=prev; renderLeads(); toast('Update failed: '+error.message,true); return; }
+  toast(stage==='won'?'Marked as Won ✅':stage==='lost'?'Marked as Lost':'Marked as Talking');
+}
+
+/* ---------- delete a lead ---------- */
+async function delLead(id){
+  const lead=LEADS.find(l=>String(l.id)===String(id)); if(!lead) return;
+  if(!confirm('Delete this lead?\n\n'+(lead.name||lead.phone||'this lead')+'\n\nThis cannot be undone.')) return;
+  const {error}=await sb.from('gl_leads').delete().eq('id',id);
+  if(error){ toast('Delete failed: '+error.message,true); return; }
+  LEADS=LEADS.filter(l=>String(l.id)!==String(id));
+  $('leadCount').textContent=LEADS.length?('('+LEADS.length+')'):'';
+  renderLeads();
+  toast('Lead deleted');
+}
+
+boot();
+</script>
+</body>
+</html>
