@@ -158,6 +158,9 @@
         <input id="depDate" type="date"></div>
     </div>
 
+    <div class="field"><label>Remark <span style="text-transform:none;color:var(--muted);font-weight:400">optional — internal, shown on the sheet only</span></label>
+      <input id="remark" type="text" placeholder="e.g. VIP customer, park in bay 2"></div>
+
     <div class="plabel">WhatsApp Preview</div>
     <div class="preview" id="preview"><span class="ph">Fill the form to see the message…</span></div>
 
@@ -864,6 +867,7 @@ function buildNotes(phone,timeLabel){
   if(isCoating()) parts.push(`CoatingBalance: ${$('bal').value.trim()}`);
   const dep=parseFloat($('deposit').value);
   if(!isNaN(dep)&&dep>0){ parts.push(`Deposit: ${dep}`); if($('depDate').value) parts.push(`DepDate: ${fmtDate($('depDate').value)}`); }
+  const rmk=($('remark')?$('remark').value.trim():''); if(rmk) parts.push(`Remark: ${rmk}`);
   if(timeLabel) parts.push(`[slot:${timeLabel}]`);
   return parts.join(' | ');
 }
@@ -876,7 +880,7 @@ document.addEventListener('input',function(e){
   if(el.tagName!=='INPUT') return;
   const t=(el.type||'text').toLowerCase();
   if(t==='email'||t==='password'||t==='number'||t==='tel'||el.inputMode==='numeric') return;
-  if(el.id==='loginEmail'||el.id==='keyInput'||el.id==='contact'||el.id==='deposit') return;
+  if(el.id==='loginEmail'||el.id==='keyInput'||el.id==='contact'||el.id==='deposit'||el.id==='remark') return;
   const s=el.selectionStart, en=el.selectionEnd, up=el.value.toUpperCase();
   if(el.value!==up){ el.value=up; try{el.setSelectionRange(s,en);}catch(_){} }
 },true);
