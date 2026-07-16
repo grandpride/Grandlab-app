@@ -112,6 +112,7 @@
   <div class="tabs">
     <div class="tab on" id="tabAdd" onclick="showTab('add')">＋ Log a lead</div>
     <div class="tab" id="tabList" onclick="showTab('list')">Leads <span id="leadCount"></span></div>
+    <div class="tab" id="tabCamp" onclick="showTab('camp')">Campaigns</div>
   </div>
 
   <!-- ===== ADD LEAD ===== -->
@@ -135,8 +136,8 @@
       </div>
       <div class="field">
         <label>Which ad / campaign</label>
-        <input id="l_campaign" list="campaignList" placeholder="Pick or type a campaign name">
-        <datalist id="campaignList"></datalist>
+        <select id="l_campaign"><option value="">— select a campaign —</option></select>
+        <div style="font-size:11px;color:var(--muted2);margin-top:5px">Add campaigns in the Campaigns tab. Only registered GrandLab campaigns show here.</div>
       </div>
       <div class="field">
         <label>Note (optional)</label>
@@ -158,6 +159,34 @@
     <div id="leadList"></div>
     <div class="status" id="listStatus"></div>
   </div>
+
+  <!-- ===== CAMPAIGNS ===== -->
+  <div id="viewCamp" class="hidden">
+    <div class="card">
+      <div class="card-t">Register a GrandLab campaign</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.5">
+        Use the <b>exact</b> campaign name from Meta Ads (copy it from Ads Reporting) so imported spend matches. Example: <span style="color:var(--gold)">GRANDLAB - PPF // COAT // WRAPP 2K25</span>
+      </div>
+      <div class="field">
+        <label>Meta campaign name (exact)</label>
+        <input id="c_name" placeholder="GRANDLAB - PPF // COAT // WRAPP 2K25">
+      </div>
+      <div class="field">
+        <label>Short label (what CS sees)</label>
+        <input id="c_label" placeholder="e.g. PPF Promo">
+      </div>
+      <div class="field">
+        <label>Channel</label>
+        <div class="seg" id="c_channel">
+          <div class="opt on" data-ch="facebook" onclick="pickCChannel('facebook')"><i class="ti ti-brand-facebook"></i> Facebook</div>
+          <div class="opt" data-ch="instagram" onclick="pickCChannel('instagram')"><i class="ti ti-brand-instagram"></i> Instagram</div>
+        </div>
+      </div>
+      <button class="btn" onclick="saveCampaign()"><i class="ti ti-plus"></i> Add campaign</button>
+      <div class="msg" id="campMsg"></div>
+    </div>
+    <div id="campList"></div>
+  </div>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -172,8 +201,10 @@ const esc=s=>(s||'').toString().replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>
 function toast(t,err){const e=$('toast');e.textContent=t;e.className='toast show'+(err?' err':'');setTimeout(()=>e.className='toast',1900);}
 
 let LEADS=[];        // all leads, cached
+let CAMPAIGNS=[];    // registered GrandLab campaigns, cached
 let FILTER='all';
-let CHANNEL='facebook';
+let CHANNEL='facebook';   // lead-form channel
+let CCHANNEL='facebook';  // campaign-form channel
 let ME='';           // signed-in staff email (for logged_by)
 
 /* ---------- login ---------- */
@@ -182,7 +213,7 @@ async function boot(){
   if(data&&data.session){
     $('gate').classList.add('hidden');
     ME=(data.session.user&&data.session.user.email)||'';
-    loadLeads();
+    loadCampaigns(); loadLeads();
   }else{
     $('gate').classList.remove('hidden');
   }
@@ -193,20 +224,27 @@ async function doLogin(){
   const {error}=await sb.auth.signInWithPassword({email,password:pass});
   if(error){ $('gerr').textContent='Login failed: '+error.message; return; }
   $('gerr').textContent=''; $('gate').classList.add('hidden');
-  ME=email; loadLeads();
+  ME=email; loadCampaigns(); loadLeads();
 }
 
 /* ---------- tabs ---------- */
 function showTab(t){
   $('tabAdd').classList.toggle('on',t==='add');
   $('tabList').classList.toggle('on',t==='list');
+  $('tabCamp').classList.toggle('on',t==='camp');
   $('viewAdd').classList.toggle('hidden',t!=='add');
   $('viewList').classList.toggle('hidden',t!=='list');
+  $('viewCamp').classList.toggle('hidden',t!=='camp');
   if(t==='list') renderLeads();
+  if(t==='camp') renderCampaigns();
 }
 function pickChannel(ch){
   CHANNEL=ch;
   document.querySelectorAll('#l_channel .opt').forEach(o=>o.classList.toggle('on',o.dataset.ch===ch));
+}
+function pickCChannel(ch){
+  CCHANNEL=ch;
+  document.querySelectorAll('#c_channel .opt').forEach(o=>o.classList.toggle('on',o.dataset.ch===ch));
 }
 
 /* ---------- save a new lead ---------- */
@@ -236,9 +274,6 @@ async function loadLeads(){
   const {data,error}=await sb.from('gl_leads').select('*').order('created_at',{ascending:false}).limit(500);
   if(error){ $('listStatus').textContent='Load error: '+error.message; return; }
   LEADS=data||[];
-  // build the campaign datalist from past entries
-  const camps=[...new Set(LEADS.map(l=>l.campaign).filter(Boolean))];
-  $('campaignList').innerHTML=camps.map(c=>`<option value="${esc(c)}">`).join('');
   $('leadCount').textContent=LEADS.length?('('+LEADS.length+')'):'';
   renderLeads();
 }
@@ -301,6 +336,77 @@ async function delLead(id){
   $('leadCount').textContent=LEADS.length?('('+LEADS.length+')'):'';
   renderLeads();
   toast('Lead deleted');
+}
+
+/* ---------- campaigns ---------- */
+async function loadCampaigns(){
+  const {data,error}=await sb.from('gl_campaigns').select('*').order('created_at',{ascending:false});
+  if(error){ return; }
+  CAMPAIGNS=data||[];
+  // fill the lead-form dropdown with ACTIVE campaigns only
+  const active=CAMPAIGNS.filter(c=>c.active!==false);
+  const sel=$('l_campaign');
+  if(sel){
+    const cur=sel.value;
+    sel.innerHTML='<option value="">— select a campaign —</option>'+
+      active.map(c=>`<option value="${esc(c.name)}">${esc(c.short_label||c.name)}</option>`).join('');
+    if(cur) sel.value=cur;
+  }
+  renderCampaigns();
+}
+async function saveCampaign(){
+  const name=$('c_name').value.trim();
+  const label=$('c_label').value.trim();
+  if(!name){ $('campMsg').className='msg err'; $('campMsg').textContent='Enter the exact Meta campaign name.'; return; }
+  $('campMsg').className='msg'; $('campMsg').textContent='Saving…';
+  const row={ name, short_label:label||null, channel:CCHANNEL, active:true };
+  // upsert on lower(name) via insert; if it exists, update instead
+  const {error}=await sb.from('gl_campaigns').insert(row);
+  if(error){
+    if(/duplicate|unique/i.test(error.message||'')){
+      $('campMsg').className='msg err'; $('campMsg').textContent='That campaign name is already registered.';
+    } else { $('campMsg').className='msg err'; $('campMsg').textContent='Save failed: '+error.message; }
+    return;
+  }
+  $('campMsg').className='msg ok'; $('campMsg').textContent='✓ Campaign added.';
+  $('c_name').value=''; $('c_label').value='';
+  await loadCampaigns();
+  setTimeout(()=>{ $('campMsg').textContent=''; }, 2500);
+}
+async function toggleCampaign(id,active){
+  const {error}=await sb.from('gl_campaigns').update({active:active}).eq('id',id);
+  if(error){ toast('Update failed: '+error.message,true); return; }
+  await loadCampaigns();
+  toast(active?'Campaign active':'Campaign hidden');
+}
+async function delCampaign(id){
+  const c=CAMPAIGNS.find(x=>String(x.id)===String(id)); if(!c) return;
+  if(!confirm('Delete campaign?\n\n'+(c.name)+'\n\nThis removes it from the CS dropdown. Imported spend rows are not deleted.')) return;
+  const {error}=await sb.from('gl_campaigns').delete().eq('id',id);
+  if(error){ toast('Delete failed: '+error.message,true); return; }
+  await loadCampaigns();
+  toast('Campaign deleted');
+}
+function renderCampaigns(){
+  const box=$('campList'); if(!box) return;
+  if(!CAMPAIGNS.length){ box.innerHTML='<div class="empty">No campaigns yet. Add your first GrandLab campaign above.</div>'; return; }
+  box.innerHTML=CAMPAIGNS.map(c=>{
+    const chIcon=c.channel==='instagram'?'ti-brand-instagram':'ti-brand-facebook';
+    const off=c.active===false;
+    return `<div class="lead"${off?' style="opacity:.55"':''}>
+      <div class="lead-top">
+        <div>
+          <div class="lead-name">${esc(c.short_label||c.name)}</div>
+          <div class="lead-meta"><i class="ti ${chIcon}"></i> ${esc(c.name)}</div>
+        </div>
+        <span class="lead-badge ${off?'b-lost':'b-won'}">${off?'Hidden':'Active'}</span>
+      </div>
+      <div class="stagebtns" style="grid-template-columns:1fr 1fr">
+        <div class="sbtn" onclick="toggleCampaign('${c.id}',${off?'true':'false'})">${off?'Set active':'Hide'}</div>
+        <div class="sbtn" onclick="delCampaign('${c.id}')">Delete</div>
+      </div>
+    </div>`;
+  }).join('');
 }
 
 boot();
