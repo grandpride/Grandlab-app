@@ -55,8 +55,9 @@
 
   /* counts grid */
   .cgrid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
-  .cgrid .ci label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;font-weight:600;display:block;margin-bottom:4px}
-  .cgrid .ci input{width:100%;background:var(--card2);border:1px solid var(--border);border-radius:10px;color:var(--text);padding:11px;font-size:16px;font-family:inherit;text-align:center;font-weight:700}
+  .ci label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;font-weight:600;display:block;margin-bottom:4px}
+  .ci input{width:100%;background:var(--card2);border:1px solid var(--border);border-radius:10px;color:var(--text);padding:11px;font-size:16px;font-family:inherit;text-align:center;font-weight:700}
+  .bucketwrap .ci input{background:var(--card)}
   .row2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
   .bucketwrap{border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:12px;background:var(--card2)}
   .bucketwrap h4{font-size:13px;font-weight:800;margin-bottom:10px;display:flex;align-items:center;gap:6px}
@@ -93,6 +94,27 @@
   table.imp th{color:var(--muted);font-size:11px;text-transform:uppercase;font-weight:700}
   .tag-ok{color:var(--green);font-weight:700} .tag-skip{color:var(--muted2)}
   .filedrop{border:1px dashed var(--border);border-radius:12px;padding:20px;text-align:center;color:var(--muted);cursor:pointer;background:var(--card2)}
+
+  /* report */
+  .rep{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:18px;margin-bottom:16px}
+  .rep h2{font-size:18px;font-weight:900;margin-bottom:2px}
+  .rep .sub{font-size:12px;color:var(--muted);margin-bottom:14px}
+  .rep h3{font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:var(--gold);font-weight:800;margin:16px 0 8px;border-bottom:1px solid var(--border);padding-bottom:5px}
+  table.rt{width:100%;border-collapse:collapse;font-size:13px}
+  table.rt td,table.rt th{padding:7px 8px;border-bottom:1px solid var(--border);text-align:left}
+  table.rt th{color:var(--muted);font-size:11px;text-transform:uppercase;font-weight:700}
+  table.rt td.n{text-align:right;font-weight:700;font-variant-numeric:tabular-nums}
+  .rep .big{font-size:15px}
+  @media print{
+    body{background:#fff;color:#111}
+    .hubback,.tabs,.head small,#monthBar,.noprint,.toast{display:none!important}
+    .wrap{padding:0;max-width:none}
+    .rep{border:1px solid #ccc;box-shadow:none;page-break-inside:avoid}
+    .rep h2,.rep .big{color:#111}
+    .rep h3{color:#a67c00;border-color:#ccc}
+    table.rt td,table.rt th{border-color:#ddd}
+    .brand{color:#111}
+  }
 </style>
 </head>
 <body>
@@ -120,6 +142,7 @@
 
   <div class="tabs">
     <div class="tab on" id="tabDash" onclick="showTab('dash')">Dashboard</div>
+    <div class="tab" id="tabReport" onclick="showTab('report')">Reports</div>
     <div class="tab" id="tabCounts" onclick="showTab('counts')">Monthly counts</div>
     <div class="tab" id="tabSpend" onclick="showTab('spend')">Ad spend</div>
     <div class="tab" id="tabCamp" onclick="showTab('camp')">Campaigns</div>
@@ -147,6 +170,20 @@
     <div class="kpis" id="kpis"></div>
     <div class="pies" id="pies"></div>
     <div class="card" id="cpaCard" style="margin-top:16px"></div>
+  </div>
+
+  <!-- ===== REPORTS ===== -->
+  <div id="viewReport" class="hidden">
+    <div class="card noprint">
+      <div class="card-t">Generate a detailed report</div>
+      <div class="row2" style="margin-bottom:10px">
+        <button class="btn" onclick="genReport('month')"><i class="ti ti-calendar-month"></i> Monthly</button>
+        <button class="btn sec" onclick="genReport('week')"><i class="ti ti-calendar-week"></i> Weekly (est.)</button>
+      </div>
+      <div class="hint">Monthly uses your exact entered figures. Weekly divides the month evenly (estimate) — your counts &amp; Meta spend are entered per month, not per week. Uses the month selected in the Dashboard/Counts month picker (<span id="repMonthLbl" style="color:var(--gold)"></span>).</div>
+      <button class="btn" style="margin-top:10px" onclick="window.print()"><i class="ti ti-printer"></i> Print / Save as PDF</button>
+    </div>
+    <div id="reportOut"></div>
   </div>
 
   <!-- ===== MONTHLY COUNTS ===== -->
@@ -256,7 +293,7 @@ function ymLabel(ym){ const [y,m]=ym.split('-'); return new Date(+y,+m-1,1).toLo
 
 /* ---------- tabs ---------- */
 function showTab(t){
-  ['Dash','Counts','Spend','Camp'].forEach(x=>{
+  ['Dash','Report','Counts','Spend','Camp'].forEach(x=>{
     $('tab'+x).classList.toggle('on', t===x.toLowerCase());
     $('view'+x).classList.toggle('hidden', t!==x.toLowerCase());
   });
@@ -266,6 +303,7 @@ function showTab(t){
   if(t==='counts') renderCountsForm();
   if(t==='camp') renderCampaigns();
   if(t==='spend') renderSpendList();
+  if(t==='report'){ $('repMonthLbl').textContent=ymLabel(YM); }
 }
 function onMonthChange(){ YM=$('ymSel').value; renderDash(); renderCountsForm(); }
 function onModeChange(){ MODE=$('modeSel').value; renderDash(); renderCountsForm(); }
@@ -513,6 +551,121 @@ function renderSpendList(){
 
 /* ---------- render all ---------- */
 function renderAll(){ renderDash(); }
+
+/* ---------- DETAILED REPORT ---------- */
+function genReport(period){
+  const est = period==='week';
+  const div = est ? 4.345 : 1; // avg weeks per month for the estimate
+  const periodLbl = est ? 'Weekly (estimated — month ÷ 4.3)' : 'Monthly';
+  const sp=spendForMonth(YM);
+  const buckets = bucketsForMode();
+  const meta={ combined:'From Ads (all)', ppf:'PPF ads', tint:'Tinted ads' };
+
+  // per-bucket detail
+  let totS=0,totG=0,totO=0;
+  const bucketRows = buckets.map(b=>{
+    const c=getCount(YM,b);
+    const s=c.success||0,g=c.ghost||0,o=c.ongoing||0,t=s+g+o;
+    totS+=s;totG+=g;totO+=o;
+    // per-bucket spend if we have a matching import (by short label match to ppf/tint)
+    let bSpend=null,bClicks=null,bMsg=null;
+    if(b!=='combined'){
+      // find imports whose campaign short_label maps to this bucket
+      const matchNames=CAMPAIGNS.filter(cp=>{
+        const lab=(cp.short_label||'').toLowerCase(), nm=cp.name.toLowerCase();
+        return b==='ppf' ? (lab.includes('ppf')||nm.includes('ppf')) : (lab.includes('tint')||nm.includes('tint'));
+      }).map(cp=>cp.name.toLowerCase());
+      const imps=IMPORTS.filter(r=>matchNames.includes(String(r.campaign_name).toLowerCase()) && overlapsMonth(r,YM));
+      if(imps.length){ bSpend=imps.reduce((a,r)=>a+ (+r.spend||0),0); bClicks=imps.reduce((a,r)=>a+(+r.clicks||0),0); bMsg=imps.reduce((a,r)=>a+(+r.results||0),0); }
+    }
+    return {b,label:meta[b],s,g,o,t,bSpend,bClicks,bMsg};
+  });
+  const os=monthOtherSources(YM);
+  const adsTotal=totS+totG+totO;
+  const sourceTotal=totS+os.existing+os.referral;
+
+  const rm=v=>v==null?'—':('RM'+(v/1).toFixed(2));
+  const rmD=v=>v==null?'—':('RM'+(v/div).toFixed(2));
+  const nD=v=>est?(v/div).toFixed(1):v;             // count divided for weekly est
+  const rate=(a,b)=>b>0?((a/b*100).toFixed(1)+'%'):'—';
+
+  // headline metrics (whole selected mode)
+  const spendP = sp.spend/div;
+  const cpc = sp.clicks>0 ? sp.spend/sp.clicks : 0;         // cost per click (period-independent ratio)
+  const cpm = sp.messaged>0 ? sp.spend/sp.messaged : 0;     // cost per message
+  const cpa = totS>0 ? sp.spend/totS : 0;                   // cost per customer
+  const convRate = sp.messaged>0 ? rate(totS,sp.messaged) : rate(totS,adsTotal);
+  const ghostRate = adsTotal>0 ? rate(totG,adsTotal) : '—';
+
+  // build per-bucket table rows
+  const bTable = bucketRows.map(r=>{
+    const cpaB = r.s>0 && r.bSpend!=null ? (r.bSpend/r.s) : null;
+    return `<tr>
+      <td>${esc(r.label)}</td>
+      <td class="n">${nD(r.s)}</td><td class="n">${nD(r.g)}</td><td class="n">${nD(r.o)}</td>
+      <td class="n">${r.bSpend!=null?rmD(r.bSpend):'—'}</td>
+      <td class="n">${r.bMsg!=null?nD(r.bMsg):'—'}</td>
+      <td class="n">${cpaB!=null?rm(cpaB):'—'}</td>
+    </tr>`;
+  }).join('');
+
+  // pies
+  const p1=[['Success',totS,'var(--green)'],['Ghost',totG,'var(--red)'],['Ongoing',totO,'var(--amber)']];
+  const p2=[['Ads',totS,'var(--blue)'],['Existing',os.existing,'var(--purple)'],['Referral',os.referral,'var(--gold)']];
+
+  $('reportOut').innerHTML=`
+  <div class="rep">
+    <h2>GrandLab Marketing Report</h2>
+    <div class="sub">${periodLbl} · ${ymLabel(YM)} · mode: ${MODE==='split'?'PPF / Tinted split':'Combined'} · generated ${new Date().toLocaleDateString('en-GB')}</div>
+
+    <h3>Headline</h3>
+    <table class="rt">
+      <tr><td>Ad spend</td><td class="n big">${rmD(sp.spend)}</td></tr>
+      <tr><td>Link clicks</td><td class="n">${nD(sp.clicks)}</td></tr>
+      <tr><td>Messaged (from ads)</td><td class="n">${nD(sp.messaged)}</td></tr>
+      <tr><td>Success — came to shop</td><td class="n" style="color:var(--green)">${nD(totS)}</td></tr>
+      <tr><td>Ghost — wasted</td><td class="n" style="color:var(--red)">${nD(totG)}</td></tr>
+      <tr><td>Ongoing — still chatting</td><td class="n" style="color:var(--amber)">${nD(totO)}</td></tr>
+    </table>
+
+    <h3>Cost metrics</h3>
+    <table class="rt">
+      <tr><td>Cost per click</td><td class="n">${cpc?rm(cpc):'—'}</td></tr>
+      <tr><td>Cost per message</td><td class="n">${cpm?rm(cpm):'—'}</td></tr>
+      <tr><td>Cost per customer (CPA)</td><td class="n big" style="color:var(--gold)">${cpa?rm(cpa):'—'}</td></tr>
+      <tr><td>Conversion rate (success ÷ ${sp.messaged?'messaged':'ad leads'})</td><td class="n">${convRate}</td></tr>
+      <tr><td>Ghost rate (ghost ÷ ad leads)</td><td class="n">${ghostRate}</td></tr>
+    </table>
+
+    <h3>Breakdown by ${MODE==='split'?'ad set':'source'}</h3>
+    <table class="rt">
+      <tr><th>Segment</th><th style="text-align:right">Success</th><th style="text-align:right">Ghost</th><th style="text-align:right">Ongoing</th><th style="text-align:right">Spend</th><th style="text-align:right">Msg</th><th style="text-align:right">CPA</th></tr>
+      ${bTable}
+    </table>
+
+    <h3>Customer sources</h3>
+    <table class="rt">
+      <tr><td>From Ads (success)</td><td class="n">${nD(totS)}</td></tr>
+      <tr><td>GL Existing (returning)</td><td class="n">${nD(os.existing)}</td></tr>
+      <tr><td>Referral</td><td class="n">${nD(os.referral)}</td></tr>
+      <tr><td><b>Total customers</b></td><td class="n"><b>${nD(sourceTotal)}</b></td></tr>
+    </table>
+
+    <h3>Charts</h3>
+    <div class="pies">
+      ${pieCard('Ads outcome', p1, adsTotal)}
+      ${pieCard('Where customers come from', p2, sourceTotal)}
+    </div>
+
+    ${est?'<div class="hint" style="margin-top:12px">⚠ Weekly figures are an even split of the month (÷4.3) — an estimate, not real week-by-week data. For true weekly, enter counts weekly and export Meta per week.</div>':''}
+  </div>`;
+}
+function overlapsMonth(r,ym){
+  const [y,m]=ym.split('-').map(Number);
+  const mStart=new Date(y,m-1,1), mEnd=new Date(y,m,0);
+  const ps=new Date(r.period_start), pe=new Date(r.period_end);
+  return pe>=mStart && ps<=mEnd;
+}
 
 boot();
 </script>
