@@ -10,14 +10,14 @@
     --bg:#0b0b0b; --card:#151515; --card2:#1c1c1a; --border:#2a2a26;
     --gold:#F5C518; --text:#f4f4f0; --muted:#8a8a80; --muted2:#6a6a62;
     --green:#16A34A; --green-bg:#12351e; --red:#e0533d; --red-bg:#3a1a14;
-    --amber:#d99a1c; --amber-bg:#33280c;
+    --amber:#d99a1c; --amber-bg:#33280c; --blue:#3b82f6; --blue-bg:#13233f;
+    --purple:#a855f7; --purple-bg:#2a1640;
   }
   *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
   body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;font-size:15px;line-height:1.4}
   a{color:inherit;text-decoration:none}
   .hidden{display:none!important}
 
-  /* login gate */
   #gate{position:fixed;inset:0;background:#080808;z-index:100;display:flex;align-items:center;justify-content:center;padding:24px}
   #gate .box{max-width:380px;width:100%}
   #gate .logo{font-weight:900;font-size:24px;letter-spacing:1px;margin-bottom:4px}
@@ -30,65 +30,75 @@
 
   .hubback{position:fixed;top:12px;left:12px;z-index:20;background:rgba(20,20,20,.8);border:1px solid var(--border);color:var(--gold);font-size:12px;font-weight:700;padding:7px 12px;border-radius:20px;backdrop-filter:blur(4px)}
 
-  .wrap{max-width:640px;margin:0 auto;padding:56px 16px 40px}
-  .head{display:flex;align-items:baseline;justify-content:space-between;border-bottom:1px solid var(--border);padding-bottom:14px;margin-bottom:18px}
+  .wrap{max-width:680px;margin:0 auto;padding:56px 16px 40px}
+  .head{display:flex;align-items:baseline;justify-content:space-between;border-bottom:1px solid var(--border);padding-bottom:14px;margin-bottom:16px}
   .brand{font-weight:900;font-size:20px;letter-spacing:.5px}
   .brand b{color:var(--gold)}
   .head small{color:var(--muted);font-size:12px;letter-spacing:.08em;text-transform:uppercase}
 
-  /* tabs */
-  .tabs{display:flex;gap:8px;margin-bottom:18px}
-  .tab{flex:1;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px;font-weight:700;font-size:14px;color:var(--muted);text-align:center;cursor:pointer}
+  .tabs{display:flex;gap:6px;margin-bottom:18px;overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .tab{flex:1 0 auto;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:11px 12px;font-weight:700;font-size:13px;color:var(--muted);text-align:center;cursor:pointer;white-space:nowrap}
   .tab.on{background:var(--gold);color:#080808;border-color:var(--gold)}
 
-  /* form */
   .card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:16px;margin-bottom:16px}
   .card-t{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:700;margin-bottom:12px}
   .field{margin-bottom:12px}
   .field label{display:block;font-size:12px;color:var(--muted);margin-bottom:5px;text-transform:uppercase;letter-spacing:.04em;font-weight:600}
   .field input, .field select{width:100%;background:var(--card2);border:1px solid var(--border);border-radius:11px;color:var(--text);padding:12px 13px;font-size:15px;font-family:inherit}
-  .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-  .seg{display:flex;gap:8px}
-  .seg .opt{flex:1;background:var(--card2);border:1px solid var(--border);border-radius:11px;padding:11px;text-align:center;font-weight:700;font-size:14px;cursor:pointer;color:var(--muted)}
+  .seg{display:flex;gap:8px;flex-wrap:wrap}
+  .seg .opt{flex:1;min-width:90px;background:var(--card2);border:1px solid var(--border);border-radius:11px;padding:11px;text-align:center;font-weight:700;font-size:13px;cursor:pointer;color:var(--muted)}
   .seg .opt.on{background:var(--gold);color:#080808;border-color:var(--gold)}
   .btn{width:100%;background:var(--gold);color:#080808;border:none;border-radius:12px;padding:14px;font-weight:800;font-size:15px;font-family:inherit;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px}
   .btn.sec{background:var(--card2);color:var(--text);border:1px solid var(--border)}
   .msg{font-size:13px;min-height:18px;margin-top:8px}
-  .msg.ok{color:var(--green)}
-  .msg.err{color:var(--red)}
+  .msg.ok{color:var(--green)} .msg.err{color:var(--red)}
 
-  /* lead list */
-  .filters{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap}
-  .chip{background:var(--card2);border:1px solid var(--border);border-radius:20px;padding:7px 13px;font-size:13px;font-weight:600;color:var(--muted);cursor:pointer}
-  .chip.on{background:var(--gold);color:#080808;border-color:var(--gold)}
+  /* counts grid */
+  .cgrid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+  .cgrid .ci label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;font-weight:600;display:block;margin-bottom:4px}
+  .cgrid .ci input{width:100%;background:var(--card2);border:1px solid var(--border);border-radius:10px;color:var(--text);padding:11px;font-size:16px;font-family:inherit;text-align:center;font-weight:700}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .bucketwrap{border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:12px;background:var(--card2)}
+  .bucketwrap h4{font-size:13px;font-weight:800;margin-bottom:10px;display:flex;align-items:center;gap:6px}
+
+  /* dashboard */
+  .kpis{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}
+  .kpi{background:var(--card2);border:1px solid var(--border);border-radius:12px;padding:14px}
+  .kpi .l{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;font-weight:600}
+  .kpi .v{font-size:22px;font-weight:900;margin-top:3px}
+  .kpi .s{font-size:11px;color:var(--muted2);margin-top:2px}
+  .pies{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media(max-width:520px){.pies{grid-template-columns:1fr}}
+  .pie-card{background:var(--card2);border:1px solid var(--border);border-radius:14px;padding:14px;text-align:center}
+  .pie-card h4{font-size:13px;font-weight:800;margin-bottom:10px}
+  .legend{margin-top:10px;text-align:left;font-size:12px}
+  .legend .li{display:flex;align-items:center;gap:8px;margin-bottom:4px}
+  .legend .dot{width:11px;height:11px;border-radius:3px;flex-shrink:0}
+  .legend .n{margin-left:auto;font-weight:700;color:var(--text)}
+  .empty{text-align:center;color:var(--muted);padding:28px 12px;font-size:14px}
   .lead{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:10px}
   .lead-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:10px}
-  .lead-name{font-weight:800;font-size:16px}
+  .lead-name{font-weight:800;font-size:15px}
   .lead-meta{font-size:12px;color:var(--muted);margin-top:2px}
   .lead-badge{font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;white-space:nowrap}
-  .b-talking{background:var(--amber-bg);color:var(--amber)}
-  .b-won{background:var(--green-bg);color:var(--green)}
-  .b-lost{background:var(--red-bg);color:var(--red)}
-  .stagebtns{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}
+  .b-won{background:var(--green-bg);color:var(--green)} .b-lost{background:var(--red-bg);color:var(--red)}
+  .stagebtns{display:grid;grid-template-columns:1fr 1fr;gap:6px}
   .sbtn{border:1px solid var(--border);background:var(--card2);border-radius:10px;padding:9px 6px;font-size:12px;font-weight:700;color:var(--muted);cursor:pointer;text-align:center}
-  .sbtn.on-talking{background:var(--amber);color:#080808;border-color:var(--amber)}
-  .sbtn.on-won{background:var(--green);color:#fff;border-color:var(--green)}
-  .sbtn.on-lost{background:var(--red);color:#fff;border-color:var(--red)}
-  .empty{text-align:center;color:var(--muted);padding:32px 12px;font-size:14px}
-  .status{text-align:center;color:var(--muted);padding:16px;font-size:13px}
-  .del{font-size:11px;color:var(--muted2);cursor:pointer;margin-top:8px;display:inline-flex;align-items:center;gap:4px}
-
-  /* toast */
+  .hint{font-size:11px;color:var(--muted2);margin-top:5px;line-height:1.5}
   .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(80px);background:#222;color:#fff;padding:12px 18px;border-radius:12px;font-size:14px;font-weight:600;opacity:0;transition:.25s;z-index:50;border:1px solid var(--border)}
   .toast.show{transform:translateX(-50%) translateY(0);opacity:1}
   .toast.err{background:#3a1a14;border-color:var(--red)}
+  table.imp{width:100%;border-collapse:collapse;font-size:13px;margin-top:8px}
+  table.imp th,table.imp td{text-align:left;padding:7px 6px;border-bottom:1px solid var(--border)}
+  table.imp th{color:var(--muted);font-size:11px;text-transform:uppercase;font-weight:700}
+  .tag-ok{color:var(--green);font-weight:700} .tag-skip{color:var(--muted2)}
+  .filedrop{border:1px dashed var(--border);border-radius:12px;padding:20px;text-align:center;color:var(--muted);cursor:pointer;background:var(--card2)}
 </style>
 </head>
 <body>
 
 <a class="hubback" href="https://grandpride.github.io/Grandlab-app/gl-hub.html">← Hub</a>
 
-<!-- login gate -->
 <div id="gate">
   <div class="box">
     <div class="logo">GRAND<span>LAB</span></div>
@@ -102,7 +112,6 @@
   </div>
 </div>
 
-<!-- app -->
 <div class="wrap">
   <div class="head">
     <div class="brand">GRAND<b>LAB</b></div>
@@ -110,73 +119,77 @@
   </div>
 
   <div class="tabs">
-    <div class="tab on" id="tabAdd" onclick="showTab('add')">＋ Log a lead</div>
-    <div class="tab" id="tabList" onclick="showTab('list')">Leads <span id="leadCount"></span></div>
+    <div class="tab on" id="tabDash" onclick="showTab('dash')">Dashboard</div>
+    <div class="tab" id="tabCounts" onclick="showTab('counts')">Monthly counts</div>
+    <div class="tab" id="tabSpend" onclick="showTab('spend')">Ad spend</div>
     <div class="tab" id="tabCamp" onclick="showTab('camp')">Campaigns</div>
   </div>
 
-  <!-- ===== ADD LEAD ===== -->
-  <div id="viewAdd">
-    <div class="card">
-      <div class="card-t">New lead from an ad</div>
-      <div class="field">
-        <label>Customer phone (WhatsApp)</label>
-        <input id="l_phone" type="tel" inputmode="numeric" placeholder="e.g. 60123456789">
+  <!-- month picker (shared by dash + counts) -->
+  <div class="card" id="monthBar">
+    <div class="row2">
+      <div class="field" style="margin:0">
+        <label>Month</label>
+        <select id="ymSel" onchange="onMonthChange()"></select>
       </div>
-      <div class="field">
-        <label>Name</label>
-        <input id="l_name" placeholder="Customer name">
+      <div class="field" style="margin:0">
+        <label>View mode</label>
+        <select id="modeSel" onchange="onModeChange()">
+          <option value="combined">Combined (all ads)</option>
+          <option value="split">Split: PPF / Tinted</option>
+        </select>
       </div>
-      <div class="field">
-        <label>Ad channel</label>
-        <div class="seg" id="l_channel">
-          <div class="opt on" data-ch="facebook" onclick="pickChannel('facebook')"><i class="ti ti-brand-facebook"></i> Facebook</div>
-          <div class="opt" data-ch="instagram" onclick="pickChannel('instagram')"><i class="ti ti-brand-instagram"></i> Instagram</div>
-        </div>
-      </div>
-      <div class="field">
-        <label>Which ad / campaign</label>
-        <select id="l_campaign"><option value="">— select a campaign —</option></select>
-        <div style="font-size:11px;color:var(--muted2);margin-top:5px">Add campaigns in the Campaigns tab. Only registered GrandLab campaigns show here.</div>
-      </div>
-      <div class="field">
-        <label>Note (optional)</label>
-        <input id="l_note" placeholder="e.g. asked about PPF price">
-      </div>
-      <button class="btn" onclick="saveLead()"><i class="ti ti-plus"></i> Save lead</button>
-      <div class="msg" id="addMsg"></div>
     </div>
   </div>
 
-  <!-- ===== LEAD LIST ===== -->
-  <div id="viewList" class="hidden">
-    <div class="filters" id="filters">
-      <div class="chip on" data-f="all" onclick="setFilter('all')">All</div>
-      <div class="chip" data-f="talking" onclick="setFilter('talking')">Talking</div>
-      <div class="chip" data-f="won" onclick="setFilter('won')">Won ✅</div>
-      <div class="chip" data-f="lost" onclick="setFilter('lost')">Lost ❌</div>
+  <!-- ===== DASHBOARD ===== -->
+  <div id="viewDash">
+    <div class="kpis" id="kpis"></div>
+    <div class="pies" id="pies"></div>
+    <div class="card" id="cpaCard" style="margin-top:16px"></div>
+  </div>
+
+  <!-- ===== MONTHLY COUNTS ===== -->
+  <div id="viewCounts" class="hidden">
+    <div class="card">
+      <div class="card-t">Enter counts from WhatsApp labels — <span id="countsMonthLbl" style="color:var(--gold)"></span></div>
+      <div id="bucketForms"></div>
+      <div class="bucketwrap" style="background:var(--card)">
+        <h4><i class="ti ti-users"></i> Other sources (this month)</h4>
+        <div class="row2">
+          <div class="ci"><label>GL Existing</label><input id="in_existing" type="number" inputmode="numeric" min="0" placeholder="0"></div>
+          <div class="ci"><label>Referral</label><input id="in_referral" type="number" inputmode="numeric" min="0" placeholder="0"></div>
+        </div>
+      </div>
+      <button class="btn" onclick="saveCounts()"><i class="ti ti-device-floppy"></i> Save this month</button>
+      <div class="msg" id="countsMsg"></div>
+      <div class="hint">Tip: WhatsApp Business shows how many chats carry each label. Copy those numbers here once a month. Success = came to shop · Ghost = talked then no reply · Ongoing = still chatting.</div>
     </div>
-    <div id="leadList"></div>
-    <div class="status" id="listStatus"></div>
+  </div>
+
+  <!-- ===== AD SPEND (Meta import) ===== -->
+  <div id="viewSpend" class="hidden">
+    <div class="card">
+      <div class="card-t">Import Meta ad report (CSV)</div>
+      <div class="hint" style="margin-bottom:10px">Export from Meta Ads Reporting → pivot by Campaign (or Ad set) name → CSV. GrandLab reads spend, clicks, reach &amp; messaged count. Only registered campaigns are kept.</div>
+      <label class="filedrop" for="csvFile"><i class="ti ti-upload"></i> Tap to choose your Meta CSV</label>
+      <input id="csvFile" type="file" accept=".csv" style="display:none" onchange="onCsv(event)">
+      <div id="impPreview"></div>
+    </div>
+    <div class="card">
+      <div class="card-t">Imported spend on file</div>
+      <div id="spendList"></div>
+    </div>
   </div>
 
   <!-- ===== CAMPAIGNS ===== -->
   <div id="viewCamp" class="hidden">
     <div class="card">
       <div class="card-t">Register a GrandLab campaign</div>
-      <div style="font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.5">
-        Use the <b>exact</b> campaign name from Meta Ads (copy it from Ads Reporting) so imported spend matches. Example: <span style="color:var(--gold)">GRANDLAB - PPF // COAT // WRAPP 2K25</span>
-      </div>
-      <div class="field">
-        <label>Meta campaign name (exact)</label>
-        <input id="c_name" placeholder="GRANDLAB - PPF // COAT // WRAPP 2K25">
-      </div>
-      <div class="field">
-        <label>Short label (what CS sees)</label>
-        <input id="c_label" placeholder="e.g. PPF Promo">
-      </div>
-      <div class="field">
-        <label>Channel</label>
+      <div class="hint" style="margin-bottom:10px">Use the <b>exact</b> Meta campaign (or ad set) name so imported spend matches. e.g. <span style="color:var(--gold)">GRANDLAB - PPF // COAT // WRAPP 2K25</span></div>
+      <div class="field"><label>Meta name (exact)</label><input id="c_name" placeholder="GRANDLAB - PPF // COAT // WRAPP 2K25"></div>
+      <div class="field"><label>Short label</label><input id="c_label" placeholder="e.g. PPF Promo"></div>
+      <div class="field"><label>Channel</label>
         <div class="seg" id="c_channel">
           <div class="opt on" data-ch="facebook" onclick="pickCChannel('facebook')"><i class="ti ti-brand-facebook"></i> Facebook</div>
           <div class="opt" data-ch="instagram" onclick="pickCChannel('instagram')"><i class="ti ti-brand-instagram"></i> Instagram</div>
@@ -200,214 +213,306 @@ const $=id=>document.getElementById(id);
 const esc=s=>(s||'').toString().replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 function toast(t,err){const e=$('toast');e.textContent=t;e.className='toast show'+(err?' err':'');setTimeout(()=>e.className='toast',1900);}
 
-let LEADS=[];        // all leads, cached
-let CAMPAIGNS=[];    // registered GrandLab campaigns, cached
-let FILTER='all';
-let CHANNEL='facebook';   // lead-form channel
-let CCHANNEL='facebook';  // campaign-form channel
-let ME='';           // signed-in staff email (for logged_by)
+let ME='', CCHANNEL='facebook';
+let COUNTS=[];      // gl_month_counts rows
+let CAMPAIGNS=[];   // gl_campaigns rows
+let IMPORTS=[];     // gl_ad_imports rows
+let YM='';          // selected month 'YYYY-MM'
+let MODE='combined';// 'combined' | 'split'
 
 /* ---------- login ---------- */
 async function boot(){
   const {data}=await sb.auth.getSession();
-  if(data&&data.session){
-    $('gate').classList.add('hidden');
-    ME=(data.session.user&&data.session.user.email)||'';
-    loadCampaigns(); loadLeads();
-  }else{
-    $('gate').classList.remove('hidden');
-  }
+  if(data&&data.session){ $('gate').classList.add('hidden'); ME=(data.session.user&&data.session.user.email)||''; init(); }
+  else $('gate').classList.remove('hidden');
 }
 async function doLogin(){
   const email=$('email').value.trim(), pass=$('pass').value;
   $('gerr').textContent='Signing in…';
   const {error}=await sb.auth.signInWithPassword({email,password:pass});
   if(error){ $('gerr').textContent='Login failed: '+error.message; return; }
-  $('gerr').textContent=''; $('gate').classList.add('hidden');
-  ME=email; loadCampaigns(); loadLeads();
+  $('gerr').textContent=''; $('gate').classList.add('hidden'); ME=email; init();
 }
+
+/* ---------- init ---------- */
+function buildMonthOptions(){
+  // last 12 months + current, newest first
+  const now=new Date(); const opts=[];
+  for(let i=0;i<13;i++){
+    const d=new Date(now.getFullYear(), now.getMonth()-i, 1);
+    const ym=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+    const lbl=d.toLocaleDateString('en-GB',{month:'long',year:'numeric'});
+    opts.push({ym,lbl});
+  }
+  $('ymSel').innerHTML=opts.map(o=>`<option value="${o.ym}">${o.lbl}</option>`).join('');
+  YM=opts[0].ym;
+}
+async function init(){
+  buildMonthOptions();
+  await Promise.all([loadCounts(), loadCampaigns(), loadImports()]);
+  renderAll();
+}
+function ymLabel(ym){ const [y,m]=ym.split('-'); return new Date(+y,+m-1,1).toLocaleDateString('en-GB',{month:'long',year:'numeric'}); }
 
 /* ---------- tabs ---------- */
 function showTab(t){
-  $('tabAdd').classList.toggle('on',t==='add');
-  $('tabList').classList.toggle('on',t==='list');
-  $('tabCamp').classList.toggle('on',t==='camp');
-  $('viewAdd').classList.toggle('hidden',t!=='add');
-  $('viewList').classList.toggle('hidden',t!=='list');
-  $('viewCamp').classList.toggle('hidden',t!=='camp');
-  if(t==='list') renderLeads();
+  ['Dash','Counts','Spend','Camp'].forEach(x=>{
+    $('tab'+x).classList.toggle('on', t===x.toLowerCase());
+    $('view'+x).classList.toggle('hidden', t!==x.toLowerCase());
+  });
+  // month bar only relevant to dash + counts
+  $('monthBar').classList.toggle('hidden', !(t==='dash'||t==='counts'));
+  if(t==='dash') renderDash();
+  if(t==='counts') renderCountsForm();
   if(t==='camp') renderCampaigns();
+  if(t==='spend') renderSpendList();
 }
-function pickChannel(ch){
-  CHANNEL=ch;
-  document.querySelectorAll('#l_channel .opt').forEach(o=>o.classList.toggle('on',o.dataset.ch===ch));
-}
-function pickCChannel(ch){
-  CCHANNEL=ch;
-  document.querySelectorAll('#c_channel .opt').forEach(o=>o.classList.toggle('on',o.dataset.ch===ch));
+function onMonthChange(){ YM=$('ymSel').value; renderDash(); renderCountsForm(); }
+function onModeChange(){ MODE=$('modeSel').value; renderDash(); renderCountsForm(); }
+function pickCChannel(ch){ CCHANNEL=ch; document.querySelectorAll('#c_channel .opt').forEach(o=>o.classList.toggle('on',o.dataset.ch===ch)); }
+
+/* ---------- data loads ---------- */
+async function loadCounts(){ const {data}=await sb.from('gl_month_counts').select('*'); COUNTS=data||[]; }
+async function loadCampaigns(){ const {data}=await sb.from('gl_campaigns').select('*').order('created_at',{ascending:false}); CAMPAIGNS=data||[]; }
+async function loadImports(){ const {data}=await sb.from('gl_ad_imports').select('*').order('period_start',{ascending:false}); IMPORTS=data||[]; }
+
+function bucketsForMode(){ return MODE==='split' ? ['ppf','tint'] : ['combined']; }
+function getCount(ym,bucket){ return COUNTS.find(c=>c.ym===ym && c.bucket===bucket) || {success:0,ghost:0,ongoing:0,existing:0,referral:0}; }
+function monthOtherSources(ym){
+  // existing/referral are month-level; stored on whichever bucket rows exist — sum distinct
+  const rows=COUNTS.filter(c=>c.ym===ym);
+  // take max (they should be entered once); sum would double if split — so use the combined row if present else first
+  const pref=rows.find(r=>r.bucket==='combined')||rows[0];
+  return { existing:(pref&&pref.existing)||0, referral:(pref&&pref.referral)||0 };
 }
 
-/* ---------- save a new lead ---------- */
-async function saveLead(){
-  const phone=($('l_phone').value||'').replace(/[^0-9]/g,'');
-  const name=$('l_name').value.trim();
-  const campaign=$('l_campaign').value.trim();
-  const note=$('l_note').value.trim();
-  if(!phone && !name){ $('addMsg').className='msg err'; $('addMsg').textContent='Enter at least a phone or name.'; return; }
-  $('addMsg').className='msg'; $('addMsg').textContent='Saving…';
-  const row={
-    phone:phone||null, name:name||null, channel:CHANNEL,
-    campaign:campaign||null, stage:'talking',
-    notes:note||null, logged_by:ME||null
-  };
-  const {error}=await sb.from('gl_leads').insert(row);
-  if(error){ $('addMsg').className='msg err'; $('addMsg').textContent='Save failed: '+error.message; return; }
-  $('addMsg').className='msg ok'; $('addMsg').textContent='✓ Lead saved.';
-  // clear the form (keep channel choice)
-  $('l_phone').value=''; $('l_name').value=''; $('l_campaign').value=''; $('l_note').value='';
-  await loadLeads();
-  setTimeout(()=>{ $('addMsg').textContent=''; }, 2500);
-}
-
-/* ---------- load + render leads ---------- */
-async function loadLeads(){
-  const {data,error}=await sb.from('gl_leads').select('*').order('created_at',{ascending:false}).limit(500);
-  if(error){ $('listStatus').textContent='Load error: '+error.message; return; }
-  LEADS=data||[];
-  $('leadCount').textContent=LEADS.length?('('+LEADS.length+')'):'';
-  renderLeads();
-}
-function setFilter(f){
-  FILTER=f;
-  document.querySelectorAll('#filters .chip').forEach(c=>c.classList.toggle('on',c.dataset.f===f));
-  renderLeads();
-}
-function renderLeads(){
-  const list=LEADS.filter(l=>FILTER==='all'||l.stage===FILTER);
-  if(!list.length){ $('leadList').innerHTML='<div class="empty">No leads'+(FILTER!=='all'?' in this filter':' yet — log one from the + tab')+'.</div>'; $('listStatus').textContent=''; return; }
-  const badge={talking:['b-talking','Talking'],won:['b-won','Won ✅'],lost:['b-lost','Lost ❌']};
-  $('leadList').innerHTML=list.map(l=>{
-    const [bc,bl]=badge[l.stage]||['b-talking','Talking'];
-    const when=fmtWhen(l.created_at);
-    const chIcon=l.channel==='instagram'?'ti-brand-instagram':'ti-brand-facebook';
-    return `<div class="lead">
-      <div class="lead-top">
-        <div>
-          <div class="lead-name">${esc(l.name||'(no name)')}</div>
-          <div class="lead-meta"><i class="ti ${chIcon}"></i> ${esc(l.campaign||'—')} · ${esc(l.phone||'no phone')}</div>
-          <div class="lead-meta">${when}${l.notes?' · '+esc(l.notes):''}</div>
-        </div>
-        <span class="lead-badge ${bc}">${bl}</span>
+/* ---------- MONTHLY COUNTS form ---------- */
+function renderCountsForm(){
+  $('countsMonthLbl').textContent=ymLabel(YM);
+  const buckets=bucketsForMode();
+  const meta={ combined:['ti-speakerphone','From Ads (all)'], ppf:['ti-shield','PPF ads'], tint:['ti-car','Tinted ads'] };
+  $('bucketForms').innerHTML=buckets.map(b=>{
+    const c=getCount(YM,b); const [ic,ttl]=meta[b];
+    return `<div class="bucketwrap">
+      <h4><i class="ti ${ic}"></i> ${ttl}</h4>
+      <div class="cgrid">
+        <div class="ci"><label>Success</label><input id="in_${b}_success" type="number" inputmode="numeric" min="0" value="${c.success||''}" placeholder="0"></div>
+        <div class="ci"><label>Ghost</label><input id="in_${b}_ghost" type="number" inputmode="numeric" min="0" value="${c.ghost||''}" placeholder="0"></div>
+        <div class="ci"><label>Ongoing</label><input id="in_${b}_ongoing" type="number" inputmode="numeric" min="0" value="${c.ongoing||''}" placeholder="0"></div>
       </div>
-      <div class="stagebtns">
-        <div class="sbtn ${l.stage==='talking'?'on-talking':''}" onclick="setStage('${l.id}','talking')">Talking</div>
-        <div class="sbtn ${l.stage==='won'?'on-won':''}" onclick="setStage('${l.id}','won')">Came to shop</div>
-        <div class="sbtn ${l.stage==='lost'?'on-lost':''}" onclick="setStage('${l.id}','lost')">Ghosted</div>
-      </div>
-      <span class="del" onclick="delLead('${l.id}')"><i class="ti ti-trash"></i> delete</span>
     </div>`;
   }).join('');
-  $('listStatus').textContent=list.length+' lead'+(list.length===1?'':'s');
+  const os=monthOtherSources(YM);
+  $('in_existing').value=os.existing||''; $('in_referral').value=os.referral||'';
 }
-function fmtWhen(ts){
-  if(!ts) return '';
-  const d=new Date(ts);
-  return d.toLocaleDateString('en-GB',{day:'2-digit',month:'short'})+' '+d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
-}
-
-/* ---------- change a lead's stage ---------- */
-async function setStage(id,stage){
-  const lead=LEADS.find(l=>String(l.id)===String(id)); if(!lead) return;
-  const prev=lead.stage;
-  lead.stage=stage; lead.last_activity_at=new Date().toISOString();
-  renderLeads(); // optimistic
-  const {error}=await sb.from('gl_leads').update({stage:stage,last_activity_at:lead.last_activity_at}).eq('id',id);
-  if(error){ lead.stage=prev; renderLeads(); toast('Update failed: '+error.message,true); return; }
-  toast(stage==='won'?'Marked as Won ✅':stage==='lost'?'Marked as Lost':'Marked as Talking');
-}
-
-/* ---------- delete a lead ---------- */
-async function delLead(id){
-  const lead=LEADS.find(l=>String(l.id)===String(id)); if(!lead) return;
-  if(!confirm('Delete this lead?\n\n'+(lead.name||lead.phone||'this lead')+'\n\nThis cannot be undone.')) return;
-  const {error}=await sb.from('gl_leads').delete().eq('id',id);
-  if(error){ toast('Delete failed: '+error.message,true); return; }
-  LEADS=LEADS.filter(l=>String(l.id)!==String(id));
-  $('leadCount').textContent=LEADS.length?('('+LEADS.length+')'):'';
-  renderLeads();
-  toast('Lead deleted');
+async function saveCounts(){
+  const buckets=bucketsForMode();
+  const existing=parseInt($('in_existing').value)||0;
+  const referral=parseInt($('in_referral').value)||0;
+  $('countsMsg').className='msg'; $('countsMsg').textContent='Saving…';
+  const rows=buckets.map(b=>({
+    ym:YM, bucket:b,
+    success:parseInt($('in_'+b+'_success').value)||0,
+    ghost:parseInt($('in_'+b+'_ghost').value)||0,
+    ongoing:parseInt($('in_'+b+'_ongoing').value)||0,
+    existing, referral, updated_at:new Date().toISOString()
+  }));
+  const {error}=await sb.from('gl_month_counts').upsert(rows,{onConflict:'ym,bucket'});
+  if(error){ $('countsMsg').className='msg err'; $('countsMsg').textContent='Save failed: '+error.message; return; }
+  $('countsMsg').className='msg ok'; $('countsMsg').textContent='✓ Saved '+ymLabel(YM)+'.';
+  await loadCounts(); renderDash();
+  setTimeout(()=>{ $('countsMsg').textContent=''; },2500);
 }
 
-/* ---------- campaigns ---------- */
-async function loadCampaigns(){
-  const {data,error}=await sb.from('gl_campaigns').select('*').order('created_at',{ascending:false});
-  if(error){ return; }
-  CAMPAIGNS=data||[];
-  // fill the lead-form dropdown with ACTIVE campaigns only
-  const active=CAMPAIGNS.filter(c=>c.active!==false);
-  const sel=$('l_campaign');
-  if(sel){
-    const cur=sel.value;
-    sel.innerHTML='<option value="">— select a campaign —</option>'+
-      active.map(c=>`<option value="${esc(c.name)}">${esc(c.short_label||c.name)}</option>`).join('');
-    if(cur) sel.value=cur;
+/* ---------- DASHBOARD ---------- */
+function spendForMonth(ym){
+  // sum imported spend whose period overlaps this month
+  const [y,m]=ym.split('-').map(Number);
+  const mStart=new Date(y,m-1,1), mEnd=new Date(y,m,0);
+  let spend=0, clicks=0, messaged=0;
+  IMPORTS.forEach(r=>{
+    const ps=new Date(r.period_start), pe=new Date(r.period_end);
+    if(pe>=mStart && ps<=mEnd){ // overlaps this month
+      // only count registered campaigns
+      const reg=CAMPAIGNS.some(c=>c.name.toLowerCase()===String(r.campaign_name).toLowerCase());
+      if(reg){ spend+=Number(r.spend)||0; clicks+=Number(r.clicks)||0; messaged+=Number(r.results)||0; }
+    }
+  });
+  return {spend,clicks,messaged};
+}
+function renderDash(){
+  const buckets=bucketsForMode();
+  let S=0,G=0,O=0;
+  buckets.forEach(b=>{ const c=getCount(YM,b); S+=c.success||0; G+=c.ghost||0; O+=c.ongoing||0; });
+  const os=monthOtherSources(YM);
+  const adsTotal=S+G+O;
+  const sp=spendForMonth(YM);
+  const cpa = S>0 ? (sp.spend/S) : 0;
+  const cpl = sp.messaged>0 ? (sp.spend/sp.messaged) : (adsTotal>0? sp.spend/adsTotal : 0);
+
+  // KPIs
+  $('kpis').innerHTML=`
+    <div class="kpi"><div class="l">Ad spend</div><div class="v">RM${sp.spend.toFixed(0)}</div><div class="s">${ymLabel(YM)}</div></div>
+    <div class="kpi"><div class="l">Link clicks</div><div class="v">${sp.clicks.toLocaleString()}</div><div class="s">${sp.messaged?sp.messaged+' messaged':''}</div></div>
+    <div class="kpi"><div class="l">Success (came to shop)</div><div class="v" style="color:var(--green)">${S}</div><div class="s">of ${adsTotal} ad leads</div></div>
+    <div class="kpi"><div class="l">Cost per customer</div><div class="v" style="color:var(--gold)">${cpa?('RM'+cpa.toFixed(0)):'—'}</div><div class="s">spend ÷ success</div></div>`;
+
+  // Pie 1: ads outcome
+  const p1=[['Success',S,'var(--green)'],['Ghost',G,'var(--red)'],['Ongoing',O,'var(--amber)']];
+  // Pie 2: source
+  const p2=[['Ads',S,'var(--blue)'],['Existing',os.existing,'var(--purple)'],['Referral',os.referral,'var(--gold)']];
+  $('pies').innerHTML=
+    pieCard('Ads outcome', p1, adsTotal) +
+    pieCard('Where customers come from', p2, S+os.existing+os.referral);
+
+  // CPA detail
+  $('cpaCard').innerHTML=`
+    <div class="card-t">This month at a glance</div>
+    <div style="font-size:14px;line-height:1.9">
+      Ad spend <b>RM${sp.spend.toFixed(2)}</b> · ${sp.clicks.toLocaleString()} clicks${sp.messaged?(' · '+sp.messaged+' messaged'):''}<br>
+      ${cpl?('Cost per messaged lead <b>RM'+cpl.toFixed(2)+'</b><br>'):''}
+      Cost per customer (success) <b style="color:var(--gold)">${cpa?('RM'+cpa.toFixed(2)):'— (enter success count)'}</b><br>
+      Sources — Ads <b>${S}</b> · Existing <b>${os.existing}</b> · Referral <b>${os.referral}</b>
+    </div>`;
+}
+function pieCard(title, parts, total){
+  const svg=pieSVG(parts, total);
+  const legend=parts.map(p=>`<div class="li"><span class="dot" style="background:${p[2]}"></span>${p[0]}<span class="n">${p[1]}</span></div>`).join('');
+  return `<div class="pie-card"><h4>${title}</h4>${svg}<div class="legend">${legend}</div></div>`;
+}
+function pieSVG(parts, total){
+  const r=52, cx=60, cy=60; 
+  if(!total){ return `<svg viewBox="0 0 120 120" width="140" height="140"><circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="var(--border)" stroke-width="16"/><text x="60" y="64" text-anchor="middle" fill="var(--muted)" font-size="11">no data</text></svg>`; }
+  let a=-Math.PI/2; const segs=[];
+  const active=parts.filter(p=>p[1]>0);
+  if(active.length===1){ // one slice = 100%: draw full circle, an arc would collapse
+    segs.push(`<circle cx="${cx}" cy="${cy}" r="${r}" fill="${active[0][2]}"/>`);
+  } else {
+    parts.forEach(p=>{
+      const frac=p[1]/total; if(frac<=0) return;
+      const a2=a+frac*2*Math.PI;
+      const x1=cx+r*Math.cos(a), y1=cy+r*Math.sin(a), x2=cx+r*Math.cos(a2), y2=cy+r*Math.sin(a2);
+      const large=frac>0.5?1:0;
+      segs.push(`<path d="M${cx},${cy} L${x1.toFixed(2)},${y1.toFixed(2)} A${r},${r} 0 ${large} 1 ${x2.toFixed(2)},${y2.toFixed(2)} Z" fill="${p[2]}"/>`);
+      a=a2;
+    });
   }
-  renderCampaigns();
+  return `<svg viewBox="0 0 120 120" width="140" height="140">${segs.join('')}<circle cx="${cx}" cy="${cy}" r="26" fill="var(--card2)"/><text x="60" y="58" text-anchor="middle" fill="var(--text)" font-size="16" font-weight="800">${total}</text><text x="60" y="72" text-anchor="middle" fill="var(--muted)" font-size="9">total</text></svg>`;
 }
+
+/* ---------- CAMPAIGNS ---------- */
 async function saveCampaign(){
-  const name=$('c_name').value.trim();
-  const label=$('c_label').value.trim();
-  if(!name){ $('campMsg').className='msg err'; $('campMsg').textContent='Enter the exact Meta campaign name.'; return; }
+  const name=$('c_name').value.trim(), label=$('c_label').value.trim();
+  if(!name){ $('campMsg').className='msg err'; $('campMsg').textContent='Enter the exact Meta name.'; return; }
   $('campMsg').className='msg'; $('campMsg').textContent='Saving…';
-  const row={ name, short_label:label||null, channel:CCHANNEL, active:true };
-  // upsert on lower(name) via insert; if it exists, update instead
-  const {error}=await sb.from('gl_campaigns').insert(row);
-  if(error){
-    if(/duplicate|unique/i.test(error.message||'')){
-      $('campMsg').className='msg err'; $('campMsg').textContent='That campaign name is already registered.';
-    } else { $('campMsg').className='msg err'; $('campMsg').textContent='Save failed: '+error.message; }
-    return;
-  }
-  $('campMsg').className='msg ok'; $('campMsg').textContent='✓ Campaign added.';
-  $('c_name').value=''; $('c_label').value='';
-  await loadCampaigns();
-  setTimeout(()=>{ $('campMsg').textContent=''; }, 2500);
-}
-async function toggleCampaign(id,active){
-  const {error}=await sb.from('gl_campaigns').update({active:active}).eq('id',id);
-  if(error){ toast('Update failed: '+error.message,true); return; }
-  await loadCampaigns();
-  toast(active?'Campaign active':'Campaign hidden');
+  const {error}=await sb.from('gl_campaigns').insert({name,short_label:label||null,channel:CCHANNEL,active:true});
+  if(error){ $('campMsg').className='msg err'; $('campMsg').textContent=/duplicate|unique/i.test(error.message)?'Already registered.':('Failed: '+error.message); return; }
+  $('campMsg').className='msg ok'; $('campMsg').textContent='✓ Added.'; $('c_name').value=''; $('c_label').value='';
+  await loadCampaigns(); renderCampaigns();
+  setTimeout(()=>{ $('campMsg').textContent=''; },2000);
 }
 async function delCampaign(id){
   const c=CAMPAIGNS.find(x=>String(x.id)===String(id)); if(!c) return;
-  if(!confirm('Delete campaign?\n\n'+(c.name)+'\n\nThis removes it from the CS dropdown. Imported spend rows are not deleted.')) return;
+  if(!confirm('Delete campaign?\n\n'+c.name+'\n\nImported spend rows are kept.')) return;
   const {error}=await sb.from('gl_campaigns').delete().eq('id',id);
-  if(error){ toast('Delete failed: '+error.message,true); return; }
-  await loadCampaigns();
-  toast('Campaign deleted');
+  if(error){ toast('Delete failed',true); return; }
+  await loadCampaigns(); renderCampaigns(); toast('Deleted');
 }
 function renderCampaigns(){
   const box=$('campList'); if(!box) return;
-  if(!CAMPAIGNS.length){ box.innerHTML='<div class="empty">No campaigns yet. Add your first GrandLab campaign above.</div>'; return; }
+  if(!CAMPAIGNS.length){ box.innerHTML='<div class="empty">No campaigns yet. Add your first above.</div>'; return; }
   box.innerHTML=CAMPAIGNS.map(c=>{
     const chIcon=c.channel==='instagram'?'ti-brand-instagram':'ti-brand-facebook';
-    const off=c.active===false;
-    return `<div class="lead"${off?' style="opacity:.55"':''}>
+    return `<div class="lead">
       <div class="lead-top">
-        <div>
-          <div class="lead-name">${esc(c.short_label||c.name)}</div>
-          <div class="lead-meta"><i class="ti ${chIcon}"></i> ${esc(c.name)}</div>
-        </div>
-        <span class="lead-badge ${off?'b-lost':'b-won'}">${off?'Hidden':'Active'}</span>
+        <div><div class="lead-name">${esc(c.short_label||c.name)}</div>
+        <div class="lead-meta"><i class="ti ${chIcon}"></i> ${esc(c.name)}</div></div>
+        <span class="lead-badge b-won">Active</span>
       </div>
-      <div class="stagebtns" style="grid-template-columns:1fr 1fr">
-        <div class="sbtn" onclick="toggleCampaign('${c.id}',${off?'true':'false'})">${off?'Set active':'Hide'}</div>
-        <div class="sbtn" onclick="delCampaign('${c.id}')">Delete</div>
-      </div>
+      <div class="stagebtns"><div class="sbtn" onclick="delCampaign('${c.id}')">Delete</div></div>
     </div>`;
   }).join('');
 }
+
+/* ---------- META CSV IMPORT ---------- */
+function parseCSV(text){
+  text=text.replace(/^\uFEFF/,'');
+  const rows=[]; let row=[], cur='', inQ=false;
+  for(let i=0;i<text.length;i++){ const c=text[i];
+    if(inQ){ if(c==='"'){ if(text[i+1]==='"'){cur+='"';i++;} else inQ=false; } else cur+=c; }
+    else { if(c==='"') inQ=true; else if(c===','){ row.push(cur); cur=''; }
+      else if(c==='\n'){ row.push(cur); rows.push(row); row=[]; cur=''; }
+      else if(c==='\r'){} else cur+=c; } }
+  if(cur.length||row.length){ row.push(cur); rows.push(row); }
+  return rows.filter(r=>r.length>1 || (r.length===1 && r[0].trim()!==''));
+}
+let PENDING_IMPORT=[];
+function onCsv(ev){
+  const f=ev.target.files&&ev.target.files[0]; if(!f) return;
+  const rd=new FileReader();
+  rd.onload=()=>{ try{ handleCsv(rd.result); }catch(e){ $('impPreview').innerHTML='<div class="msg err">Could not read file: '+esc(e.message)+'</div>'; } };
+  rd.readAsText(f);
+}
+function handleCsv(text){
+  const rows=parseCSV(text); if(rows.length<2){ $('impPreview').innerHTML='<div class="msg err">Empty file.</div>'; return; }
+  const H=rows[0].map(h=>h.trim());
+  const find=re=>H.findIndex(h=>re.test(h));
+  const iName=find(/campaign name|ad set name/i), iSpend=find(/amount spent/i),
+        iClicks=find(/link clicks|clicks/i), iReach=find(/reach/i),
+        iRtype=find(/result type/i), iRes=find(/^results$/i)>-1?find(/^results$/i):find(/results/i),
+        iStart=find(/reporting starts/i), iEnd=find(/reporting ends/i);
+  if(iName<0||iSpend<0){ $('impPreview').innerHTML='<div class="msg err">Couldn\'t find Campaign name / Amount spent columns. Is this a Meta pivot export?</div>'; return; }
+  const num=v=>parseFloat(String(v||'').replace(/[^0-9.]/g,''))||0;
+  const int=v=>parseInt(String(v||'').replace(/[^0-9]/g,''))||0;
+  const out=[];
+  for(let r=1;r<rows.length;r++){
+    const name=(rows[r][iName]||'').trim();
+    if(!name) continue; // skip summary row
+    const reg=CAMPAIGNS.some(c=>c.name.toLowerCase()===name.toLowerCase());
+    out.push({
+      campaign_name:name,
+      channel:'facebook',
+      period_start:(rows[r][iStart]||'').trim()||null,
+      period_end:(rows[r][iEnd]||'').trim()||null,
+      spend:num(rows[r][iSpend]),
+      clicks:int(rows[r][iClicks]),
+      reach:int(rows[r][iReach]),
+      result_type:(iRtype>=0?rows[r][iRtype]:'')||null,
+      results:int(rows[r][iRes]),
+      _registered:reg
+    });
+  }
+  PENDING_IMPORT=out.filter(o=>o._registered && o.period_start && o.period_end);
+  const skipped=out.filter(o=>!o._registered);
+  const tbl=`<table class="imp"><tr><th>Campaign</th><th>Spend</th><th>Clicks</th><th>Msg</th><th></th></tr>${
+    out.map(o=>`<tr><td>${esc(o.campaign_name)}</td><td>RM${o.spend.toFixed(2)}</td><td>${o.clicks}</td><td>${o.results}</td><td>${o._registered?'<span class=tag-ok>keep</span>':'<span class=tag-skip>skip</span>'}</td></tr>`).join('')
+  }</table>`;
+  $('impPreview').innerHTML=`<div style="margin-top:12px">${tbl}</div>
+    <div class="hint">${PENDING_IMPORT.length} registered row(s) will be saved${skipped.length?(', '+skipped.length+' skipped (not registered — SUBGP/other)'):''}. Re-importing the same campaign + dates replaces old figures.</div>
+    <button class="btn" style="margin-top:10px" onclick="commitImport()"${PENDING_IMPORT.length?'':' disabled style="opacity:.5;margin-top:10px"'}><i class="ti ti-check"></i> Save ${PENDING_IMPORT.length} row(s)</button>`;
+}
+async function commitImport(){
+  if(!PENDING_IMPORT.length) return;
+  const rows=PENDING_IMPORT.map(o=>({campaign_name:o.campaign_name,channel:o.channel,period_start:o.period_start,period_end:o.period_end,spend:o.spend,clicks:o.clicks,reach:o.reach,result_type:o.result_type,results:o.results,imported_by:ME}));
+  const {error}=await sb.from('gl_ad_imports').upsert(rows,{onConflict:'campaign_name,period_start,period_end'});
+  if(error){ toast('Import failed: '+error.message,true); return; }
+  await loadImports(); toast('Imported '+rows.length+' row(s) ✓');
+  $('impPreview').innerHTML='<div class="msg ok">Saved. See "Imported spend on file" below.</div>';
+  PENDING_IMPORT=[]; renderSpendList(); renderDash();
+}
+function renderSpendList(){
+  const box=$('spendList'); if(!box) return;
+  if(!IMPORTS.length){ box.innerHTML='<div class="empty">No spend imported yet.</div>'; return; }
+  box.innerHTML=IMPORTS.map(r=>`<div class="lead">
+    <div class="lead-top"><div>
+      <div class="lead-name">${esc(r.campaign_name)}</div>
+      <div class="lead-meta">${esc(r.period_start)} → ${esc(r.period_end)}</div>
+      <div class="lead-meta">RM${Number(r.spend).toFixed(2)} · ${r.clicks} clicks · ${r.results} ${esc(r.result_type||'results')}</div>
+    </div></div></div>`).join('');
+}
+
+/* ---------- render all ---------- */
+function renderAll(){ renderDash(); }
 
 boot();
 </script>
