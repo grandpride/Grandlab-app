@@ -473,6 +473,16 @@ button,input{font-family:inherit}
   </div>
 </div>
 
+<div class="modal" id="backfillModal">
+  <div class="dialog" style="max-width:640px">
+    <div class="dialog-h"><h3>Backfill — Cust from where</h3><button class="closex" onclick="closeModal('backfillModal')">×</button></div>
+    <div style="padding:0 4px 4px">
+      <div style="font-size:12px;color:var(--ink3);margin-bottom:10px">Retail sales this month. Pick a source (and returning) per row — it saves instantly. Trade jobs (workshop/showroom/boss) are hidden — they're not marketing leads.</div>
+      <div id="backfillList" style="max-height:60vh;overflow-y:auto"></div>
+    </div>
+  </div>
+</div>
+
 <div class="modal" id="editCustModal">
   <div class="dialog">
     <div class="dialog-h"><h3>Edit customer</h3><button class="closex" onclick="closeModal('editCustModal')">×</button></div>
@@ -811,7 +821,8 @@ async function loadDashboard(){
       </tr>`).join('')}
       </tbody></table>`:'<div class="status">No transactions this month.</div>'}
     </div>
-    <button class="btn-mini" style="margin-top:14px" onclick="loadDashboard()"><i class="ti ti-refresh"></i> Refresh</button>`;
+    <button class="btn-mini" style="margin-top:14px" onclick="loadDashboard()"><i class="ti ti-refresh"></i> Refresh</button>
+    <button class="btn-mini" style="margin-top:14px;margin-left:8px" onclick="openBackfill()"><i class="ti ti-tag"></i> Backfill sources</button>`;
 }
 function dashChart_(perDay,maxDay,days){
   const W=Math.max(320, days*18), H=140, pad=22, bw=Math.max(6,(W-pad)/days-4);
@@ -895,6 +906,65 @@ async function saveEditTx(){
   toast('Transaction updated ✓');
   closeModal('etxModal'); loadDashboard(); loadTakings();
 }
+
+/* ---------- BACKFILL SOURCES (one-time tagging tool) ---------- */
+const BF_SOURCES=[['','— pick —'],['ads','FB/IG Ads'],['referral','Referral'],['walkin','Walk-in / New'],['app_booking','App Booking']];
+async function openBackfill(){
+  $('backfillModal').classList.add('show');
+  $('backfillList').innerHTML='<div class="status">Loading…</div>';
+  // retail sales this month = DASH_TX rows that have a linked job. Pull each job's
+  // current cust_type/source/returning so we can show + skip trade jobs.
+  const withJob=DASH_TX.filter(r=>r.job_id);
+  if(!withJob.length){ $('backfillList').innerHTML='<div class="status">No retail sales to tag this month.</div>'; return; }
+  const ids=[...new Set(withJob.map(r=>r.job_id))];
+  let jobs=[];
+  try{
+    const {data}=await sb.from('gl_jobs').select('id,cust_type,lead_source,is_returning').in('id',ids);
+    jobs=data||[];
+  }catch(e){}
+  const jmap={}; jobs.forEach(j=>jmap[j.id]=j);
+  // build rows, skipping trade jobs
+  const rows=withJob.filter(r=>{
+    const j=jmap[r.job_id]; const ct=String(j&&j.cust_type||'').toLowerCase();
+    return !(ct==='workshop'||ct==='showroom'||ct==='boss');
+  });
+  if(!rows.length){ $('backfillList').innerHTML='<div class="status">Only trade jobs this month — nothing to tag.</div>'; return; }
+  $('backfillList').innerHTML=rows.map(r=>{
+    const j=jmap[r.job_id]||{};
+    const cur=String(j.lead_source||'');
+    const ret=j.is_returning===true?'yes':(j.is_returning===false?'no':'');
+    const opts=BF_SOURCES.map(o=>`<option value="${o[0]}"${o[0]===cur?' selected':''}>${o[1]}</option>`).join('');
+    return `<div style="display:flex;align-items:center;gap:8px;padding:8px 4px;border-top:1px solid var(--line2)">
+      <div style="flex:1;min-width:0">
+        <div style="font-weight:700;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(titleCase(r.customer_name||'—'))}</div>
+        <div style="font-size:11px;color:var(--ink3)">${esc(r.plate||'—')}</div>
+      </div>
+      <select class="cat-search" style="width:130px;flex:none;padding:7px" onchange="bfSetSource('${r.job_id}',this.value)">${opts}</select>
+      <select class="cat-search" style="width:96px;flex:none;padding:7px" onchange="bfSetReturning('${r.job_id}',this.value)">
+        <option value=""${ret===''?' selected':''}>Return?</option>
+        <option value="yes"${ret==='yes'?' selected':''}>Yes</option>
+        <option value="no"${ret==='no'?' selected':''}>No</option>
+      </select>
+      <span id="bf_ok_${r.job_id}" style="width:16px;flex:none;color:var(--ok,#16A34A)"></span>
+    </div>`;
+  }).join('');
+}
+async function bfSetSource(jobId,val){
+  const {error}=await sb.from('gl_jobs').update({lead_source:val||null}).eq('id',jobId);
+  bfFlash(jobId,!error);
+}
+async function bfSetReturning(jobId,val){
+  const upd = val==='yes'?{is_returning:true} : val==='no'?{is_returning:false} : {is_returning:null};
+  const {error}=await sb.from('gl_jobs').update(upd).eq('id',jobId);
+  bfFlash(jobId,!error);
+}
+function bfFlash(jobId,ok){
+  const el=$('bf_ok_'+jobId); if(!el) return;
+  el.textContent = ok?'✓':'✕';
+  el.style.color = ok?'#16A34A':'#e0533d';
+  setTimeout(()=>{ if(el) el.textContent=''; },1200);
+}
+
 async function deleteTx(i){
   const r=DASH_TX[i]; if(!r) return;
   const willRestore = !!r.pkg_used_id;
