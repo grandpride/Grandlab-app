@@ -207,6 +207,7 @@
           <div class="ci"><label>GL Existing</label><input id="in_existing" type="number" inputmode="numeric" min="0" placeholder="0"></div>
           <div class="ci"><label>Referral</label><input id="in_referral" type="number" inputmode="numeric" min="0" placeholder="0"></div>
         </div>
+        <div id="otherSrcNote" class="hint" style="margin-top:8px"></div>
       </div>
       <button class="btn" onclick="saveCounts()"><i class="ti ti-device-floppy"></i> Save this month</button>
       <div class="msg" id="countsMsg"></div>
@@ -264,6 +265,7 @@ let ME='', CCHANNEL='facebook';
 let COUNTS=[];      // gl_month_counts rows
 let CAMPAIGNS=[];   // gl_campaigns rows
 let IMPORTS=[];     // gl_ad_imports rows
+let JOB_SOURCES={}; // auto-counted existing/referral from gl_jobs, keyed by YYYY-MM
 let YM='';          // selected month 'YYYY-MM'
 let MODE='combined';// 'combined' | 'split'
 
@@ -296,7 +298,7 @@ function buildMonthOptions(){
 }
 async function init(){
   buildMonthOptions();
-  await Promise.all([loadCounts(), loadCampaigns(), loadImports()]);
+  await Promise.all([loadCounts(), loadCampaigns(), loadImports(), loadJobSources()]);
   renderAll();
 }
 function ymLabel(ym){ const [y,m]=ym.split('-'); return new Date(+y,+m-1,1).toLocaleDateString('en-GB',{month:'long',year:'numeric'}); }
@@ -324,14 +326,39 @@ async function loadCounts(){ const {data}=await sb.from('gl_month_counts').selec
 async function loadCampaigns(){ const {data}=await sb.from('gl_campaigns').select('*').order('created_at',{ascending:false}); CAMPAIGNS=data||[]; }
 async function loadImports(){ const {data}=await sb.from('gl_ad_imports').select('*').order('period_start',{ascending:false}); IMPORTS=data||[]; }
 
+/* Auto-count GL Existing + Referral straight from gl_jobs, per month.
+   - Existing = jobs where is_returning = true
+   - Referral = jobs where referral_by_name is set AND not returning (no double-count)
+   Keyed by YYYY-MM of created_at. Falls back to manual entry when no jobs. */
+async function loadJobSources(){
+  JOB_SOURCES={};
+  // pull only the fields we need; jobs can be many so select minimal
+  const {data,error}=await sb.from('gl_jobs')
+    .select('created_at,is_returning,referral_by_name')
+    .order('created_at',{ascending:false}).limit(5000);
+  if(error||!data) return;
+  data.forEach(j=>{
+    if(!j.created_at) return;
+    const d=new Date(j.created_at);
+    const ym=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+    if(!JOB_SOURCES[ym]) JOB_SOURCES[ym]={existing:0, referral:0};
+    if(j.is_returning===true){ JOB_SOURCES[ym].existing++; }
+    else if(j.referral_by_name && String(j.referral_by_name).trim()){ JOB_SOURCES[ym].referral++; }
+  });
+}
+
 function bucketsForMode(){ return MODE==='split' ? ['ppf','tint'] : ['combined']; }
 function getCount(ym,bucket){ return COUNTS.find(c=>c.ym===ym && c.bucket===bucket) || {success:0,ghost:0,ongoing:0,existing:0,referral:0}; }
 function monthOtherSources(ym){
-  // existing/referral are month-level; stored on whichever bucket rows exist — sum distinct
+  // AUTO: count straight from gl_jobs when jobs exist for this month.
+  const auto=JOB_SOURCES[ym];
+  if(auto && (auto.existing>0 || auto.referral>0)){
+    return { existing:auto.existing, referral:auto.referral, _auto:true };
+  }
+  // FALLBACK: manual figures entered in Monthly counts.
   const rows=COUNTS.filter(c=>c.ym===ym);
-  // take max (they should be entered once); sum would double if split — so use the combined row if present else first
   const pref=rows.find(r=>r.bucket==='combined')||rows[0];
-  return { existing:(pref&&pref.existing)||0, referral:(pref&&pref.referral)||0 };
+  return { existing:(pref&&pref.existing)||0, referral:(pref&&pref.referral)||0, _auto:false };
 }
 
 /* ---------- MONTHLY COUNTS form ---------- */
@@ -352,6 +379,17 @@ function renderCountsForm(){
   }).join('');
   const os=monthOtherSources(YM);
   $('in_existing').value=os.existing||''; $('in_referral').value=os.referral||'';
+  // when counts come from gl_jobs, show a note + lock the inputs (no manual typing needed)
+  const note=$('otherSrcNote');
+  if(os._auto){
+    $('in_existing').readOnly=true; $('in_referral').readOnly=true;
+    $('in_existing').style.opacity='.7'; $('in_referral').style.opacity='.7';
+    if(note) note.textContent='✓ Auto-counted from job cards this month — no need to type.';
+  }else{
+    $('in_existing').readOnly=false; $('in_referral').readOnly=false;
+    $('in_existing').style.opacity='1'; $('in_referral').style.opacity='1';
+    if(note) note.textContent='No jobs recorded yet this month — you can enter these manually.';
+  }
 }
 async function saveCounts(){
   const buckets=bucketsForMode();
