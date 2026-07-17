@@ -170,6 +170,19 @@ html,body{height:100%;background:var(--bg);font-family:-apple-system,BlinkMacSys
           <div id="techChips" style="display:flex;flex-wrap:wrap;gap:6px"></div></div>
         <div class="ff"><label>Attended by (front desk)</label>
           <select id="f_attendee"><option value="">— select —</option></select></div>
+        <div class="ff"><label>Cust from where <span id="jcRetBadge" style="color:var(--gold);font-weight:700"></span></label>
+          <select id="f_leadsrc" onchange="onJcLeadSource()">
+            <option value="">— select —</option>
+            <option value="ads">FB / IG Ads</option>
+            <option value="referral">Referral</option>
+            <option value="walkin">Walk-in</option>
+            <option value="app_booking">App Booking</option>
+            <option value="workshop">Workshop Lemans</option>
+            <option value="showroom">Showroom Palm Motor</option>
+          </select></div>
+        <div class="ff" id="jcReferralWrap" style="display:none"><label>Referred by — referrer's phone</label>
+          <input id="f_refphone" type="tel" inputmode="numeric" placeholder="Referrer's phone number" oninput="jcLookupReferrer()">
+          <div id="f_reffound" style="font-size:13px;margin-top:5px;min-height:18px;color:var(--text2)"></div></div>
         <div class="ff"><label>Time slot</label>
           <select id="f_slot" onchange="onSlotChange()">
             <option value="">— select time —</option>
@@ -345,6 +358,7 @@ const stageOf=k=>STAGES.find(s=>s.key===k)||STAGES[0];
 const $=id=>document.getElementById(id);
 let sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON,{auth:{persistSession:true,autoRefreshToken:true,storageKey:'gl_auth'}});
 let JOBS=[], EDITING=null, CUR_TYPE='walkin', foundProfile=null, CAR_PACKAGES=[];
+let JC_EXISTING=false, JC_REFERRER=null;   // returning-detect + matched referrer
 let CFG={staff_list:[],technicians:[],workshops:[],showrooms:[],bosses:[],imgbb_key:''};
 let SERVICES_CAT=[];   // gl_services catalog for the picker
 let CUST_CARS=[];      // current customer's vehicles
@@ -753,6 +767,11 @@ function convertAppt(a){
   SVCS=[{staff:'',desc:a.service_name||'',price:''}];
   if(a.amount_paid){ $('f_deposit').value='yes'; toggleDep(); $('f_depamt').value=a.amount_paid; const dd=noteField(a.notes,'DepDate'); if(dd&&$('f_depdate'))$('f_depdate').value=isoDate(dd); }
   setType('appointment'); renderSvcs();
+  // carry the marketing source + referral from the booking (if it had them)
+  if($('f_leadsrc')){ $('f_leadsrc').value = a.lead_source || 'app_booking'; onJcLeadSource(); }
+  if(a.referral_by_name){ JC_REFERRER={name:a.referral_by_name, ref:a.referral_by_ref||''};
+    if($('f_refphone')) $('f_refphone').value=a.referral_by_ref||'';
+    if($('f_reffound')){ $('f_reffound').style.color='#16A34A'; $('f_reffound').textContent='✓ '+a.referral_by_name+' (from booking)'; } }
   const coat=noteField(a.notes,'CoatingBalance'); if(coat) toast('Coating balance: '+coat+' left');
   // resolve the customer so customer_id gets saved (needed for package deduct)
   if(a.customer_id){ foundProfile={id:a.customer_id}; }
@@ -763,6 +782,9 @@ function convertAppt(a){
 let SVCS=[], DEFS=[];
 function newJob(){
   EDITING=null; CUR_TYPE='walkin'; foundProfile=null; CAR_PACKAGES=[]; CUST_CARS=[]; PHOTOS=[]; SEL_TECHS=[];
+  JC_EXISTING=false; JC_REFERRER=null;
+  if($('f_leadsrc'))$('f_leadsrc').value=''; if($('jcReferralWrap'))$('jcReferralWrap').style.display='none';
+  if($('f_reffound'))$('f_reffound').textContent=''; if($('jcRetBadge'))$('jcRetBadge').textContent='';
   if($('f_slot')){ $('f_slot').value=''; }
   if($('f_attendee')) $('f_attendee').value='';
   ['f_name','f_model','f_plate','f_hp','f_hp2','f_email','f_sentby','f_depamt','f_depdate'].forEach(i=>{if($(i))$(i).value='';});
@@ -935,8 +957,34 @@ function toggleDep(){ const yes=$('f_deposit').value==='yes'; $('f_depamt').disa
 /* ---------- CUSTOMER LOOKUP (+package chips) ---------- */
 let _lt=null;
 function lookupCust(){ clearTimeout(_lt); _lt=setTimeout(_doLookup,450); }
+/* returning badge + referral helpers */
+function jcMarkReturning(){ const b=$('jcRetBadge'); if(b) b.textContent = JC_EXISTING ? '· ✓ Returning' : ''; }
+function onJcLeadSource(){
+  const v=$('f_leadsrc').value;
+  $('jcReferralWrap').style.display = v==='referral' ? 'block' : 'none';
+  if(v!=='referral'){ JC_REFERRER=null; if($('f_reffound'))$('f_reffound').textContent=''; if($('f_refphone'))$('f_refphone').value=''; }
+}
+let _jcreft=null;
+function jcLookupReferrer(){ clearTimeout(_jcreft); _jcreft=setTimeout(_jcDoRefLookup,450); }
+async function _jcDoRefLookup(){
+  const digits=($('f_refphone').value||'').replace(/\D/g,'');
+  JC_REFERRER=null;
+  if(digits.length<7){ $('f_reffound').textContent=''; return; }
+  $('f_reffound').style.color='var(--text2)'; $('f_reffound').textContent='Searching…';
+  const core=digits.replace(/^60/,'').replace(/^0/,'');
+  const {data:profs}=await sb.from('gl_profiles').select('id,name,phone').ilike('phone','%'+core);
+  const prof=(profs||[]).find(p=>String(p.phone||'').replace(/[^0-9]/g,'').replace(/^60/,'').replace(/^0/,'')===core)||null;
+  if(prof){ JC_REFERRER={name:prof.name||'(no name)', ref:digits}; $('f_reffound').style.color='#16A34A'; $('f_reffound').textContent='✓ '+JC_REFERRER.name+' (existing customer)'; return; }
+  try{
+    const {data:c}=await sb.rpc('gl_lookup_customer',{p_phone:digits});
+    const cust=Array.isArray(c)?c[0]:c;
+    if(cust && (cust.name||cust.phone)){ JC_REFERRER={name:cust.name||'(no name)', ref:digits}; $('f_reffound').style.color='#16A34A'; $('f_reffound').textContent='✓ '+JC_REFERRER.name+' (existing customer)'; return; }
+  }catch(e){}
+  $('f_reffound').style.color='var(--warn-text)'; $('f_reffound').textContent='⚠ Not found in our customers — check the number';
+}
+
 async function _doLookup(){
-  foundProfile=null; CAR_PACKAGES=[]; CUST_CARS=[]; $('pkgChips').innerHTML='';
+  foundProfile=null; CAR_PACKAGES=[]; CUST_CARS=[]; JC_EXISTING=false; $('pkgChips').innerHTML='';
   const digits=($('f_hp').value||'').replace(/[^0-9]/g,'');
   $('f_carsel').innerHTML='<option value="__new__">+ Add new car</option>';
   if(digits.length<7){ $('custFound').textContent=''; return; }
@@ -946,7 +994,7 @@ async function _doLookup(){
   const {data:profs}=await sb.from('gl_profiles').select('id,name,phone,email,tier, gl_vehicles(id,make,model,plate)').ilike('phone','%'+core);
   const data=(profs||[]).find(p=>String(p.phone||'').replace(/[^0-9]/g,'').replace(/^60/,'').replace(/^0/,'')===core) || null;
   if(data){
-    foundProfile=data;
+    foundProfile=data; JC_EXISTING=true; jcMarkReturning();
     $('custFound').innerHTML=`<span style="color:#16A34A">✓ ${esc(data.name||'')}</span>${data.tier?' · '+esc(data.tier):''}`;
     if(data.name&&!$('f_name').value)$('f_name').value=data.name;
     if(data.email&&!$('f_email').value)$('f_email').value=data.email;
@@ -965,8 +1013,8 @@ async function _doLookup(){
       const car=(cars||[]).find(x=>x.plate||x.model);
       if(cust||car){ wk={name:cust?cust.name:'', email:cust?cust.email:'', phone:digits, plate:car?car.plate:'', model:car?car.model:'', car_type:car?car.car_type:''}; }
     }catch(e){}
-    if(wk){ fillFromWalkin_(wk); }
-    else $('custFound').innerHTML='<span style="color:var(--warn-text)">New customer</span>';
+    if(wk){ JC_EXISTING=true; jcMarkReturning(); fillFromWalkin_(wk); }
+    else { JC_EXISTING=false; jcMarkReturning(); $('custFound').innerHTML='<span style="color:var(--warn-text)">New customer</span>'; }
   }
 }
 
@@ -1116,6 +1164,10 @@ function collectJob(){
     vehicle_id:($('f_carsel').value!=='__new__'&&$('f_carsel').value)?$('f_carsel').value:null,
     booking_id:EDITING&&EDITING.booking_id?EDITING.booking_id:null,
     cust_type:CUR_TYPE, tier:foundProfile?foundProfile.tier:null, is_new:!foundProfile,
+    lead_source: ($('f_leadsrc')?$('f_leadsrc').value:'')||null,
+    is_returning: JC_EXISTING,
+    referral_by_name: (($('f_leadsrc')&&$('f_leadsrc').value==='referral') && JC_REFERRER)?JC_REFERRER.name:null,
+    referral_by_ref:  (($('f_leadsrc')&&$('f_leadsrc').value==='referral') && JC_REFERRER)?JC_REFERRER.ref:null,
     services:SVCS.filter(s=>s.desc), defects:DEFS.filter(d=>d.note),
     intro:CUR_TYPE==='walkin'?'walk-in':'', staff:SEL_TECHS.join(', '), techs:SEL_TECHS,
     attendee:($('f_attendee')?$('f_attendee').value:'')||'',
@@ -1314,6 +1366,13 @@ function editJob(id){
   $('f_hp').value=j.hp||''; $('f_hp2').value=j.hp||''; $('f_email').value=j.email||'';
   populateStaffDropdown(); SEL_TECHS=Array.isArray(j.techs)?j.techs.slice():(j.staff?j.staff.split(',').map(s=>s.trim()).filter(Boolean):[]); renderTechChips();
   if($('f_attendee')) $('f_attendee').value=j.attendee||'';
+  // restore marketing source + referral + returning
+  if($('f_leadsrc')){ $('f_leadsrc').value=j.lead_source||''; onJcLeadSource(); }
+  JC_EXISTING = j.is_returning===true;
+  if($('jcRetBadge')) $('jcRetBadge').textContent = JC_EXISTING ? '· ✓ Returning' : '';
+  if(j.referral_by_name){ JC_REFERRER={name:j.referral_by_name, ref:j.referral_by_ref||''};
+    if($('f_refphone')) $('f_refphone').value=j.referral_by_ref||'';
+    if($('f_reffound')){ $('f_reffound').style.color='#16A34A'; $('f_reffound').textContent='✓ '+j.referral_by_name; } }
   // restore time slot
   if($('f_slot')){
     const st=j.slot_time||'';
