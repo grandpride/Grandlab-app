@@ -177,8 +177,8 @@
     <div class="card noprint">
       <div class="card-t">Generate a detailed report</div>
       <div class="row2" style="margin-bottom:10px">
-        <button class="btn" onclick="genReport('month')"><i class="ti ti-calendar-month"></i> Monthly</button>
-        <button class="btn sec" onclick="genReport('week')"><i class="ti ti-calendar-week"></i> Weekly (est.)</button>
+        <button class="btn" id="repMonthBtn" onclick="genReport('month')"><i class="ti ti-calendar-month"></i> Monthly</button>
+        <button class="btn sec" id="repWeekBtn" onclick="genReport('week')"><i class="ti ti-calendar-week"></i> Weekly (est.)</button>
       </div>
       <div class="hint">Monthly uses your exact entered figures. Weekly divides the month evenly (estimate) — your counts &amp; Meta spend are entered per month, not per week. Uses the month selected in the Dashboard/Counts month picker (<span id="repMonthLbl" style="color:var(--gold)"></span>).</div>
       <button class="btn" style="margin-top:10px" onclick="window.print()"><i class="ti ti-printer"></i> Print / Save as PDF</button>
@@ -555,6 +555,9 @@ function renderAll(){ renderDash(); }
 /* ---------- DETAILED REPORT ---------- */
 function genReport(period){
   const est = period==='week';
+  // highlight the active period button: gold = active, sec (dark) = inactive
+  $('repMonthBtn').className = est ? 'btn sec' : 'btn';
+  $('repWeekBtn').className  = est ? 'btn' : 'btn sec';
   const div = est ? 4.345 : 1; // avg weeks per month for the estimate
   const periodLbl = est ? 'Weekly (estimated — month ÷ 4.3)' : 'Monthly';
   const sp=spendForMonth(YM);
