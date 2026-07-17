@@ -340,11 +340,12 @@ async function loadJobSources(){
     if(!j.created_at) return;
     const d=new Date(j.created_at);
     const ym=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
-    if(!JOB_SOURCES[ym]) JOB_SOURCES[ym]={existing:0, referral:0, walkin:0};
+    if(!JOB_SOURCES[ym]) JOB_SOURCES[ym]={existing:0, referral:0, walkin:0, appbook:0};
     const src=String(j.lead_source||'').toLowerCase();
     if(j.is_returning===true){ JOB_SOURCES[ym].existing++; }               // returning wins
     else if(j.referral_by_name && String(j.referral_by_name).trim()){ JOB_SOURCES[ym].referral++; }
     else if(src==='walkin'){ JOB_SOURCES[ym].walkin++; }                    // organic walk-in / direct new
+    else if(src==='app_booking'){ JOB_SOURCES[ym].appbook++; }              // booked via app
   });
 }
 
@@ -353,13 +354,13 @@ function getCount(ym,bucket){ return COUNTS.find(c=>c.ym===ym && c.bucket===buck
 function monthOtherSources(ym){
   // AUTO: count straight from gl_jobs when jobs exist for this month.
   const auto=JOB_SOURCES[ym];
-  if(auto && (auto.existing>0 || auto.referral>0 || (auto.walkin||0)>0)){
-    return { existing:auto.existing, referral:auto.referral, walkin:auto.walkin||0, _auto:true };
+  if(auto && (auto.existing>0 || auto.referral>0 || (auto.walkin||0)>0 || (auto.appbook||0)>0)){
+    return { existing:auto.existing, referral:auto.referral, walkin:auto.walkin||0, appbook:auto.appbook||0, _auto:true };
   }
   // FALLBACK: manual figures entered in Monthly counts.
   const rows=COUNTS.filter(c=>c.ym===ym);
   const pref=rows.find(r=>r.bucket==='combined')||rows[0];
-  return { existing:(pref&&pref.existing)||0, referral:(pref&&pref.referral)||0, walkin:0, _auto:false };
+  return { existing:(pref&&pref.existing)||0, referral:(pref&&pref.referral)||0, walkin:0, appbook:0, _auto:false };
 }
 
 /* ---------- MONTHLY COUNTS form ---------- */
@@ -447,10 +448,10 @@ function renderDash(){
   // Pie 1: ads outcome
   const p1=[['Success',S,'var(--green)'],['Ghost',G,'var(--red)'],['Ongoing',O,'var(--amber)']];
   // Pie 2: source
-  const p2=[['Ads',S,'var(--blue)'],['Existing',os.existing,'var(--purple)'],['Referral',os.referral,'var(--gold)'],['Walk-in/New',os.walkin||0,'var(--green)']];
+  const p2=[['Ads',S,'var(--blue)'],['Existing',os.existing,'var(--purple)'],['Referral',os.referral,'var(--gold)'],['Walk-in/New',os.walkin||0,'var(--green)'],['App Booking',os.appbook||0,'var(--amber)']];
   $('pies').innerHTML=
     pieCard('Ads outcome', p1, adsTotal) +
-    pieCard('Where customers come from', p2, S+os.existing+os.referral+(os.walkin||0));
+    pieCard('Where customers come from', p2, S+os.existing+os.referral+(os.walkin||0)+(os.appbook||0));
 
   // CPA detail
   $('cpaCard').innerHTML=`
@@ -459,7 +460,7 @@ function renderDash(){
       Ad spend <b>RM${sp.spend.toFixed(2)}</b> · ${sp.clicks.toLocaleString()} clicks${sp.messaged?(' · '+sp.messaged+' messaged'):''}<br>
       ${cpl?('Cost per messaged lead <b>RM'+cpl.toFixed(2)+'</b><br>'):''}
       Cost per customer (success) <b style="color:var(--gold)">${cpa?('RM'+cpa.toFixed(2)):'— (enter success count)'}</b><br>
-      Sources — Ads <b>${S}</b> · Existing <b>${os.existing}</b> · Referral <b>${os.referral}</b> · Walk-in/New <b>${os.walkin||0}</b>
+      Sources — Ads <b>${S}</b> · Existing <b>${os.existing}</b> · Referral <b>${os.referral}</b> · Walk-in/New <b>${os.walkin||0}</b> · App Booking <b>${os.appbook||0}</b>
     </div>`;
 }
 function pieCard(title, parts, total){
@@ -634,7 +635,7 @@ function genReport(period){
   });
   const os=monthOtherSources(YM);
   const adsTotal=totS+totG+totO;
-  const sourceTotal=totS+os.existing+os.referral+(os.walkin||0);
+  const sourceTotal=totS+os.existing+os.referral+(os.walkin||0)+(os.appbook||0);
 
   const rm=v=>v==null?'—':('RM'+(v/1).toFixed(2));
   const rmD=v=>v==null?'—':('RM'+(v/div).toFixed(2));
@@ -663,7 +664,7 @@ function genReport(period){
 
   // pies
   const p1=[['Success',totS,'var(--green)'],['Ghost',totG,'var(--red)'],['Ongoing',totO,'var(--amber)']];
-  const p2=[['Ads',totS,'var(--blue)'],['Existing',os.existing,'var(--purple)'],['Referral',os.referral,'var(--gold)'],['Walk-in/New',os.walkin||0,'var(--green)']];
+  const p2=[['Ads',totS,'var(--blue)'],['Existing',os.existing,'var(--purple)'],['Referral',os.referral,'var(--gold)'],['Walk-in/New',os.walkin||0,'var(--green)'],['App Booking',os.appbook||0,'var(--amber)']];
 
   $('reportOut').innerHTML=`
   <div class="rep">
@@ -701,6 +702,7 @@ function genReport(period){
       <tr><td>GL Existing (returning)</td><td class="n">${nD(os.existing)}</td></tr>
       <tr><td>Referral</td><td class="n">${nD(os.referral)}</td></tr>
       <tr><td>Walk-in / New (organic)</td><td class="n">${nD(os.walkin||0)}</td></tr>
+      <tr><td>App Booking</td><td class="n">${nD(os.appbook||0)}</td></tr>
       <tr><td><b>Total customers</b></td><td class="n"><b>${nD(sourceTotal)}</b></td></tr>
     </table>
 

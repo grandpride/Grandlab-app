@@ -452,6 +452,16 @@ button,input{font-family:inherit}
       <input id="etxAmount" class="cat-search" type="number" step="0.01" min="0" style="margin-bottom:12px">
       <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px">Sale date <span style="color:var(--ink3);font-weight:400">(backdate if keyed late)</span></label>
       <input id="etxDate" class="cat-search" type="date" style="margin-bottom:16px">
+      <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px">Cust from where <span style="color:var(--ink3);font-weight:400">(for marketing report)</span></label>
+      <select id="etxSource" class="cat-search" style="margin-bottom:16px">
+        <option value="">— unchanged —</option>
+        <option value="ads">FB / IG Ads</option>
+        <option value="referral">Referral</option>
+        <option value="walkin">Walk-in / New customer</option>
+        <option value="app_booking">App Booking</option>
+        <option value="workshop">Workshop Lemans</option>
+        <option value="showroom">Showroom Palm Motor</option>
+      </select>
       <button class="btn btn-blue" onclick="saveEditTx()"><i class="ti ti-device-floppy"></i> Save changes</button>
     </div>
   </div>
@@ -809,7 +819,7 @@ function dashChart_(perDay,maxDay,days){
   }
   return `<svg viewBox="0 0 ${W} ${H}" width="100%" preserveAspectRatio="xMinYMin meet">${bars}</svg>`;
 }
-function openEditTx(i){
+async function openEditTx(i){
   const r=DASH_TX[i]; if(!r) return;
   window._editTx=r;
   $('etxWho').textContent=(r.customer_name||'—')+' · '+(r.plate||'—');
@@ -826,6 +836,14 @@ function openEditTx(i){
   // sale date: use sale_date if set, else the date part of paid_at
   const sd = r.sale_date || (r.paid_at? new Date(r.paid_at).toISOString().slice(0,10) : new Date().toISOString().slice(0,10));
   $('etxDate').value = String(sd).slice(0,10);
+  // preload the linked job's current source (if any) into the Cust-from-where dropdown
+  if($('etxSource')){
+    $('etxSource').value='';
+    if(r.job_id){
+      try{ const {data:jb}=await sb.from('gl_jobs').select('lead_source').eq('id',r.job_id).maybeSingle();
+        if(jb && jb.lead_source) $('etxSource').value=jb.lead_source; }catch(e){}
+    }
+  }
   $('etxModal').classList.add('show');
 }
 /* show the free-text box only when "Other" is picked */
@@ -853,6 +871,11 @@ async function saveEditTx(){
   }
   const {error}=await sb.from('gl_payments').update(upd).eq('id',r.id);
   if(error){ alert('Update failed: '+error.message); return; }
+  // if a Cust-from-where was chosen, save it onto the linked job (drives the marketing report)
+  const src=$('etxSource')?$('etxSource').value:'';
+  if(src && r.job_id){
+    try{ await sb.from('gl_jobs').update({lead_source:src}).eq('id',r.job_id); }catch(e){}
+  }
   toast('Transaction updated ✓');
   closeModal('etxModal'); loadDashboard(); loadTakings();
 }
