@@ -106,14 +106,24 @@
   table.rt td.n{text-align:right;font-weight:700;font-variant-numeric:tabular-nums}
   .rep .big{font-size:15px}
   @media print{
+    @page{ margin:12mm; }
     body{background:#fff;color:#111}
-    .hubback,.tabs,.head small,#monthBar,.noprint,.toast{display:none!important}
+    /* hide everything chrome + all non-report views */
+    .hubback,.tabs,.head small,#monthBar,.noprint,.toast,
+    #viewDash,#viewCounts,#viewSpend,#viewCamp{display:none!important}
+    .head{border:none;padding:0;margin:0 0 8px}
     .wrap{padding:0;max-width:none}
-    .rep{border:1px solid #ccc;box-shadow:none;page-break-inside:avoid}
+    #viewReport{display:block!important}
+    .rep{border:none;box-shadow:none;padding:0;margin:0}   /* let it flow, no forced break */
     .rep h2,.rep .big{color:#111}
-    .rep h3{color:#a67c00;border-color:#ccc}
+    .rep h3{color:#a67c00;border-color:#ccc;page-break-after:avoid}
+    table.rt{page-break-inside:auto}
+    table.rt tr{page-break-inside:avoid}
     table.rt td,table.rt th{border-color:#ddd}
+    .pie-card{border:1px solid #ccc;page-break-inside:avoid}
+    .pie-card h4{color:#111}
     .brand{color:#111}
+    .legend{color:#111}
   }
 </style>
 </head>
