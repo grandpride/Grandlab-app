@@ -207,6 +207,7 @@
           <div class="ci"><label>GL Existing</label><input id="in_existing" type="number" inputmode="numeric" min="0" placeholder="0"></div>
           <div class="ci"><label>Referral</label><input id="in_referral" type="number" inputmode="numeric" min="0" placeholder="0"></div>
         </div>
+        <div id="autoSrcLine" style="margin-top:10px;font-size:13px;color:var(--muted)"></div>
         <div id="otherSrcNote" class="hint" style="margin-top:8px"></div>
       </div>
       <button class="btn" onclick="saveCounts()"><i class="ti ti-device-floppy"></i> Save this month</button>
@@ -338,7 +339,11 @@ async function loadJobSources(){
   if(error||!data) return;
   data.forEach(j=>{
     if(!j.created_at) return;
-    const d=new Date(j.created_at);
+    // created_at is a bigint (ms since epoch); Supabase may return it as a string.
+    // Number() handles both; new Date(string-number) would give NaN.
+    const ms=Number(j.created_at);
+    const d=new Date(isNaN(ms)? j.created_at : ms);
+    if(isNaN(d.getTime())) return;
     const ym=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
     if(!JOB_SOURCES[ym]) JOB_SOURCES[ym]={existing:0, referral:0, walkin:0, appbook:0};
     const src=String(j.lead_source||'').toLowerCase();
@@ -381,6 +386,14 @@ function renderCountsForm(){
   }).join('');
   const os=monthOtherSources(YM);
   $('in_existing').value=os.existing||''; $('in_referral').value=os.referral||'';
+  // walk-in/new + app booking are auto-only (from jobs) — show them read-only
+  const auto=$('autoSrcLine');
+  if(auto){
+    const wk=os.walkin||0, ab=os.appbook||0;
+    auto.innerHTML = (wk||ab)
+      ? `<i class="ti ti-walk"></i> Walk-in / New: <b style="color:var(--text)">${wk}</b> &nbsp;·&nbsp; <i class="ti ti-device-mobile"></i> App Booking: <b style="color:var(--text)">${ab}</b> <span style="color:var(--muted2)">(auto from jobs)</span>`
+      : `<span style="color:var(--muted2)">Walk-in / App Booking counts appear here once jobs are tagged.</span>`;
+  }
   // when counts come from gl_jobs, show a note + lock the inputs (no manual typing needed)
   const note=$('otherSrcNote');
   if(os._auto){
