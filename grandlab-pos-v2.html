@@ -934,7 +934,11 @@ async function openBackfill(){
     const cur=String(j.lead_source||'');
     const ret=j.is_returning===true?'yes':(j.is_returning===false?'no':'');
     const opts=BF_SOURCES.map(o=>`<option value="${o[0]}"${o[0]===cur?' selected':''}>${o[1]}</option>`).join('');
-    return `<div style="display:flex;align-items:center;gap:8px;padding:8px 4px;border-top:1px solid var(--line2)">
+    const refShow = cur==='referral';
+    const refName = j.referral_by_name||'';
+    const refPh = j.referral_by_ref||'';
+    return `<div style="border-top:1px solid var(--line2);padding:8px 4px">
+     <div style="display:flex;align-items:center;gap:8px">
       <div style="flex:1;min-width:0">
         <div style="font-weight:700;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(titleCase(r.customer_name||'—'))}</div>
         <div style="font-size:11px;color:var(--ink3)">${esc(r.plate||'—')}</div>
@@ -946,11 +950,56 @@ async function openBackfill(){
         <option value="no"${ret==='no'?' selected':''}>No</option>
       </select>
       <span id="bf_ok_${r.job_id}" style="width:16px;flex:none;color:var(--ok,#16A34A)"></span>
+     </div>
+     <div id="bf_ref_${r.job_id}" style="display:${refShow?'flex':'none'};align-items:center;gap:8px;margin-top:6px;padding-left:2px">
+       <span style="font-size:11px;color:var(--ink3);flex:none">Referred by:</span>
+       <input id="bf_refph_${r.job_id}" class="cat-search" style="flex:1;padding:7px" placeholder="referrer's phone" value="${esc(refPh)}" oninput="bfLookupRef('${r.job_id}')">
+       <span id="bf_refname_${r.job_id}" style="font-size:11px;flex:none;min-width:80px;color:#16A34A">${esc(refName)}</span>
+     </div>
     </div>`;
   }).join('');
 }
 async function bfSetSource(jobId,val){
   const {error}=await sb.from('gl_jobs').update({lead_source:val||null}).eq('id',jobId);
+  bfFlash(jobId,!error);
+  // show/hide the referrer phone row
+  const rr=$('bf_ref_'+jobId); if(rr) rr.style.display = (val==='referral')?'flex':'none';
+  // if switched away from referral, clear the referrer on the job
+  if(val!=='referral'){ try{ await sb.from('gl_jobs').update({referral_by_name:null,referral_by_ref:null}).eq('id',jobId); }catch(e){}
+    const nm=$('bf_refname_'+jobId); if(nm) nm.textContent=''; }
+}
+function bfNormMY_(raw){
+  let d=(raw||'').replace(/\D/g,'');
+  if(!d) return '';
+  if(d.startsWith('60')) return d;
+  if(d.startsWith('0'))  return '60'+d.slice(1);
+  return '60'+d;
+}
+let _bfreft={};
+function bfLookupRef(jobId){
+  clearTimeout(_bfreft[jobId]);
+  _bfreft[jobId]=setTimeout(()=>_bfDoRef(jobId),450);
+}
+async function _bfDoRef(jobId){
+  const raw=$('bf_refph_'+jobId)?$('bf_refph_'+jobId).value:'';
+  const digits=bfNormMY_(raw);
+  const nmEl=$('bf_refname_'+jobId);
+  if(digits.length<7){ if(nmEl){ nmEl.style.color='var(--ink3)'; nmEl.textContent=''; } return; }
+  if(nmEl){ nmEl.style.color='var(--ink3)'; nmEl.textContent='…'; }
+  const core=digits.replace(/^60/,'').replace(/^0/,'');
+  let name=null;
+  // profiles
+  const {data:profs}=await sb.from('gl_profiles').select('name,phone').ilike('phone','%'+core);
+  const prof=(profs||[]).find(p=>String(p.phone||'').replace(/[^0-9]/g,'').replace(/^60/,'').replace(/^0/,'')===core);
+  if(prof) name=prof.name||'(no name)';
+  if(!name){ try{ const {data:c}=await sb.rpc('gl_lookup_customer',{p_phone:digits}); const cust=Array.isArray(c)?c[0]:c; if(cust&&(cust.name||cust.phone)) name=cust.name||'(no name)'; }catch(e){} }
+  // save to the job (name may be null if not found — still store the phone)
+  const upd={referral_by_ref:digits, referral_by_name: name||null};
+  const {error}=await sb.from('gl_jobs').update(upd).eq('id',jobId);
+  if(nmEl){
+    if(name){ nmEl.style.color='#16A34A'; nmEl.textContent='✓ '+name; }
+    else { nmEl.style.color='#e0a020'; nmEl.textContent='saved (not in customers)'; }
+  }
   bfFlash(jobId,!error);
 }
 async function bfSetReturning(jobId,val){
