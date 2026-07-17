@@ -161,6 +161,23 @@
     <div class="field"><label>Remark <span style="text-transform:none;color:var(--muted);font-weight:400">optional — internal, shown on the sheet only</span></label>
       <input id="remark" type="text" placeholder="e.g. VIP customer, park in bay 2"></div>
 
+    <div class="field"><label>Cust from where <span id="retBadge" style="text-transform:none;color:var(--gold);font-weight:700"></span></label>
+      <select id="leadSource" onchange="onLeadSource()">
+        <option value="">— select —</option>
+        <option value="ads">FB / IG Ads</option>
+        <option value="referral">Referral</option>
+        <option value="walkin">Walk-in</option>
+        <option value="app_booking">App Booking</option>
+        <option value="workshop">Workshop Lemans</option>
+        <option value="showroom">Showroom Palm Motor</option>
+      </select>
+    </div>
+    <div class="field" id="referralWrap" style="display:none">
+      <label>Referred by — enter referrer's phone</label>
+      <input id="refPhone" type="tel" inputmode="numeric" placeholder="Referrer's phone number" oninput="lookupReferrer()">
+      <div id="refFound" style="font-size:13px;margin-top:5px;min-height:18px;color:var(--muted)"></div>
+    </div>
+
     <div class="plabel">WhatsApp Preview</div>
     <div class="preview" id="preview"><span class="ph">Fill the form to see the message…</span></div>
 
@@ -204,6 +221,8 @@ const SLOTS_PER_TIME = 2;
 const $=id=>document.getElementById(id);
 let sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON,{auth:{persistSession:true,autoRefreshToken:true,storageKey:'gl_auth'}});
 let SERVICES=[], foundProfile=null, profileCars=[], selectedSlot=null, takenCounts={};
+let IS_EXISTING=false;          // set by doLookup: is this a known customer?
+let REFERRER=null;              // {name, ref} when a referrer is matched
 let selectedServiceObj=null;
 let EXTRA_SVCS=[];  // additional service names beyond the main one
 function addService(){
@@ -491,7 +510,7 @@ function renderSlots(){
 let lt=null;
 $('contact').addEventListener('input',()=>{clearTimeout(lt);lt=setTimeout(doLookup,500);});
 async function doLookup(){
-  foundProfile=null;profileCars=[];
+  foundProfile=null;profileCars=[];IS_EXISTING=false;
   const phone=normPhone($('contact').value);
   $('carSelect').innerHTML='<option value="__new__">+ Add new car</option>';
   if(phone.length<7||!connected){$('lookup').className='lookup';return;}
@@ -502,7 +521,7 @@ async function doLookup(){
     .or(`phone.eq.+${phone},phone.eq.${phone}`)
     .limit(1).maybeSingle();
   if(data){
-    foundProfile=data; profileCars=data.gl_vehicles||[];
+    foundProfile=data; profileCars=data.gl_vehicles||[]; IS_EXISTING=true; markReturning();
     $('name').value=data.name||'';
     $('lookup').className='lookup found';
     $('lookup').textContent=`✓ Existing: ${data.name||'(no name)'} · ${profileCars.length} car(s)`;
@@ -521,8 +540,8 @@ async function doLookup(){
       const {data:cs}=await sb.rpc('gl_lookup_cars',{p_phone:phone});
       cars=(cs||[]).filter(x=>x.plate||x.model);
     }catch(e){}
-    if(cust||cars.length){ fillFromWalkinCars_(cust,cars); }
-    else { $('lookup').className='lookup newc'; $('lookup').textContent='🆕 New customer — saved with booking'; CAR_PACKAGES=[]; renderPkgChips(); }
+    if(cust||cars.length){ IS_EXISTING=true; markReturning(); fillFromWalkinCars_(cust,cars); }
+    else { IS_EXISTING=false; markReturning(); $('lookup').className='lookup newc'; $('lookup').textContent='🆕 New customer — saved with booking'; CAR_PACKAGES=[]; renderPkgChips(); }
   }
 }
 
@@ -768,6 +787,7 @@ $('send').onclick=async()=>{const m=await copyMsg();if(!m)return;
 $('clear').onclick=()=>{document.querySelectorAll('input').forEach(i=>i.value="");$('svc').selectedIndex=0;selectedServiceObj=null;
   EXTRA_SVCS=[];renderSvcList();
   $('lookup').className='lookup';foundProfile=null;profileCars=[];selectedSlot=null;$('carEntry').style.display='flex';
+  IS_EXISTING=false;REFERRER=null;if($('leadSource'))$('leadSource').value='';if($('referralWrap'))$('referralWrap').style.display='none';if($('refFound'))$('refFound').textContent='';if($('retBadge'))$('retBadge').textContent='';
   CAR_PACKAGES=[];renderPkgChips();
   $('slots').innerHTML='<div style="grid-column:1/-1;color:var(--muted);font-size:13px">Pick a date to see slots…</div>';build();};
 
@@ -834,6 +854,10 @@ $('save').onclick=async()=>{
       scheduled_at: sched,
       status:'pending',
       source:'whatsapp',
+      lead_source: $('leadSource').value||null,
+      is_returning: IS_EXISTING,
+      referral_by_name: ($('leadSource').value==='referral' && REFERRER)?REFERRER.name:null,
+      referral_by_ref:  ($('leadSource').value==='referral' && REFERRER)?REFERRER.ref:null,
       notes: buildNotes(phone,timeLabel)
     };
     // deposit at booking (optional) -> amount_paid + payment_type
@@ -857,6 +881,38 @@ function slotToTime(label){
   const map={"9:00 AM":"09:00","10:00 AM":"10:00","11:00 AM":"11:00","1:30 PM":"13:30","3:00 PM":"15:00"};
   return map[label]||"09:00";
 }
+/* show a "Returning" badge when the customer is already known, and auto-suggest
+   the source. Returning is auto-detected from the phone lookup. */
+function markReturning(){
+  const b=$('retBadge'); if(!b) return;
+  b.textContent = IS_EXISTING ? '· ✓ Returning customer' : '';
+}
+/* show the referrer phone box only when "Referral" is chosen */
+function onLeadSource(){
+  const v=$('leadSource').value;
+  $('referralWrap').style.display = v==='referral' ? 'block' : 'none';
+  if(v!=='referral'){ REFERRER=null; $('refFound').textContent=''; $('refPhone').value=''; }
+}
+/* look up the referrer by phone in gl_profiles + gl_walkin (via RPC) */
+let _reft=null;
+function lookupReferrer(){ clearTimeout(_reft); _reft=setTimeout(_doRefLookup,450); }
+async function _doRefLookup(){
+  const digits=($('refPhone').value||'').replace(/\D/g,'');
+  REFERRER=null;
+  if(digits.length<7){ $('refFound').textContent=''; return; }
+  $('refFound').style.color='var(--muted)'; $('refFound').textContent='Searching…';
+  // try profiles first
+  const {data:prof}=await sb.from('gl_profiles').select('id,name,phone').or(`phone.eq.+${digits},phone.eq.${digits}`).limit(1).maybeSingle();
+  if(prof){ REFERRER={name:prof.name||'(no name)', ref:digits}; $('refFound').style.color='#16A34A'; $('refFound').textContent='✓ '+REFERRER.name+' (existing customer)'; return; }
+  // then walk-in via RPC
+  try{
+    const {data:c}=await sb.rpc('gl_lookup_customer',{p_phone:digits});
+    const cust=Array.isArray(c)?c[0]:c;
+    if(cust && (cust.name||cust.phone)){ REFERRER={name:cust.name||'(no name)', ref:digits}; $('refFound').style.color='#16A34A'; $('refFound').textContent='✓ '+REFERRER.name+' (existing customer)'; return; }
+  }catch(e){}
+  $('refFound').style.color='var(--red)'; $('refFound').textContent='⚠ Not found in our customers — check the number';
+}
+
 function buildNotes(phone,timeLabel){
   // pack the human details Option A needs into notes (no separate customer row yet)
   const parts=[];
