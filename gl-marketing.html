@@ -334,11 +334,14 @@ async function loadImports(){ const {data}=await sb.from('gl_ad_imports').select
 async function loadJobSources(){
   JOB_SOURCES={};
   const {data,error}=await sb.from('gl_jobs')
-    .select('created_at,is_returning,referral_by_name,lead_source')
+    .select('created_at,is_returning,referral_by_name,lead_source,cust_type')
     .order('created_at',{ascending:false}).limit(5000);
   if(error||!data) return;
   data.forEach(j=>{
     if(!j.created_at) return;
+    // trade / internal jobs are NOT retail marketing leads — exclude them
+    const ct=String(j.cust_type||'').toLowerCase();
+    if(ct==='workshop' || ct==='showroom' || ct==='boss'){ return; }
     // created_at is a bigint (ms since epoch); Supabase may return it as a string.
     // Number() handles both; new Date(string-number) would give NaN.
     const ms=Number(j.created_at);
