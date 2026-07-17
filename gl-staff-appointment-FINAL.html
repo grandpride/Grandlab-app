@@ -255,7 +255,7 @@ async function boot(){
     document.getElementById('keyGate')?.classList.add('hidden');
     document.getElementById('noKeys')?.classList.add('hidden');
     connected=true;
-    loadServices();
+    loadServices(); bkLoadBrands(); loadPending();
   }else{
     document.getElementById('keyGate')?.classList.remove('hidden');
   }
