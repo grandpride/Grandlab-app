@@ -107,23 +107,30 @@
   .rep .big{font-size:15px}
   @media print{
     @page{ margin:12mm; }
-    body{background:#fff;color:#111}
+    *{ -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+    html,body{background:#fff!important;color:#111!important}
     /* hide everything chrome + all non-report views */
     .hubback,.tabs,.head small,#monthBar,.noprint,.toast,
     #viewDash,#viewCounts,#viewSpend,#viewCamp{display:none!important}
-    .head{border:none;padding:0;margin:0 0 8px}
-    .wrap{padding:0;max-width:none}
-    #viewReport{display:block!important}
-    .rep{border:none;box-shadow:none;padding:0;margin:0}   /* let it flow, no forced break */
-    .rep h2,.rep .big{color:#111}
-    .rep h3{color:#a67c00;border-color:#ccc;page-break-after:avoid}
+    .head{border:none;padding:0;margin:0 0 8px;background:#fff!important}
+    .wrap{padding:0;max-width:none;background:#fff!important}
+    #viewReport{display:block!important;background:#fff!important}
+    /* force every report element to white background + dark text */
+    #viewReport, #viewReport *{ background:#fff!important; color:#111!important; box-shadow:none!important; }
+    .rep{border:none;padding:0;margin:0}
+    .rep h2,.rep .big{color:#111!important}
+    .rep .sub{color:#555!important}
+    .rep h3{color:#a67c00!important;border-bottom:1px solid #ccc;page-break-after:avoid}
     table.rt{page-break-inside:auto}
     table.rt tr{page-break-inside:avoid}
-    table.rt td,table.rt th{border-color:#ddd}
-    .pie-card{border:1px solid #ccc;page-break-inside:avoid}
-    .pie-card h4{color:#111}
-    .brand{color:#111}
-    .legend{color:#111}
+    table.rt td,table.rt th{border-color:#ddd!important}
+    table.rt th{color:#666!important}
+    .pie-card{border:1px solid #ccc!important;page-break-inside:avoid}
+    .brand{color:#111!important}
+    .brand b{color:#a67c00!important}
+    /* keep the pie SVG slice colours (don't force those to white) */
+    .pie-card svg *, .legend .dot{ -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+    .pie-card svg path{ background:transparent!important; }
   }
 </style>
 </head>
@@ -191,7 +198,11 @@
         <button class="btn sec" id="repWeekBtn" onclick="genReport('week')"><i class="ti ti-calendar-week"></i> Weekly (est.)</button>
       </div>
       <div class="hint">Monthly uses your exact entered figures. Weekly divides the month evenly (estimate) — your counts &amp; Meta spend are entered per month, not per week. Uses the month selected in the Dashboard/Counts month picker (<span id="repMonthLbl" style="color:var(--gold)"></span>).</div>
-      <button class="btn" style="margin-top:10px" onclick="window.print()"><i class="ti ti-printer"></i> Print / Save as PDF</button>
+      <div class="row2" style="margin-top:10px">
+        <button class="btn sec" onclick="window.print()"><i class="ti ti-printer"></i> Print</button>
+        <button class="btn" id="pdfBtn" onclick="downloadPDF()"><i class="ti ti-file-download"></i> Download PDF</button>
+      </div>
+      <div class="hint" style="margin-top:6px"><b>Download PDF</b> saves the file directly. <b>Print</b> opens your printer (or choose “Save as PDF” there).</div>
     </div>
     <div id="reportOut"></div>
   </div>
@@ -254,6 +265,7 @@
 <div class="toast" id="toast"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <script>
 const SUPABASE_URL="https://eychljpzorzmaveixlnu.supabase.co";
 const SUPABASE_ANON="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV5Y2hsanB6b3J6bWF2ZWl4bG51Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2NDk2NjQsImV4cCI6MjA5NzIyNTY2NH0.6dA1zhz5ZIwf8byFB8vhfOzPI-uPPdPihEr1b8GG_oA";
@@ -736,6 +748,42 @@ function overlapsMonth(r,ym){
   const mStart=new Date(y,m-1,1), mEnd=new Date(y,m,0);
   const ps=new Date(r.period_start), pe=new Date(r.period_end);
   return pe>=mStart && ps<=mEnd;
+}
+
+/* ---------- download the report as a PDF (white background) ---------- */
+async function downloadPDF(){
+  const src=$('reportOut');
+  if(!src || !src.innerHTML.trim()){ toast('Generate a report first (tap Monthly or Weekly).',true); return; }
+  const btn=$('pdfBtn'); const oldTxt=btn?btn.innerHTML:'';
+  if(btn){ btn.disabled=true; btn.innerHTML='<i class="ti ti-loader"></i> Building PDF…'; }
+  // clone the report into a white-themed wrapper so colours print correctly
+  const wrap=document.createElement('div');
+  wrap.style.cssText='background:#fff;color:#111;padding:18px;width:720px;font-family:-apple-system,BlinkMacSystemFont,\"Segoe UI\",Roboto,sans-serif';
+  wrap.innerHTML=
+    '<div style="font-weight:900;font-size:20px;margin-bottom:4px;color:#111">GRAND<span style="color:#a67c00">LAB</span></div>'
+    + src.innerHTML;
+  // force white bg + dark text on all cloned nodes, keep pie fills
+  wrap.querySelectorAll('*').forEach(el=>{
+    el.style.background='#fff'; el.style.boxShadow='none';
+    if(!el.closest('svg')) el.style.color='#111';
+    if(el.tagName==='H3') el.style.color='#a67c00';
+  });
+  wrap.querySelectorAll('td,th').forEach(el=>{ el.style.borderColor='#ddd'; });
+  wrap.querySelectorAll('.pie-card').forEach(el=>{ el.style.border='1px solid #ccc'; });
+  document.body.appendChild(wrap);
+  const fname='GrandLab_Marketing_'+YM+(MODE==='split'?'_split':'')+'.pdf';
+  try{
+    await html2pdf().set({
+      margin:[10,10,10,10],
+      filename:fname,
+      image:{type:'jpeg',quality:0.98},
+      html2canvas:{scale:2,backgroundColor:'#ffffff',useCORS:true},
+      jsPDF:{unit:'mm',format:'a4',orientation:'portrait'},
+      pagebreak:{mode:['css','legacy']}
+    }).from(wrap).save();
+    toast('PDF downloaded ✓');
+  }catch(e){ toast('PDF failed: '+(e.message||e),true); }
+  finally{ document.body.removeChild(wrap); if(btn){ btn.disabled=false; btn.innerHTML=oldTxt; } }
 }
 
 boot();
