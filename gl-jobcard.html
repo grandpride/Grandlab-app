@@ -965,9 +965,17 @@ function onJcLeadSource(){
   if(v!=='referral'){ JC_REFERRER=null; if($('f_reffound'))$('f_reffound').textContent=''; if($('f_refphone'))$('f_refphone').value=''; }
 }
 let _jcreft=null;
+/* Normalize a Malaysian phone to 60-prefixed digits for consistent storage. */
+function normMY_(raw){
+  let d=(raw||'').replace(/\D/g,'');
+  if(!d) return '';
+  if(d.startsWith('60')) return d;
+  if(d.startsWith('0'))  return '60'+d.slice(1);
+  return '60'+d;
+}
 function jcLookupReferrer(){ clearTimeout(_jcreft); _jcreft=setTimeout(_jcDoRefLookup,450); }
 async function _jcDoRefLookup(){
-  const digits=($('f_refphone').value||'').replace(/\D/g,'');
+  const digits=normMY_(($('f_refphone').value||''));
   JC_REFERRER=null;
   if(digits.length<7){ $('f_reffound').textContent=''; return; }
   $('f_reffound').style.color='var(--text2)'; $('f_reffound').textContent='Searching…';

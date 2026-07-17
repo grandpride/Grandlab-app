@@ -423,6 +423,15 @@ function bkSetType(t){
 
 const esc=s=>(s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const normPhone=p=>(p||'').replace(/[^0-9]/g,'');
+/* Normalize a Malaysian phone to 60-prefixed digits:
+   0116... -> 60116..., 116... -> 60116..., 60116... -> unchanged. */
+function normMY_(raw){
+  let d=(raw||'').replace(/\D/g,'');
+  if(!d) return '';
+  if(d.startsWith('60')) return d;
+  if(d.startsWith('0'))  return '60'+d.slice(1);
+  return '60'+d;   // bare '11...' -> '6011...'
+}
 function toast(t,err){const e=$('toast');e.textContent=t;e.className='toast show'+(err?' err':'');setTimeout(()=>e.className='toast',1900);}
 
 /* ---------- services from gl_services (with is_coating flag) ---------- */
@@ -897,7 +906,7 @@ function onLeadSource(){
 let _reft=null;
 function lookupReferrer(){ clearTimeout(_reft); _reft=setTimeout(_doRefLookup,450); }
 async function _doRefLookup(){
-  const digits=($('refPhone').value||'').replace(/\D/g,'');
+  const digits=normMY_(($('refPhone').value||''));
   REFERRER=null;
   if(digits.length<7){ $('refFound').textContent=''; return; }
   $('refFound').style.color='var(--muted)'; $('refFound').textContent='Searching…';
