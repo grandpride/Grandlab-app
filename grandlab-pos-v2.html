@@ -462,6 +462,12 @@ button,input{font-family:inherit}
         <option value="workshop">Workshop Lemans</option>
         <option value="showroom">Showroom Palm Motor</option>
       </select>
+      <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px">Returning customer? <span style="color:var(--ink3);font-weight:400">(existing GrandLab customer)</span></label>
+      <select id="etxReturning" class="cat-search" style="margin-bottom:16px">
+        <option value="">— unchanged —</option>
+        <option value="yes">Yes — returning</option>
+        <option value="no">No — new customer</option>
+      </select>
       <button class="btn btn-blue" onclick="saveEditTx()"><i class="ti ti-device-floppy"></i> Save changes</button>
     </div>
   </div>
@@ -839,9 +845,14 @@ async function openEditTx(i){
   // preload the linked job's current source (if any) into the Cust-from-where dropdown
   if($('etxSource')){
     $('etxSource').value='';
+    if($('etxReturning')) $('etxReturning').value='';
     if(r.job_id){
-      try{ const {data:jb}=await sb.from('gl_jobs').select('lead_source').eq('id',r.job_id).maybeSingle();
-        if(jb && jb.lead_source) $('etxSource').value=jb.lead_source; }catch(e){}
+      try{ const {data:jb}=await sb.from('gl_jobs').select('lead_source,is_returning').eq('id',r.job_id).maybeSingle();
+        if(jb){
+          if(jb.lead_source) $('etxSource').value=jb.lead_source;
+          if($('etxReturning') && jb.is_returning===true) $('etxReturning').value='yes';
+          else if($('etxReturning') && jb.is_returning===false) $('etxReturning').value='no';
+        } }catch(e){}
     }
   }
   $('etxModal').classList.add('show');
@@ -871,10 +882,15 @@ async function saveEditTx(){
   }
   const {error}=await sb.from('gl_payments').update(upd).eq('id',r.id);
   if(error){ alert('Update failed: '+error.message); return; }
-  // if a Cust-from-where was chosen, save it onto the linked job (drives the marketing report)
+  // if a Cust-from-where or Returning was chosen, save onto the linked job (drives the marketing report)
   const src=$('etxSource')?$('etxSource').value:'';
-  if(src && r.job_id){
-    try{ await sb.from('gl_jobs').update({lead_source:src}).eq('id',r.job_id); }catch(e){}
+  const ret=$('etxReturning')?$('etxReturning').value:'';
+  if((src || ret) && r.job_id){
+    const jupd={};
+    if(src) jupd.lead_source=src;
+    if(ret==='yes') jupd.is_returning=true;
+    else if(ret==='no') jupd.is_returning=false;
+    if(Object.keys(jupd).length){ try{ await sb.from('gl_jobs').update(jupd).eq('id',r.job_id); }catch(e){} }
   }
   toast('Transaction updated ✓');
   closeModal('etxModal'); loadDashboard(); loadTakings();
