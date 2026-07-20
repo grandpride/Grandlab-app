@@ -1506,6 +1506,7 @@ async function fetchSlides(){
       rows.forEach(row=>{
         if(row.id==='mysterybox') MYSTERY=Object.assign({},MYSTERY,row.data||{});
         if(row.id==='warranty'){ if(row.data?.url) STYLE.warrantyUrl=row.data.url; if(row.data?.img) STYLE.warrantyImg=row.data.img; }
+        if(row.id==='glwarranty'){ if(row.data?.url) STYLE.glWarrantyUrl=row.data.url; if(row.data?.img) STYLE.glWarrantyImg=row.data.img; }
         if(row.id==='highlights') HIGHLIGHTS=Object.assign({},HIGHLIGHTS,row.data||{});
         if(row.id==='reviews') REVIEWS=Object.assign({},REVIEWS,row.data||{});
         if(row.id==='social') SOCIAL=Object.assign({},SOCIAL,row.data||{});
@@ -2370,7 +2371,8 @@ async function renderHome(){
     catTiles.push(`<div class="svc-tile" onclick="openCategory('Other')">${tileInner(null,'🧽','Other')}</div>`);
   }
   // Mystery Box removed — no longer shown
-  // Warranty tile
+  // Warranty tiles — GrandLab first, then AX Film
+  catTiles.push(`<div class="svc-tile" onclick="openGLWarranty()">${tileInner(STYLE.glWarrantyImg,'🛡️','GrandLab E-Warranty')}</div>`);
   catTiles.push(`<div class="svc-tile" onclick="openWarranty()">${tileInner(STYLE.warrantyImg,'🛡️','AX Film E-Warranty')}</div>`);
   catTiles.push(`<div class="svc-tile" onclick="openSpinTasks()">${tileInner('','🎡','Spin & Win')}</div>`);
   const grid = catTiles.join('') || '<div class="guest-banner" style="grid-column:1/-1">No services yet. Add them in the admin.</div>';
@@ -3292,6 +3294,9 @@ async function renderServicesScreen(){
         : '<div class="guest-banner">No services yet. Add them in the admin.</div>'}
       <div class="sec-title" style="margin-top:26px">More</div>
       <div class="svc-special-grid">
+        <div class="svc-special" onclick="openGLWarranty()">
+          <div class="sp-ic">🛡️</div><div class="sp-nm">GrandLab<br>Warranty Check</div>
+        </div>
         <div class="svc-special" onclick="openWarranty()">
           <div class="sp-ic">🛡️</div><div class="sp-nm">AX Film<br>Warranty Check</div>
         </div>
@@ -3302,6 +3307,13 @@ async function renderServicesScreen(){
 
 function openWarranty(){
   const url=(STYLE.warrantyUrl||'https://axfilm.com.my/warranty/');
+  window.open(url,'_blank');
+}
+
+/* GrandLab e-Warranty — coating, PPF and wrapping applied by GrandLab.
+   Customers look up their certificate by car plate. */
+function openGLWarranty(){
+  const url=(STYLE.glWarrantyUrl||'https://grandpride.github.io/Grandlab-app/gl-warranty.html');
   window.open(url,'_blank');
 }
 
