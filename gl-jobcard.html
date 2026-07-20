@@ -1018,8 +1018,16 @@ async function _doLookup(){
       const {data:c}=await sb.rpc('gl_lookup_customer',{p_phone:digits});
       const cust=Array.isArray(c)?c[0]:c;
       const {data:cars}=await sb.rpc('gl_lookup_cars',{p_phone:digits});
-      const car=(cars||[]).find(x=>x.plate||x.model);
-      if(cust||car){ wk={name:cust?cust.name:'', email:cust?cust.email:'', phone:digits, plate:car?car.plate:'', model:car?car.model:'', car_type:car?car.car_type:''}; }
+      // If a plate is already entered, use THAT car — a fleet customer can have
+      // many cars on one phone, and picking the first row filled the wrong model.
+      const typedPlate=($('f_plate').value||'').trim().toUpperCase().replace(/\s+/g,'');
+      const norm=p=>String(p||'').toUpperCase().replace(/\s+/g,'');
+      let car=null;
+      if(typedPlate){ car=(cars||[]).find(x=>norm(x.plate)===typedPlate)||null; }
+      // only fall back to "any car" when we don't know the plate yet
+      if(!car && !typedPlate){ car=(cars||[]).find(x=>x.plate||x.model)||null; }
+      if(cust||car){ wk={name:cust?cust.name:'', email:cust?cust.email:'', phone:digits,
+        plate: car?car.plate:typedPlate, model: car?car.model:'', car_type: car?car.car_type:''}; }
     }catch(e){}
     if(wk){ JC_EXISTING=true; jcMarkReturning(); fillFromWalkin_(wk); }
     else { JC_EXISTING=false; jcMarkReturning(); $('custFound').innerHTML='<span style="color:var(--warn-text)">New customer</span>'; }
