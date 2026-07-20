@@ -2112,6 +2112,67 @@ async function saveNewCustomer(){
 }
 
 /* ---------- confirm payment ---------- */
+/* ---------- e-WARRANTY auto-registration ----------
+   After a paid checkout, scan the job's services. Any service that matches a
+   warrantable product (gl_warranty_products) creates a gl_warranties record
+   with the right period + expiry. Works for full-car and à la carte parts. */
+let WARR_PRODUCTS=null;
+async function loadWarrantyProducts_(){
+  if(WARR_PRODUCTS) return WARR_PRODUCTS;
+  const {data}=await sb.from('gl_warranty_products').select('*').eq('active',true);
+  WARR_PRODUCTS=data||[];
+  return WARR_PRODUCTS;
+}
+function matchWarrantyProduct_(desc, products){
+  const s=(desc||'').toLowerCase();
+  for(const p of products){
+    const kws=(p.match_keywords||'').split('|').map(k=>k.trim()).filter(Boolean);
+    if(kws.some(k=>s.includes(k))) return p;
+  }
+  return null;
+}
+/* pull a coverage label out of the service name (Full Car / Side Mirror / Bumper …) */
+function coverageFrom_(desc){
+  const s=(desc||'').toLowerCase();
+  const map=[['full car','Full Car'],['full front','Full Front'],['front bumper','Front Bumper'],
+    ['side mirror','Side Mirror'],['bonnet','Bonnet'],['hood','Bonnet'],['roof','Roof'],
+    ['bumper','Bumper'],['door','Door'],['boot','Boot'],['fender','Fender'],['pillar','Pillar'],
+    ['headlight','Headlight'],['windscreen','Windscreen']];
+  for(const [k,v] of map){ if(s.includes(k)) return v; }
+  return 'Full Car';
+}
+async function registerWarranties_(cur, invoice){
+  const svcs=jobServices(cur)||[];
+  if(!svcs.length) return;
+  const products=await loadWarrantyProducts_();
+  if(!products.length) return;
+  const today=new Date().toISOString().slice(0,10);
+  for(const s of svcs){
+    const desc=svcDesc(s);
+    const prod=matchWarrantyProduct_(desc, products);
+    if(!prod) continue;                      // not a warrantable product
+    // avoid duplicate: same invoice + product already registered?
+    const {data:dup}=await sb.from('gl_warranties').select('id')
+      .eq('invoice_no',invoice).ilike('product_name',prod.product_name).limit(1);
+    if(dup && dup.length) continue;
+    // compute expiry
+    const inst=new Date(today+'T00:00:00');
+    const exp=new Date(inst); exp.setFullYear(exp.getFullYear()+Math.floor(prod.warranty_years));
+    const remMonths=Math.round((prod.warranty_years%1)*12);
+    if(remMonths) exp.setMonth(exp.getMonth()+remMonths);
+    const cert='GLW-'+today.slice(2).replace(/-/g,'')+'-'+Math.random().toString(36).slice(2,6).toUpperCase();
+    await sb.from('gl_warranties').insert({
+      cert_no:cert,
+      customer_name:recordName_(cur), phone:cur.hp||cur.phone||'', email:cur.email||null,
+      car_model:cur.model||'', plate:(cur.plate||'').toUpperCase(),
+      product_name:prod.product_name, category:prod.category, coverage:coverageFrom_(desc),
+      install_date:today, warranty_years:prod.warranty_years, expiry_date:exp.toISOString().slice(0,10),
+      invoice_no:invoice, outlet:'GRANDPRIDE LUXURY TRAVEL SDN BHD',
+      job_id:cur._walkin?null:String(cur.id), status:'active'
+    });
+  }
+}
+
 async function confirmPay(){
   if(!PAY.method) return;
   // resolve the method label to store (handles split + voucher)
@@ -2181,6 +2242,7 @@ async function confirmPay(){
       items:JSON.stringify(jobServices(CUR).map(s=>({desc:svcDesc(s),price:svcPrice(s),qty:s.qty||1,code:s.code||''})))
     });
     if(payErr) throw new Error('Payment: '+payErr.message);
+    registerWarranties_(CUR, invoice).catch(e=>console.warn('warranty:',e));
     if(!CUR._walkin){
       await sb.from('gl_jobs').update({status:'paid', payment:methodLabel, collected:true, total:PAY.gross, on_hold:false}).eq('id',CUR.id);
       JOBS=JOBS.filter(j=>j.id!==CUR.id);

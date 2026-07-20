@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>GrandLab e-Warranty</title>
+<link href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.47.0/tabler-icons.min.css" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0a0a0a; --card:#151515; --card2:#1c1c1a; --line:#2a2a26;
+    --gold:#F5C518; --text:#f4f4f0; --muted:#9a9a90; --muted2:#6a6a62;
+    --green:#16A34A; --red:#e0533d; --amber:#d99a1c;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;font-size:15px;line-height:1.5;min-height:100vh}
+  a{color:inherit}
+  .hidden{display:none!important}
+
+  .top{background:linear-gradient(180deg,#111 0%,#0a0a0a 100%);border-bottom:1px solid var(--line);padding:22px 16px 20px;text-align:center}
+  .logo{font-weight:900;font-size:26px;letter-spacing:1px}
+  .logo span{color:var(--gold)}
+  .top .sub{color:var(--muted);font-size:12px;letter-spacing:.14em;text-transform:uppercase;margin-top:4px}
+
+  .wrap{max-width:640px;margin:0 auto;padding:20px 16px 60px}
+
+  .search-card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:20px;margin-bottom:18px}
+  .search-card h1{font-size:18px;font-weight:800;margin-bottom:4px}
+  .search-card p{font-size:13px;color:var(--muted);margin-bottom:16px}
+  .search-row{display:flex;gap:8px}
+  .search-row input{flex:1;background:var(--card2);border:1px solid var(--line);border-radius:12px;color:#fff;padding:14px 15px;font-size:17px;font-family:inherit;text-transform:uppercase;letter-spacing:1px;font-weight:700;outline:none}
+  .search-row input:focus{border-color:var(--gold)}
+  .search-row button{flex:none;background:var(--gold);color:#080808;border:none;border-radius:12px;padding:0 20px;font-weight:800;font-size:15px;font-family:inherit;cursor:pointer;display:flex;align-items:center;gap:6px}
+  .search-hint{font-size:11px;color:var(--muted2);margin-top:10px}
+
+  .status{text-align:center;color:var(--muted);padding:30px 12px;font-size:14px}
+  .status.err{color:var(--red)}
+
+  /* certificate card */
+  .cert{background:var(--card);border:1px solid var(--line);border-radius:18px;overflow:hidden;margin-bottom:18px}
+  .cert-hd{background:linear-gradient(135deg,#1a1a17 0%,#141412 100%);border-bottom:1px solid var(--line);padding:18px 18px 16px;position:relative}
+  .cert-hd .cat{display:inline-block;font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;padding:4px 10px;border-radius:20px;background:rgba(245,197,24,.14);color:var(--gold);margin-bottom:10px}
+  .cert-hd h2{font-size:19px;font-weight:800;line-height:1.25}
+  .cert-hd .cover{font-size:13px;color:var(--muted);margin-top:3px}
+  .statusbadge{position:absolute;top:18px;right:18px;font-size:11px;font-weight:800;padding:5px 11px;border-radius:20px}
+  .s-active{background:rgba(22,163,74,.16);color:#3ec76e}
+  .s-expired{background:rgba(224,83,61,.16);color:var(--red)}
+  .s-void{background:rgba(224,83,61,.16);color:var(--red)}
+
+  .cert-bd{padding:16px 18px}
+  .drow{display:flex;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px solid var(--line);font-size:14px}
+  .drow:last-child{border-bottom:none}
+  .drow .k{color:var(--muted);flex:none}
+  .drow .v{text-align:right;font-weight:600}
+  .expiry-box{background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:14px;margin-top:14px;text-align:center}
+  .expiry-box .lbl{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:700}
+  .expiry-box .val{font-size:20px;font-weight:900;margin-top:3px}
+  .expiry-box .rem{font-size:12px;color:var(--muted);margin-top:2px}
+
+  .photos{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:14px}
+  .photos img{width:100%;aspect-ratio:1/1;object-fit:cover;border-radius:10px;border:1px solid var(--line);cursor:pointer}
+  .sec-t{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:700;margin:16px 0 8px}
+
+  .terms{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:18px;margin-bottom:18px}
+  .terms h3{font-size:14px;font-weight:800;margin-bottom:10px;color:var(--gold)}
+  .terms h4{font-size:13px;font-weight:800;margin:14px 0 6px}
+  .terms ul{list-style:none;margin:0}
+  .terms li{font-size:13px;color:var(--muted);padding:4px 0 4px 18px;position:relative;line-height:1.5}
+  .terms li:before{content:"•";position:absolute;left:4px;color:var(--gold)}
+  .terms li.bad:before{content:"✕";color:var(--red);font-size:11px}
+  .terms li.good:before{content:"✓";color:var(--green);font-size:11px}
+  .terms .tintro{font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:6px}
+  .terms .tnote{font-size:12px;color:var(--muted2);line-height:1.6;margin-top:12px;padding-top:10px;border-top:1px solid var(--line);font-style:italic}
+  .terms li.warn:before{content:"⚠";color:var(--amber);font-size:11px}
+  .terms .wtbl{width:100%;border-collapse:collapse;margin:8px 0 4px;font-size:12.5px}
+  .terms .wtbl th{text-align:left;color:var(--muted);font-weight:700;padding:6px 8px;border-bottom:1px solid var(--line);text-transform:uppercase;font-size:11px}
+  .terms .wtbl td{padding:7px 8px;border-bottom:1px solid var(--line);color:var(--text)}
+  .terms .wtbl td:nth-child(2){color:var(--gold);font-weight:700;white-space:nowrap}
+  .terms .wtbl td:nth-child(3){color:var(--muted);white-space:nowrap}
+
+  .foot{text-align:center;color:var(--muted2);font-size:12px;padding:20px 0 0;line-height:1.7}
+  .foot a{color:var(--gold);text-decoration:none}
+
+  /* lightbox */
+  .lb{position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:100;display:none;align-items:center;justify-content:center;padding:20px}
+  .lb.show{display:flex}
+  .lb img{max-width:100%;max-height:90vh;border-radius:10px}
+  .lb .x{position:absolute;top:16px;right:18px;font-size:30px;color:#fff;cursor:pointer}
+</style>
+</head>
+<body>
+
+<div class="top">
+  <div class="logo">GRAND<span>LAB</span></div>
+  <div class="sub">e-Warranty</div>
+</div>
+
+<div class="wrap">
+  <div class="search-card">
+    <h1>Check your warranty</h1>
+    <p>Enter your car plate number to view your GrandLab warranty certificate.</p>
+    <div class="search-row">
+      <input id="plate" type="text" placeholder="e.g. VBD838" autocomplete="off" onkeydown="if(event.key==='Enter')doSearch()">
+      <button onclick="doSearch()"><i class="ti ti-search"></i> Search</button>
+    </div>
+    <div class="search-hint">Warranty is registered automatically after your service. If nothing shows, please contact us.</div>
+  </div>
+
+  <div id="results"></div>
+  <div class="status hidden" id="status"></div>
+</div>
+
+<div class="lb" id="lb" onclick="this.classList.remove('show')">
+  <span class="x">&times;</span>
+  <img id="lbImg" src="" alt="">
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SUPABASE_URL="https://eychljpzorzmaveixlnu.supabase.co";
+const SUPABASE_ANON="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV5Y2hsanB6b3J6bWF2ZWl4bG51Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2NDk2NjQsImV4cCI6MjA5NzIyNTY2NH0.6dA1zhz5ZIwf8byFB8vhfOzPI-uPPdPihEr1b8GG_oA";
+const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON);
+const $=id=>document.getElementById(id);
+const esc=s=>(s||'').toString().replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+/* category-specific warranty terms */
+const TERMS={
+  coating:{
+    title:'Ceramic Coating Warranty — Terms & Conditions',
+    intro:'This certificate warrants that the ceramic coating applied to your vehicle is protected against manufacturing and workmanship defects for the period stated above, subject to the terms below. The warranty period depends on the coating package selected and requires scheduled maintenance to remain valid.',
+    periodTable:[
+      ['Gyeon Q2 Cancoat','2 Years','Every 2 months'],
+      ['Gyeon Q2 Cancoat Pro','3 Years','As advised'],
+      ['Gyeon Q2 MOHS','4 Years','Every 4 months'],
+      ['Gyeon Q2 Infinite','6 Years','Every 6 months'],
+      ['Koch Chemie C0.02 Ceramic','4 Years','As advised'],
+    ],
+    covers:[
+      'Loss of coating performance caused by genuine product failure',
+      'Uneven coating layer or streaking attributable to workmanship',
+      'Premature coating degradation despite proper, scheduled maintenance',
+      'Loss of hydrophobic (water-beading) performance under normal use',
+    ],
+    maintenance:[
+      'Maintenance must be performed at the interval specified for your coating package (see table above)',
+      'Each scheduled maintenance must be carried out by GrandLab or an authorised outlet to keep the warranty valid',
+      'Maintenance frequency may be adjusted based on the follow-up package provided by your sales advisor',
+      'Keep your service records — proof of scheduled maintenance is required for any warranty claim',
+    ],
+    noMaint:[
+      'Water beading and hydrophobic performance will reduce',
+      'The surface becomes rough and loses smoothness',
+      'Gloss level decreases over time',
+      'Contamination builds up on the paint surface',
+      'Oxidation happens faster',
+      'Overall coating lifespan shortens significantly',
+    ],
+    care:[
+      'Wash regularly using a pH-neutral shampoo',
+      'Avoid automatic brush car washes',
+      'Remove bird droppings, tree sap and contaminants immediately',
+      'Avoid parking under heavy tree sap for long periods',
+      'Dry with a clean microfibre towel to prevent water spots',
+      'Follow the maintenance interval strictly',
+    ],
+    void:[
+      'Maintenance not done according to the required schedule',
+      'Vehicle washed using strong acid or harsh chemicals',
+      'Polishing or paint correction done by a third party',
+      'Surface damaged by accident, scratches, or repainting',
+      'Contamination left too long (bird droppings / tree sap / cement / chemical stain)',
+      'Coating applied over pre-existing paint defects disclosed before installation',
+    ],
+    note:'This warranty covers the coating only and does not cover the vehicle\u2019s paint, accident damage, or wear from improper care. GrandLab\u2019s liability is limited to re-application or rectification of the coating at the installer\u2019s discretion.'
+  },
+  ppf:{
+    title:'Paint Protection Film (PPF) Warranty — Terms & Conditions',
+    intro:'This certificate warrants that the ONE+ PPF TPU film applied to your vehicle is protected against manufacturing defects and workmanship faults for the period stated above, subject to the terms below. Coverage applies to the specific area(s) installed, whether full-body or individual panels.',
+    periodTable:[
+      ['ONE+ PPF TPU (Glossy)','1 Year','Proper hand-wash care'],
+      ['ONE+ PPF TPU (Matte)','1 Year','Proper hand-wash care'],
+    ],
+    covers:[
+      'Yellowing or discolouration of the film under normal use',
+      'Cracking, blistering, or peeling due to genuine product failure',
+      'Loss of self-healing performance from a manufacturing defect',
+      'Adhesive failure or lifting not caused by external damage',
+    ],
+    maintenance:[
+      'Allow the recommended curing period before the first wash (typically 7 days)',
+      'Hand wash is recommended; avoid high-pressure washing directly on film edges',
+      'Keep your installation record and invoice for any warranty claim',
+    ],
+    noMaint:[
+      'Contaminants left on the film can stain or etch the surface',
+      'Edges may lift if exposed to high-pressure washing too early',
+      'Self-healing performance may reduce if the film is not kept clean',
+    ],
+    care:[
+      'Wash regularly using a pH-neutral shampoo',
+      'Avoid abrasive brushes and automatic car washes',
+      'Remove bird droppings, tree sap, and tar promptly',
+      'Do not wax or polish the film with abrasive products',
+      'Dry with a clean microfibre towel',
+    ],
+    void:[
+      'Damage from accident, road debris impact, or improper handling',
+      'Film damaged by intentional scratching or sharp objects',
+      'Installation area repainted or modified by a third party',
+      'Use of harsh chemicals, solvents, or abrasive cleaning methods',
+      'Peeling caused by pre-existing paint defects or repainted panels disclosed before installation',
+      'Film removed and re-installed by a third party',
+    ],
+    note:'This warranty covers the PPF film only and does not cover the vehicle\u2019s paint, accident damage, or damage from improper care. GrandLab\u2019s liability is limited to re-application or replacement of the affected film at the installer\u2019s discretion.'
+  },
+  wrapping:{
+    title:'Wrapping Film Warranty — Terms & Conditions',
+    intro:'This certificate warrants that the wrapping film applied to your vehicle is protected against manufacturing defects and workmanship faults for the period stated above, subject to the terms below. Coverage applies to the specific area(s) wrapped.',
+    periodTable:[
+      ['NAKA Wrapping Film','2 Years','Proper hand-wash care'],
+      ['KTN Wrapping Film','2 Years','Proper hand-wash care'],
+    ],
+    covers:[
+      'Excessive fading or discolouration under normal use',
+      'Adhesive failure or lifting due to a product defect',
+      'Cracking or bubbling caused by a manufacturing fault',
+      'Delamination not caused by external damage',
+    ],
+    maintenance:[
+      'Allow the recommended curing period before the first wash',
+      'Hand wash only; avoid automatic brush washes',
+      'Avoid high-pressure washing directly on film edges and seams',
+      'Keep your installation record and invoice for any warranty claim',
+    ],
+    noMaint:[
+      'Contaminants left too long can stain the wrap surface',
+      'Edges and seams may lift if exposed to high-pressure washing',
+      'Colour and finish may dull without regular gentle cleaning',
+    ],
+    care:[
+      'Wash regularly using a pH-neutral shampoo',
+      'Dry with a clean microfibre towel',
+      'Remove contaminants (bird droppings / sap / fuel spills) immediately',
+      'Avoid prolonged parking under direct sun where possible',
+      'Do not use petrol, solvents, or abrasive cleaners on the wrap',
+    ],
+    void:[
+      'Damage from accident, impact, or improper handling',
+      'Film damaged by sharp objects or intentional scratching',
+      'Panels repainted or modified by a third party after installation',
+      'Use of harsh chemicals, solvents, or abrasive cleaning',
+      'Lifting caused by pre-existing paint defects or repainted panels disclosed before installation',
+      'Wrap removed and re-installed by a third party',
+    ],
+    note:'This warranty covers the wrapping film only and does not cover the vehicle\u2019s paint, accident damage, or damage from improper care. GrandLab\u2019s liability is limited to re-application or replacement of the affected film at the installer\u2019s discretion.'
+  }
+};
+
+function fmtDate(d){
+  if(!d) return '—';
+  const dt=new Date((''+d).length<=10?d+'T00:00:00':d);
+  if(isNaN(dt)) return '—';
+  return dt.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
+}
+function warrantyStatus(w){
+  if(w.status==='void') return 'void';
+  if(w.expiry_date){ const ex=new Date(w.expiry_date+'T00:00:00'); if(ex<new Date()) return 'expired'; }
+  return 'active';
+}
+function monthsLeft(expiry){
+  if(!expiry) return null;
+  const ex=new Date(expiry+'T00:00:00'), now=new Date();
+  if(ex<now) return 0;
+  return Math.max(0, Math.round((ex-now)/(30.44*86400000)));
+}
+
+async function doSearch(){
+  const plate=($('plate').value||'').trim().toUpperCase().replace(/\s+/g,'');
+  $('results').innerHTML='';
+  if(plate.length<3){ showStatus('Please enter a valid plate number.',true); return; }
+  showStatus('Searching…',false);
+  const {data,error}=await sb.from('gl_warranties')
+    .select('*').ilike('plate',plate).order('install_date',{ascending:false});
+  if(error){ showStatus('Something went wrong. Please try again.',true); return; }
+  if(!data||!data.length){
+    showStatus('No warranty found for '+plate+'. If you recently did a service, it may take a short while to appear — or please contact us.',true);
+    return;
+  }
+  hideStatus();
+  render(data);
+}
+
+function render(list){
+  const out=list.map(w=>certHtml(w)).join('');
+  // terms block from the first result's category
+  const cat=(list[0].category||'coating').toLowerCase();
+  const t=TERMS[cat]||TERMS.coating;
+  const periodTbl = t.periodTable ? `<h4>Warranty period by package</h4>
+    <table class="wtbl"><tr><th>Coating</th><th>Warranty</th><th>Maintenance</th></tr>${
+      t.periodTable.map(r=>`<tr><td>${esc(r[0])}</td><td>${esc(r[1])}</td><td>${esc(r[2])}</td></tr>`).join('')}</table>` : '';
+  const noMaint = t.noMaint ? `<h4>If no maintenance is done</h4><ul>${t.noMaint.map(x=>`<li class="warn">${esc(x)}</li>`).join('')}</ul>` : '';
+  const terms=`<div class="terms">
+    <h3>${esc(t.title)}</h3>
+    ${t.intro?`<p class="tintro">${esc(t.intro)}</p>`:''}
+    ${periodTbl}
+    <h4>What the warranty covers</h4>
+    <ul>${t.covers.map(x=>`<li class="good">${esc(x)}</li>`).join('')}</ul>
+    <h4>Maintenance requirement</h4>
+    <ul>${t.maintenance.map(x=>`<li>${esc(x)}</li>`).join('')}</ul>
+    ${noMaint}
+    <h4>How to care for your ${cat==='coating'?'coating':(cat==='ppf'?'film':'wrap')}</h4>
+    <ul>${t.care.map(x=>`<li class="good">${esc(x)}</li>`).join('')}</ul>
+    <h4>Warranty is void if</h4>
+    <ul>${t.void.map(x=>`<li class="bad">${esc(x)}</li>`).join('')}</ul>
+    ${t.note?`<p class="tnote">${esc(t.note)}</p>`:''}
+  </div>`;
+  const foot=`<div class="foot">
+    Installer Outlet — ${esc(list[0].outlet||'GRANDPRIDE LUXURY TRAVEL SDN BHD')}<br>
+    Thank you for choosing GrandLab. For enquiries, contact your installer outlet.
+  </div>`;
+  $('results').innerHTML=out+terms+foot;
+}
+
+function certHtml(w){
+  const st=warrantyStatus(w);
+  const stCls={active:'s-active',expired:'s-expired',void:'s-void'}[st];
+  const stLbl={active:'Active',expired:'Expired',void:'Void'}[st];
+  const ml=monthsLeft(w.expiry_date);
+  const remTxt = st==='active' && ml!=null ? (ml>=12?(Math.floor(ml/12)+' yr '+(ml%12)+' mo left'):(ml+' month'+(ml===1?'':'s')+' left')) : '';
+  const photos=Array.isArray(w.photos)?w.photos:[];
+  const photoHtml = photos.length? `<div class="sec-t">Reference Photos</div><div class="photos">${
+    photos.map(u=>`<img src="${esc(u)}" onclick="openLb('${esc(u)}')" alt="reference">`).join('')}</div>` : '';
+  return `<div class="cert">
+    <div class="cert-hd">
+      <span class="statusbadge ${stCls}">${stLbl}</span>
+      <span class="cat">${esc((w.category||'').toUpperCase())}</span>
+      <h2>${esc(w.product_name||'Warranty')}</h2>
+      ${w.coverage?`<div class="cover">${esc(w.coverage)}</div>`:''}
+    </div>
+    <div class="cert-bd">
+      <div class="drow"><span class="k">Certificate No.</span><span class="v">${esc(w.cert_no||'—')}</span></div>
+      <div class="drow"><span class="k">Customer</span><span class="v">${esc(w.customer_name||'—')}</span></div>
+      <div class="drow"><span class="k">Vehicle</span><span class="v">${esc(w.car_model||'—')}</span></div>
+      <div class="drow"><span class="k">Plate No.</span><span class="v">${esc(w.plate||'—')}</span></div>
+      <div class="drow"><span class="k">Invoice No.</span><span class="v">${esc(w.invoice_no||'—')}</span></div>
+      <div class="drow"><span class="k">Installation Date</span><span class="v">${fmtDate(w.install_date)}</span></div>
+      <div class="drow"><span class="k">Warranty Period</span><span class="v">${w.warranty_years?esc(w.warranty_years)+' year'+(Number(w.warranty_years)===1?'':'s'):'—'}</span></div>
+      <div class="expiry-box">
+        <div class="lbl">Warranty Valid Until</div>
+        <div class="val" style="color:${st==='active'?'var(--gold)':'var(--red)'}">${fmtDate(w.expiry_date)}</div>
+        ${remTxt?`<div class="rem">${esc(remTxt)}</div>`:''}
+      </div>
+      ${photoHtml}
+    </div>
+  </div>`;
+}
+
+function openLb(u){ $('lbImg').src=u; $('lb').classList.add('show'); }
+function showStatus(msg,isErr){ const s=$('status'); s.textContent=msg; s.className='status'+(isErr?' err':''); s.classList.remove('hidden'); }
+function hideStatus(){ $('status').classList.add('hidden'); }
+
+// allow ?plate=XXX deep link
+const qp=new URLSearchParams(location.search).get('plate');
+if(qp){ $('plate').value=qp.toUpperCase(); doSearch(); }
+</script>
+</body>
+</html>
