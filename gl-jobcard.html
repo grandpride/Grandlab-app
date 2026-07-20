@@ -1019,19 +1019,32 @@ async function _doLookup(){
       const {data:c}=await sb.rpc('gl_lookup_customer',{p_phone:digits});
       const cust=Array.isArray(c)?c[0]:c;
       const {data:cars}=await sb.rpc('gl_lookup_cars',{p_phone:digits});
+      // The RPC can miss rows when the stored phone has a "+" prefix, so also
+      // query gl_walkin directly and match on the core digits.
+      let allCars=(cars||[]).slice();
+      try{
+        const {data:wkRows}=await sb.from('gl_walkin')
+          .select('plate,model,car_type,phone').ilike('phone','%'+core).limit(50);
+        (wkRows||[]).forEach(r=>{
+          const rc=String(r.phone||'').replace(/[^0-9]/g,'').replace(/^60/,'').replace(/^0/,'');
+          if(rc!==core) return;
+          const p=String(r.plate||'').toUpperCase().replace(/\s+/g,'');
+          if(!allCars.some(x=>String(x.plate||'').toUpperCase().replace(/\s+/g,'')===p)) allCars.push(r);
+        });
+      }catch(e){}
       // If a plate is already entered, use THAT car — a fleet customer can have
       // many cars on one phone, and picking the first row filled the wrong model.
       const typedPlate=($('f_plate').value||'').trim().toUpperCase().replace(/\s+/g,'');
       const norm=p=>String(p||'').toUpperCase().replace(/\s+/g,'');
       let car=null;
-      if(typedPlate){ car=(cars||[]).find(x=>norm(x.plate)===typedPlate)||null; }
+      if(typedPlate){ car=allCars.find(x=>norm(x.plate)===typedPlate)||null; }
       // only fall back to "any car" when we don't know the plate yet
-      if(!car && !typedPlate){ car=(cars||[]).find(x=>x.plate||x.model)||null; }
+      if(!car && !typedPlate){ car=allCars.find(x=>x.plate||x.model)||null; }
       if(cust||car){ wk={name:cust?cust.name:'', email:cust?cust.email:'', phone:digits,
         plate: car?car.plate:typedPlate, model: car?car.model:'', car_type: car?car.car_type:''}; }
       // Build the car selector so a walk-in with several cars can switch between
       // them (previously only app-profile customers got a list).
-      const wkCars=(cars||[]).filter(x=>x.plate||x.model);
+      const wkCars=allCars.filter(x=>x.plate||x.model);
       if(wkCars.length){
         WALKIN_CARS=wkCars;
         const sel=$('f_carsel');
@@ -1211,6 +1224,7 @@ function collectJob(){
     name:$('f_name').value.trim() || ($('f_boss')?$('f_boss').value:''),
     hp:$('f_hp2').value.trim()||$('f_hp').value.trim(),
     email:$('f_email').value.trim(), plate:$('f_plate').value.trim().toUpperCase(), model:$('f_model').value.trim(),
+    car_type:($('f_cartype')?$('f_cartype').value:'')||null,
     customer_id:foundProfile?foundProfile.id:null,
     vehicle_id:($('f_carsel').value!=='__new__'&&$('f_carsel').value)?$('f_carsel').value:null,
     booking_id:EDITING&&EDITING.booking_id?EDITING.booking_id:null,
@@ -1445,6 +1459,55 @@ function editJob(id){
   if((CUR_TYPE==='workshop'||CUR_TYPE==='showroom')){ if($('f_org'))$('f_org').value=j.workshop_name||''; if($('f_sentby'))$('f_sentby').value=j.sent_by||''; }
   if(CUR_TYPE==='boss'&&$('f_boss'))$('f_boss').value=j.workshop_name||j.name||'';
   renderSvcs(); renderDefs(); renderPhotos(); showView('new');
+  // restore the car type (saved on the job, else infer from the model text)
+  if($('f_cartype')){
+    if(j.car_type) jcSetType(j.car_type);
+    else jcTypeFromModel(j.model||'');
+  }
+  // build the car selector so the customer's other cars can be picked while editing
+  jcLoadCarsForEdit_(j).catch(e=>console.warn('cars:',e));
+}
+
+/* Editing an existing job: load this customer's other cars into the selector so
+   a wrong car/model can be corrected. Works for app profiles and walk-ins. */
+async function jcLoadCarsForEdit_(j){
+  const sel=$('f_carsel'); if(!sel) return;
+  const digits=String(j.hp||'').replace(/[^0-9]/g,'');
+  if(digits.length<7) return;
+  const norm=p=>String(p||'').toUpperCase().replace(/\s+/g,'');
+  const curPlate=norm(j.plate);
+  // app profile cars first
+  const core=digits.replace(/^60/,'').replace(/^0/,'');
+  const {data:profs}=await sb.from('gl_profiles')
+    .select('id,phone, gl_vehicles(id,make,model,plate)').ilike('phone','%'+core);
+  const prof=(profs||[]).find(p=>String(p.phone||'').replace(/[^0-9]/g,'').replace(/^60/,'').replace(/^0/,'')===core)||null;
+  if(prof && (prof.gl_vehicles||[]).length){
+    CUST_CARS=prof.gl_vehicles;
+    sel.innerHTML=CUST_CARS.map(c=>
+      `<option value="${c.id}"${norm(c.plate)===curPlate?' selected':''}>${esc([c.make,c.model].filter(Boolean).join(' '))} · ${esc(c.plate||'')}</option>`
+    ).join('')+'<option value="__new__">+ Add new car</option>';
+    return;
+  }
+  // walk-in cars (no gl_vehicles rows) — synthetic ids w0, w1, …
+  try{
+    const {data:cars}=await sb.rpc('gl_lookup_cars',{p_phone:digits});
+    let allCars=(cars||[]).slice();
+    // the RPC can miss "+60…" rows, so also read gl_walkin directly
+    const {data:wkRows}=await sb.from('gl_walkin')
+      .select('plate,model,car_type,phone').ilike('phone','%'+core).limit(50);
+    (wkRows||[]).forEach(r=>{
+      const rc=String(r.phone||'').replace(/[^0-9]/g,'').replace(/^60/,'').replace(/^0/,'');
+      if(rc!==core) return;
+      if(!allCars.some(x=>norm(x.plate)===norm(r.plate))) allCars.push(r);
+    });
+    const wkCars=allCars.filter(x=>x.plate||x.model);
+    if(wkCars.length){
+      WALKIN_CARS=wkCars;
+      sel.innerHTML=wkCars.map((c,i)=>
+        `<option value="w${i}"${norm(c.plate)===curPlate?' selected':''}>${esc(c.model||'')} · ${esc(c.plate||'')}</option>`
+      ).join('')+'<option value="__new__">+ Add new car</option>';
+    }
+  }catch(e){}
 }
 function isoDate(s){ // convert "30/6/2026" -> "2026-06-30"
   if(!s)return''; const m=s.match(/(\d{1,2})\/(\d{1,2})\/(\d{2,4})/); if(!m)return'';
