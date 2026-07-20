@@ -2125,6 +2125,10 @@ async function loadWarrantyProducts_(){
 }
 function matchWarrantyProduct_(desc, products){
   const s=(desc||'').toLowerCase();
+  // A maintenance visit services an EXISTING warranty — it must never create a
+  // new one (otherwise every "6x Times Cancoat Coating Maintenance" would issue
+  // a fresh multi-year warranty). Same for touch-ups / removals / refunds.
+  if(/maintenance|maintenence|top ?up|touch ?up|removal|remove|refund|deposit/.test(s)) return null;
   for(const p of products){
     const kws=(p.match_keywords||'').split('|').map(k=>k.trim()).filter(Boolean);
     if(kws.some(k=>s.includes(k))) return p;
