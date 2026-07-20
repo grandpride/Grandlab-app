@@ -155,7 +155,7 @@ html,body{height:100%;background:var(--bg);font-family:-apple-system,BlinkMacSys
             <select id="f_brand" onchange="jcBrandChange()"><option value="">— select brand —</option></select></div>
           <div class="ff"><label>Model</label>
             <select id="f_modelsel" onchange="jcModelChange()" style="display:none"><option value="">— select model —</option></select>
-            <input id="f_model" placeholder="e.g. Toyota Harrier"></div>
+            <input id="f_model" placeholder="e.g. Toyota Harrier" oninput="jcModelTyped()"></div>
         </div>
         <div class="row2">
           <div class="ff"><label>Car Type</label>
@@ -362,6 +362,7 @@ let JC_EXISTING=false, JC_REFERRER=null;   // returning-detect + matched referre
 let CFG={staff_list:[],technicians:[],workshops:[],showrooms:[],bosses:[],imgbb_key:''};
 let SERVICES_CAT=[];   // gl_services catalog for the picker
 let CUST_CARS=[];      // current customer's vehicles
+let WALKIN_CARS=[];    // walk-in customer's cars (no gl_vehicles rows)
 let PHOTOS=[];         // uploaded photo URLs for current job
 
 function toast(m){const t=$('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2200);}
@@ -781,7 +782,7 @@ function convertAppt(a){
 /* ---------- NEW JOB FORM ---------- */
 let SVCS=[], DEFS=[];
 function newJob(){
-  EDITING=null; CUR_TYPE='walkin'; foundProfile=null; CAR_PACKAGES=[]; CUST_CARS=[]; PHOTOS=[]; SEL_TECHS=[];
+  EDITING=null; CUR_TYPE='walkin'; foundProfile=null; CAR_PACKAGES=[]; CUST_CARS=[]; WALKIN_CARS=[]; PHOTOS=[]; SEL_TECHS=[];
   JC_EXISTING=false; JC_REFERRER=null;
   if($('f_leadsrc'))$('f_leadsrc').value=''; if($('jcReferralWrap'))$('jcReferralWrap').style.display='none';
   if($('f_reffound'))$('f_reffound').textContent=''; if($('jcRetBadge'))$('jcRetBadge').textContent='';
@@ -992,7 +993,7 @@ async function _jcDoRefLookup(){
 }
 
 async function _doLookup(){
-  foundProfile=null; CAR_PACKAGES=[]; CUST_CARS=[]; JC_EXISTING=false; $('pkgChips').innerHTML='';
+  foundProfile=null; CAR_PACKAGES=[]; CUST_CARS=[]; WALKIN_CARS=[]; JC_EXISTING=false; $('pkgChips').innerHTML='';
   const digits=($('f_hp').value||'').replace(/[^0-9]/g,'');
   $('f_carsel').innerHTML='<option value="__new__">+ Add new car</option>';
   if(digits.length<7){ $('custFound').textContent=''; return; }
@@ -1028,6 +1029,19 @@ async function _doLookup(){
       if(!car && !typedPlate){ car=(cars||[]).find(x=>x.plate||x.model)||null; }
       if(cust||car){ wk={name:cust?cust.name:'', email:cust?cust.email:'', phone:digits,
         plate: car?car.plate:typedPlate, model: car?car.model:'', car_type: car?car.car_type:''}; }
+      // Build the car selector so a walk-in with several cars can switch between
+      // them (previously only app-profile customers got a list).
+      const wkCars=(cars||[]).filter(x=>x.plate||x.model);
+      if(wkCars.length){
+        WALKIN_CARS=wkCars;
+        const sel=$('f_carsel');
+        if(sel){
+          const chosen=car?norm(car.plate):'';
+          sel.innerHTML=wkCars.map((c,i)=>
+            `<option value="w${i}"${norm(c.plate)===chosen?' selected':''}>${esc([c.model].filter(Boolean).join(' '))} · ${esc(c.plate||'')}</option>`
+          ).join('')+'<option value="__new__">+ Add new car</option>';
+        }
+      }
     }catch(e){}
     if(wk){ JC_EXISTING=true; jcMarkReturning(); fillFromWalkin_(wk); }
     else { JC_EXISTING=false; jcMarkReturning(); $('custFound').innerHTML='<span style="color:var(--warn-text)">New customer</span>'; }
@@ -1046,6 +1060,16 @@ function fillFromWalkin_(wk){
   else jcTypeFromModel(wk.model);                    // else infer from model name
   // load packages for this car by plate (they live in gl_packages now)
   loadCustPackages();
+}
+/* When the model is typed by hand (workshop / showroom / new car), infer the
+   car type from gl_car_models. Debounced; never overrides a type already set. */
+let _jcmt=null;
+function jcModelTyped(){
+  clearTimeout(_jcmt);
+  _jcmt=setTimeout(()=>{
+    if($('f_cartype') && $('f_cartype').value) return;   // respect a manual pick
+    jcTypeFromModel($('f_model').value);
+  }, 500);
 }
 /* infer car type by matching the model name against gl_car_models */
 async function jcTypeFromModel(model){
@@ -1099,7 +1123,18 @@ async function _doPlateLookup(){
 }
 function onCarSel(){
   const v=$('f_carsel').value;
-  if(v==='__new__'){ $('f_model').value=''; $('f_plate').value=''; return; }
+  if(v==='__new__'){ $('f_model').value=''; $('f_plate').value=''; $('f_cartype').value=''; return; }
+  // walk-in cars use synthetic ids w0, w1, … (they have no gl_vehicles row)
+  if(/^w\d+$/.test(v)){
+    const c=WALKIN_CARS[parseInt(v.slice(1),10)];
+    if(c){
+      $('f_model').value=c.model||'';
+      $('f_plate').value=c.plate||'';
+      if(c.car_type) jcSetType(c.car_type); else { $('f_cartype').value=''; jcTypeFromModel(c.model); }
+      loadCustPackages();
+    }
+    return;
+  }
   const c=CUST_CARS.find(x=>x.id===v);
   if(c){ $('f_model').value=[c.make,c.model].filter(Boolean).join(' '); $('f_plate').value=c.plate||''; loadCustPackages(); }
 }
