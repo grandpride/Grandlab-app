@@ -81,6 +81,14 @@
   .terms .wtbl td:nth-child(2){color:var(--gold);font-weight:700;white-space:nowrap}
   .terms .wtbl td:nth-child(3){color:var(--muted);white-space:nowrap}
 
+  .tnc-links{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:16px 16px 6px;margin-bottom:18px}
+  .tnc-h{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:700;margin-bottom:10px}
+  .tnc-link{display:flex;align-items:center;justify-content:space-between;gap:10px;
+    background:var(--card2);border:1px solid var(--line);border-radius:12px;
+    padding:13px 14px;margin-bottom:10px;color:var(--text);text-decoration:none;font-size:14px;font-weight:600}
+  .tnc-link:active{transform:scale(.99)}
+  .tnc-link i.ti-file-text{color:var(--gold);margin-right:6px}
+  .tnc-link i.ti-external-link{color:var(--muted);font-size:15px}
   .foot{text-align:center;color:var(--muted2);font-size:12px;padding:20px 0 0;line-height:1.7}
   .foot a{color:var(--gold);text-decoration:none}
 
@@ -126,324 +134,6 @@ const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON);
 const $=id=>document.getElementById(id);
 const esc=s=>(s||'').toString().replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
-/* warranty terms — generated from the same source as the PDFs */
-const TERMS={
- "coating": {
-  "title": "Ceramic Coating Limited Warranty — Terms & Conditions",
-  "periodTable": [
-   [
-    "Gyeon Q2 Cancoat",
-    "2 Years",
-    "Every 2 months"
-   ],
-   [
-    "Gyeon Q2 Cancoat Pro",
-    "3 Years",
-    "Every 3 months"
-   ],
-   [
-    "Gyeon Q2 MOHS",
-    "4 Years",
-    "Every 4 months"
-   ],
-   [
-    "Gyeon Q2 Matte",
-    "5 Years",
-    "Every 6 months"
-   ],
-   [
-    "Gyeon Q2 Infinite",
-    "5 Years",
-    "Every 6 months"
-   ],
-   [
-    "Koch Chemie C0.02 Ceramic",
-    "4 Years",
-    "Every 4 months"
-   ]
-  ],
-  "sections": [
-   {
-    "h": "WARRANTY INFORMATION",
-    "p": [
-     "This Certificate of Warranty is the only valid proof of a GrandLab ceramic coating application. It records the vehicle, the coating package applied, the installation date and the warranty period. Please verify that all details shown on your certificate are correct within seven (7) days of collection."
-    ],
-    "n": []
-   },
-   {
-    "h": "CONSUMER RIGHTS REMINDER",
-    "p": [
-     "Please ensure that your ceramic coating is applied by GrandLab or an outlet officially authorised by GrandPride Luxury Travel Sdn Bhd. Confirm that your vehicle registration number, coating package and installation date are correctly recorded on this certificate at the time of collection."
-    ],
-    "n": []
-   },
-   {
-    "h": "OFFICIAL STATEMENT",
-    "p": [
-     "Any coating application not carried out by GrandLab or an officially authorised outlet, or for which no valid warranty certificate exists, is not eligible for warranty support, claims, or any other obligation on the part of GrandLab or GrandPride Luxury Travel Sdn Bhd."
-    ],
-    "n": []
-   },
-   {
-    "h": "WARRANTY COVERAGE",
-    "p": [
-     "Subject to the terms of this document, GrandLab warrants the applied ceramic coating against the following defects for the warranty period corresponding to the package installed:",
-     "The warranty period commences on the installation date shown on this certificate and applies only to the panels and surfaces treated at the time of installation."
-    ],
-    "n": [
-     "Loss of coating performance arising from genuine product failure.",
-     "Uneven coating layer, streaking, or high spots attributable to workmanship.",
-     "Premature degradation of the coating layer where the required maintenance schedule has been observed.",
-     "Loss of hydrophobic (water-beading) performance under normal use and correct maintenance."
-    ]
-   },
-   {
-    "h": "MAINTENANCE REQUIREMENT",
-    "p": [
-     "Scheduled maintenance is a condition of this warranty. The owner must return the vehicle to GrandLab or an authorised outlet for maintenance at the interval specified for the coating package installed.",
-     "A grace period of sixty (60) days before or after each scheduled maintenance date is permitted. Failure to complete a scheduled maintenance within this grace period will void the remaining coverage under this warranty.",
-     "The owner is responsible for any fees or charges incurred for scheduled maintenance, including but not limited to exterior wash, decontamination and inspection. Proof of all completed maintenance must be retained and presented in the event of a warranty claim."
-    ],
-    "n": []
-   },
-   {
-    "h": "CURING PERIOD AND FIRST WASH",
-    "p": [],
-    "n": [
-     "Do not wash the vehicle for seven (7) days after installation, to allow the coating to cure fully.",
-     "Avoid exposure to heavy rain, sprinklers, or irrigation water for the first forty-eight (48) hours where possible.",
-     "Do not apply wax, sealant, or any other topping product over the coating during the curing period.",
-     "Remove bird droppings, tree sap, or industrial fallout immediately with clean water and a soft microfibre towel."
-    ]
-   },
-   {
-    "h": "EXCLUSIONS",
-    "p": [
-     "This warranty does not cover:"
-    ],
-    "n": [
-     "Losses resulting from failure to complete scheduled maintenance within the permitted grace period.",
-     "Damage caused by washing with strong acid, alkaline, or otherwise harsh chemicals.",
-     "Polishing, paint correction, or coating removal performed by any party other than GrandLab or an authorised outlet.",
-     "Damage to the coated surface arising from accident, impact, scratching, stone chips, or repainting.",
-     "Etching or staining caused by contamination left on the surface for a prolonged period, including bird droppings, tree sap, cement, or chemical fallout.",
-     "Defects in the vehicle’s existing paintwork, including any defect disclosed to the owner prior to installation.",
-     "Losses resulting from natural disaster, fire, vandalism, or other causes unrelated to the coating product or its application."
-    ]
-   },
-   {
-    "h": "CORRECT CARE OF YOUR COATING",
-    "p": [],
-    "n": [
-     "Wash regularly using a pH-neutral automotive shampoo and the two-bucket method.",
-     "Avoid automatic brush car washes, which can inflict fine scratches on the coating.",
-     "Dry with a clean microfibre towel to prevent water spotting; do not allow the vehicle to air-dry in direct sun.",
-     "Avoid parking for prolonged periods beneath trees where sap and droppings are likely.",
-     "Follow the maintenance interval for your coating package strictly."
-    ]
-   },
-   {
-    "h": "MAKING A CLAIM",
-    "p": [
-     "To make a claim under this warranty, return the vehicle to your installer outlet together with this Certificate of Warranty, the original invoice, and records of all completed scheduled maintenance.",
-     "GrandLab will inspect the vehicle to determine whether the reported defect falls within the scope of this warranty. Where a claim is accepted, GrandLab’s liability is limited, at its discretion, to rectification or re-application of the affected coating. This warranty does not cover consequential loss, loss of use, or the value of the vehicle."
-    ],
-    "n": []
-   }
-  ]
- },
- "ppf": {
-  "title": "Paint Protection Film Limited Warranty — Terms & Conditions",
-  "periodTable": [
-   [
-    "ONE+ PPF TPU (Glossy)",
-    "1 Year",
-    "Hand-wash care"
-   ],
-   [
-    "ONE+ PPF TPU (Matte)",
-    "1 Year",
-    "Hand-wash care"
-   ]
-  ],
-  "sections": [
-   {
-    "h": "WARRANTY INFORMATION",
-    "p": [
-     "This Certificate of Warranty is the only valid proof of a GrandLab paint protection film (PPF) installation. It records the vehicle, the film applied, the area(s) covered, the installation date and the warranty period. Please verify that all details shown on your certificate are correct within seven (7) days of collection."
-    ],
-    "n": []
-   },
-   {
-    "h": "CONSUMER RIGHTS REMINDER",
-    "p": [
-     "Please ensure that your paint protection film is installed by GrandLab or an outlet officially authorised by GrandPride Luxury Travel Sdn Bhd, and that your vehicle registration number, film type, covered area and installation date are correctly recorded on this certificate at the time of collection."
-    ],
-    "n": []
-   },
-   {
-    "h": "OFFICIAL STATEMENT",
-    "p": [
-     "Any film installation not carried out by GrandLab or an officially authorised outlet, or for which no valid warranty certificate exists, is not eligible for warranty support, claims, or any other obligation on the part of GrandLab or GrandPride Luxury Travel Sdn Bhd."
-    ],
-    "n": []
-   },
-   {
-    "h": "WARRANTY COVERAGE",
-    "p": [
-     "Subject to the terms of this document, GrandLab warrants the installed film against the following defects for the warranty period corresponding to the product installed:",
-     "This warranty applies only to the panels and areas covered at the time of installation, as recorded on this certificate."
-    ],
-    "n": [
-     "Yellowing or discolouration of the film under normal use.",
-     "Cracking, blistering, or peeling arising from genuine product failure.",
-     "Loss of self-healing performance attributable to a manufacturing defect.",
-     "Adhesive failure or lifting not caused by external damage or third-party intervention."
-    ]
-   },
-   {
-    "h": "CURING PERIOD AND FIRST WASH",
-    "p": [],
-    "n": [
-     "Do not wash the vehicle for seven (7) days after installation, to allow the adhesive to bond fully.",
-     "Avoid exposure to heavy rain or pressure washing for the first forty-eight (48) hours where possible.",
-     "Minor haze, water pockets, or slight lifting at the edges may be visible immediately after installation and will normally settle within two (2) weeks. If the condition persists or worsens, return the vehicle for inspection.",
-     "Do not attempt to press, cut, or lift any edge of the film yourself."
-    ]
-   },
-   {
-    "h": "EXCLUSIONS",
-    "p": [
-     "This warranty does not cover:"
-    ],
-    "n": [
-     "Losses resulting from accident, road debris impact, stone chips, or other external force.",
-     "Damage caused by intentional scratching, sharp objects, or improper handling.",
-     "Panels repainted, refinished, or modified by any party after installation.",
-     "Damage caused by harsh chemicals, solvents, petrol, or abrasive cleaning methods.",
-     "Lifting or adhesive failure arising from pre-existing paint defects, repainted panels, or poor paint adhesion, including any condition disclosed to the owner prior to installation.",
-     "Film removed, re-installed, or repaired by any party other than GrandLab or an authorised outlet.",
-     "Normal wear and tear, or losses arising from natural disaster, fire, or vandalism."
-    ]
-   },
-   {
-    "h": "CORRECT CARE OF YOUR FILM",
-    "p": [],
-    "n": [
-     "Hand wash using a pH-neutral automotive shampoo; avoid automatic brush car washes.",
-     "When pressure washing, keep the nozzle at least 30 cm from the surface and never aim directly at film edges.",
-     "Remove bird droppings, tree sap, and tar promptly using a dedicated, film-safe remover.",
-     "Do not apply abrasive polish, compound, or wax containing solvents over the film.",
-     "Dry with a clean microfibre towel."
-    ]
-   },
-   {
-    "h": "MAKING A CLAIM",
-    "p": [
-     "To make a claim under this warranty, return the vehicle to your installer outlet together with this Certificate of Warranty and the original invoice.",
-     "GrandLab will inspect the vehicle to determine whether the reported defect falls within the scope of this warranty. Where a claim is accepted, GrandLab’s liability is limited, at its discretion, to repair or replacement of the affected film. An installation charge may apply. This warranty does not cover consequential loss, loss of use, or the value of the vehicle."
-    ],
-    "n": []
-   }
-  ]
- },
- "wrapping": {
-  "title": "Wrapping Film Limited Warranty — Terms & Conditions",
-  "periodTable": [
-   [
-    "NAKA Wrapping Film",
-    "2 Years",
-    "Hand-wash care"
-   ],
-   [
-    "KTN Wrapping Film",
-    "2 Years",
-    "Hand-wash care"
-   ]
-  ],
-  "sections": [
-   {
-    "h": "WARRANTY INFORMATION",
-    "p": [
-     "This Certificate of Warranty is the only valid proof of a GrandLab wrapping film installation. It records the vehicle, the film applied, the area(s) covered, the installation date and the warranty period. Please verify that all details shown on your certificate are correct within seven (7) days of collection."
-    ],
-    "n": []
-   },
-   {
-    "h": "CONSUMER RIGHTS REMINDER",
-    "p": [
-     "Please ensure that your wrapping film is installed by GrandLab or an outlet officially authorised by GrandPride Luxury Travel Sdn Bhd, and that your vehicle registration number, film type, covered area and installation date are correctly recorded on this certificate at the time of collection."
-    ],
-    "n": []
-   },
-   {
-    "h": "OFFICIAL STATEMENT",
-    "p": [
-     "Any film installation not carried out by GrandLab or an officially authorised outlet, or for which no valid warranty certificate exists, is not eligible for warranty support, claims, or any other obligation on the part of GrandLab or GrandPride Luxury Travel Sdn Bhd."
-    ],
-    "n": []
-   },
-   {
-    "h": "WARRANTY COVERAGE",
-    "p": [
-     "Subject to the terms of this document, GrandLab warrants the installed wrapping film against the following defects for the warranty period corresponding to the product installed:",
-     "This warranty applies only to the panels and areas wrapped at the time of installation, as recorded on this certificate."
-    ],
-    "n": [
-     "Excessive fading or discolouration under normal use.",
-     "Adhesive failure, lifting, or delamination arising from a product defect.",
-     "Cracking or bubbling caused by a manufacturing fault.",
-     "Loss of finish or texture attributable to a defect in the film itself."
-    ]
-   },
-   {
-    "h": "CURING PERIOD AND FIRST WASH",
-    "p": [],
-    "n": [
-     "Do not wash the vehicle for three (3) days after installation.",
-     "Do not pressure wash for seven (7) days after installation, and thereafter never aim directly at edges or seams.",
-     "Avoid exposure to heavy rain for the first twenty-four (24) hours where possible.",
-     "Minor bubbles or slight edge lifting may be visible immediately after installation and will normally settle as the adhesive cures. If the condition persists, return the vehicle for inspection."
-    ]
-   },
-   {
-    "h": "EXCLUSIONS",
-    "p": [
-     "This warranty does not cover:"
-    ],
-    "n": [
-     "Losses resulting from accident, impact, or other external force.",
-     "Damage caused by sharp objects, intentional scratching, or improper handling.",
-     "Panels repainted, refinished, or modified by any party after installation.",
-     "Damage caused by petrol, solvents, harsh chemicals, or abrasive cleaning methods.",
-     "Lifting or adhesive failure arising from pre-existing paint defects, repainted panels, or poor paint adhesion, including any condition disclosed to the owner prior to installation.",
-     "Film removed, re-installed, or repaired by any party other than GrandLab or an authorised outlet.",
-     "Normal wear and tear, or losses arising from natural disaster, fire, or vandalism."
-    ]
-   },
-   {
-    "h": "CORRECT CARE OF YOUR WRAP",
-    "p": [],
-    "n": [
-     "Hand wash only, using a pH-neutral automotive shampoo; avoid automatic brush car washes.",
-     "Dry with a clean microfibre towel; do not allow the vehicle to air-dry in direct sun.",
-     "Remove bird droppings, tree sap, and fuel spills immediately, as they can stain the film permanently.",
-     "Avoid prolonged parking in direct sunlight where possible, particularly for matte and satin finishes.",
-     "Do not use wax or polish on matte or satin wraps."
-    ]
-   },
-   {
-    "h": "MAKING A CLAIM",
-    "p": [
-     "To make a claim under this warranty, return the vehicle to your installer outlet together with this Certificate of Warranty and the original invoice.",
-     "GrandLab will inspect the vehicle to determine whether the reported defect falls within the scope of this warranty. Where a claim is accepted, GrandLab’s liability is limited, at its discretion, to repair or replacement of the affected film. An installation charge may apply. This warranty does not cover consequential loss, loss of use, or the value of the vehicle."
-    ],
-    "n": []
-   }
-  ]
- }
-};
-
 function fmtDate(d){
   if(!d) return '—';
   const dt=new Date((''+d).length<=10?d+'T00:00:00':d);
@@ -480,25 +170,19 @@ async function doSearch(){
 
 function render(list){
   const out=list.map(w=>certHtml(w)).join('');
-  // terms block from the first result's category
-  const cat=(list[0].category||'coating').toLowerCase();
-  const t=TERMS[cat]||TERMS.coating;
-  const periodTbl = (t.periodTable||[]).length ? `
-    <table class="wtbl"><tr><th>Product</th><th>Warranty</th><th>Maintenance</th></tr>${
-      t.periodTable.map(r=>`<tr><td>${esc(r[0])}</td><td>${esc(r[1])}</td><td>${esc(r[2])}</td></tr>`).join('')}</table>` : '';
-  const secHtml = (t.sections||[]).map(sec=>{
-    const paras = (sec.p||[]).map(x=>`<p class="tpara">${esc(x)}</p>`).join('');
-    const nums  = (sec.n||[]).length
-      ? `<ol class="tnum">${sec.n.map(x=>`<li>${esc(x)}</li>`).join('')}</ol>` : '';
-    // the product/period table sits inside the coverage section
-    const tbl = sec.h==='WARRANTY COVERAGE' ? periodTbl : '';
-    return `<h4>${esc(sec.h)}</h4>${paras}${nums}${tbl}`;
-  }).join('');
-  const terms=`<div class="terms">
-    <h3>${esc(t.title)}</h3>
-    ${secHtml}
-    <p class="tnote">GrandLab · Detailing by GrandPride — GrandPride Luxury Travel Sdn Bhd (1297143-K).
-    This warranty is valid only with a matching Certificate of Warranty and original invoice.</p>
+  // T&C — shown as a link (one per category present) instead of the full text
+  const TNC_PDF={
+    coating:'GrandLab_Coating_Warranty_TnC.pdf',
+    ppf:'GrandLab_PPF_Warranty_TnC.pdf',
+    wrapping:'GrandLab_Wrapping_Warranty_TnC.pdf'
+  };
+  const TNC_LABEL={coating:'Coating',ppf:'PPF',wrapping:'Wrapping'};
+  const catsPresent=[...new Set(list.map(w=>(w.category||'').toLowerCase()).filter(c=>TNC_PDF[c]))];
+  const terms=`<div class="tnc-links">
+    <div class="tnc-h">Warranty Terms &amp; Conditions</div>
+    ${catsPresent.map(c=>`<a class="tnc-link" href="${TNC_PDF[c]}" target="_blank" rel="noopener">
+      <span><i class="ti ti-file-text"></i> ${esc(TNC_LABEL[c])} Warranty — Terms &amp; Conditions</span>
+      <i class="ti ti-external-link"></i></a>`).join('')}
   </div>`;
   const foot=`<div class="foot">
     Thank you for choosing GrandLab. For enquiries, please contact your installer outlet.
