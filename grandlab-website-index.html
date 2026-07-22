@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GrandLab — Premium Car Detailing</title>
+<meta name="description" content="GrandLab — premium car detailing, ceramic coating, paint protection film and wrapping. Detailing by GrandPride.">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.x/dist/tabler-icons.min.css">
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  :root{--bg:#080808;--card:#141414;--gold:#F5C518;--text:#fff;--muted:#9a9a9a;--line:#2a2a2a}
+  html,body{height:100%}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+       display:flex;flex-direction:column;min-height:100dvh}
+  .wrap{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:40px 22px}
+  .logo{font-weight:900;font-size:clamp(38px,9vw,68px);letter-spacing:2px;line-height:1}
+  .logo span{color:var(--gold)}
+  .tag{color:var(--muted);letter-spacing:.32em;text-transform:uppercase;font-size:clamp(10px,2.4vw,13px);margin-top:14px}
+  .soon{margin-top:40px;font-size:clamp(15px,3.6vw,19px);color:var(--text);font-weight:600}
+  .sub{margin-top:10px;color:var(--muted);font-size:14px;max-width:440px;line-height:1.6}
+  .links{margin-top:34px;display:flex;gap:12px;flex-wrap:wrap;justify-content:center}
+  .btn{display:inline-flex;align-items:center;gap:8px;background:var(--gold);color:#080808;text-decoration:none;
+       font-weight:800;font-size:14px;padding:13px 20px;border-radius:12px}
+  .btn.ghost{background:transparent;color:var(--text);border:1px solid var(--line)}
+  .btn:active{transform:scale(.98)}
+  .contact{margin-top:38px;display:flex;gap:22px;flex-wrap:wrap;justify-content:center;color:var(--muted);font-size:13px}
+  .contact a{color:var(--muted);text-decoration:none;display:inline-flex;align-items:center;gap:6px}
+  .contact a:hover{color:var(--gold)}
+  footer{border-top:1px solid var(--line);padding:20px;text-align:center;color:var(--muted);font-size:12px}
+  .glow{position:fixed;inset:0;z-index:-1;background:radial-gradient(circle at 50% 32%,rgba(245,197,24,.10),transparent 55%)}
+</style>
+</head>
+<body>
+<div class="glow"></div>
+<div class="wrap">
+  <div class="logo">GRAND<span>LAB</span></div>
+  <div class="tag">Detailing by GrandPride</div>
+
+  <div class="soon">Premium Car Detailing &bull; Coating &bull; PPF &bull; Wrapping</div>
+  <div class="sub">Our new website is on the way. In the meantime, check your warranty or reach us directly.</div>
+
+  <div class="links">
+    <a class="btn" href="/warranty/"><i class="ti ti-shield-check"></i> Check e-Warranty</a>
+    <a class="btn ghost" href="https://wa.me/60169618299" target="_blank" rel="noopener"><i class="ti ti-brand-whatsapp"></i> WhatsApp Us</a>
+  </div>
+
+  <div class="contact">
+    <a href="https://maps.google.com/?q=GrandLab+Detailing+PJS+13+Petaling+Jaya" target="_blank" rel="noopener"><i class="ti ti-map-pin"></i> PJS 13, Petaling Jaya</a>
+    <a href="tel:+60169618299"><i class="ti ti-phone"></i> Call us</a>
+  </div>
+</div>
+
+<footer>
+  &copy; <span id="yr"></span> GrandPride Luxury Travel Sdn Bhd (1297143-K) &bull; All rights reserved
+</footer>
+<script>document.getElementById('yr').textContent=new Date().getFullYear();</script>
+</body>
+</html>
