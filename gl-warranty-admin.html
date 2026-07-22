@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>GrandLab e-Warranty — Manual Register</title>
+<link href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.47.0/tabler-icons.min.css" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0a0a0a; --card:#151515; --card2:#1c1c1a; --line:#2a2a26;
+    --gold:#F5C518; --text:#f4f4f0; --muted:#9a9a90; --muted2:#6a6a62;
+    --green:#16A34A; --red:#e0533d;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;font-size:15px;line-height:1.5;padding-bottom:60px}
+  .top{background:linear-gradient(180deg,#111,#0a0a0a);border-bottom:1px solid var(--line);padding:18px 16px;text-align:center}
+  .logo{font-weight:900;font-size:22px;letter-spacing:1px}.logo span{color:var(--gold)}
+  .top .sub{color:var(--muted);font-size:11px;letter-spacing:.14em;text-transform:uppercase;margin-top:3px}
+  .wrap{max-width:640px;margin:0 auto;padding:18px 16px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px;margin-bottom:16px}
+  .card h2{font-size:15px;font-weight:800;margin-bottom:14px;color:var(--gold)}
+  label{display:block;font-size:12px;font-weight:600;color:var(--muted);margin:12px 0 5px}
+  label.req::after{content:" *";color:var(--gold)}
+  input,select,textarea{width:100%;background:var(--card2);border:1px solid var(--line);border-radius:10px;color:#fff;padding:12px 13px;font-size:15px;font-family:inherit;outline:none}
+  input:focus,select:focus,textarea:focus{border-color:var(--gold)}
+  input[readonly]{opacity:.7}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .hint{font-size:11px;color:var(--muted2);margin-top:5px}
+  .btn{background:var(--gold);color:#080808;border:none;border-radius:12px;padding:15px;font-weight:800;font-size:16px;font-family:inherit;cursor:pointer;width:100%;display:flex;align-items:center;justify-content:center;gap:8px}
+  .btn:disabled{opacity:.6}
+  .btn.sec{background:var(--card2);color:var(--text);border:1px solid var(--line)}
+  .photos{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:10px}
+  .photos .ph{position:relative;aspect-ratio:1}
+  .photos img{width:100%;height:100%;object-fit:cover;border-radius:9px;border:1px solid var(--line)}
+  .photos .rm{position:absolute;top:3px;right:3px;background:rgba(0,0,0,.65);color:#fff;border:none;border-radius:50%;width:20px;height:20px;font-size:12px;cursor:pointer}
+  .addph{aspect-ratio:1;border:1.5px dashed var(--line);border-radius:9px;background:var(--card2);color:var(--muted);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:11px;cursor:pointer}
+  .msg{padding:12px 14px;border-radius:10px;font-size:14px;margin-top:12px;display:none}
+  .msg.ok{background:rgba(22,163,74,.14);color:#3ec76e;display:block}
+  .msg.err{background:rgba(224,83,61,.14);color:var(--red);display:block}
+  .found{font-size:12px;color:var(--green);margin-top:6px;min-height:16px}
+  .preview{font-size:13px;color:var(--muted);margin-top:6px}
+  .preview b{color:var(--gold)}
+</style>
+</head>
+<body>
+<a href="https://grandpride.github.io/Grandlab-app/gl-hub.html" style="position:fixed;top:8px;left:8px;z-index:300;background:rgba(0,0,0,.65);color:#F5C518;text-decoration:none;font-size:12px;font-weight:700;padding:6px 11px;border-radius:20px;backdrop-filter:blur(4px)">← Hub</a>
+
+<!-- LOGIN GATE -->
+<div id="gate" style="position:fixed;inset:0;z-index:200;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:24px">
+  <div style="max-width:340px;width:100%">
+    <div style="font-weight:900;font-size:24px;letter-spacing:1px;margin-bottom:4px">GRAND<span style="color:var(--gold)">LAB</span></div>
+    <div class="hint" style="margin-bottom:14px">e-Warranty — staff sign in to continue.</div>
+    <label>Email</label>
+    <input id="loginEmail" type="email" autocomplete="username" placeholder="admin@grandpride.com">
+    <label>Password</label>
+    <input id="loginPass" type="password" autocomplete="current-password" placeholder="Password" onkeydown="if(event.key==='Enter')doLogin()">
+    <div id="loginErr" style="color:var(--red);font-size:12px;margin:8px 0;min-height:15px"></div>
+    <button class="btn" onclick="doLogin()">Sign in</button>
+  </div>
+</div>
+
+<div id="app" style="display:none">
+<div class="top">
+  <div class="logo">GRAND<span>LAB</span></div>
+  <div class="sub">e-Warranty · Manual Register</div>
+</div>
+
+<div class="wrap">
+  <div class="card">
+    <h2>Vehicle &amp; Customer</h2>
+    <label class="req">Car Plate</label>
+    <input id="plate" placeholder="e.g. VBD838" style="text-transform:uppercase" oninput="onPlate()">
+    <div class="found" id="plateFound"></div>
+
+    <label class="req">Customer Name</label>
+    <input id="cname" placeholder="Full name">
+
+    <div class="row2">
+      <div><label class="req">Contact Number</label><input id="phone" placeholder="60123456789" inputmode="numeric"></div>
+      <div><label>Email <span style="color:var(--muted2)">(for certificate)</span></label><input id="email" placeholder="optional" inputmode="email"></div>
+    </div>
+
+    <label class="req">Vehicle Model</label>
+    <input id="model" placeholder="e.g. Toyota Harrier">
+  </div>
+
+  <div class="card">
+    <h2>Product &amp; Warranty</h2>
+    <label class="req">Product Purchased</label>
+    <select id="product" onchange="onProduct()"><option value="">— select product —</option></select>
+    <div class="hint">Warranty period fills automatically from the product.</div>
+
+    <label>Coverage <span style="color:var(--muted2)">(area covered)</span></label>
+    <select id="coverage">
+      <option>Full Car</option><option>Full Front</option><option>Front Bumper</option>
+      <option>Rear Bumper</option><option>Bonnet</option><option>Roof</option><option>Moon Roof</option>
+      <option>Side Mirror</option><option>Door</option><option>Fender</option><option>Pillar</option>
+      <option>Front Grille</option><option>Headlight</option><option>Side Skirt</option>
+      <option>Front Lip</option><option>Rear Spoiler</option><option>Boot</option>
+    </select>
+
+    <div class="row2">
+      <div><label class="req">Installation Date</label><input id="idate" type="date"></div>
+      <div><label>Warranty Period</label><input id="wyears" readonly placeholder="auto"></div>
+    </div>
+    <div class="preview" id="expiryPrev"></div>
+
+    <label class="req">Invoice ID</label>
+    <input id="invoice" placeholder="e.g. GLIV260720-001">
+
+    <label>Sales Person <span style="color:var(--muted2)">(optional)</span></label>
+    <input id="salesperson" placeholder="Staff name">
+  </div>
+
+  <div class="card">
+    <h2>Reference Photos <span style="color:var(--muted2);font-weight:400;font-size:12px">(optional, up to 12)</span></h2>
+    <div class="photos" id="photoGrid">
+      <div class="addph" onclick="document.getElementById('photoInput').click()">
+        <i class="ti ti-camera-plus" style="font-size:22px"></i>Add
+      </div>
+    </div>
+    <input id="photoInput" type="file" accept="image/*" multiple style="display:none" onchange="uploadPhotos(this.files)">
+    <div class="hint" id="photoStatus"></div>
+  </div>
+
+  <button class="btn" id="submitBtn" onclick="submitWarranty()"><i class="ti ti-shield-check"></i> Register Warranty</button>
+  <div class="msg" id="msg"></div>
+</div>
+</div><!-- /#app -->
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SUPABASE_URL="https://eychljpzorzmaveixlnu.supabase.co";
+const SUPABASE_ANON="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV5Y2hsanB6b3J6bWF2ZWl4bG51Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2NDk2NjQsImV4cCI6MjA5NzIyNTY2NH0.6dA1zhz5ZIwf8byFB8vhfOzPI-uPPdPihEr1b8GG_oA";
+const BUCKET="gl-images";
+const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON,{auth:{storageKey:'gl_auth'}});
+const $=id=>document.getElementById(id);
+const esc=s=>(s||'').toString().replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+let PRODUCTS=[], PHOTOS=[];
+
+async function loadProducts(){
+  const {data}=await sb.from('gl_warranty_products').select('*').eq('active',true).order('category');
+  PRODUCTS=data||[];
+  $('product').innerHTML='<option value="">— select product —</option>'+
+    PRODUCTS.map(p=>`<option value="${esc(p.product_name)}">${esc(p.product_name)} (${p.warranty_years}yr)</option>`).join('');
+}
+function curProduct(){ return PRODUCTS.find(p=>p.product_name===$('product').value); }
+function onProduct(){
+  const p=curProduct();
+  $('wyears').value = p ? (p.warranty_years+' year'+(Number(p.warranty_years)===1?'':'s')) : '';
+  updateExpiry();
+}
+function updateExpiry(){
+  const p=curProduct(); const d=$('idate').value;
+  if(!p||!d){ $('expiryPrev').innerHTML=''; return; }
+  const exp=new Date(d+'T00:00:00'); exp.setFullYear(exp.getFullYear()+Math.floor(p.warranty_years));
+  const rem=Math.round((p.warranty_years%1)*12); if(rem) exp.setMonth(exp.getMonth()+rem);
+  $('expiryPrev').innerHTML='Warranty valid until <b>'+exp.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'})+'</b>';
+}
+$('idate').addEventListener('change',updateExpiry);
+
+// look up existing customer by plate to prefill
+let _pt=null;
+function onPlate(){ clearTimeout(_pt); _pt=setTimeout(doPlateLookup,500); }
+async function doPlateLookup(){
+  const plate=($('plate').value||'').trim().toUpperCase();
+  $('plateFound').textContent='';
+  if(plate.length<3) return;
+  const {data}=await sb.from('gl_walkin').select('name,phone,model').ilike('plate',plate).limit(5);
+  const row=(data||[]).find(r=>r.model||r.name)||(data||[])[0];
+  if(row){
+    if(!$('cname').value && row.name) $('cname').value=row.name;
+    if(!$('phone').value && row.phone) $('phone').value=String(row.phone).replace(/^\+/,'');
+    if(!$('model').value && row.model) $('model').value=row.model;
+    $('plateFound').textContent='✓ Found existing customer — details prefilled';
+  }
+}
+
+async function uploadPhotos(files){
+  if(PHOTOS.length+files.length>12){ setMsg('Max 12 photos',true); return; }
+  $('photoStatus').textContent='Uploading…';
+  for(const f of files){
+    try{
+      const path=`warranty-${Date.now()}-${f.name.replace(/[^a-z0-9.]/gi,'_')}`;
+      const r=await fetch(`${SUPABASE_URL}/storage/v1/object/${BUCKET}/${path}`,{
+        method:"POST",headers:{apikey:SUPABASE_ANON,Authorization:'Bearer '+SUPABASE_ANON},body:f});
+      if(r.ok){ PHOTOS.push(`${SUPABASE_URL}/storage/v1/object/public/${BUCKET}/${path}`); renderPhotos(); }
+      else { setMsg('Photo upload failed — check gl-images bucket is public',true); }
+    }catch(e){ console.error(e); }
+  }
+  $('photoStatus').textContent=PHOTOS.length+' photo(s) added';
+}
+function renderPhotos(){
+  const add='<div class="addph" onclick="document.getElementById(\'photoInput\').click()"><i class="ti ti-camera-plus" style="font-size:22px"></i>Add</div>';
+  $('photoGrid').innerHTML=PHOTOS.map((u,i)=>`<div class="ph"><img src="${esc(u)}"><button class="rm" onclick="PHOTOS.splice(${i},1);renderPhotos()">&times;</button></div>`).join('')+add;
+}
+
+function setMsg(t,err){ const m=$('msg'); m.textContent=t; m.className='msg '+(err?'err':'ok'); }
+
+async function submitWarranty(){
+  const plate=($('plate').value||'').trim().toUpperCase();
+  const cname=$('cname').value.trim();
+  const phone=$('phone').value.trim();
+  const model=$('model').value.trim();
+  const p=curProduct();
+  const idate=$('idate').value;
+  const invoice=$('invoice').value.trim();
+  // validation
+  if(!plate){ setMsg('Enter the car plate',true); return; }
+  if(!cname){ setMsg('Enter the customer name',true); return; }
+  if(!phone){ setMsg('Enter the contact number',true); return; }
+  if(!model){ setMsg('Enter the vehicle model',true); return; }
+  if(!p){ setMsg('Select the product',true); return; }
+  if(!idate){ setMsg('Select the installation date',true); return; }
+  if(!invoice){ setMsg('Enter the invoice ID',true); return; }
+
+  // duplicate guard: same invoice + product
+  const {data:dup}=await sb.from('gl_warranties').select('id')
+    .eq('invoice_no',invoice).ilike('product_name',p.product_name).limit(1);
+  if(dup&&dup.length){ setMsg('A warranty for this invoice + product already exists.',true); return; }
+
+  const exp=new Date(idate+'T00:00:00'); exp.setFullYear(exp.getFullYear()+Math.floor(p.warranty_years));
+  const rem=Math.round((p.warranty_years%1)*12); if(rem) exp.setMonth(exp.getMonth()+rem);
+  const cert='GLW-'+idate.slice(2).replace(/-/g,'')+'-'+Math.random().toString(36).slice(2,6).toUpperCase();
+
+  $('submitBtn').disabled=true; $('submitBtn').innerHTML='<i class="ti ti-loader"></i> Registering…';
+  const {error}=await sb.from('gl_warranties').insert({
+    cert_no:cert, customer_name:cname, phone:phone, email:$('email').value.trim()||null,
+    car_model:model, plate:plate,
+    product_name:p.product_name, category:p.category, coverage:$('coverage').value,
+    install_date:idate, warranty_years:p.warranty_years, expiry_date:exp.toISOString().slice(0,10),
+    invoice_no:invoice, outlet:'GRANDPRIDE LUXURY TRAVEL SDN BHD',
+    photos:PHOTOS, status:'active'
+  });
+  $('submitBtn').disabled=false; $('submitBtn').innerHTML='<i class="ti ti-shield-check"></i> Register Warranty';
+  if(error){ setMsg('Failed: '+error.message,true); return; }
+  setMsg('✓ Warranty registered — cert '+cert+'. Customer can now look it up by plate.',false);
+  // reset for next entry
+  ['plate','cname','phone','email','model','invoice','salesperson'].forEach(id=>$(id).value='');
+  $('product').value=''; $('wyears').value=''; $('expiryPrev').innerHTML=''; $('plateFound').textContent='';
+  PHOTOS=[]; renderPhotos();
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+/* ---------- LOGIN GATE ---------- */
+async function boot(){
+  const {data}=await sb.auth.getSession();
+  if(data&&data.session){ showApp(); }
+  else { $('gate').style.display='flex'; $('app').style.display='none'; }
+}
+async function doLogin(){
+  const email=$('loginEmail').value.trim(), pass=$('loginPass').value;
+  $('loginErr').textContent='Signing in…';
+  const {error}=await sb.auth.signInWithPassword({email,password:pass});
+  if(error){ $('loginErr').textContent='Login failed: '+error.message; return; }
+  $('loginErr').textContent=''; showApp();
+}
+function showApp(){
+  $('gate').style.display='none'; $('app').style.display='block';
+  $('idate').value=new Date().toISOString().slice(0,10);
+  loadProducts();
+  renderPhotos();
+}
+
+boot();
+</script>
+</body>
+</html>
