@@ -3313,7 +3313,7 @@ function openWarranty(){
 /* GrandLab e-Warranty — coating, PPF and wrapping applied by GrandLab.
    Customers look up their certificate by car plate. */
 function openGLWarranty(){
-  const url=(STYLE.glWarrantyUrl||'https://grandpride.github.io/Grandlab-app/gl-warranty.html');
+  const url=(STYLE.glWarrantyUrl||'gl-warranty.html');
   window.open(url,'_blank');
 }
 
@@ -4419,7 +4419,7 @@ async function handlePayReturn(){
   }
 }
 function shareGrandlab(){
-  const url='https://grandpride.github.io/Grandlab-app/';
+  const url='https://app.grandlab.com.my/';
   const text='Check out Grandlab Detailing — premium car care, PPF, coating & more! '+url;
   if(navigator.share){ navigator.share({title:'Grandlab Detailing', text:'Premium car care', url}).catch(()=>{}); }
   else { window.open('https://wa.me/?text='+encodeURIComponent(text),'_blank'); }
