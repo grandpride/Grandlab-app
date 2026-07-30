@@ -3324,10 +3324,26 @@ function openWarranty(){
 }
 
 /* GrandLab e-Warranty — coating, PPF and wrapping applied by GrandLab.
-   Customers look up their certificate by car plate. */
+   Customers look up their certificate by car plate.
+   Shown in an in-app overlay rather than window.open: on iOS a PWA sends
+   _blank to Safari, which throws the customer out of the app entirely.
+   Same-origin page, so the iframe loads normally. */
 function openGLWarranty(){
   const url=(STYLE.glWarrantyUrl||'gl-warranty.html');
-  window.open(url,'_blank');
+  const old=document.getElementById('glWarrantyOv'); if(old) old.remove();
+  const ov=document.createElement('div');
+  ov.id='glWarrantyOv';
+  ov.style.cssText='position:fixed;inset:0;z-index:9997;background:#0a0a0a;display:flex;flex-direction:column';
+  ov.innerHTML=`
+    <div style="display:flex;align-items:center;gap:10px;flex:none;background:#111;border-bottom:1px solid #2a2a26;padding:calc(env(safe-area-inset-top) + 10px) 14px 10px">
+      <button id="glWarrBack" aria-label="Back" style="background:none;border:1px solid #444;color:#ddd;border-radius:50%;width:34px;height:34px;font-size:20px;line-height:1;cursor:pointer;flex:none">&lsaquo;</button>
+      <div style="font-size:15px;font-weight:800;color:#F5C518">GrandLab e-Warranty</div>
+      <button id="glWarrExt" style="margin-left:auto;background:none;border:none;color:#8a8a8a;font-size:12px;cursor:pointer;text-decoration:underline;flex:none">Open in browser</button>
+    </div>
+    <iframe src="${esc(url)}" style="flex:1;width:100%;border:none;background:#0a0a0a"></iframe>`;
+  document.body.appendChild(ov);
+  document.getElementById('glWarrBack').onclick=()=>ov.remove();
+  document.getElementById('glWarrExt').onclick=()=>window.open(url,'_blank');
 }
 
 /* ---------- Login popup carousel ---------- */
