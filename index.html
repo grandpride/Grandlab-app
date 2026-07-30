@@ -1888,7 +1888,10 @@ async function doCheckin(){
   if(newStreak>7) newStreak=1;  // after completing 7, loop back
   const reached7 = newStreak===7;
   try{
-    const r=await fetch(`${SUPA_URL}/rest/v1/gl_checkins`,{method:"POST",
+    // on_conflict=owner_id — PostgREST defaults to conflicting on the PRIMARY KEY (id),
+    // which is auto-generated, so the upsert never matched and hit the owner_id unique
+    // index instead (409). Point it at owner_id so repeat check-ins UPDATE the row.
+    const r=await fetch(`${SUPA_URL}/rest/v1/gl_checkins?on_conflict=owner_id`,{method:"POST",
       headers:Object.assign(authHeaders(),{Prefer:"resolution=merge-duplicates,return=representation"}),
       body:JSON.stringify({owner_id:SESSION.user.id,streak:newStreak,last_checkin:todayStr(),updated_at:new Date().toISOString()})});
     if(r.ok){
@@ -1896,8 +1899,12 @@ async function doCheckin(){
       if(reached7) toast('🎁 Day 7! Claim your mystery gift at the counter.');
       else { const d=STYLE.checkinDays?.[newStreak-1]; const lbl=d?(d.type==='point'?d.value+' Point':d.type==='credit'?'RM'+d.value:d.type==='hook'?(d.service||d.value||'reward'):'reward'):'reward'; toast('Checked in ✓ +'+lbl); }
       renderHome();
-    } else toast('Check-in failed');
-  }catch(e){ toast('Check-in error'); }
+    } else {
+      let why='';
+      try{ const j=await r.json(); why=j.message||j.hint||j.details||''; }catch(_){}
+      toast('Check-in failed'+(why?': '+why:' ('+r.status+')'));
+    }
+  }catch(e){ toast('Check-in error: '+(e.message||e)); }
 }
 function logout(){
   localStorage.removeItem('gl_session'); SESSION=null; PROFILE=null; IS_GUEST=false;
