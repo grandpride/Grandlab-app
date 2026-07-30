@@ -5013,12 +5013,17 @@ async function sendGiftCard(amount){
 // ============== END WALLET ==============
 
 /* ===== IN-APP SPIN (tasks + 2-week recurring) ===== */
-let SPIN_STATUS=null, SPIN_PRIZES=[], SPIN_URLS={};
+let SPIN_STATUS=null, SPIN_PRIZES=[], SPIN_URLS={}, SPIN_ERR='';
 async function fetchSpinStatus(){
+  SPIN_ERR='';
   try{
     const r=await fetch(`${SUPA_URL}/rest/v1/rpc/gl_app_spin_status`,{method:"POST",headers:authHeaders(),body:"{}"});
-    const d=await r.json(); SPIN_STATUS=Array.isArray(d)?d[0]:d;
-  }catch(e){ SPIN_STATUS=null; }
+    let d=null; try{ d=await r.json(); }catch(_){}
+    // previously any error response fell through as "0 spins" with no warning
+    if(!r.ok){ SPIN_ERR=(d&&(d.message||d.hint||d.details))||('HTTP '+r.status); SPIN_STATUS=null; }
+    else { SPIN_STATUS=Array.isArray(d)?d[0]:d;
+           if(!SPIN_STATUS || SPIN_STATUS.spins_available==null) SPIN_ERR='RPC returned no spin row'; }
+  }catch(e){ SPIN_ERR='Network: '+(e.message||e); SPIN_STATUS=null; }
   try{
     const r2=await fetch(`${SUPA_URL}/rest/v1/gl_spin_settings?id=eq.1`,{headers:authHeaders()});
     const s=r2.ok?await r2.json():[]; SPIN_URLS=s[0]||{};
@@ -5060,6 +5065,7 @@ async function openSpinTasks(){
         <div style="font-size:13px;color:#bbb">You have</div>
         <div style="font-size:34px;font-weight:900;color:#F5C518;line-height:1.1">${spins}</div>
         <div style="font-size:13px;color:#bbb;margin-bottom:${spins>0?'12px':'0'}">free spin${spins===1?'':'s'}</div>
+        ${SPIN_ERR?`<div style="font-size:11px;color:#ff8a8a;margin-top:8px;word-break:break-word">⚠️ ${esc(SPIN_ERR)}</div>`:''}
         ${spins>0?`<button onclick="document.getElementById('spinTasksOv').remove();openAppSpin()" style="background:linear-gradient(180deg,#F5C518,#d9a800);color:#111;border:none;border-radius:24px;padding:13px 40px;font-weight:800;font-size:15px;cursor:pointer">SPIN NOW 🎡</button>`:''}
       </div>
       <div style="font-size:13px;font-weight:700;color:#9a9a9a;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Earn more spins</div>
