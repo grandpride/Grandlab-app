@@ -1157,6 +1157,12 @@ async function enablePush(){
 
 /* HTML-escape helper (used throughout for safe text rendering) */
 function esc(s){return (s==null?'':String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+/* Money display: thousands separators + always 2 decimals. 13467 -> "13,467.00" */
+function fmtRM(n){
+  const v=Number(n);
+  if(!isFinite(v)) return '0.00';
+  return v.toLocaleString('en-MY',{minimumFractionDigits:2,maximumFractionDigits:2});
+}
 
 /* Hardcoded fallback so the app works before admin sets any slides.
    Admin page will overwrite these by writing rows to gl_onboarding_slides. */
@@ -2419,7 +2425,7 @@ async function renderHome(){
         <div class="member-stats">
           <div class="member-stat">
             <div class="ms-label">${esc(STYLE.homeWalletLabel||'Wallet Balance')}</div>
-            <div class="ms-value">RM ${Number(PROFILE?.wallet||0).toFixed(2)}</div>
+            <div class="ms-value">RM ${fmtRM(PROFILE?.wallet)}</div>
           </div>
           <div class="member-stat" onclick="routeTab('rewards')" style="cursor:pointer">
             <div class="ms-label">${esc(STYLE.coinName||'G Coin')}</div>
@@ -4835,7 +4841,7 @@ async function renderWallet(){
     return `<div class="txn-row">
       <div><div class="txn-note">${esc(e.note)}</div>
       <div class="txn-date">${dateStr}</div></div>
-      <div class="txn-amt ${e.amount<0?'neg':'pos'}">${e.amount<0?'-':'+'}RM ${Math.abs(e.amount).toFixed(2)}</div>
+      <div class="txn-amt ${e.amount<0?'neg':'pos'}">${e.amount<0?'-':'+'}RM ${fmtRM(Math.abs(e.amount))}</div>
     </div>`;
   }).join('') : `<div class="txn-row"><div><div class="txn-note">Opening balance</div><div class="txn-date">—</div></div><div class="txn-amt">RM 0.00</div></div>`;
 
@@ -4845,7 +4851,7 @@ async function renderWallet(){
       <!-- balance card -->
       <div class="wallet-balance-card">
         <div class="wbc-label">${esc(STYLE.walletName||'G Wallet')} Balance</div>
-        <div class="wbc-amt">RM ${Number(p.wallet||0).toFixed(2)}</div>
+        <div class="wbc-amt">RM ${fmtRM(p.wallet)}</div>
         <div class="wbc-foot">
           <span>${esc(p.name||'Member')}</span>
           <span>${esc(STYLE.walletJoinedLabel||'Joined since')} ${joined}</span>
@@ -5466,7 +5472,7 @@ async function renderAccount(){
       <div class="acc-list">
         ${row('My Cars & History', VEHICLES.length?(VEHICLES.length+' car'+(VEHICLES.length>1?'s':'')):'', "openMyPackages()")}
         ${row('Membership', tier, "openMembership()")}
-        ${row('Wallet', 'RM '+Number(p.wallet||0).toFixed(2), "routeTab('wallet')")}
+        ${row('Wallet', 'RM '+fmtRM(p.wallet), "routeTab('wallet')")}
         ${row('Favourite Outlet', 'Grandlab HQ', "toast('Grandlab HQ — PJS 13, Petaling Jaya')")}
         ${row('Referral', '', "showReferralQR()")}
         ${row('Manage Vehicles', carLabel, "openMyVehicles()")}
