@@ -118,7 +118,7 @@ const PROMO_CARDS=[
   {title:"Car Care Tip",body:"Dry with a clean microfibre towel, not the sun — air-drying causes mineral spotting."},
   {title:"Interior Detailing",body:"Deep vacuum, leather conditioning, and antibacterial cabin treatment."},
 ];
-const VIDEO_PLAYLIST=["promo1.mp4","promo2.mp4","promo3.mp4","promo4.mp4","promo5.mp4","promo6.mp4","promo7.mp4","promo8.mp4","promo9.mp4","promo10.mp4","promo11.mp4"];
+const VIDEO_PLAYLIST=["promo1.mp4","promo2.mp4","promo3.mp4","promo4.mp4","promo5.mp4","promo7.mp4","promo8.mp4","promo9.mp4","promo10.mp4","promo11.mp4"]; // promo6.mp4 omitted: not present in this folder
 
 let JOBS=[], NOW=Date.now(), soundOn=false, promoIdx=0, vidIdx=0;
 const knownReady=new Set(); let firstLoad=true;
@@ -249,11 +249,10 @@ function renderPromo(){
 }
 
 /* ---------- video playlist ----------
-   Guarded against a missing/incomplete playlist. The previous version advanced
-   and re-fetched instantly on every error, so a playlist of 404s became a tight
-   infinite request loop that ran all day. Now: retries are spaced, and after one
-   full pass with nothing playable the panel is hidden so the promo cards get the
-   space instead of showing a black box. */
+   Guarded playlist. The previous version advanced and re-fetched instantly on
+   every error, so any missing clip could turn into a tight infinite request
+   loop running all day on the TV. Now retries are spaced, and only if the whole
+   playlist is unplayable does the panel hide itself. */
 function initVideo(){
   const v=$('promoVid');
   const panel=document.querySelector('.vid');
@@ -265,19 +264,19 @@ function initVideo(){
     v.play().catch(()=>{});
   }
   function next(){ vidIdx=(vidIdx+1)%VIDEO_PLAYLIST.length; playCur(); }
-  v.onplaying=()=>{ fails=0; };                    // a clip works — reset the counter
-  v.onended  =()=>{ fails=0; next(); };            // loops back to clip 1 at the end
+  v.onplaying=()=>{ fails=0; };
+  v.onended  =()=>{ fails=0; next(); };
   v.onerror  =()=>{
     if(dead) return;
     fails++;
-    if(fails>=VIDEO_PLAYLIST.length){              // whole playlist unplayable
+    if(fails>=VIDEO_PLAYLIST.length){
       dead=true;
       v.removeAttribute('src');
-      if(panel) panel.style.display='none';        // promo cards expand to fill
-      console.warn('Promo playlist: no playable clips found — video panel hidden.');
+      if(panel) panel.style.display='none';
+      console.warn('Promo playlist: no playable clips found - video panel hidden.');
       return;
     }
-    setTimeout(next, 500);                          // spaced retry, never a busy loop
+    setTimeout(next, 500);
   };
   playCur();
 }
