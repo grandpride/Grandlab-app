@@ -52,7 +52,7 @@ html,body{height:100%;width:100%;overflow:hidden;background:#fff;color:#111;font
 <div class="wrap">
   <div class="hdr" id="hdr">
     <div>
-      <div class="logo-box"><img src="logo.png" alt="GrandLab" onerror="this.style.display='none';this.parentElement.innerHTML='<span style=\'color:#FACC15;font-weight:900;font-size:24px;font-style:italic\'>grandlab</span>'"></div>
+      <div class="logo-box"><img src="logo.png" alt="GrandLab" onerror="this.style.display='none';this.parentElement.innerHTML='<span style=\'font-weight:900;font-size:26px;letter-spacing:1px;color:#fff\'>GRAND<span style=\'color:#F5C518\'>LAB</span></span>'"></div>
       <div class="sub">Live Job Board</div>
     </div>
     <div style="display:flex;align-items:center;gap:1.5vw">
@@ -118,7 +118,7 @@ const PROMO_CARDS=[
   {title:"Car Care Tip",body:"Dry with a clean microfibre towel, not the sun — air-drying causes mineral spotting."},
   {title:"Interior Detailing",body:"Deep vacuum, leather conditioning, and antibacterial cabin treatment."},
 ];
-const VIDEO_PLAYLIST=["promo1.mp4","promo2.mp4","promo3.mp4","promo4.mp4","promo5.mp4","promo6.mp4","promo7.mp4","promo8.mp4","promo9.mp4","promo10.mp4","promo11.mp4"];
+const VIDEO_PLAYLIST=["promo1.mp4","promo2.mp4","promo3.mp4","promo4.mp4","promo5.mp4","promo7.mp4","promo8.mp4","promo9.mp4","promo10.mp4","promo11.mp4"]; // promo6.mp4 omitted: not present in this folder
 
 let JOBS=[], NOW=Date.now(), soundOn=false, promoIdx=0, vidIdx=0;
 const knownReady=new Set(); let firstLoad=true;
@@ -248,12 +248,36 @@ function renderPromo(){
   $('promoDots').innerHTML=PROMO_CARDS.map((_,i)=>`<span class="${i===promoIdx?'on':''}"></span>`).join('');
 }
 
-/* ---------- video playlist ---------- */
+/* ---------- video playlist ----------
+   Guarded playlist. The previous version advanced and re-fetched instantly on
+   every error, so any missing clip could turn into a tight infinite request
+   loop running all day on the TV. Now retries are spaced, and only if the whole
+   playlist is unplayable does the panel hide itself. */
 function initVideo(){
   const v=$('promoVid');
-  function playCur(){ v.src=VIDEO_PLAYLIST[vidIdx]; v.play().catch(()=>{}); }
-  v.onended=()=>{ vidIdx=(vidIdx+1)%VIDEO_PLAYLIST.length; playCur(); };
-  v.onerror=()=>{ vidIdx=(vidIdx+1)%VIDEO_PLAYLIST.length; playCur(); };
+  const panel=document.querySelector('.vid');
+  let fails=0, dead=false;
+  function playCur(){
+    if(dead) return;
+    v.src=VIDEO_PLAYLIST[vidIdx];
+    v.load();
+    v.play().catch(()=>{});
+  }
+  function next(){ vidIdx=(vidIdx+1)%VIDEO_PLAYLIST.length; playCur(); }
+  v.onplaying=()=>{ fails=0; };
+  v.onended  =()=>{ fails=0; next(); };
+  v.onerror  =()=>{
+    if(dead) return;
+    fails++;
+    if(fails>=VIDEO_PLAYLIST.length){
+      dead=true;
+      v.removeAttribute('src');
+      if(panel) panel.style.display='none';
+      console.warn('Promo playlist: no playable clips found - video panel hidden.');
+      return;
+    }
+    setTimeout(next, 500);
+  };
   playCur();
 }
 
