@@ -668,7 +668,7 @@ function markCounts(){
   marks.forEach(function(m){ m.old?o++:n++ });
   return {old:o,neu:n,total:marks.length};
 }
-function delMark(i){marks.splice(i,1);marks.forEach(function(m,j){m.n=j+1});renderMarks()}
+function delMark(i){marks.splice(i,1);marks.forEach(function(m,j){m.n=j+1});renderMarks();if(PREV)showPrevBar()}
 
 
 // ===== carry previous damage forward =====
@@ -686,28 +686,51 @@ async function findPrevious(plate){
   const n=Array.isArray(d.marks)?d.marks.length:0;
   if(!n)return;                        // nothing worth carrying forward
   PREV=d;
-  const when=new Date(d.created_at).toLocaleString('en-MY',
-    {timeZone:'Asia/Kuala_Lumpur',day:'2-digit',month:'short',year:'2-digit',hour:'2-digit',minute:'2-digit'});
-  bar.innerHTML='Last inspection <b>'+when+'</b> had <b>'+n+' damage mark'+(n===1?'':'s')+'</b>.'+
-    '<div class="row2">'+
-    '<button class="go" onclick="loadPrevious()">LOAD PREVIOUS DAMAGE</button>'+
-    '<button onclick="window.open(\'gl-inspect-view.html?t='+d.share_token+'\',\'_blank\')">VIEW</button>'+
-    '</div>';
-  bar.classList.remove('hide');
+  loadPrevious(true);            // load straight away, no extra tap
 }
-function loadPrevious(){
+
+/* Bring the previous inspection's marks in as "previous". Any marks the staff
+   member has already placed on this visit stay as "new". */
+function loadPrevious(auto){
   if(!PREV)return;
   // the diagram must match or the positions will not line up
   if(PREV.car_type && DIAGRAMS[PREV.car_type] && PREV.car_type!==curBody) setBody(PREV.car_type,false);
   const carried=(PREV.marks||[]).map(function(m){
     return {x:m.x,y:m.y,type:m.type,old:true};
   });
-  const mine=marks.filter(function(m){return !m.old});
+  const mine=marks.filter(function(m){return !m.old});   // drop any previously auto-loaded set
   marks=carried.concat(mine);
   marks.forEach(function(m,i){m.n=i+1});
   renderMarks();
-  el('prevbar').classList.add('hide');
-  toast(carried.length+' previous mark'+(carried.length===1?'':'s')+' loaded - now add new damage only');
+  showPrevBar();
+  if(!auto)toast(carried.length+' previous mark'+(carried.length===1?'':'s')+' loaded');
+}
+function showPrevBar(){
+  const bar=el('prevbar');
+  if(!PREV){bar.classList.add('hide');return}
+  const n=marks.filter(function(m){return m.old}).length;
+  const when=new Date(PREV.created_at).toLocaleString('en-MY',
+    {timeZone:'Asia/Kuala_Lumpur',day:'2-digit',month:'short',year:'2-digit',hour:'2-digit',minute:'2-digit'});
+  if(!n){
+    bar.innerHTML='Previous damage cleared. Last inspection was <b>'+when+'</b>.'+
+      '<div class="row2"><button class="go" onclick="loadPrevious()">LOAD AGAIN</button>'+
+      '<button onclick="window.open(\'gl-inspect-view.html?t='+PREV.share_token+'\',\'_blank\')">VIEW LAST</button></div>';
+  }else{
+    bar.innerHTML='\u2713 Loaded <b>'+n+' previous mark'+(n===1?'':'s')+'</b> from <b>'+when+'</b>.<br>'+
+      '<span style="color:var(--text2)">Check each one on the car. Remove any that were repaired, then add today\'s damage.</span>'+
+      '<div class="row2">'+
+      '<button onclick="window.open(\'gl-inspect-view.html?t='+PREV.share_token+'\',\'_blank\')">VIEW LAST</button>'+
+      '<button onclick="clearPrevious()">CLEAR PREVIOUS</button>'+
+      '</div>';
+  }
+  bar.classList.remove('hide');
+}
+function clearPrevious(){
+  marks=marks.filter(function(m){return !m.old});
+  marks.forEach(function(m,i){m.n=i+1});
+  renderMarks();
+  showPrevBar();
+  toast('Previous damage cleared');
 }
 
 // ---- categorised photos ----
