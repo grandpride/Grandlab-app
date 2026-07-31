@@ -68,6 +68,7 @@ h1 span{color:var(--gold)}
 
     <div class="card">
       <div class="sec">PHOTOS (<span id="v_count">0</span>)</div>
+      <div id="photowrap"></div>
       <div class="photos" id="photos"></div>
     </div>
     <div class="sub" style="text-align:center;margin:20px 0">GrandLab Detailing · PJS 13, Petaling Jaya</div>
@@ -128,15 +129,23 @@ function el(id){return document.getElementById(id)}
   }
   const plist=d.photos||[];
   if(plist.length){
+    const wrap=el('photowrap');
     const order=['front','left','right','rear','top','interior','damage','other'];
-    order.forEach(function(cat){
+    // known categories first, then anything unexpected, so no photo is ever hidden
+    const extra=[];
+    plist.forEach(function(p){
+      if(order.indexOf(p.cat)<0 && extra.indexOf(p.cat)<0) extra.push(p.cat);
+    });
+    order.concat(extra).forEach(function(cat){
       const items=plist.filter(function(p){return p.cat===cat});
       if(!items.length)return;
-      const h=document.createElement('div');h.className='cathead';
+      const h=document.createElement('div');
+      h.className='cathead';
       h.textContent=(CATNAMES[cat]||cat)+' ('+items.length+')';
-      ph.parentNode.insertBefore(h,null);
-      const grid=document.createElement('div');grid.className='photos';
-      ph.parentNode.appendChild(grid);
+      wrap.appendChild(h);
+      const grid=document.createElement('div');
+      grid.className='photos';
+      wrap.appendChild(grid);
       items.forEach(function(p){addImg(grid,p.path)});
     });
     ph.classList.add('hide');
