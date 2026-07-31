@@ -91,6 +91,7 @@ td input,td select{padding:7px;font-size:13px}
 <div class="toast" id="toast"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <script>
 const SUPABASE_URL='https://eychljpzorzmaveixlnu.supabase.co';
 const SUPABASE_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV5Y2hsanB6b3J6bWF2ZWl4bG51Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2NDk2NjQsImV4cCI6MjA5NzIyNTY2NH0.6dA1zhz5ZIwf8byFB8vhfOzPI-uPPdPihEr1b8GG_oA';
@@ -98,7 +99,12 @@ const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON,{auth:{persistSession:
 
 const APPROVE_PIN='065437';
 const SENIOR_POOL=0.60, JUNIOR_POOL=0.40;
-const ZONES=['Front bumper','Bonnet','Roof','Left side','Right side','Rear'];
+const ZONES_CAR=['Front bumper','Bonnet','Roof','Left side','Right side','Rear'];
+const ZONES_BIKE=['Front fairing','Windshield','Front fender','Fuel tank','Side panel L','Side panel R','Tail / rear panel','Rear fender'];
+function isBike(job){
+  if((job.car_type||'').toLowerCase().indexOf('motor')>=0)return true;
+  return /\(motor\)|motorcycle|\bbike\b/i.test(job.model||'');
+}
 
 let RATES=[], TECHS=[], CUR=null, TAB='new';
 
@@ -191,18 +197,22 @@ function setTab(t){
 }
 
 // ---------- rate matching ----------
-function pkgOf(name){
+function pkgOf(name,bike){
   const n=(name||'').toLowerCase();
   if(/removal/.test(n))return null;                 // film removal is labour
+  // a bike only ever has one package, whatever the car service was called
+  if(bike)return (n.indexOf('full car')>=0||n.indexOf('full front')>=0)?'full_bike':null;
   if(n.indexOf('full car')>=0)return 'full_car';
   if(n.indexOf('full front')>=0 && n.indexOf('basic')<0)return 'full_front';
   if(n.indexOf('front 3')>=0)return 'front_3';
   return null;                                       // part / a la carte
 }
-function findRate(catHint,name){
-  const exact=RATES.filter(function(r){return r.service_match===name})[0];
-  if(exact)return exact;
-  const p=pkgOf(name);
+function findRate(catHint,name,bike){
+  if(!bike){
+    const exact=RATES.filter(function(r){return r.service_match===name})[0];
+    if(exact)return exact;
+  }
+  const p=pkgOf(name,bike);
   if(!p)return null;
   // brand is the longest brand string that appears in the service name
   let best=null;
@@ -215,11 +225,11 @@ function findRate(catHint,name){
   return best;
 }
 function filmLines(job){
-  const out=[];
+  const out=[]; const bike=isBike(job);
   (job.services||[]).forEach(function(s){
     const nm=(typeof s==='string')?s:(s&&s.desc?s.desc:'');
     if(!nm)return;
-    const r=findRate(null,nm);
+    const r=findRate(null,nm,bike);
     if(r&&Number(r.amount)>0)out.push({name:nm,rate:r});
   });
   return out;
@@ -231,7 +241,7 @@ async function loadNew(){
   box.innerHTML='<div class="card"><div class="empty">Loading...</div></div>';
   const since=Date.now()-45*86400000;
   const j=await sb.from('gl_jobs')
-    .select('id,plate,model,services,created_at,stage,ready_at')
+    .select('id,plate,model,car_type,services,created_at,stage,ready_at')
     .gte('created_at',since).order('created_at',{ascending:false}).limit(200);
   if(j.error){box.innerHTML='<div class="card"><div class="empty">Could not load jobs</div></div>';return}
   let jobs=(j.data||[]).map(function(x){x._lines=filmLines(x);return x})
@@ -263,13 +273,17 @@ async function loadNew(){
 
 // ---------- FORM ----------
 function openForm(job){
-  CUR={job:job,lines:job._lines,zones:{},people:[]};
+  const bike=isBike(job);
+  CUR={job:job,lines:job._lines,zones:{},people:[],bike:bike,serials:[]};
+  const ZONES = bike?ZONES_BIKE:ZONES_CAR;
+  CUR.ZONES=ZONES;
   const base=CUR.lines.reduce(function(a,b){return a+Number(b.rate.amount)},0);
   const th=Math.max.apply(null,CUR.lines.map(function(l){return Number(l.rate.target_hours)||8}));
   const nowLocal=new Date(Date.now()+8*3600000).toISOString().slice(0,16);
   el('v_new').innerHTML=
    '<button class="btn btn2" style="margin-bottom:12px" onclick="loadNew()">&#8592; BACK TO LIST</button>'+
-   '<div class="card"><div class="sec">VEHICLE</div>'+
+   '<div class="card"><div class="sec">VEHICLE'+
+     (bike?' <span class="pill" style="background:var(--gold);color:#000;margin-left:6px">BIKE</span>':'')+'</div>'+
      '<div class="big">'+esc(job.plate||'-')+'</div>'+
      '<div class="hint">'+esc(job.model||'')+'</div>'+
      '<div style="margin-top:10px">'+CUR.lines.map(function(l){
@@ -299,7 +313,7 @@ function openForm(job){
 
    '<div class="card"><div class="sec">WHO APPLIED WHICH ZONE</div>'+
      '<div class="hint" style="margin-bottom:8px">Used by QC to trace a defect back to the installer.</div>'+
-     ZONES.map(function(z,i){
+     CUR.ZONES.map(function(z,i){
        return '<div class="zrow"><div class="zn">'+z+'</div>'+
          '<select id="z_'+i+'"><option value="">-</option>'+
          TECHS.map(function(t){return '<option>'+esc(t)+'</option>'}).join('')+'</select></div>';
@@ -315,6 +329,16 @@ function openForm(job){
        '<span>TOTAL PAYOUT</span><span class="tot" id="f_total">RM0.00</span></div>'+
    '</div>'+
 
+   '<div class="card"><div class="sec">FILM SERIAL NUMBER'+
+     '<span style="color:var(--text2);font-weight:400;text-transform:none"> &mdash; for AXFilm warranty</span></div>'+
+     '<div class="row"><div><input id="f_serial" placeholder="Scan or type serial / roll no." autocomplete="off"></div>'+
+     '<div style="flex:0 0 96px"><button class="btn btn2" style="padding:11px" onclick="addSerial()">ADD</button></div></div>'+
+     '<button class="btn btn2 hide" id="f_scanbtn" onclick="scanSerial()">SCAN WITH CAMERA</button>'+
+     '<video id="f_video" class="hide" style="width:100%;border-radius:10px;margin-top:8px" playsinline></video>'+
+     '<div id="f_serials"></div>'+
+     '<div class="hint">A barcode scanner types straight into the box. Add one per roll used.</div>'+
+   '</div>'+
+
    '<div class="card"><div class="sec">NOTES</div>'+
      '<textarea id="f_notes" rows="2" placeholder="Special car, bodykit, delays..."></textarea></div>'+
 
@@ -322,6 +346,11 @@ function openForm(job){
    '<div style="height:30px"></div>';
 
   CUR.base=base; CUR.target=th;
+  el('f_serial').addEventListener('keydown',function(e){
+    if(e.key==='Enter'){e.preventDefault();addSerial()}   // hardware scanners send Enter
+  });
+  if('BarcodeDetector' in window)el('f_scanbtn').classList.remove('hide');
+  renderSerials();
   addPerson('Koko','senior');
   calc();
 }
@@ -416,7 +445,7 @@ async function saveOrder(){
   const named=CUR.people.filter(function(p){return p.name});
   if(!named.length){toast('Add at least one staff member');return}
   const btn=el('f_save'); btn.disabled=true; btn.textContent='Saving...';
-  const zones=ZONES.map(function(z,i){
+  const zones=CUR.ZONES.map(function(z,i){
     const v=el('z_'+i)?el('z_'+i).value:'';
     return v?{zone:z,staff:v}:null;
   }).filter(Boolean);
@@ -433,13 +462,56 @@ async function saveOrder(){
     target_hours:CUR.target,
     timing_band:CUR.band.band, timing_factor:CUR.band.f,
     payout_pool:CUR.pool,
-    zones:zones, splits:named,
+    zones:zones, splits:named, serials:CUR.serials, is_bike:!!CUR.bike,
     status:'pending', notes:el('f_notes').value.trim(),
     created_by:gu.data.user?gu.data.user.email:''
   });
   if(r.error){toast('Error: '+r.error.message);btn.disabled=false;btn.textContent='SUBMIT FOR APPROVAL';return}
   toast('Submitted for approval');
+  const fresh=await sb.from('gl_comm_orders').select('*').eq('job_id',CUR.job.id)
+    .order('created_at',{ascending:false}).limit(1);
+  if(fresh.data&&fresh.data.length&&confirm('Submitted. Download the PDF for finance now?'))commPDF(fresh.data[0]);
   CUR=null; setTab('pend');
+}
+
+
+// ---------- film serial numbers ----------
+function renderSerials(){
+  el('f_serials').innerHTML=CUR.serials.map(function(s,i){
+    return '<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px">'+
+      '<span style="color:var(--gold)">&#9642;</span><span style="flex:1;word-break:break-all">'+esc(s)+'</span>'+
+      '<button style="background:none;border:none;color:var(--red);cursor:pointer;font-size:16px" onclick="rmSerial('+i+')">&times;</button></div>';
+  }).join('');
+}
+function addSerial(v){
+  const inp=el('f_serial');
+  const val=(typeof v==='string'?v:inp.value).trim();
+  if(!val)return;
+  if(CUR.serials.indexOf(val)<0)CUR.serials.push(val);
+  inp.value=''; inp.focus(); renderSerials();
+}
+function rmSerial(i){ CUR.serials.splice(i,1); renderSerials(); }
+async function scanSerial(){
+  const v=el('f_video');
+  try{
+    const stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}});
+    v.srcObject=stream; v.classList.remove('hide'); await v.play();
+    const det=new BarcodeDetector();
+    const tick=async function(){
+      if(v.classList.contains('hide'))return;
+      try{
+        const codes=await det.detect(v);
+        if(codes&&codes.length){
+          addSerial(codes[0].rawValue);
+          toast('Scanned '+codes[0].rawValue);
+          stream.getTracks().forEach(function(t){t.stop()});
+          v.classList.add('hide'); return;
+        }
+      }catch(e){}
+      requestAnimationFrame(tick);
+    };
+    tick();
+  }catch(e){ toast('Camera not available - type it instead'); v.classList.add('hide'); }
 }
 
 // ---------- PENDING / APPROVED ----------
@@ -489,6 +561,7 @@ function openOrder(o,which){
    '</div>'):'')+
    (o.notes?('<div class="card"><div class="sec">NOTES</div><div class="hint">'+esc(o.notes)+'</div></div>'):'')+
    (o.qc_flag?('<div class="warn">QC rework raised'+(o.qc_note?(': '+esc(o.qc_note)):'')+'</div>'):'')+
+   '<button class="btn btn2" style="margin-bottom:8px" onclick="pdfById(\''+o.id+'\')">DOWNLOAD PDF FOR FINANCE</button>'+
    (which==='pend'
      ? '<button class="btn" onclick="decide(\''+o.id+'\',\'approved\')">APPROVE</button>'+
        '<button class="btn btn2" style="margin-top:8px" onclick="decide(\''+o.id+'\',\'hold\')">PUT ON HOLD (QC / rework)</button>'
@@ -511,6 +584,114 @@ async function decide(id,status){
   if(r.error){toast('Error: '+r.error.message);return}
   toast(status==='paid'?'Marked as paid':status==='hold'?'Put on hold':'Approved');
   setTab(status==='approved'||status==='paid'?'done':'pend');
+}
+
+
+
+let LAST_LIST=[];
+async function pdfById(id){
+  const r=await sb.from('gl_comm_orders').select('*').eq('id',id).maybeSingle();
+  if(r.error||!r.data){toast('Could not load order');return}
+  commPDF(r.data);
+}
+
+// ---------- PDF: same layout as the paper Commission Order ----------
+function commPDF(o){
+  if(!window.jspdf||!window.jspdf.jsPDF){toast('PDF library not loaded');return}
+  const {jsPDF}=window.jspdf;
+  const d=new jsPDF({unit:'mm',format:'a4'});
+  const L=16, R=194, W=R-L;
+  let y=18;
+  const line=function(yy){d.setDrawColor(160);d.line(L,yy,R,yy)};
+  const lab=function(t,x,yy){d.setFont('helvetica','normal');d.setFontSize(9);d.setTextColor(110);d.text(t,x,yy)};
+  const val=function(t,x,yy,b){d.setFont('helvetica',b?'bold':'normal');d.setFontSize(10);d.setTextColor(0);d.text(String(t==null?'':t),x,yy)};
+
+  d.setFont('helvetica','bold');d.setFontSize(13);d.setTextColor(0);
+  d.text('GRANDLAB PPF / WRAP / TINTED COMMISSION ORDER',L,y);
+  d.setFillColor(245,197,24);d.rect(L,y+2.5,W,1.6,'F');
+  y+=12;
+
+  lab('CAR MODEL:',L,y);         val(o.model||'-',L+34,y,true);
+  lab('DATE:',R-46,y);           val(myt(o.created_at),R-32,y);
+  y+=7;
+  lab('CAR PLATE NUMBER:',L,y);  val(o.plate||'-',L+34,y,true);
+  if(o.is_bike){ d.setFont('helvetica','bold');d.setFontSize(9);d.setTextColor(180,120,0);d.text('MOTORCYCLE',R-32,y) }
+  y+=9; line(y); y+=7;
+
+  lab('SERVICES:',L,y); val(o.category||'-',L+34,y,true);
+  lab('PACKAGE:',R-56,y); val(String(o.package||'').replace(/_/g,' ').toUpperCase(),R-32,y);
+  y+=7;
+  lab('PRODUCT DETAILS:',L,y);
+  const prod=d.splitTextToSize(String(o.service_name||'-'),W-36);
+  val(prod,L+34,y); y+=Math.max(6,prod.length*5)+3;
+
+  if((o.serials||[]).length){
+    lab('FILM SERIAL NO:',L,y);
+    const ser=d.splitTextToSize((o.serials||[]).join(',  '),W-36);
+    val(ser,L+34,y); y+=Math.max(6,ser.length*5)+2;
+  }
+  line(y); y+=8;
+
+  // installation table
+  d.setFont('helvetica','bold');d.setFontSize(9);d.setTextColor(0);
+  d.text('INSTALLATION:',L,y); y+=5;
+  const cols=[L,L+52,L+96,L+134,L+166];
+  d.setFillColor(240);d.rect(L,y-4,W,7,'F');
+  ['STAFF','TEAM','WHO HANDLE?','COMM RATE','FINAL COMM'].forEach(function(h,i){d.text(h,cols[i]+1,y)});
+  y+=5;
+  d.setFont('helvetica','normal');d.setFontSize(9);
+  const zoneOf=function(name){
+    return (o.zones||[]).filter(function(z){return z.staff===name})
+      .map(function(z){return z.zone}).join(', ');
+  };
+  (o.splits||[]).forEach(function(s){
+    const zs=d.splitTextToSize(zoneOf(s.name)||'-',36);
+    const h=Math.max(6,zs.length*4.2);
+    d.text(String(s.name||''),cols[0]+1,y);
+    d.text(String(s.role||'').toUpperCase(),cols[1]+1,y);
+    d.text(zs,cols[2]+1,y);
+    d.text(String(s.pct||0)+'%',cols[3]+1,y);
+    d.setFont('helvetica','bold');
+    d.text(rm(s.amount),cols[4]+1,y);
+    d.setFont('helvetica','normal');
+    y+=h; line(y-2);
+  });
+  y+=4;
+
+  // timing + totals
+  const half=L+100;
+  lab('START:',L,y);   val(o.start_at?myt(o.start_at):'-',L+24,y);
+  lab('BASE:',half,y);  val(rm(o.base_amount),half+30,y);
+  y+=6;
+  lab('END:',L,y);     val(o.end_at?myt(o.end_at):'-',L+24,y);
+  lab('TIMING:',half,y);val(String(o.timing_band||'').toUpperCase()+'  x'+o.timing_factor,half+30,y);
+  y+=6;
+  lab('DELIVER:',L,y); val(o.deliver_at?myt(o.deliver_at):'-',L+24,y);
+  const tot=(o.splits||[]).reduce(function(a,b){return a+Number(b.amount||0)},0);
+  d.setFont('helvetica','bold');d.setFontSize(11);
+  d.text('COMMISSION FEE:',half,y); d.text(rm(tot),half+40,y);
+  y+=10;
+
+  if(o.notes){ lab('NOTES:',L,y); const n=d.splitTextToSize(o.notes,W-24); val(n,L+24,y); y+=Math.max(6,n.length*5); }
+  if(o.qc_flag){ d.setTextColor(200,40,40);d.setFont('helvetica','bold');
+    d.text('QC REWORK RAISED'+(o.qc_note?(' - '+o.qc_note):''),L,y); y+=7; d.setTextColor(0); }
+
+  // signatures
+  y=Math.max(y+8,236);
+  line(y); y+=8;
+  const sig=[['MANAGER SIGN',L],['BD SIGN',L+92]];
+  const sig2=[['FINANCE SIGN',L],['MD SIGN',L+92]];
+  d.setFont('helvetica','normal');d.setFontSize(9);d.setTextColor(110);
+  sig.forEach(function(s){d.text(s[0],s[1],y);d.setDrawColor(120);d.line(s[1],y+14,s[1]+62,y+14)});
+  y+=24;
+  sig2.forEach(function(s){d.text(s[0],s[1],y);d.setDrawColor(120);d.line(s[1],y+14,s[1]+62,y+14)});
+
+  d.setFontSize(8);d.setTextColor(150);
+  d.text('Status: '+String(o.status||'').toUpperCase()+'   |   Generated '+myt(new Date())+'   |   GrandLab Detailing',L,289);
+
+  const fn='COMM_'+String(o.plate||'').replace(/[^A-Za-z0-9]+/g,'')+'_'+
+    new Date(o.created_at||Date.now()).toISOString().slice(0,10)+'.pdf';
+  d.save(fn);
 }
 
 // ---------- REPORT ----------
