@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="mobile-web-app-capable" content="yes">
+<title>Grandlab Film Commission</title>
+<style>
+:root{--bg:#080808;--card:#141414;--card2:#1c1c1c;--gold:#F5C518;--text:#fff;--text2:#9a9a9a;--border:#2a2a2a;--red:#ff5252;--green:#16A34A;--amber:#D97706}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:var(--text)}
+.wrap{max-width:820px;margin:0 auto;padding:16px}
+h1{font-size:20px;font-weight:900;letter-spacing:.5px;margin:6px 0 2px}
+h1 span{color:var(--gold)}
+.sub{color:var(--text2);font-size:12px;margin-bottom:14px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:16px;margin-bottom:14px}
+.sec{font-size:12px;font-weight:800;color:var(--gold);letter-spacing:.1em;margin-bottom:10px}
+.row{display:flex;gap:8px;margin-bottom:8px}
+.row>*{flex:1}
+label{font-size:11px;color:var(--text2);display:block;margin-bottom:4px}
+input,select,textarea{width:100%;background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:11px;color:var(--text);font-size:15px;font-family:inherit}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--gold)}
+.btn{display:block;width:100%;background:var(--gold);color:#000;border:none;border-radius:12px;padding:14px;font-size:15px;font-weight:800;cursor:pointer;font-family:inherit}
+.btn2{background:var(--card2);color:var(--text);border:1px solid var(--border)}
+.btn:disabled{opacity:.4}
+.tabs{display:flex;gap:6px;margin-bottom:14px}
+.tab{flex:1;padding:10px;border-radius:10px;background:var(--card2);border:1px solid var(--border);color:var(--text2);font-size:12px;font-weight:800;cursor:pointer;font-family:inherit;text-align:center}
+.tab.on{background:var(--gold);color:#000;border-color:var(--gold)}
+.jrow{display:flex;align-items:center;gap:10px;padding:12px 10px;border:1px solid var(--border);border-radius:12px;margin-bottom:8px;cursor:pointer;background:var(--card2)}
+.jrow:active{border-color:var(--gold)}
+.jrow .pl{font-weight:900;font-size:15px;min-width:86px}
+.jrow .mid{flex:1;min-width:0}
+.jrow .sub2{font-size:11px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rm{font-weight:900;color:var(--gold);white-space:nowrap}
+.pill{font-size:10px;font-weight:800;padding:3px 8px;border-radius:12px;white-space:nowrap}
+.empty{text-align:center;color:var(--text2);font-size:13px;padding:22px 6px}
+.hint{font-size:11px;color:var(--text2);margin-top:6px}
+.warn{background:rgba(255,82,82,.12);border:1px solid var(--red);color:#ffb3b3;border-radius:10px;padding:10px;font-size:12px;margin-top:8px}
+.ok{background:rgba(22,163,74,.12);border:1px solid var(--green);color:#9ae6b4;border-radius:10px;padding:10px;font-size:12px;margin-top:8px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;color:var(--text2);font-size:10px;font-weight:800;letter-spacing:.08em;padding:6px 4px;border-bottom:1px solid var(--border)}
+td{padding:7px 4px;border-bottom:1px solid var(--border)}
+td input,td select{padding:7px;font-size:13px}
+.tot{font-weight:900;color:var(--gold)}
+.hide{display:none!important}
+#login{max-width:400px;margin:80px auto}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--gold);color:#000;padding:10px 20px;border-radius:24px;font-weight:800;font-size:14px;display:none;z-index:99}
+.big{font-size:26px;font-weight:900;color:var(--gold)}
+.zrow{display:flex;gap:8px;align-items:center;margin-bottom:6px}
+.zrow .zn{width:150px;font-size:12px;color:var(--text2)}
+</style>
+</head>
+<body>
+
+<div id="login" class="card hide">
+  <div class="sec">GRANDLAB STAFF LOGIN</div>
+  <div class="row"><div><label>Email</label><input id="lg_email" type="email"></div></div>
+  <div class="row"><div><label>Password</label><input id="lg_pass" type="password"></div></div>
+  <button class="btn" onclick="doLogin()">Sign In</button>
+  <div class="hint" id="lg_err"></div>
+</div>
+
+<div class="wrap hide" id="app">
+  <h1>GRAND<span>LAB</span> FILM COMMISSION</h1>
+  <div class="sub">PPF &middot; Wrapping &middot; Tinted</div>
+
+  <div class="tabs">
+    <button class="tab on" data-t="new"    onclick="setTab('new')">NEW JOBS</button>
+    <button class="tab"    data-t="pend"   onclick="setTab('pend')">PENDING</button>
+    <button class="tab"    data-t="done"   onclick="setTab('done')">APPROVED</button>
+    <button class="tab"    data-t="report" onclick="setTab('report')">REPORT</button>
+  </div>
+
+  <div id="v_new"></div>
+  <div id="v_pend" class="hide"></div>
+  <div id="v_done" class="hide"></div>
+  <div id="v_report" class="hide"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SUPABASE_URL='https://eychljpzorzmaveixlnu.supabase.co';
+const SUPABASE_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV5Y2hsanB6b3J6bWF2ZWl4bG51Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2NDk2NjQsImV4cCI6MjA5NzIyNTY2NH0.6dA1zhz5ZIwf8byFB8vhfOzPI-uPPdPihEr1b8GG_oA';
+const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON,{auth:{persistSession:true,autoRefreshToken:true,storageKey:'gl_auth'}});
+
+const APPROVE_PIN='065437';
+const SENIOR_POOL=0.60, JUNIOR_POOL=0.40;
+const ZONES=['Front bumper','Bonnet','Roof','Left side','Right side','Rear'];
+
+let RATES=[], TECHS=[], CUR=null, TAB='new';
+
+function el(id){return document.getElementById(id)}
+function toast(m){const t=el('toast');t.textContent=m;t.style.display='block';setTimeout(function(){t.style.display='none'},2400)}
+function esc(s){return String(s==null?'':s).replace(/[<>&"]/g,function(c){return {'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]})}
+function rm(n){return 'RM'+(Number(n)||0).toFixed(2)}
+function myt(d){return new Date(d).toLocaleString('en-MY',{timeZone:'Asia/Kuala_Lumpur',day:'2-digit',month:'short',year:'2-digit',hour:'2-digit',minute:'2-digit'})}
+
+// ---------- auth ----------
+(async function(){
+  const s=await sb.auth.getSession();
+  if(s.data.session){el('app').classList.remove('hide');boot()}
+  else{el('login').classList.remove('hide')}
+})();
+async function doLogin(){
+  const r=await sb.auth.signInWithPassword({email:el('lg_email').value.trim(),password:el('lg_pass').value});
+  if(r.error){el('lg_err').textContent=r.error.message;return}
+  location.reload();
+}
+
+async function boot(){
+  const r=await sb.from('gl_comm_rates').select('*').eq('active',true);
+  RATES=r.data||[];
+  const c=await sb.from('gl_board_config').select('technicians').eq('id',1).maybeSingle();
+  TECHS=(c.data&&Array.isArray(c.data.technicians)?c.data.technicians:[]).filter(function(t){return t!=='All Staff'});
+  loadNew();
+}
+
+function setTab(t){
+  TAB=t;
+  ['new','pend','done','report'].forEach(function(k){
+    el('v_'+k).classList.toggle('hide',k!==t);
+  });
+  Array.from(document.querySelectorAll('.tab')).forEach(function(b){
+    b.classList.toggle('on',b.dataset.t===t);
+  });
+  if(t==='new')loadNew(); if(t==='pend')loadList('pend'); if(t==='done')loadList('done'); if(t==='report')loadReport();
+}
+
+// ---------- rate matching ----------
+function pkgOf(name){
+  const n=(name||'').toLowerCase();
+  if(/removal/.test(n))return null;                 // film removal is labour
+  if(n.indexOf('full car')>=0)return 'full_car';
+  if(n.indexOf('full front')>=0 && n.indexOf('basic')<0)return 'full_front';
+  if(n.indexOf('front 3')>=0)return 'front_3';
+  return null;                                       // part / a la carte
+}
+function findRate(catHint,name){
+  const exact=RATES.filter(function(r){return r.service_match===name})[0];
+  if(exact)return exact;
+  const p=pkgOf(name);
+  if(!p)return null;
+  // brand is the longest brand string that appears in the service name
+  let best=null;
+  RATES.forEach(function(r){
+    if(r.package!==p||!r.brand)return;
+    if(name.toLowerCase().indexOf(r.brand.toLowerCase())>=0){
+      if(!best||r.brand.length>best.brand.length)best=r;
+    }
+  });
+  return best;
+}
+function filmLines(job){
+  const out=[];
+  (job.services||[]).forEach(function(s){
+    const nm=(typeof s==='string')?s:(s&&s.desc?s.desc:'');
+    if(!nm)return;
+    const r=findRate(null,nm);
+    if(r&&Number(r.amount)>0)out.push({name:nm,rate:r});
+  });
+  return out;
+}
+
+// ---------- NEW JOBS ----------
+async function loadNew(){
+  const box=el('v_new');
+  box.innerHTML='<div class="card"><div class="empty">Loading...</div></div>';
+  const since=Date.now()-45*86400000;
+  const j=await sb.from('gl_jobs')
+    .select('id,plate,model,services,created_at,stage,ready_at')
+    .gte('created_at',since).order('created_at',{ascending:false}).limit(200);
+  if(j.error){box.innerHTML='<div class="card"><div class="empty">Could not load jobs</div></div>';return}
+  let jobs=(j.data||[]).map(function(x){x._lines=filmLines(x);return x})
+                       .filter(function(x){return x._lines.length});
+  const ids=jobs.map(function(x){return x.id});
+  if(ids.length){
+    const c=await sb.from('gl_comm_orders').select('job_id').in('job_id',ids);
+    const seen={}; (c.data||[]).forEach(function(x){seen[x.job_id]=1});
+    jobs=jobs.filter(function(x){return !seen[x.id]});
+  }
+  if(!jobs.length){
+    box.innerHTML='<div class="card"><div class="sec">NEW JOBS</div><div class="empty">No film jobs waiting &#10003;</div></div>';
+    return;
+  }
+  box.innerHTML='<div class="card"><div class="sec">NEW JOBS ('+jobs.length+')</div>'+
+    jobs.map(function(x,i){
+      const l=x._lines[0];
+      const total=x._lines.reduce(function(a,b){return a+Number(b.rate.amount)},0);
+      return '<div class="jrow" data-i="'+i+'">'+
+        '<div class="pl">'+esc(x.plate||'-')+'</div>'+
+        '<div class="mid"><div>'+esc(x.model||'')+'</div>'+
+        '<div class="sub2">'+esc(l.name)+(x._lines.length>1?(' +'+(x._lines.length-1)+' more'):'')+'</div></div>'+
+        '<div class="rm">'+rm(total)+'</div></div>';
+    }).join('')+'</div>';
+  Array.from(box.querySelectorAll('.jrow')).forEach(function(d,i){
+    d.onclick=function(){openForm(jobs[i])};
+  });
+}
+
+// ---------- FORM ----------
+function openForm(job){
+  CUR={job:job,lines:job._lines,zones:{},people:[]};
+  const base=CUR.lines.reduce(function(a,b){return a+Number(b.rate.amount)},0);
+  const th=Math.max.apply(null,CUR.lines.map(function(l){return Number(l.rate.target_hours)||8}));
+  const nowLocal=new Date(Date.now()+8*3600000).toISOString().slice(0,16);
+  el('v_new').innerHTML=
+   '<button class="btn btn2" style="margin-bottom:12px" onclick="loadNew()">&#8592; BACK TO LIST</button>'+
+   '<div class="card"><div class="sec">VEHICLE</div>'+
+     '<div class="big">'+esc(job.plate||'-')+'</div>'+
+     '<div class="hint">'+esc(job.model||'')+'</div>'+
+     '<div style="margin-top:10px">'+CUR.lines.map(function(l){
+        return '<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);font-size:13px">'+
+        '<span>'+esc(l.name)+'</span><span class="rm">'+rm(l.rate.amount)+'</span></div>';}).join('')+
+     '</div>'+
+     '<div style="display:flex;justify-content:space-between;margin-top:10px;font-weight:900">'+
+       '<span>BASE COMMISSION</span><span class="tot" id="f_base">'+rm(base)+'</span></div>'+
+   '</div>'+
+
+   '<div class="card"><div class="sec">TIMING</div>'+
+     '<div class="row">'+
+       '<div><label>Start</label><input type="datetime-local" id="f_start" value="'+nowLocal+'" onchange="calc()"></div>'+
+       '<div><label>End</label><input type="datetime-local" id="f_end" value="'+nowLocal+'" onchange="calc()"></div>'+
+     '</div>'+
+     '<div class="row"><div><label>Deliver date</label><input type="datetime-local" id="f_deliver"></div></div>'+
+     '<div class="hint">Target for this job: '+th+' hours</div>'+
+     '<div id="f_timing"></div>'+
+     '<div class="row" style="margin-top:8px"><div><label>Override band (management decision)</label>'+
+       '<select id="f_band" onchange="calc(true)">'+
+         '<option value="">Auto</option>'+
+         '<option value="ontime">On time - 100%</option>'+
+         '<option value="nextday">Next day - 50%</option>'+
+         '<option value="late">Late - 0%</option>'+
+       '</select></div></div>'+
+   '</div>'+
+
+   '<div class="card"><div class="sec">WHO APPLIED WHICH ZONE</div>'+
+     '<div class="hint" style="margin-bottom:8px">Used by QC to trace a defect back to the installer.</div>'+
+     ZONES.map(function(z,i){
+       return '<div class="zrow"><div class="zn">'+z+'</div>'+
+         '<select id="z_'+i+'"><option value="">-</option>'+
+         TECHS.map(function(t){return '<option>'+esc(t)+'</option>'}).join('')+'</select></div>';
+     }).join('')+
+   '</div>'+
+
+   '<div class="card"><div class="sec">COMMISSION SPLIT</div>'+
+     '<table><thead><tr><th>Staff</th><th style="width:96px">Team</th><th style="width:70px">%</th><th style="width:84px">Amount</th><th style="width:28px"></th></tr></thead>'+
+     '<tbody id="f_people"></tbody></table>'+
+     '<button class="btn btn2" style="margin-top:10px" onclick="addPerson()">+ ADD STAFF</button>'+
+     '<div id="f_check"></div>'+
+     '<div style="display:flex;justify-content:space-between;margin-top:12px;font-weight:900">'+
+       '<span>TOTAL PAYOUT</span><span class="tot" id="f_total">RM0.00</span></div>'+
+   '</div>'+
+
+   '<div class="card"><div class="sec">NOTES</div>'+
+     '<textarea id="f_notes" rows="2" placeholder="Special car, bodykit, delays..."></textarea></div>'+
+
+   '<button class="btn" id="f_save" onclick="saveOrder()">SUBMIT FOR APPROVAL</button>'+
+   '<div style="height:30px"></div>';
+
+  CUR.base=base; CUR.target=th;
+  addPerson('Koko','senior');
+  calc();
+}
+
+function addPerson(name,role){
+  CUR.people.push({name:name||'',role:role||'junior',pct:0});
+  renderPeople();
+}
+function renderPeople(){
+  const tb=el('f_people');
+  tb.innerHTML=CUR.people.map(function(p,i){
+    return '<tr>'+
+      '<td><select onchange="setP('+i+',\'name\',this.value)"><option value="">-</option>'+
+        TECHS.map(function(t){return '<option'+(t===p.name?' selected':'')+'>'+esc(t)+'</option>'}).join('')+'</select></td>'+
+      '<td><select onchange="setP('+i+',\'role\',this.value)">'+
+        '<option value="senior"'+(p.role==='senior'?' selected':'')+'>Senior</option>'+
+        '<option value="junior"'+(p.role==='junior'?' selected':'')+'>Junior</option></select></td>'+
+      '<td><input type="number" min="0" max="100" value="'+p.pct+'" onchange="setP('+i+',\'pct\',this.value)"></td>'+
+      '<td class="rm" id="amt_'+i+'">RM0.00</td>'+
+      '<td><button class="btn2" style="border:none;background:none;color:var(--red);cursor:pointer;font-size:16px" onclick="rmP('+i+')">&times;</button></td>'+
+    '</tr>';
+  }).join('');
+  autoPct();
+}
+function setP(i,k,v){ CUR.people[i][k]=(k==='pct')?Number(v):v; if(k==='role')autoPct(); calc(); }
+function rmP(i){ CUR.people.splice(i,1); renderPeople(); calc(); }
+function autoPct(){
+  ['senior','junior'].forEach(function(role){
+    const idx=CUR.people.map(function(p,i){return p.role===role?i:-1}).filter(function(i){return i>=0});
+    if(!idx.length)return;
+    const each=Math.floor(100/idx.length);
+    let left=100-each*idx.length;
+    idx.forEach(function(i,k){ CUR.people[i].pct=each+(k===0?left:0) });
+  });
+  const tb=el('f_people');
+  if(tb)Array.from(tb.querySelectorAll('input[type=number]')).forEach(function(inp,i){ inp.value=CUR.people[i].pct });
+}
+
+function bandOf(){
+  const s=el('f_start').value, e=el('f_end').value;
+  if(!s||!e)return {band:'ontime',f:1,auto:true};
+  const sd=new Date(s), ed=new Date(e);
+  const onTime=new Date(sd.getTime()+CUR.target*3600000);
+  if(ed<=onTime)return {band:'ontime',f:1,auto:true};
+  const nd=new Date(sd); nd.setDate(nd.getDate()+1); nd.setHours(23,59,59,999);
+  if(ed<=nd)return {band:'nextday',f:0.5,auto:true};
+  return {band:'late',f:0,auto:true};
+}
+function calc(){
+  if(!CUR)return;
+  let b=bandOf();
+  const ov=el('f_band').value;
+  if(ov){ b={band:ov,f:ov==='ontime'?1:ov==='nextday'?0.5:0,auto:false} }
+  CUR.band=b;
+  const lbl={ontime:'ON TIME - 100%',nextday:'NEXT DAY - 50%',late:'LATE - 0%'}[b.band];
+  const col={ontime:'var(--green)',nextday:'var(--amber)',late:'var(--red)'}[b.band];
+  el('f_timing').innerHTML='<div style="margin-top:8px;font-weight:800;color:'+col+'">'+lbl+
+    (b.auto?'':' (manual)')+'</div>';
+
+  let pool=CUR.base*b.f;
+  const sen=CUR.people.filter(function(p){return p.role==='senior'&&p.name});
+  const jun=CUR.people.filter(function(p){return p.role==='junior'&&p.name});
+  // if one team is absent, its share goes to the team that did the work
+  let sPool=pool*SENIOR_POOL, jPool=pool*JUNIOR_POOL;
+  let note='';
+  if(!sen.length&&jun.length){ jPool=pool; sPool=0; note='No senior assigned - full pool to junior team.'; }
+  if(!jun.length&&sen.length){ sPool=pool; jPool=0; note='No junior assigned - full pool to senior team.'; }
+  CUR.pool=pool;
+
+  let total=0;
+  CUR.people.forEach(function(p,i){
+    const teamPool=p.role==='senior'?sPool:jPool;
+    const teamList=p.role==='senior'?sen:jun;
+    const amt=(p.name&&teamList.length)?(teamPool*(Number(p.pct)||0)/100):0;
+    p.amount=+amt.toFixed(2); total+=p.amount;
+    const c=el('amt_'+i); if(c)c.textContent=rm(amt);
+  });
+  el('f_total').textContent=rm(total);
+
+  const sp=sen.reduce(function(a,b){return a+(Number(b.pct)||0)},0);
+  const jp=jun.reduce(function(a,b){return a+(Number(b.pct)||0)},0);
+  let msg='';
+  if(sen.length&&sp!==100)msg+='Senior percentages total '+sp+'% (should be 100%). ';
+  if(jun.length&&jp!==100)msg+='Junior percentages total '+jp+'% (should be 100%). ';
+  el('f_check').innerHTML = msg ? ('<div class="warn">'+msg+'</div>')
+                          : (note? ('<div class="warn">'+note+'</div>')
+                          : '<div class="ok">Split adds up correctly.</div>');
+}
+
+async function saveOrder(){
+  if(!CUR)return;
+  const named=CUR.people.filter(function(p){return p.name});
+  if(!named.length){toast('Add at least one staff member');return}
+  const btn=el('f_save'); btn.disabled=true; btn.textContent='Saving...';
+  const zones=ZONES.map(function(z,i){
+    const v=el('z_'+i)?el('z_'+i).value:'';
+    return v?{zone:z,staff:v}:null;
+  }).filter(Boolean);
+  const gu=await sb.auth.getUser();
+  const L=CUR.lines[0];
+  const r=await sb.from('gl_comm_orders').insert({
+    job_id:CUR.job.id, plate:CUR.job.plate, model:CUR.job.model,
+    category:L.rate.category, brand:L.rate.brand, package:L.rate.package,
+    service_name:CUR.lines.map(function(l){return l.name}).join(' + '),
+    base_amount:CUR.base,
+    start_at:el('f_start').value?new Date(el('f_start').value).toISOString():null,
+    end_at:el('f_end').value?new Date(el('f_end').value).toISOString():null,
+    deliver_at:el('f_deliver').value?new Date(el('f_deliver').value).toISOString():null,
+    target_hours:CUR.target,
+    timing_band:CUR.band.band, timing_factor:CUR.band.f,
+    payout_pool:CUR.pool,
+    zones:zones, splits:named,
+    status:'pending', notes:el('f_notes').value.trim(),
+    created_by:gu.data.user?gu.data.user.email:''
+  });
+  if(r.error){toast('Error: '+r.error.message);btn.disabled=false;btn.textContent='SUBMIT FOR APPROVAL';return}
+  toast('Submitted for approval');
+  CUR=null; setTab('pend');
+}
+
+// ---------- PENDING / APPROVED ----------
+async function loadList(which){
+  const box=el(which==='pend'?'v_pend':'v_done');
+  box.innerHTML='<div class="card"><div class="empty">Loading...</div></div>';
+  const st=which==='pend'?['pending','hold']:['approved','paid'];
+  const r=await sb.from('gl_comm_orders').select('*').in('status',st)
+    .order('created_at',{ascending:false}).limit(80);
+  if(r.error||!r.data||!r.data.length){
+    box.innerHTML='<div class="card"><div class="empty">Nothing here</div></div>';return;
+  }
+  box.innerHTML='<div class="card"><div class="sec">'+(which==='pend'?'WAITING APPROVAL':'APPROVED')+' ('+r.data.length+')</div>'+
+    r.data.map(function(o,i){
+      const tot=(o.splits||[]).reduce(function(a,b){return a+Number(b.amount||0)},0);
+      const col=o.status==='hold'?'var(--red)':o.status==='paid'?'var(--green)':'var(--amber)';
+      return '<div class="jrow" data-i="'+i+'">'+
+        '<div class="pl">'+esc(o.plate||'-')+'</div>'+
+        '<div class="mid"><div>'+esc(o.model||'')+'</div>'+
+        '<div class="sub2">'+esc((o.splits||[]).map(function(s){return s.name}).join(', '))+' &middot; '+myt(o.created_at)+'</div></div>'+
+        '<span class="pill" style="background:'+col+'22;color:'+col+';border:1px solid '+col+'55">'+String(o.status).toUpperCase()+'</span>'+
+        '<div class="rm">'+rm(tot)+'</div></div>';
+    }).join('')+'</div>';
+  Array.from(box.querySelectorAll('.jrow')).forEach(function(d,i){
+    d.onclick=function(){openOrder(r.data[i],which)};
+  });
+}
+
+function openOrder(o,which){
+  const box=el(which==='pend'?'v_pend':'v_done');
+  const tot=(o.splits||[]).reduce(function(a,b){return a+Number(b.amount||0)},0);
+  box.innerHTML=
+   '<button class="btn btn2" style="margin-bottom:12px" onclick="loadList(\''+which+'\')">&#8592; BACK</button>'+
+   '<div class="card"><div class="sec">'+esc(o.plate||'')+' &middot; '+esc(o.model||'')+'</div>'+
+     '<div class="hint">'+esc(o.service_name||'')+'</div>'+
+     '<table style="margin-top:10px"><tr><td>Base</td><td class="rm">'+rm(o.base_amount)+'</td></tr>'+
+     '<tr><td>Timing</td><td>'+String(o.timing_band).toUpperCase()+' &times;'+o.timing_factor+'</td></tr>'+
+     '<tr><td>Pool</td><td class="rm">'+rm(o.payout_pool)+'</td></tr></table>'+
+   '</div>'+
+   '<div class="card"><div class="sec">SPLIT</div><table>'+
+     (o.splits||[]).map(function(s){
+       return '<tr><td>'+esc(s.name)+'</td><td>'+esc(s.role)+'</td><td>'+s.pct+'%</td><td class="rm">'+rm(s.amount)+'</td></tr>';
+     }).join('')+
+     '<tr><td colspan="3" class="tot">TOTAL</td><td class="tot">'+rm(tot)+'</td></tr></table></div>'+
+   ((o.zones||[]).length?('<div class="card"><div class="sec">ZONES</div>'+
+     (o.zones||[]).map(function(z){return '<div class="zrow"><div class="zn">'+esc(z.zone)+'</div><div>'+esc(z.staff)+'</div></div>'}).join('')+
+   '</div>'):'')+
+   (o.notes?('<div class="card"><div class="sec">NOTES</div><div class="hint">'+esc(o.notes)+'</div></div>'):'')+
+   (o.qc_flag?('<div class="warn">QC rework raised'+(o.qc_note?(': '+esc(o.qc_note)):'')+'</div>'):'')+
+   (which==='pend'
+     ? '<button class="btn" onclick="decide(\''+o.id+'\',\'approved\')">APPROVE</button>'+
+       '<button class="btn btn2" style="margin-top:8px" onclick="decide(\''+o.id+'\',\'hold\')">PUT ON HOLD (QC / rework)</button>'
+     : (o.status==='approved'
+        ? '<button class="btn" onclick="decide(\''+o.id+'\',\'paid\')">MARK AS PAID</button>' : ''))+
+   '<div style="height:30px"></div>';
+}
+
+async function decide(id,status){
+  const pin=prompt('Manager PIN to '+status.toUpperCase()+':');
+  if(pin!==APPROVE_PIN){ if(pin!==null)toast('Wrong PIN'); return }
+  let patch={status:status};
+  if(status==='hold'){
+    const note=prompt('Reason for hold (QC / rework):')||'';
+    patch.qc_flag=true; patch.qc_note=note;
+    const m=prompt('Film wasted on redo, in metres (optional):');
+    if(m&&!isNaN(m))patch.rework_metres=Number(m);
+  }
+  const r=await sb.from('gl_comm_orders').update(patch).eq('id',id);
+  if(r.error){toast('Error: '+r.error.message);return}
+  toast(status==='paid'?'Marked as paid':status==='hold'?'Put on hold':'Approved');
+  setTab(status==='approved'||status==='paid'?'done':'pend');
+}
+
+// ---------- REPORT ----------
+async function loadReport(){
+  const box=el('v_report');
+  const now=new Date();
+  const from=new Date(now.getFullYear(),now.getMonth(),1).toISOString();
+  const r=await sb.from('gl_comm_orders').select('*').gte('created_at',from);
+  const rows=r.data||[];
+  const per={};
+  let paid=0, held=0, jobs=rows.length;
+  rows.forEach(function(o){
+    const t=(o.splits||[]).reduce(function(a,b){return a+Number(b.amount||0)},0);
+    if(o.status==='hold')held+=t; else paid+=t;
+    (o.splits||[]).forEach(function(s){
+      if(!s.name)return;
+      per[s.name]=per[s.name]||{name:s.name,jobs:0,amt:0,hold:0};
+      per[s.name].jobs++;
+      if(o.status==='hold')per[s.name].hold+=Number(s.amount||0);
+      else per[s.name].amt+=Number(s.amount||0);
+    });
+  });
+  const list=Object.keys(per).map(function(k){return per[k]}).sort(function(a,b){return b.amt-a.amt});
+  const mon=now.toLocaleString('en-MY',{month:'long',year:'numeric'});
+  box.innerHTML='<div class="card"><div class="sec">'+mon.toUpperCase()+'</div>'+
+    '<div class="row"><div><label>Film jobs</label><div class="big">'+jobs+'</div></div>'+
+    '<div><label>Commission</label><div class="big">'+rm(paid)+'</div></div>'+
+    '<div><label>On hold</label><div class="big" style="color:var(--red)">'+rm(held)+'</div></div></div></div>'+
+    '<div class="card"><div class="sec">BY STAFF</div>'+
+    (list.length?('<table><thead><tr><th>Staff</th><th>Jobs</th><th>Commission</th><th>On hold</th></tr></thead><tbody>'+
+      list.map(function(p){
+        return '<tr><td>'+esc(p.name)+'</td><td>'+p.jobs+'</td><td class="rm">'+rm(p.amt)+'</td>'+
+        '<td style="color:var(--red)">'+(p.hold?rm(p.hold):'-')+'</td></tr>';
+      }).join('')+'</tbody></table>'):'<div class="empty">No commission this month yet</div>')+
+    '</div>';
+}
+</script>
+</body>
+</html>
