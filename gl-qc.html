@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="mobile-web-app-capable" content="yes">
+<title>Grandlab QC</title>
+<style>
+:root{--bg:#080808;--card:#141414;--card2:#1c1c1c;--gold:#F5C518;--text:#fff;--text2:#9a9a9a;--border:#2a2a2a;--red:#ff5252;--green:#16A34A;--amber:#D97706}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:var(--text)}
+.wrap{max-width:820px;margin:0 auto;padding:16px}
+h1{font-size:20px;font-weight:900;letter-spacing:.5px;margin:6px 0 2px}
+h1 span{color:var(--gold)}
+.sub{color:var(--text2);font-size:12px;margin-bottom:14px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:16px;margin-bottom:14px}
+.sec{font-size:12px;font-weight:800;color:var(--gold);letter-spacing:.1em;margin-bottom:10px}
+.row{display:flex;gap:8px;margin-bottom:8px}
+.row>*{flex:1}
+label{font-size:11px;color:var(--text2);display:block;margin-bottom:4px}
+input,select,textarea{width:100%;background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:11px;color:var(--text);font-size:15px;font-family:inherit}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--gold)}
+.btn{display:block;width:100%;background:var(--gold);color:#000;border:none;border-radius:12px;padding:14px;font-size:15px;font-weight:800;cursor:pointer;font-family:inherit}
+.btn2{background:var(--card2);color:var(--text);border:1px solid var(--border)}
+.btn:disabled{opacity:.4}
+.tabs{display:flex;gap:6px;margin-bottom:14px}
+.tab{flex:1;padding:10px;border-radius:10px;background:var(--card2);border:1px solid var(--border);color:var(--text2);font-size:12px;font-weight:800;cursor:pointer;font-family:inherit;text-align:center}
+.tab.on{background:var(--gold);color:#000;border-color:var(--gold)}
+.jrow{display:flex;align-items:center;gap:10px;padding:12px 10px;border:1px solid var(--border);border-radius:12px;margin-bottom:8px;cursor:pointer;background:var(--card2)}
+.jrow:active{border-color:var(--gold)}
+.jrow .pl{font-weight:900;font-size:15px;min-width:86px}
+.jrow .mid{flex:1;min-width:0}
+.jrow .sub2{font-size:11px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pill{font-size:10px;font-weight:800;padding:3px 8px;border-radius:12px;white-space:nowrap}
+.empty{text-align:center;color:var(--text2);font-size:13px;padding:22px 6px}
+.hint{font-size:11px;color:var(--text2);margin-top:6px}
+.chk{border-bottom:1px solid var(--border);padding:10px 0}
+.chk .top{display:flex;align-items:center;gap:8px}
+.chk .nm{flex:1;font-size:14px}
+.pf{display:flex;gap:5px;flex-shrink:0}
+.pf button{border:1px solid var(--border);background:var(--card2);color:var(--text2);border-radius:8px;padding:6px 11px;font-size:11px;font-weight:800;cursor:pointer;font-family:inherit}
+.pf button.p.on{background:var(--green);color:#fff;border-color:var(--green)}
+.pf button.f.on{background:var(--red);color:#fff;border-color:var(--red)}
+.pf button.n.on{background:var(--border);color:var(--text);border-color:var(--text2)}
+.faildet{margin-top:8px;padding:10px;background:rgba(255,82,82,.08);border:1px solid rgba(255,82,82,.4);border-radius:10px}
+.thumbs{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.thumbs img{width:56px;height:56px;object-fit:cover;border-radius:8px;border:1px solid var(--border)}
+.grp{font-size:11px;font-weight:800;color:var(--gold);letter-spacing:.08em;margin:16px 0 4px}
+.hide{display:none!important}
+#login{max-width:400px;margin:80px auto}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--gold);color:#000;padding:10px 20px;border-radius:24px;font-weight:800;font-size:14px;display:none;z-index:99}
+.big{font-size:26px;font-weight:900;color:var(--gold)}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;color:var(--text2);font-size:10px;font-weight:800;letter-spacing:.08em;padding:6px 4px;border-bottom:1px solid var(--border)}
+td{padding:7px 4px;border-bottom:1px solid var(--border)}
+</style>
+</head>
+<body>
+
+<div id="login" class="card hide">
+  <div class="sec">GRANDLAB STAFF LOGIN</div>
+  <div class="row"><div><label>Email</label><input id="lg_email" type="email"></div></div>
+  <div class="row"><div><label>Password</label><input id="lg_pass" type="password"></div></div>
+  <button class="btn" onclick="doLogin()">Sign In</button>
+  <div class="hint" id="lg_err"></div>
+</div>
+
+<div class="wrap hide" id="app">
+  <a href="gl-hub.html" style="color:var(--text2);font-size:12px;text-decoration:none">&#8592; Hub</a>
+  <h1>GRAND<span>LAB</span> QC</h1>
+  <div class="sub">Quality check &middot; detailing, wrap, PPF, tint</div>
+
+  <div class="tabs">
+    <button class="tab on" data-t="new"    onclick="setTab('new')">TO CHECK</button>
+    <button class="tab"    data-t="done"   onclick="setTab('done')">CHECKED</button>
+    <button class="tab"    data-t="report" onclick="setTab('report')">REPORT</button>
+  </div>
+
+  <div id="v_new"></div>
+  <div id="v_done" class="hide"></div>
+  <div id="v_report" class="hide"></div>
+</div>
+
+<input type="file" id="fileCam" accept="image/*" capture="environment" class="hide">
+<input type="file" id="fileLib" accept="image/*" multiple class="hide">
+<div class="toast" id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SUPABASE_URL='https://eychljpzorzmaveixlnu.supabase.co';
+const SUPABASE_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV5Y2hsanB6b3J6bWF2ZWl4bG51Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2NDk2NjQsImV4cCI6MjA5NzIyNTY2NH0.6dA1zhz5ZIwf8byFB8vhfOzPI-uPPdPihEr1b8GG_oA';
+const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON,{auth:{persistSession:true,autoRefreshToken:true,storageKey:'gl_auth'}});
+
+// ---------- checklists (drawn from SOP-6) ----------
+const LISTS={
+ detailing:{label:'DETAILING / WASH / COATING',items:[
+   'Water marks on paint','Glass streaks inside & out','Wheel faces & crevices',
+   'Door shuts & jambs','Boot / fuel cap area','Interior vacuum incl. seat rails',
+   'Dashboard & door panels','Swirl check under lamp','Coating high spots',
+   'Residue left in rubbers & trim','Tyre dressing even, no sling',
+   'Protection set removed, no tools left']},
+ ppf:{label:'PPF',items:[
+   'Bubbles','Dust specks under film','Edge lifting','Wrapped edges done',
+   'Alignment & even gaps','Stretch marks / distortion','Lifting on curves',
+   'Panel operation - doors, bonnet, boot']},
+ wrapping:{label:'WRAPPING',items:[
+   'Bubbles','Dust specks under film','Edge lifting','Wrapped edges done',
+   'Seam alignment','Knife marks on paint','Panel gaps tucked',
+   'Stretch marks / distortion']},
+ tint:{label:'TINT',items:[
+   'Bubbles','Dust specks','Edge gaps','Peeling at edges',
+   'Defroster lines intact','Cut lines clean','Window up & down test']}
+};
+const STAGES=[['film','FILM CHECK (Koko)'],['final','FINAL CHECK (Shafiq)']];
+
+let TECHS=[], CUR=null, TAB='new';
+
+function el(id){return document.getElementById(id)}
+function toast(m){const t=el('toast');t.textContent=m;t.style.display='block';setTimeout(function(){t.style.display='none'},2400)}
+function esc(s){return String(s==null?'':s).replace(/[<>&"]/g,function(c){return {'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]})}
+function myt(d){return new Date(d).toLocaleString('en-MY',{timeZone:'Asia/Kuala_Lumpur',day:'2-digit',month:'short',year:'2-digit',hour:'2-digit',minute:'2-digit'})}
+
+(async function(){
+  const s=await sb.auth.getSession();
+  if(s.data.session){el('app').classList.remove('hide');boot()}
+  else{el('login').classList.remove('hide')}
+})();
+async function doLogin(){
+  const r=await sb.auth.signInWithPassword({email:el('lg_email').value.trim(),password:el('lg_pass').value});
+  if(r.error){el('lg_err').textContent=r.error.message;return}
+  location.reload();
+}
+async function boot(){
+  const c=await sb.from('gl_board_config').select('technicians').eq('id',1).maybeSingle();
+  TECHS=(c.data&&Array.isArray(c.data.technicians)?c.data.technicians:[]).filter(function(t){return t!=='All Staff'});
+  loadNew();
+}
+function setTab(t){
+  TAB=t;
+  ['new','done','report'].forEach(function(k){el('v_'+k).classList.toggle('hide',k!==t)});
+  Array.from(document.querySelectorAll('.tab')).forEach(function(b){b.classList.toggle('on',b.dataset.t===t)});
+  if(t==='new')loadNew(); if(t==='done')loadDone(); if(t==='report')loadReport();
+}
+
+// which checklists apply to this job
+function areasOf(job){
+  const txt=(job.services||[]).map(function(s){return (typeof s==='string')?s:(s&&s.desc?s.desc:'')}).join(' ').toLowerCase();
+  const a=[];
+  if(/ppf/.test(txt))a.push('ppf');
+  if(/wrap|chrome/.test(txt))a.push('wrapping');
+  if(/tint/.test(txt))a.push('tint');
+  if(/wash|polish|coat|interior|detail|bathe|vacuum/.test(txt)||!a.length)a.push('detailing');
+  return a;
+}
+
+// ---------- TO CHECK ----------
+async function loadNew(){
+  const box=el('v_new');
+  box.innerHTML='<div class="card"><div class="empty">Loading...</div></div>';
+  const since=Date.now()-10*86400000;
+  const j=await sb.from('gl_jobs')
+    .select('id,plate,model,services,stage,created_at')
+    .gte('created_at',since).order('created_at',{ascending:false}).limit(120);
+  if(j.error){box.innerHTML='<div class="card"><div class="empty">Could not load jobs</div></div>';return}
+  let jobs=j.data||[];
+  const ids=jobs.map(function(x){return x.id});
+  if(ids.length){
+    const q=await sb.from('gl_qc').select('job_id,stage').in('job_id',ids);
+    const seen={}; (q.data||[]).forEach(function(x){seen[x.job_id+'|'+x.stage]=1});
+    jobs=jobs.map(function(x){
+      x._film=areasOf(x).some(function(a){return a!=='detailing'});
+      x._doneFilm=!!seen[x.id+'|film']; x._doneFinal=!!seen[x.id+'|final'];
+      return x;
+    }).filter(function(x){ return !x._doneFinal });
+  }
+  if(!jobs.length){
+    box.innerHTML='<div class="card"><div class="sec">TO CHECK</div><div class="empty">Nothing waiting &#10003;</div></div>';return;
+  }
+  box.innerHTML='<div class="card"><div class="sec">TO CHECK ('+jobs.length+')</div>'+
+    jobs.map(function(x,i){
+      const ar=areasOf(x);
+      const need = x._film && !x._doneFilm ? 'film' : 'final';
+      const col = need==='film'?'var(--amber)':'var(--gold)';
+      return '<div class="jrow" data-i="'+i+'">'+
+        '<div class="pl">'+esc(x.plate||'-')+'</div>'+
+        '<div class="mid"><div>'+esc(x.model||'')+'</div>'+
+        '<div class="sub2">'+ar.map(function(a){return LISTS[a].label.split(' ')[0]}).join(' + ')+
+          (x._doneFilm?' &middot; film check done':'')+'</div></div>'+
+        '<span class="pill" style="background:'+col+'22;color:'+col+';border:1px solid '+col+'55">'+
+          (need==='film'?'FILM':'FINAL')+'</span></div>';
+    }).join('')+'</div>';
+  Array.from(box.querySelectorAll('.jrow')).forEach(function(d,i){
+    d.onclick=function(){openQC(jobs[i])};
+  });
+}
+
+// ---------- QC FORM ----------
+async function openQC(job){
+  const areas=areasOf(job);
+  const need = (areas.some(function(a){return a!=='detailing'}) && !job._doneFilm) ? 'film' : 'final';
+  CUR={job:job,areas:areas,stage:need,items:{},photos:[],zoneMap:{}};
+
+  // pull zone assignments from the commission order so a failure names the installer
+  const c=await sb.from('gl_comm_orders').select('id,zones,splits').eq('job_id',job.id);
+  CUR.comm=(c.data&&c.data.length)?c.data[0]:null;
+  if(CUR.comm&&Array.isArray(CUR.comm.zones)){
+    CUR.comm.zones.forEach(function(z){ CUR.zoneMap[z.zone]=z.staff });
+  }
+  const known=CUR.comm?Object.keys(CUR.zoneMap).map(function(k){return CUR.zoneMap[k]}):[];
+  CUR.suggest=known.filter(function(v,i,a){return v&&a.indexOf(v)===i});
+
+  el('v_new').innerHTML=
+   '<button class="btn btn2" style="margin-bottom:12px" onclick="loadNew()">&#8592; BACK</button>'+
+   '<div class="card"><div class="sec">VEHICLE</div>'+
+     '<div class="big">'+esc(job.plate||'-')+'</div>'+
+     '<div class="hint">'+esc(job.model||'')+'</div>'+
+     '<div class="row" style="margin-top:10px"><div><label>QC stage</label>'+
+       '<select id="q_stage">'+STAGES.map(function(s){
+         return '<option value="'+s[0]+'"'+(s[0]===need?' selected':'')+'>'+s[1]+'</option>'}).join('')+
+       '</select></div></div>'+
+     (CUR.suggest.length?('<div class="hint">Installers on this job: '+esc(CUR.suggest.join(', '))+'</div>'):'')+
+   '</div>'+
+   areas.map(function(a){
+     return '<div class="card"><div class="sec">'+LISTS[a].label+'</div>'+
+       LISTS[a].items.map(function(it,i){
+         const key=a+'|'+i;
+         return '<div class="chk" id="row_'+a+'_'+i+'">'+
+           '<div class="top"><div class="nm">'+it+'</div>'+
+           '<div class="pf">'+
+             '<button class="p" onclick="mark(\''+key+'\',\'pass\')">PASS</button>'+
+             '<button class="f" onclick="mark(\''+key+'\',\'fail\')">FAIL</button>'+
+             '<button class="n" onclick="mark(\''+key+'\',\'na\')">N/A</button>'+
+           '</div></div><div id="det_'+a+'_'+i+'"></div></div>';
+       }).join('')+
+       '<button class="btn btn2" style="margin-top:10px" onclick="allPass(\''+a+'\')">MARK ALL PASS</button>'+
+     '</div>';
+   }).join('')+
+   '<div class="card"><div class="sec">NOTES</div>'+
+     '<textarea id="q_notes" rows="2" placeholder="Anything the team should know"></textarea></div>'+
+   '<div class="card"><div class="sec" id="q_sum">RESULT</div><div id="q_res"></div></div>'+
+   '<button class="btn" id="q_save" onclick="saveQC()">SAVE QC</button>'+
+   '<div style="height:30px"></div>';
+  updateResult();
+}
+
+function mark(key,val){
+  const p=key.split('|'), a=p[0], i=+p[1];
+  CUR.items[key]=CUR.items[key]||{area:a,check:LISTS[a].items[i],result:'',staff:'',note:'',photo:''};
+  CUR.items[key].result=val;
+  const row=el('row_'+a+'_'+i);
+  Array.from(row.querySelectorAll('.pf button')).forEach(function(b){
+    b.classList.toggle('on',(b.className.indexOf('p')===0&&val==='pass')||
+                            (b.className.indexOf('f')===0&&val==='fail')||
+                            (b.className.indexOf('n')===0&&val==='na'));
+  });
+  const det=el('det_'+a+'_'+i);
+  if(val==='fail'){
+    const opts=(CUR.suggest.length?CUR.suggest:TECHS);
+    det.innerHTML='<div class="faildet">'+
+      '<label>Who applied this?</label>'+
+      '<select onchange="setItem(\''+key+'\',\'staff\',this.value)">'+
+        '<option value="">- select -</option>'+
+        opts.map(function(t){return '<option>'+esc(t)+'</option>'}).join('')+
+        (CUR.suggest.length?('<option disabled>--- all ---</option>'+
+          TECHS.map(function(t){return '<option>'+esc(t)+'</option>'}).join('')):'')+
+      '</select>'+
+      '<label style="margin-top:8px">What is wrong</label>'+
+      '<input placeholder="e.g. lifting on left rear arch" onchange="setItem(\''+key+'\',\'note\',this.value)">'+
+      '<div class="row" style="margin-top:8px">'+
+        '<button class="btn btn2" onclick="qcPhoto(\''+key+'\',\'cam\')">&#128247; PHOTO</button>'+
+        '<button class="btn btn2" onclick="qcPhoto(\''+key+'\',\'lib\')">&#128194; UPLOAD</button>'+
+      '</div><div class="thumbs" id="th_'+a+'_'+i+'"></div></div>';
+  }else{ det.innerHTML=''; }
+  updateResult();
+}
+function setItem(key,f,v){ if(CUR.items[key])CUR.items[key][f]=v; }
+function allPass(a){
+  LISTS[a].items.forEach(function(it,i){ mark(a+'|'+i,'pass') });
+}
+
+let PHOTO_KEY=null;
+function qcPhoto(key,how){ PHOTO_KEY=key; el(how==='cam'?'fileCam':'fileLib').click(); }
+function onPicked(e){
+  const key=PHOTO_KEY;
+  for(const f of e.target.files){
+    CUR.photos.push({key:key,file:f});
+  }
+  e.target.value='';
+  const p=key.split('|');
+  const box=el('th_'+p[0]+'_'+p[1]);
+  if(box)box.innerHTML=CUR.photos.filter(function(x){return x.key===key})
+    .map(function(x){return '<img src="'+URL.createObjectURL(x.file)+'">'}).join('');
+  updateResult();
+}
+el('fileCam').addEventListener('change',onPicked);
+el('fileLib').addEventListener('change',onPicked);
+
+function counts(){
+  let pass=0,fail=0,na=0,total=0;
+  CUR.areas.forEach(function(a){ total+=LISTS[a].items.length });
+  Object.keys(CUR.items).forEach(function(k){
+    const r=CUR.items[k].result;
+    if(r==='pass')pass++; else if(r==='fail')fail++; else if(r==='na')na++;
+  });
+  return {pass:pass,fail:fail,na:na,total:total,done:pass+fail+na};
+}
+function updateResult(){
+  const c=counts();
+  const res=c.fail?'REWORK':'PASS';
+  const col=c.fail?'var(--red)':'var(--green)';
+  el('q_res').innerHTML=
+    '<div style="font-size:22px;font-weight:900;color:'+col+'">'+res+'</div>'+
+    '<div class="hint">'+c.done+' of '+c.total+' checked &middot; '+c.pass+' pass &middot; '+
+      c.fail+' fail &middot; '+c.na+' n/a</div>'+
+    (c.fail&&CUR.comm?'<div class="hint" style="color:var(--amber)">Commission for this job will be put on hold.</div>':'');
+}
+
+async function saveQC(){
+  const c=counts();
+  if(!c.done){toast('Nothing checked yet');return}
+  if(c.done<c.total && !confirm((c.total-c.done)+' item(s) not checked. Save anyway?'))return;
+  const bad=Object.keys(CUR.items).filter(function(k){
+    return CUR.items[k].result==='fail'&&!CUR.items[k].staff});
+  if(bad.length && !confirm(bad.length+' failure(s) have no staff named. Save anyway?'))return;
+
+  const btn=el('q_save'); btn.disabled=true; btn.textContent='Saving...';
+  const id=crypto.randomUUID();
+  const items=Object.keys(CUR.items).map(function(k){return CUR.items[k]});
+
+  // upload failure photos
+  const meta=[];
+  for(let i=0;i<CUR.photos.length;i++){
+    btn.textContent='Uploading photo '+(i+1)+'/'+CUR.photos.length+'...';
+    const p=CUR.photos[i];
+    const blob=await shrink(p.file);
+    const fn='qc/'+id+'/'+String(i+1).padStart(2,'0')+'.jpg';
+    const up=await sb.storage.from('inspections').upload(fn,blob,{contentType:'image/jpeg'});
+    if(!up.error)meta.push({key:p.key,path:fn});
+  }
+  items.forEach(function(it,i){
+    const key=it.area+'|'+LISTS[it.area].items.indexOf(it.check);
+    const ph=meta.filter(function(m){return m.key===key});
+    if(ph.length)it.photo=ph[0].path;
+  });
+
+  const gu=await sb.auth.getUser();
+  const stage=el('q_stage').value;
+  const result=c.fail?'rework':'pass';
+  const r=await sb.from('gl_qc').insert({
+    id:id, job_id:CUR.job.id, plate:CUR.job.plate, model:CUR.job.model,
+    stage:stage, areas:CUR.areas, result:result, items:items,
+    fail_count:c.fail, rework_notes:el('q_notes').value.trim(),
+    checked_by:gu.data.user?gu.data.user.email:'',
+    photos:meta, comm_order_id:(c.fail&&CUR.comm)?CUR.comm.id:null
+  });
+  if(r.error){toast('Error: '+r.error.message);btn.disabled=false;btn.textContent='SAVE QC';return}
+
+  // rework holds the commission rather than cutting it - the team must still report defects
+  if(c.fail&&CUR.comm){
+    await sb.from('gl_comm_orders').update({
+      status:'hold', qc_flag:true,
+      qc_note:'QC '+stage+': '+c.fail+' defect(s) - '+
+        items.filter(function(x){return x.result==='fail'})
+             .map(function(x){return x.check+(x.staff?(' ('+x.staff+')'):'')}).join('; ')
+    }).eq('id',CUR.comm.id);
+  }
+  toast(result==='pass'?'QC passed':'Rework recorded');
+  CUR=null; setTab('new');
+}
+
+function shrink(file){
+  return new Promise(function(res){
+    const img=new Image();
+    img.onload=function(){
+      const max=1400,s=Math.min(1,max/Math.max(img.width,img.height));
+      const c=document.createElement('canvas');
+      c.width=img.width*s;c.height=img.height*s;
+      c.getContext('2d').drawImage(img,0,0,c.width,c.height);
+      c.toBlob(function(b){res(b)},'image/jpeg',0.8);
+    };
+    img.src=URL.createObjectURL(file);
+  });
+}
+
+// ---------- CHECKED ----------
+async function loadDone(){
+  const box=el('v_done');
+  const r=await sb.from('gl_qc').select('*').order('created_at',{ascending:false}).limit(60);
+  if(r.error||!r.data||!r.data.length){box.innerHTML='<div class="card"><div class="empty">Nothing yet</div></div>';return}
+  box.innerHTML='<div class="card"><div class="sec">CHECKED ('+r.data.length+')</div>'+
+    r.data.map(function(q,i){
+      const col=q.result==='rework'?'var(--red)':'var(--green)';
+      return '<div class="jrow" data-i="'+i+'">'+
+        '<div class="pl">'+esc(q.plate||'-')+'</div>'+
+        '<div class="mid"><div>'+esc(q.model||'')+'</div>'+
+        '<div class="sub2">'+String(q.stage).toUpperCase()+' &middot; '+myt(q.created_at)+
+          ' &middot; '+esc((q.checked_by||'').split('@')[0])+'</div></div>'+
+        '<span class="pill" style="background:'+col+'22;color:'+col+';border:1px solid '+col+'55">'+
+          (q.result==='rework'?(q.fail_count+' FAIL'):'PASS')+'</span></div>';
+    }).join('')+'</div>';
+  Array.from(box.querySelectorAll('.jrow')).forEach(function(d,i){
+    d.onclick=function(){showQC(r.data[i])};
+  });
+}
+function showQC(q){
+  const fails=(q.items||[]).filter(function(x){return x.result==='fail'});
+  el('v_done').innerHTML=
+   '<button class="btn btn2" style="margin-bottom:12px" onclick="loadDone()">&#8592; BACK</button>'+
+   '<div class="card"><div class="sec">'+esc(q.plate)+' &middot; '+esc(q.model||'')+'</div>'+
+     '<div class="hint">'+String(q.stage).toUpperCase()+' check &middot; '+myt(q.created_at)+
+       ' &middot; by '+esc((q.checked_by||'').split('@')[0])+'</div>'+
+     '<div class="big" style="color:'+(q.result==='rework'?'var(--red)':'var(--green)')+';margin-top:8px">'+
+       String(q.result).toUpperCase()+'</div></div>'+
+   (fails.length?('<div class="card"><div class="sec">DEFECTS ('+fails.length+')</div>'+
+     fails.map(function(f){
+       const url=f.photo?sb.storage.from('inspections').getPublicUrl(f.photo).data.publicUrl:'';
+       return '<div class="chk"><div style="font-weight:700;font-size:14px">'+esc(f.check)+'</div>'+
+         '<div class="hint">'+esc(f.area.toUpperCase())+(f.staff?(' &middot; '+esc(f.staff)):' &middot; not named')+'</div>'+
+         (f.note?('<div class="hint">'+esc(f.note)+'</div>'):'')+
+         (url?('<div class="thumbs"><img src="'+url+'" onclick="window.open(\''+url+'\',\'_blank\')"></div>'):'')+
+       '</div>';
+     }).join('')+'</div>'):'')+
+   (q.rework_notes?('<div class="card"><div class="sec">NOTES</div><div class="hint">'+esc(q.rework_notes)+'</div></div>'):'')+
+   '<div style="height:30px"></div>';
+}
+
+// ---------- REPORT ----------
+async function loadReport(){
+  const box=el('v_report');
+  const from=new Date(); from.setDate(from.getDate()-30);
+  const r=await sb.from('gl_qc').select('*').gte('created_at',from.toISOString());
+  const rows=r.data||[];
+  const perStaff={}, perDefect={};
+  let checks=rows.length, reworks=0;
+  rows.forEach(function(q){
+    if(q.result==='rework')reworks++;
+    (q.items||[]).forEach(function(it){
+      if(it.result!=='fail')return;
+      const who=it.staff||'(not named)';
+      perStaff[who]=perStaff[who]||{n:0,items:{}};
+      perStaff[who].n++;
+      perStaff[who].items[it.check]=(perStaff[who].items[it.check]||0)+1;
+      perDefect[it.check]=(perDefect[it.check]||0)+1;
+    });
+  });
+  const staff=Object.keys(perStaff).map(function(k){
+    const weak=Object.keys(perStaff[k].items).sort(function(a,b){return perStaff[k].items[b]-perStaff[k].items[a]})
+      .slice(0,3).map(function(x){return x+' x'+perStaff[k].items[x]}).join(', ');
+    return {name:k,n:perStaff[k].n,weak:weak};
+  }).sort(function(a,b){return b.n-a.n});
+  const defects=Object.keys(perDefect).map(function(k){return {name:k,n:perDefect[k]}})
+    .sort(function(a,b){return b.n-a.n}).slice(0,10);
+
+  box.innerHTML='<div class="card"><div class="sec">LAST 30 DAYS</div>'+
+    '<div class="row"><div><label>QC checks</label><div class="big">'+checks+'</div></div>'+
+    '<div><label>Rework</label><div class="big" style="color:var(--red)">'+reworks+'</div></div>'+
+    '<div><label>Pass rate</label><div class="big" style="color:var(--green)">'+
+      (checks?Math.round((checks-reworks)/checks*100):0)+'%</div></div></div></div>'+
+
+    '<div class="card"><div class="sec">BY STAFF</div>'+
+    (staff.length?('<table><thead><tr><th>Staff</th><th style="width:56px">Defects</th><th>Weak on</th></tr></thead><tbody>'+
+      staff.map(function(s){
+        return '<tr><td>'+esc(s.name)+'</td><td style="color:var(--red);font-weight:800">'+s.n+'</td>'+
+        '<td style="font-size:11px;color:var(--text2)">'+esc(s.weak)+'</td></tr>';
+      }).join('')+'</tbody></table>'):'<div class="empty">No defects recorded</div>')+
+    '</div>'+
+
+    '<div class="card"><div class="sec">BY DEFECT &mdash; whole shop</div>'+
+    '<div class="hint" style="margin-bottom:8px">If one defect spans several people it is a process problem, not a person.</div>'+
+    (defects.length?('<table><tbody>'+defects.map(function(d){
+      return '<tr><td>'+esc(d.name)+'</td><td style="width:50px;text-align:right;font-weight:800">'+d.n+'</td></tr>';
+    }).join('')+'</tbody></table>'):'<div class="empty">Nothing yet</div>')+
+    '</div>';
+}
+</script>
+</body>
+</html>
