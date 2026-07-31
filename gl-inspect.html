@@ -962,14 +962,21 @@ function waMsg(){
     (el('f_model').value.trim()?('🚙 Model: '+el('f_model').value.trim()+'\n'):'')+
     (svcList.length?('🛠 Service: '+svcList.join(', ')+'\n'):'')+
     '📅 Date: '+now+'\n'+
-    (function(){const c=markCounts();
+    (function(){
+      const c=markCounts();
       if(!c.total)return '📍 Damage marks: 0\n';
-      if(!c.old)return '📍 Damage marks: '+c.total+'\n';
+      // group the new damage by type so the reader sees WHAT is new
+      const nn={};
+      marks.forEach(function(m){ if(!m.old) nn[DMG[m.type][0]]=(nn[DMG[m.type][0]]||0)+1; });
+      const newList=Object.keys(nn).map(function(k){return k+' x'+nn[k]}).join(', ');
+      if(!c.old) return '📍 Damage marks: '+c.total+(newList?(' - '+newList):'')+'\n';
       return '📍 Damage marks: '+c.total+'\n'+
              '   Previous: '+c.old+'\n'+
-             '   \u26a0\ufe0f NEW: '+c.neu+'\n';})()+
+             (c.neu ? ('   \u26a0\ufe0f NEW: '+c.neu+' - '+newList+'\n')
+                    : '   \u2705 No new damage\n');})()+
     '📷 Photos: '+photos.length+'\n'+
     (photos.length?('   '+photoBreakdown('\n   ')+'\n'):'')+
+    (el('f_notes').value.trim()?('📝 Remark: '+el('f_notes').value.trim()+'\n'):'')+
     '━━━━━━━━━━━━━━\n'+
     '👉 Full report & all photos:\n'+savedLink;
 }
