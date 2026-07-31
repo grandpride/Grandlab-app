@@ -58,6 +58,8 @@ label{font-size:11px;color:var(--text2);display:block;margin-bottom:4px}
 .qrow .mid .sub{font-size:11px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .stg{font-size:10px;font-weight:800;padding:3px 8px;border-radius:12px;white-space:nowrap}
 .qempty{text-align:center;color:var(--text2);font-size:13px;padding:18px 6px}
+.skipx{background:none;border:1px solid var(--border);color:var(--text2);border-radius:50%;width:30px;height:30px;font-size:15px;cursor:pointer;font-family:inherit;flex-shrink:0}
+.skipx:active{border-color:#ff5252;color:#ff5252}
 .srch{position:relative}
 .res{position:absolute;left:0;right:0;top:100%;z-index:20;background:var(--card2);border:1px solid var(--gold);border-radius:10px;margin-top:4px;max-height:260px;overflow-y:auto}
 .res div{padding:10px 12px;border-bottom:1px solid var(--border);cursor:pointer;font-size:14px}
@@ -297,8 +299,10 @@ async function loadQueue(){
   if(jobs.length){
     const ids=jobs.map(function(j){return j.id});
     const done=await sb.from('gl_inspections').select('job_id').in('job_id',ids);
+    const skip=await sb.from('gl_inspect_skips').select('job_id').in('job_id',ids);
     const seen={};
     (done.data||[]).forEach(function(x){if(x.job_id)seen[x.job_id]=1});
+    (skip.data||[]).forEach(function(x){if(x.job_id)seen[x.job_id]=1});
     jobs=jobs.filter(function(j){return !seen[j.id]});
   }
   el('qcount').textContent=jobs.length?('('+jobs.length+')'):'';
@@ -315,11 +319,28 @@ async function loadQueue(){
       '<div class="mid"><div class="nm">'+(j.model||'')+'</div>'+
       '<div class="sub">'+[who,(j.cust_type||'').toUpperCase(),t].filter(Boolean).join(' \u00b7 ')+'</div></div>'+
       '<span class="stg" style="background:'+col+'22;color:'+col+';border:1px solid '+col+'55">'+(STAGE_LBL[j.stage]||j.stage||'')+'</span>'+
+      '<button class="skipx" data-skip="'+i+'" title="Not needed">&times;</button>'+
       '</div>';
   }).join('');
   Array.from(box.children).forEach(function(d,i){
     d.onclick=function(){ pickJob(jobs[i]) };
+    const x=d.querySelector('.skipx');
+    if(x)x.onclick=function(e){ e.stopPropagation(); skipJob(jobs[i],d) };
   });
+}
+
+
+async function skipJob(j,row){
+  const gu=await sb.auth.getUser();
+  const r=await sb.from('gl_inspect_skips').insert({
+    job_id:j.id, staff_email:gu.data.user?gu.data.user.email:''
+  });
+  if(r.error && r.error.code!=='23505'){ toast('Could not skip'); return; }
+  row.remove();
+  const left=el('queue').querySelectorAll('.qrow').length;
+  el('qcount').textContent=left?('('+left+')'):'';
+  if(!left)el('queue').innerHTML='<div class="qempty">Nothing left to inspect \u2713</div>';
+  toast('Skipped '+(j.plate||''));
 }
 
 function startBlank(){
