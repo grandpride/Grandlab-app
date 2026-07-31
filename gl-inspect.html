@@ -49,6 +49,15 @@ label{font-size:11px;color:var(--text2);display:block;margin-bottom:4px}
 .thumbs img{width:64px;height:64px;object-fit:cover;border-radius:8px;border:1px solid var(--border);display:block}
 .thumbs .x{position:absolute;top:-6px;right:-6px;width:20px;height:20px;border-radius:50%;background:#ff5252;color:#fff;border:none;font-size:11px;font-weight:800;cursor:pointer}
 .hint{font-size:11px;color:var(--text2);margin-top:8px}
+.qbtn{background:var(--card2);border:1px solid var(--border);color:var(--text2);border-radius:16px;padding:5px 12px;font-size:11px;font-weight:800;cursor:pointer;font-family:inherit}
+.qrow{display:flex;align-items:center;gap:10px;padding:12px 10px;border:1px solid var(--border);border-radius:12px;margin-bottom:8px;cursor:pointer;background:var(--card2)}
+.qrow:active{border-color:var(--gold)}
+.qrow .pl{font-weight:900;font-size:16px;letter-spacing:.5px;min-width:92px}
+.qrow .mid{flex:1;min-width:0}
+.qrow .mid .nm{font-size:13px}
+.qrow .mid .sub{font-size:11px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.stg{font-size:10px;font-weight:800;padding:3px 8px;border-radius:12px;white-space:nowrap}
+.qempty{text-align:center;color:var(--text2);font-size:13px;padding:18px 6px}
 .srch{position:relative}
 .res{position:absolute;left:0;right:0;top:100%;z-index:20;background:var(--card2);border:1px solid var(--gold);border-radius:10px;margin-top:4px;max-height:260px;overflow-y:auto}
 .res div{padding:10px 12px;border-bottom:1px solid var(--border);cursor:pointer;font-size:14px}
@@ -79,6 +88,16 @@ label{font-size:11px;color:var(--text2);display:block;margin-bottom:4px}
 <div class="wrap hide" id="app">
   <h1>GRAND<span>LAB</span> INSPECTION</h1>
   <div class="sub">Vehicle Check-in Inspection · do it with the customer</div>
+
+  <div class="card" id="queuecard">
+    <div class="sec" style="display:flex;justify-content:space-between;align-items:center">
+      <span>CARS TO INSPECT <span id="qcount"></span></span>
+      <button class="qbtn" onclick="loadQueue()">&#8635; REFRESH</button>
+    </div>
+    <div class="chipbar" id="qscope"></div>
+    <div id="queue"><div class="hint">Loading...</div></div>
+    <button class="btn btn2" style="margin-top:10px" onclick="startBlank()">+ NEW — NOT ON THE LIST</button>
+  </div>
 
   <div class="hint hide" id="jobtag" style="color:var(--gold);font-weight:700;margin:-6px 0 10px"></div>
   <div class="card hide" id="jobnote" style="border-color:var(--gold);font-size:13px;color:var(--text2)"></div>
@@ -250,11 +269,94 @@ function setBody(key,announce){
 
 
 
+
+// ===== queue: today's job cards that have NO inspection yet =====
+const STAGE_COL={upcoming:'#9CA3AF',carwash:'#2563EB',vacuum:'#0891B2',polish:'#7C3AED',coating:'#9333EA',
+ interior:'#0D9488',wrapping:'#DB2777',ppf:'#C026D3',tinting:'#4F46E5',finaltouch:'#D97706',done:'#16A34A'};
+const STAGE_LBL={upcoming:'UPCOMING',carwash:'CAR WASH',vacuum:'VACUUM',polish:'POLISH',coating:'COATING',
+ interior:'INTERIOR',wrapping:'WRAPPING',ppf:'PPF',tinting:'TINTING',finaltouch:'FINAL CHECK',done:'READY'};
+let qScope='today';
+
+function mytDayStartMs(daysBack){
+  const d=new Date(Date.now()-(daysBack||0)*86400000);
+  const ymd=d.toLocaleDateString('en-CA',{timeZone:'Asia/Kuala_Lumpur'}); // YYYY-MM-DD
+  return Date.parse(ymd+'T00:00:00+08:00');
+}
+
+async function loadQueue(){
+  const box=el('queue');
+  box.innerHTML='<div class="hint">Loading...</div>';
+  const since = qScope==='today' ? mytDayStartMs(0) : mytDayStartMs(7);
+  const r=await sb.from('gl_jobs')
+    .select('id,plate,model,name,workshop_name,cust_type,stage,created_at')
+    .gte('created_at',since)
+    .order('created_at',{ascending:false})
+    .limit(60);
+  if(r.error){box.innerHTML='<div class="qempty">Could not load jobs</div>';return}
+  let jobs=r.data||[];
+  if(jobs.length){
+    const ids=jobs.map(function(j){return j.id});
+    const done=await sb.from('gl_inspections').select('job_id').in('job_id',ids);
+    const seen={};
+    (done.data||[]).forEach(function(x){if(x.job_id)seen[x.job_id]=1});
+    jobs=jobs.filter(function(j){return !seen[j.id]});
+  }
+  el('qcount').textContent=jobs.length?('('+jobs.length+')'):'';
+  if(!jobs.length){
+    box.innerHTML='<div class="qempty">All '+(qScope==='today'?'today\'s':'recent')+' cars are inspected \u2713</div>';
+    return;
+  }
+  box.innerHTML=jobs.map(function(j,i){
+    const who=j.name||j.workshop_name||'';
+    const col=STAGE_COL[j.stage]||'#666';
+    const t=new Date(Number(j.created_at)).toLocaleTimeString('en-MY',{timeZone:'Asia/Kuala_Lumpur',hour:'2-digit',minute:'2-digit'});
+    return '<div class="qrow" data-i="'+i+'">'+
+      '<div class="pl">'+(j.plate||'-')+'</div>'+
+      '<div class="mid"><div class="nm">'+(j.model||'')+'</div>'+
+      '<div class="sub">'+[who,(j.cust_type||'').toUpperCase(),t].filter(Boolean).join(' \u00b7 ')+'</div></div>'+
+      '<span class="stg" style="background:'+col+'22;color:'+col+';border:1px solid '+col+'55">'+(STAGE_LBL[j.stage]||j.stage||'')+'</span>'+
+      '</div>';
+  }).join('');
+  Array.from(box.children).forEach(function(d,i){
+    d.onclick=function(){ pickJob(jobs[i]) };
+  });
+}
+
+function startBlank(){
+  el('queuecard').classList.add('hide');
+  el('f_plate').focus();
+}
+async function pickJob(j){
+  el('queuecard').classList.add('hide');
+  await applyJob(j.id);
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+// scope chips
+(function(){
+  const box=el('qscope');
+  [['today','TODAY'],['week','LAST 7 DAYS']].forEach(function(s,i){
+    const b=document.createElement('button');
+    b.className='chip'+(i===0?' on':'');
+    b.textContent=s[1];
+    b.onclick=function(){
+      qScope=s[0];
+      Array.from(box.children).forEach(function(c,k){c.classList.toggle('on',k===i)});
+      loadQueue();
+    };
+    box.appendChild(b);
+  });
+})();
+
 // ===== prefill from a job card: gl-inspect.html?job=<gl_jobs.id> =====
 let JOBID='';
 async function loadJob(){
   const id=new URLSearchParams(location.search).get('job');
-  if(!id)return;
+  if(!id){ loadQueue(); return; }
+  el('queuecard').classList.add('hide');   // came straight from a job card
+  await applyJob(id);
+}
+async function applyJob(id){
   const r=await sb.from('gl_jobs')
     .select('id,plate,model,name,hp,cust_type,workshop_name,services,car_type')
     .eq('id',id).maybeSingle();
