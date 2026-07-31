@@ -858,7 +858,9 @@ async function saveAll(){
     wd.style.marginTop='8px';
     el('wapick').style.marginTop='8px';
 
-    savedLink=location.origin+location.pathname.replace(/[^/]*$/,'')+'gl-inspect-view.html?t='+token;
+    // Edge Function serves og:image/og:title so WhatsApp builds a proper preview card,
+    // then forwards to gl-inspect-view.html for the person who taps it.
+    savedLink=SUPABASE_URL+'/functions/v1/inspect?t='+token;
     el('linkbox').textContent=savedLink;
     if(reportUrl){const rl=el('reportlink');rl.href=reportUrl;rl.classList.remove('hide');}
     el('done').classList.remove('hide');
@@ -883,7 +885,6 @@ function waMsg(){
     '📷 Photos: '+photos.length+'\n'+
     (photos.length?('   '+photoBreakdown('\n   ')+'\n'):'')+
     '━━━━━━━━━━━━━━\n'+
-    (frontUrl?('📷 Car photo:\n'+frontUrl+'\n\n'):'')+
     '👉 Full report & all photos:\n'+savedLink;
 }
 function sendWA(){window.open('https://wa.me/?text='+encodeURIComponent(waMsg()),'_blank')}
