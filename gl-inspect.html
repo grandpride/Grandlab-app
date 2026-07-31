@@ -33,6 +33,15 @@ label{font-size:11px;color:var(--text2);display:block;margin-bottom:4px}
 #carbox{position:relative;background:var(--card2);border-radius:12px;overflow:hidden;touch-action:manipulation}
 #carbox svg,#carbox img.diag{display:block;width:100%;height:auto}
 .mark{position:absolute;width:26px;height:26px;border-radius:50%;color:#fff;font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center;transform:translate(-50%,-50%);border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.5)}
+.mark.old{border-style:dashed;opacity:.75}
+.prevbar{background:var(--card2);border:1px solid var(--gold);border-radius:12px;padding:12px;margin-bottom:10px;font-size:13px}
+.prevbar b{color:var(--gold)}
+.prevbar .row2{display:flex;gap:8px;margin-top:10px}
+.prevbar button{flex:1;border-radius:10px;padding:10px;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit;border:1px solid var(--border);background:var(--card);color:var(--text)}
+.prevbar button.go{background:var(--gold);color:#000;border-color:var(--gold)}
+.legend{font-size:11px;color:var(--text2);margin-top:8px}
+.legend i{display:inline-block;width:11px;height:11px;border-radius:50%;border:2px solid #fff;vertical-align:-1px;margin-right:4px}
+.legend i.o{border-style:dashed;opacity:.75}
 .marklist{margin-top:10px;font-size:13px}
 .marklist>div{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border);color:var(--text2)}
 .marklist b{color:var(--text)}
@@ -148,12 +157,14 @@ label{font-size:11px;color:var(--text2);display:block;margin-bottom:4px}
     <div class="sec">3 · DAMAGE MARKS</div>
     <label>Body type</label>
     <div class="chipbar" id="typebar"></div>
+    <div class="prevbar hide" id="prevbar"></div>
     <label>Defect type — pick a colour, then tap the diagram</label>
     <div class="chipbar" id="dmgbar"></div>
     <div id="carbox">
       <img id="diagimg" class="diag" alt="car diagram">
       <div id="marks"></div>
     </div>
+    <div class="legend hide" id="legend"><i class="o"></i>previous damage &nbsp;&nbsp; <i></i>new damage</div>
     <div class="marklist" id="marklist"></div>
   </div>
 
@@ -427,6 +438,7 @@ async function applyJob(id){
   }
   const dk=typeToDiagram(j.car_type);
   if(dk)setBody(dk,false);
+  findPrevious(j.plate||'');
 
   // already inspected?
   const prev=await sb.from('gl_inspections').select('share_token,created_at')
@@ -493,6 +505,7 @@ function fillCustomer(c){
   if(c.plate)el('f_plate').value=c.plate;
   if(c.model)el('f_model').value=c.model;
   if(c.car_type){const dk=typeToDiagram(c.car_type);if(dk)setBody(dk,false)}
+  findPrevious(c.plate||'');
   if(c.name)el('f_name').value=c.name;
   if(c.phone)el('f_phone').value=c.phone;
   hideRes();
@@ -519,7 +532,9 @@ async function lookup(field,q,box){
   renderHits(box,r.data);
 }
 el('f_plate').addEventListener('input',debounce(function(){
-  lookup('plate',el('f_plate').value.trim(),el('plres'));
+  const p=el('f_plate').value.trim();
+  lookup('plate',p,el('plres'));
+  findPrevious(p);
 },350));
 el('f_phone').addEventListener('input',debounce(function(){
   lookup('phone',el('f_phone').value.trim(),el('phres'));
@@ -634,17 +649,66 @@ el('carbox').addEventListener('click',function(e){
   const r=el('carbox').getBoundingClientRect();
   const x=((e.clientX-r.left)/r.width*100).toFixed(1);
   const y=((e.clientY-r.top)/r.height*100).toFixed(1);
-  marks.push({x:+x,y:+y,type:curType,n:marks.length+1});
+  marks.push({x:+x,y:+y,type:curType,n:marks.length+1,old:false});
   renderMarks();
 });
 function renderMarks(){
   el('marks').innerHTML=marks.map(function(m){
-    return '<div class="mark" style="left:'+m.x+'%;top:'+m.y+'%;background:'+DMG[m.type][2]+'">'+m.n+'</div>'}).join('');
+    return '<div class="mark'+(m.old?' old':'')+'" style="left:'+m.x+'%;top:'+m.y+'%;background:'+DMG[m.type][2]+'">'+m.n+'</div>'}).join('');
   el('marklist').innerHTML=marks.map(function(m,i){
-    return '<div><span><span class="mdot" style="background:'+DMG[m.type][2]+'"></span><b>#'+m.n+'</b> '+DMG[m.type][0]+'</span>'+
+    const tag=m.old
+      ? '<span style="font-size:10px;color:var(--text2);border:1px solid var(--border);border-radius:10px;padding:1px 7px;margin-left:6px">PREVIOUS</span>'
+      : '<span style="font-size:10px;color:#000;background:'+DMG[m.type][2]+';border-radius:10px;padding:1px 7px;margin-left:6px;font-weight:800">NEW</span>';
+    return '<div><span><span class="mdot" style="background:'+DMG[m.type][2]+'"></span><b>#'+m.n+'</b> '+DMG[m.type][0]+tag+'</span>'+
     '<button class="del" onclick="delMark('+i+')">remove</button></div>'}).join('');
+  el('legend').classList.toggle('hide', !marks.some(function(m){return m.old}));
+}
+function markCounts(){
+  let o=0,n=0;
+  marks.forEach(function(m){ m.old?o++:n++ });
+  return {old:o,neu:n,total:marks.length};
 }
 function delMark(i){marks.splice(i,1);marks.forEach(function(m,j){m.n=j+1});renderMarks()}
+
+
+// ===== carry previous damage forward =====
+let PREV=null;
+async function findPrevious(plate){
+  const bar=el('prevbar');
+  bar.classList.add('hide'); PREV=null;
+  const p=(plate||'').trim();
+  if(p.length<3)return;
+  const r=await sb.from('gl_inspections')
+    .select('share_token,created_at,marks,car_type,plate')
+    .ilike('plate',p).order('created_at',{ascending:false}).limit(1);
+  if(r.error||!r.data||!r.data.length)return;
+  const d=r.data[0];
+  const n=Array.isArray(d.marks)?d.marks.length:0;
+  if(!n)return;                        // nothing worth carrying forward
+  PREV=d;
+  const when=new Date(d.created_at).toLocaleString('en-MY',
+    {timeZone:'Asia/Kuala_Lumpur',day:'2-digit',month:'short',year:'2-digit',hour:'2-digit',minute:'2-digit'});
+  bar.innerHTML='Last inspection <b>'+when+'</b> had <b>'+n+' damage mark'+(n===1?'':'s')+'</b>.'+
+    '<div class="row2">'+
+    '<button class="go" onclick="loadPrevious()">LOAD PREVIOUS DAMAGE</button>'+
+    '<button onclick="window.open(\'gl-inspect-view.html?t='+d.share_token+'\',\'_blank\')">VIEW</button>'+
+    '</div>';
+  bar.classList.remove('hide');
+}
+function loadPrevious(){
+  if(!PREV)return;
+  // the diagram must match or the positions will not line up
+  if(PREV.car_type && DIAGRAMS[PREV.car_type] && PREV.car_type!==curBody) setBody(PREV.car_type,false);
+  const carried=(PREV.marks||[]).map(function(m){
+    return {x:m.x,y:m.y,type:m.type,old:true};
+  });
+  const mine=marks.filter(function(m){return !m.old});
+  marks=carried.concat(mine);
+  marks.forEach(function(m,i){m.n=i+1});
+  renderMarks();
+  el('prevbar').classList.add('hide');
+  toast(carried.length+' previous mark'+(carried.length===1?'':'s')+' loaded - now add new damage only');
+}
 
 // ---- categorised photos ----
 const catsBox=el('cats');
@@ -750,24 +814,41 @@ function buildReport(token){
       marks.forEach(function(m){
         const mx=pad+dw*m.x/100, my=y+dh*m.y/100;
         g.beginPath();g.arc(mx,my,17,0,7);
-        g.fillStyle=DMG[m.type][2];g.fill();
-        g.lineWidth=3;g.strokeStyle='#ffffff';g.stroke();
-        g.fillStyle='#ffffff';g.font='900 19px -apple-system,Segoe UI,sans-serif';
+        if(m.old){
+          g.fillStyle='#ffffff';g.fill();
+          g.lineWidth=4;g.strokeStyle=DMG[m.type][2];g.setLineDash([6,5]);g.stroke();g.setLineDash([]);
+          g.fillStyle=DMG[m.type][2];
+        }else{
+          g.fillStyle=DMG[m.type][2];g.fill();
+          g.lineWidth=3;g.strokeStyle='#ffffff';g.setLineDash([]);g.stroke();
+          g.fillStyle='#ffffff';
+        }
+        g.font='900 19px -apple-system,Segoe UI,sans-serif';
         g.textAlign='center';g.fillText(String(m.n),mx,my+7);g.textAlign='left';
       });
       y+=dh+30;
       // marks list
       if(marks.length){
         g.fillStyle='#000000';g.font='900 28px -apple-system,Segoe UI,sans-serif';
-        g.fillText('DAMAGE MARKS ('+marks.length+')',pad,y+30);
+        const mc=markCounts();
+        g.fillText('DAMAGE MARKS ('+mc.total+(mc.old?('  -  '+mc.old+' previous, '+mc.neu+' new'):'')+')',pad,y+30);
         y+=50;
         g.font='26px -apple-system,Segoe UI,sans-serif';
         marks.forEach(function(m){
           y+=40;
           g.beginPath();g.arc(pad+12,y-9,11,0,7);
-          g.fillStyle=DMG[m.type][2];g.fill();
+          if(m.old){
+            g.fillStyle='#ffffff';g.fill();
+            g.lineWidth=3;g.strokeStyle=DMG[m.type][2];g.setLineDash([4,3]);g.stroke();g.setLineDash([]);
+          }else{
+            g.fillStyle=DMG[m.type][2];g.fill();
+          }
           g.fillStyle='#000000';
           g.fillText('#'+m.n+'  '+DMG[m.type][0],pad+40,y);
+          g.fillStyle=m.old?'#999999':'#C0392B';
+          g.font='900 22px -apple-system,Segoe UI,sans-serif';
+          g.fillText(m.old?'PREVIOUS':'NEW',pad+360,y);
+          g.font='26px -apple-system,Segoe UI,sans-serif';
         });
         y+=20;
       }
@@ -881,7 +962,12 @@ function waMsg(){
     (el('f_model').value.trim()?('🚙 Model: '+el('f_model').value.trim()+'\n'):'')+
     (svcList.length?('🛠 Service: '+svcList.join(', ')+'\n'):'')+
     '📅 Date: '+now+'\n'+
-    '📍 Damage marks: '+marks.length+'\n'+
+    (function(){const c=markCounts();
+      if(!c.total)return '📍 Damage marks: 0\n';
+      if(!c.old)return '📍 Damage marks: '+c.total+'\n';
+      return '📍 Damage marks: '+c.total+'\n'+
+             '   Previous: '+c.old+'\n'+
+             '   \u26a0\ufe0f NEW: '+c.neu+'\n';})()+
     '📷 Photos: '+photos.length+'\n'+
     (photos.length?('   '+photoBreakdown('\n   ')+'\n'):'')+
     '━━━━━━━━━━━━━━\n'+

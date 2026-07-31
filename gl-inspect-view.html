@@ -19,6 +19,7 @@ h1 span{color:var(--gold)}
 .kv .k{color:var(--text2)}
 #carbox{position:relative;background:var(--card2);border-radius:12px;overflow:hidden}
 #carbox svg{display:block;width:100%;height:auto}
+.mark.old{border-style:dashed;opacity:.75}
 .mark{position:absolute;width:26px;height:26px;border-radius:50%;color:#fff;font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center;transform:translate(-50%,-50%);border:2px solid #fff}
 .marklist div{display:flex;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid var(--border);font-size:13px;color:var(--text2)}
 .mdot{display:inline-block;width:10px;height:10px;border-radius:50%}
@@ -111,9 +112,19 @@ function el(id){return document.getElementById(id)}
   const marks=d.marks||[];
   if(marks.length){
     el('marks').innerHTML=marks.map(function(m){
-      return '<div class="mark" style="left:'+m.x+'%;top:'+m.y+'%;background:'+DMG[m.type][2]+'">'+m.n+'</div>'}).join('');
+      return '<div class="mark'+(m.old?' old':'')+'" style="left:'+m.x+'%;top:'+m.y+'%;background:'+DMG[m.type][2]+'">'+m.n+'</div>'}).join('');
     el('marklist').innerHTML=marks.map(function(m){
-      return '<div><span class="mdot" style="background:'+DMG[m.type][2]+'"></span><b>#'+m.n+'</b> '+DMG[m.type][0]+'</div>'}).join('');
+      const tag=m.old
+        ? '<span style="font-size:10px;color:var(--text2);border:1px solid var(--border);border-radius:10px;padding:1px 7px;margin-left:auto">PREVIOUS</span>'
+        : '<span style="font-size:10px;color:#000;background:'+DMG[m.type][2]+';border-radius:10px;padding:1px 7px;margin-left:auto;font-weight:800">NEW</span>';
+      return '<div><span class="mdot" style="background:'+DMG[m.type][2]+'"></span><b>#'+m.n+'</b> '+DMG[m.type][0]+tag+'</div>'}).join('');
+    if(marks.some(function(m){return m.old})){
+      const lg=document.createElement('div');
+      lg.style.cssText='font-size:11px;color:var(--text2);margin-top:10px';
+      lg.innerHTML='<span style="display:inline-block;width:11px;height:11px;border-radius:50%;border:2px dashed #fff;opacity:.75;vertical-align:-1px;margin-right:4px"></span>previous damage &nbsp;&nbsp;'+
+        '<span style="display:inline-block;width:11px;height:11px;border-radius:50%;border:2px solid #fff;vertical-align:-1px;margin-right:4px"></span>new damage';
+      el('marklist').appendChild(lg);
+    }
   }else{el('markcard').classList.add('hide')}
 
   if(d.notes){el('v_notes').textContent=d.notes}else{el('notecard').classList.add('hide')}
