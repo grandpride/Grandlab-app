@@ -60,6 +60,17 @@ td input,td select{padding:7px;font-size:13px}
   <div class="hint" id="lg_err"></div>
 </div>
 
+<div id="pinscr" class="hide">
+  <div class="card" style="max-width:340px;margin:70px auto;text-align:center">
+    <div class="sec">FILM COMMISSION</div>
+    <div class="hint" style="margin-bottom:14px">Enter access PIN</div>
+    <div id="pindots" style="font-size:30px;letter-spacing:12px;height:40px;color:var(--gold)"></div>
+    <div id="pinerr" class="hint" style="color:var(--red);height:16px"></div>
+    <div id="pinpad" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:12px"></div>
+    <button class="btn btn2" style="margin-top:12px" onclick="signOut()">Sign out</button>
+  </div>
+</div>
+
 <div class="wrap hide" id="app">
   <h1>GRAND<span>LAB</span> FILM COMMISSION</h1>
   <div class="sub">PPF &middot; Wrapping &middot; Tinted</div>
@@ -98,14 +109,65 @@ function rm(n){return 'RM'+(Number(n)||0).toFixed(2)}
 function myt(d){return new Date(d).toLocaleString('en-MY',{timeZone:'Asia/Kuala_Lumpur',day:'2-digit',month:'short',year:'2-digit',hour:'2-digit',minute:'2-digit'})}
 
 // ---------- auth ----------
+const ENTRY_PIN='1919';
+let pinBuf='';
+
 (async function(){
   const s=await sb.auth.getSession();
-  if(s.data.session){el('app').classList.remove('hide');boot()}
-  else{el('login').classList.remove('hide')}
+  if(!s.data.session){el('login').classList.remove('hide');return}
+  if(sessionStorage.getItem('gl_comm_ok')==='1'){ openApp(); return }
+  showPin();
 })();
+
+function openApp(){
+  el('pinscr').classList.add('hide');
+  el('app').classList.remove('hide');
+  boot();
+}
+function showPin(){
+  el('pinscr').classList.remove('hide');
+  const pad=el('pinpad');
+  pad.innerHTML=['1','2','3','4','5','6','7','8','9','','0','X'].map(function(k){
+    if(k==='')return '<div></div>';
+    return '<button class="btn btn2" style="padding:16px;font-size:19px" data-k="'+k+'">'+k+'</button>';
+  }).join('');
+  Array.from(pad.querySelectorAll('button')).forEach(function(b){
+    b.onclick=function(){ pinKey(b.dataset.k) };
+  });
+  drawDots();
+}
+function drawDots(){
+  el('pindots').textContent=pinBuf.replace(/./g,'\u25cf');
+}
+function pinKey(k){
+  el('pinerr').textContent='';
+  if(k==='X'){ pinBuf=pinBuf.slice(0,-1); drawDots(); return }
+  if(pinBuf.length>=6)return;
+  pinBuf+=k; drawDots();
+  if(pinBuf.length===ENTRY_PIN.length){
+    if(pinBuf===ENTRY_PIN){
+      sessionStorage.setItem('gl_comm_ok','1');
+      pinBuf=''; openApp();
+    }else{
+      el('pinerr').textContent='Wrong PIN';
+      pinBuf=''; setTimeout(drawDots,200);
+    }
+  }
+}
+async function signOut(){
+  sessionStorage.removeItem('gl_comm_ok');
+  await sb.auth.signOut();
+  location.reload();
+}
+document.addEventListener('keydown',function(e){
+  if(el('pinscr').classList.contains('hide'))return;
+  if(/^[0-9]$/.test(e.key))pinKey(e.key);
+  if(e.key==='Backspace')pinKey('X');
+});
 async function doLogin(){
   const r=await sb.auth.signInWithPassword({email:el('lg_email').value.trim(),password:el('lg_pass').value});
   if(r.error){el('lg_err').textContent=r.error.message;return}
+  sessionStorage.removeItem('gl_comm_ok');
   location.reload();
 }
 
