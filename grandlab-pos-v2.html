@@ -1404,7 +1404,7 @@ async function startCheckout(job, gross){
   PAY={ gross, discount:0, discountOk:false, discountBy:null, _pendingDisc:0,
         depositUsed:Number(job.dep_amt)||0, packageUsed:false,
         walletUsed:0, pointsUsed:0, voucher:null, spinPrize:null, method:null, quick:null,
-        custWallet:0, custPoints:0, hasProfile:false, pkgList:[], pkgUse:null,
+        custWallet:0, custPoints:0, hasProfile:false, pkgList:[], pkgUse:null, pkgUseIdx:null, pkgUseIdxs:[],
         split1Method:null, split2Method:null, split1Amt:0 };
   if(job.customer_id){
     const {data}=await sb.from('gl_profiles').select('wallet,points,sqlacc_code').eq('id',job.customer_id).maybeSingle();
@@ -1430,6 +1430,7 @@ async function startCheckout(job, gross){
 
 async function loadCheckoutPackages(job){
   PAY.pkgList=[];
+  PAY.pkgUseIdxs=[]; PAY.pkgUse=null; PAY.pkgUseIdx=null; PAY.packageUsed=false;
   const plate=(job.plate||CUR.plate||'').trim().toUpperCase();
   const ownerId=job.customer_id||CUR.customer_id||null;
   const phone=(job.hp||CUR.hp||CUR.phone||'').toString();
@@ -1460,10 +1461,7 @@ async function loadCheckoutPackages(job){
 function netDue(){
   // A package/voucher visit covers ONLY the service it matches (by name),
   // not the whole order. Any other services stay payable by cash/tng/etc.
-  let pkgCover=0;
-  if(PAY.pkgUse){
-    pkgCover=pkgCoverAmount_();
-  }
+  let pkgCover=pkgCoverAmount_();   // 0 when no package is toggled on
   let n=PAY.gross - pkgCover - PAY.discount - PAY.depositUsed - PAY.walletUsed - (PAY.pointsUsed*POINTS_RATE) - (PAY.voucher?Number(PAY.voucher.value||0):0) - (PAY.spinPrize?Number(PAY.spinPrize._discount||0):0);
   return Math.max(0, Math.round(n*100)/100);
 }
@@ -1472,21 +1470,48 @@ function netDue(){
    line whose description matches the package's service name. If no line
    matches (older data / generic package), fall back to covering the whole
    order (previous behaviour) so nothing breaks. */
-function pkgCoverAmount_(){
-  if(!PAY.pkgUse) return 0;
+/* Packages currently toggled on, in selection order. */
+function selectedPkgs_(){
+  const list=PAY.pkgList||[];
+  return (PAY.pkgUseIdxs||[]).map(i=>list[i]).filter(Boolean);
+}
+
+/* Coverage per selected package. A service line can be claimed by only ONE
+   package, so two packages can never cover the same line twice. A package
+   matching no line covers whatever is still uncovered - with a single package
+   that equals the whole order (the old behaviour), but it can no longer
+   over-cover and push the total negative when several are selected. */
+function pkgCoverBreakdown_(){
+  const sel=selectedPkgs_();
+  if(!sel.length) return [];
   const norm=s=>String(s||'').toLowerCase().replace(/^\s*\d+\s*x?\s*(times?\s*)?/i,'').replace(/\s*package\s*$/i,'').replace(/\s+/g,' ').trim();
-  const pkgName=norm(PAY.pkgUse.service_name);
   const svcs=jobServices(CUR)||[];
-  let matched=0, anyMatch=false;
-  svcs.forEach(s=>{
-    const d=norm(svcDesc(s));
-    if(pkgName && d && (d===pkgName || d.includes(pkgName) || pkgName.includes(d))){
-      matched += Number(svcPrice(s))||0; anyMatch=true;
-    }
+  const claimed=new Array(svcs.length).fill(false);
+  const out=[], unmatched=[];
+  sel.forEach(pkg=>{
+    const pkgName=norm(pkg.service_name);
+    let amt=0, any=false;
+    svcs.forEach((s,i)=>{
+      if(claimed[i]) return;
+      const d=norm(svcDesc(s));
+      if(pkgName && d && (d===pkgName || d.includes(pkgName) || pkgName.includes(d))){
+        amt += Number(svcPrice(s))||0; claimed[i]=true; any=true;
+      }
+    });
+    if(any) out.push({pkg, amount:Math.round(amt*100)/100});
+    else unmatched.push(pkg);
   });
-  if(anyMatch) return matched;
-  // no matching line -> cover the whole order (legacy behaviour, safe default)
-  return PAY.gross;
+  let covered=out.reduce((a,b)=>a+b.amount,0);
+  unmatched.forEach(pkg=>{
+    const left=Math.max(0,(Number(PAY.gross)||0)-covered);
+    const amt=Math.round(left*100)/100;
+    out.push({pkg, amount:amt});
+    covered+=amt;
+  });
+  return out;
+}
+function pkgCoverAmount_(){
+  return Math.round(pkgCoverBreakdown_().reduce((a,b)=>a+b.amount,0)*100)/100;
 }
 function cleanPkgName(s){ return (s||'').replace(/^\s*\d+\s*x?\s*(times?\s*)?/i,'').trim(); }
 
@@ -1544,14 +1569,14 @@ function renderCheckout(){
     ${svc.length?svc.map((s,i)=>`<div class="lineitem"><span class="d">${esc(svcDesc(s))}${s._added?` <span style="color:var(--gold-deep);font-size:11px">+added</span>`:''}</span><span class="p"><span onclick="editItemPrice(${i})" style="cursor:pointer;border-bottom:1px dashed var(--ink3)" title="Tap to edit amount">${RM(svcPrice(s))}</span> <i class="ti ti-pencil" style="cursor:pointer;color:var(--ink3);font-size:12px;margin-left:2px" onclick="editItemPrice(${i})"></i>${s._added?` <i class="ti ti-x" style="cursor:pointer;color:#c00;margin-left:6px" onclick="rmItem(${i})"></i>`:''}</span></div>`).join('')
       :`<div class="lineitem"><span class="d">Total</span><span class="p">${RM(PAY.gross)}</span></div>`}
     <button class="btn-mini" style="margin-top:10px" onclick="addItem()"><i class="ti ti-plus"></i> Add service / product</button>
-    ${(PAY.pkgUse && pkgCoverAmount_()>0)?`<div class="lineitem" style="margin-top:6px;color:var(--gold-deep)"><span class="d"><i class="ti ti-ticket"></i> Covered by ${esc(cleanPkgName(PAY.pkgUse.service_name))}</span><span class="p">− ${RM(pkgCoverAmount_())}</span></div>`:''}
+    ${pkgCoverBreakdown_().filter(b=>b.amount>0).map(b=>`<div class="lineitem" style="margin-top:6px;color:var(--gold-deep)"><span class="d"><i class="ti ti-ticket"></i> Covered by ${esc(cleanPkgName(b.pkg.service_name))}</span><span class="p">− ${RM(b.amount)}</span></div>`).join('')}
 
     <div class="section-h">Adjustments</div>
     ${PAY.depositUsed>0?`<div class="adj"><span class="lab"><i class="ti ti-cash"></i> Deposit already paid</span><span class="val">−${RM(PAY.depositUsed)}</span></div>`:''}
 
     ${(PAY.pkgList&&PAY.pkgList.length)?PAY.pkgList.map((p,pi)=>{
       const bal=(p.remaining!=null?p.remaining:((p.total_uses||0)-(p.used_uses||0)));
-      const on=PAY.pkgUse&&PAY.pkgUseIdx===pi;
+      const on=(PAY.pkgUseIdxs||[]).includes(pi);
       const allcars = p.scope==='customer' ? ' <span style="font-size:9px;color:var(--gold-deep);border:1px solid currentColor;border-radius:5px;padding:0 3px">ALL CARS</span>' : '';
       return `<div class="adj">
         <span class="lab"><i class="ti ti-package"></i> ${esc(cleanPkgName(p.service_name))}${allcars} <b style="color:var(--gold-deep)">· ${bal} left</b>${on?` <span style="color:var(--ink3);font-size:11px">(will use 1 → ${bal-1} left)</span>`:''}</span>
@@ -1601,7 +1626,7 @@ function renderCheckout(){
     </div>
 
     <div class="section-h">Payment method</div>
-    ${(due===0 && PAY.pkgUse)?`
+    ${(due===0 && selectedPkgs_().length)?`
     <div class="methods">
       <div class="method ${PAY.method==='voucher'?'sel':''}" style="grid-column:1/-1" onclick="pickMethod('voucher')"><span class="mi"><i class="ti ti-ticket"></i></span>Voucher / Package (no payment)</div>
     </div>
@@ -1669,9 +1694,17 @@ function clearCheckout(){
 
 /* ---------- adjustments ---------- */
 function togglePkgUse(idx){
-  if(PAY.pkgUse && PAY.pkgUseIdx===idx){ PAY.pkgUse=null; PAY.pkgUseIdx=null; }
-  else { PAY.pkgUse=(PAY.pkgList||[])[idx]||null; PAY.pkgUseIdx=(PAY.pkgUse?idx:null); }
-  PAY.packageUsed=!!PAY.pkgUse;
+  const list=PAY.pkgList||[];
+  if(!list[idx]) return;
+  const cur=new Set(PAY.pkgUseIdxs||[]);
+  if(cur.has(idx)) cur.delete(idx); else cur.add(idx);
+  PAY.pkgUseIdxs=[...cur].sort((a,b)=>a-b);
+  const sel=selectedPkgs_();
+  // pkgUse/pkgUseIdx kept in sync with the first selection so any older code
+  // path still reading the single-value fields keeps working
+  PAY.pkgUse=sel[0]||null;
+  PAY.pkgUseIdx=(PAY.pkgUseIdxs.length?PAY.pkgUseIdxs[0]:null);
+  PAY.packageUsed=sel.length>0;
   renderCheckout();
 }
 function onDiscount(){
@@ -2202,24 +2235,27 @@ async function confirmPay(){
       const {error}=await sb.rpc('gl_deduct_points',{p_customer:CUR.customer_id,p_points:PAY.pointsUsed});
       if(error) throw new Error('Points: '+error.message);
     }
-    if(PAY.pkgUse && !PAY.voucher){
-      if(PAY.pkgUse.id){
-        // specific package row selected -> deduct it directly
-        const {data:pk}=await sb.from('gl_packages').select('id,total_uses,used_uses')
-          .eq('id',PAY.pkgUse.id).maybeSingle();
-        if(pk && (pk.total_uses-pk.used_uses)>0){
-          await sb.from('gl_packages').update({used_uses:(pk.used_uses||0)+1}).eq('id',pk.id);
+    if(!PAY.voucher){
+      // one use deducted per selected package
+      for(const pkg of selectedPkgs_()){
+        if(pkg.id){
+          // specific package row selected -> deduct it directly
+          const {data:pk}=await sb.from('gl_packages').select('id,total_uses,used_uses')
+            .eq('id',pkg.id).maybeSingle();
+          if(pk && (pk.total_uses-pk.used_uses)>0){
+            await sb.from('gl_packages').update({used_uses:(pk.used_uses||0)+1}).eq('id',pk.id);
+          }
+        } else {
+          // per-customer package (no single id) -> deduct from the shared pool
+          // via the RPC (coating per-car, Bathe Essence shared by phone).
+          try{
+            await sb.rpc('gl_deduct_package',{
+              p_phone:(CUR.hp||CUR.phone||'').toString(),
+              p_plate:(CUR.plate||''),
+              p_service:pkg.service_name||''
+            });
+          }catch(e){ /* non-fatal: don't block the sale */ }
         }
-      } else {
-        // per-customer package (no single id) -> deduct from the shared pool
-        // via the RPC (coating per-car, Bathe Essence shared by phone).
-        try{
-          await sb.rpc('gl_deduct_package',{
-            p_phone:(CUR.hp||CUR.phone||'').toString(),
-            p_plate:(CUR.plate||''),
-            p_service:PAY.pkgUse.service_name||''
-          });
-        }catch(e){ /* non-fatal: don't block the sale */ }
       }
     }
     // decrement stock for any tracked products in this order
@@ -2237,7 +2273,7 @@ async function confirmPay(){
       customer_name:recordName_(CUR), phone:CUR.hp||CUR.phone||'', plate:CUR.plate||'',
       gross:PAY.gross, discount:PAY.discount, discount_by:PAY.discountBy||null,
       deposit_used:PAY.depositUsed, package_used:PAY.packageUsed,
-      pkg_used_id:(PAY.pkgUse&&!PAY.voucher&&isUuid(String(PAY.pkgUse.id)))?PAY.pkgUse.id:null,
+      pkg_used_id:(()=>{ if(PAY.voucher) return null; const f=selectedPkgs_().find(x=>isUuid(String(x.id))); return f?f.id:null; })(),
       wallet_used:PAY.walletUsed, points_used:PAY.pointsUsed, points_value:PAY.pointsUsed*POINTS_RATE,
       voucher_code:PAY.voucher?PAY.voucher.barcode:null, voucher_value:PAY.voucher?Number(PAY.voucher.value||0):0,
       net_paid:net, method:methodLabel, taken_by:ME,
