@@ -17,8 +17,9 @@ h1 span{color:var(--gold)}
 .sec{font-size:13px;font-weight:800;color:var(--gold);margin-bottom:10px;letter-spacing:.05em}
 .row{display:flex;gap:8px;margin-bottom:8px}
 .row>*{flex:1}
-input,textarea{width:100%;background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:12px;color:var(--text);font-size:15px;font-family:inherit}
-input:focus,textarea:focus{outline:none;border-color:var(--gold)}
+input,textarea,select{width:100%;background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:12px;color:var(--text);font-size:15px;font-family:inherit}
+input:focus,textarea:focus,select:focus{outline:none;border-color:var(--gold)}
+select{appearance:none;-webkit-appearance:none;background-image:linear-gradient(45deg,transparent 50%,var(--gold) 50%),linear-gradient(135deg,var(--gold) 50%,transparent 50%);background-position:calc(100% - 18px) 20px,calc(100% - 12px) 20px;background-size:6px 6px,6px 6px;background-repeat:no-repeat;padding-right:38px}
 label{font-size:11px;color:var(--text2);display:block;margin-bottom:4px}
 .btn{display:block;width:100%;background:var(--gold);color:#000;border:none;border-radius:12px;padding:15px;font-size:16px;font-weight:800;cursor:pointer;font-family:inherit}
 .btn:disabled{opacity:.4}
@@ -83,9 +84,8 @@ label{font-size:11px;color:var(--text2);display:block;margin-bottom:4px}
     <div class="sec">1 · CUSTOMER TYPE</div>
     <div class="chipbar" id="ctbar"></div>
     <div class="row hide" id="wsrow">
-      <div class="srch"><label>Name</label>
-        <input id="f_workshop" placeholder="Lemans - Workshop" autocomplete="off">
-        <div class="res hide" id="wsres"></div>
+      <div><label id="wslabel">Which workshop</label>
+        <select id="f_workshop"></select>
       </div>
     </div>
 
@@ -198,7 +198,7 @@ function toast(m){const t=el('toast');t.textContent=m;t.style.display='block';se
 
 (async function(){
   const {data:{session}}=await sb.auth.getSession();
-  if(session){el('app').classList.remove('hide')}else{el('login').classList.remove('hide')}
+  if(session){el('app').classList.remove('hide');loadCfg()}else{el('login').classList.remove('hide')}
 })();
 async function doLogin(){
   const {error}=await sb.auth.signInWithPassword({email:el('lg_email').value.trim(),password:el('lg_pass').value});
@@ -210,7 +210,7 @@ async function doLogin(){
 
 
 // ================= helpers =================
-function hideRes(){['plres','phres','svcres','wsres'].forEach(function(i){el(i).classList.add('hide')})}
+function hideRes(){['plres','phres','svcres','mdres'].forEach(function(i){el(i).classList.add('hide')})}
 document.addEventListener('click',function(e){ if(!e.target.closest('.srch')) hideRes(); });
 function debounce(fn,ms){let t;return function(){const a=arguments;clearTimeout(t);t=setTimeout(function(){fn.apply(null,a)},ms)}}
 // Malaysian numbers in gl_walkin are stored as +60xxx (96%), some 60xxx / 0xxx / messy.
@@ -244,6 +244,32 @@ function setBody(key,announce){
   if(announce)toast('Diagram: '+TYPES[idx][1]);
 }
 
+
+// ===== workshop / showroom / boss lists — same source as gl-jobcard.html =====
+let CFG={workshops:[],showrooms:[],bosses:[]};
+async function loadCfg(){
+  const r=await sb.from('gl_board_config').select('workshops,showrooms,bosses').eq('id',1).maybeSingle();
+  if(r.data){
+    CFG.workshops=Array.isArray(r.data.workshops)?r.data.workshops:(r.data.workshops?JSON.parse(r.data.workshops):[]);
+    CFG.showrooms=Array.isArray(r.data.showrooms)?r.data.showrooms:(r.data.showrooms?JSON.parse(r.data.showrooms):[]);
+    CFG.bosses   =Array.isArray(r.data.bosses)   ?r.data.bosses   :(r.data.bosses?JSON.parse(r.data.bosses):[]);
+  }
+  fillOrg();
+}
+function fillOrg(){
+  const list = curCust==='workshop' ? CFG.workshops
+             : curCust==='showroom' ? CFG.showrooms
+             : curCust==='boss'     ? CFG.bosses : [];
+  el('wslabel').textContent = curCust==='workshop' ? 'Which workshop'
+                            : curCust==='showroom' ? 'Which showroom'
+                            : curCust==='boss'     ? 'Which boss' : 'Name';
+  el('f_workshop').innerHTML='<option value="">— select —</option>'+
+    list.map(function(n){return '<option>'+n.replace(/[<>&]/g,'')+'</option>'}).join('');
+  if(!list.length&&curCust!=='walkin'){
+    el('f_workshop').innerHTML='<option value="">— none set, add in Job Card settings —</option>';
+  }
+}
+
 // ================= customer type =================
 const ctb=el('ctbar');
 CTYPES.forEach(function(t,i){
@@ -257,32 +283,11 @@ CTYPES.forEach(function(t,i){
     el('wsrow').classList.toggle('hide',isWalk);
     el('custrow').classList.toggle('hide',!isWalk);
     if(isWalk){ el('f_workshop').value=''; }
-    else { el('f_name').value=''; el('f_phone').value=''; }
+    else { el('f_name').value=''; el('f_phone').value=''; fillOrg(); }
   };
   ctb.appendChild(b);
 });
 
-// workshop / showroom / boss name search (from existing gl_jobs names)
-el('f_workshop').addEventListener('input',debounce(async function(){
-  const q=el('f_workshop').value.trim();
-  const box=el('wsres');
-  if(q.length<1){box.classList.add('hide');return}
-  const r=await sb.from('gl_jobs').select('workshop_name')
-    .eq('cust_type',curCust).ilike('workshop_name','%'+q+'%').limit(60);
-  if(r.error||!r.data){box.classList.add('hide');return}
-  const seen={},list=[];
-  r.data.forEach(function(x){
-    const n=(x.workshop_name||'').trim();
-    if(n&&!seen[n]){seen[n]=1;list.push(n)}
-  });
-  if(!list.length){box.classList.add('hide');return}
-  box.innerHTML=list.slice(0,12).map(function(n,i){
-    return '<div data-ws="'+i+'">'+n+'</div>'}).join('');
-  Array.from(box.children).forEach(function(d,i){
-    d.onclick=function(){el('f_workshop').value=list[i];box.classList.add('hide')};
-  });
-  box.classList.remove('hide');
-},300));
 
 // ================= plate / phone lookup (server-side) =================
 function fillCustomer(c){
