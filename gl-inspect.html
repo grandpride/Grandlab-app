@@ -119,6 +119,7 @@ label{font-size:11px;color:var(--text2);display:block;margin-bottom:4px}
     <div class="big">✅</div>
     <div style="font-weight:800;font-size:17px">已保存 Saved!</div>
     <div id="linkbox"></div>
+    <a id="reportlink" class="hide" style="color:var(--gold);font-size:13px;display:block;margin-bottom:10px" target="_blank">📄 打开检查报告 OPEN REPORT JPG</a>
     <button class="btn" onclick="sendWA()">📤 发送到 WhatsApp SEND TO WHATSAPP</button>
     <button class="btn btn2" style="margin-top:8px" onclick="copyWA()">📋 只复制讯息 COPY ONLY</button>
     <button class="btn btn2" style="margin-top:8px" onclick="location.reload()">➕ 下一台车 NEXT CAR</button>
@@ -146,7 +147,7 @@ const CATS=[
  ['front','前 Front'],['left','左 Left'],['right','右 Right'],
  ['rear','后 Rear'],['top','顶 Top'],['damage','特写 Close-up'],['other','其他 Other']
 ];
-let curType=0, curBody='sedan', curCat='front', marks=[], photos=[], savedLink='', savedPlate='';
+let curType=0, curBody='sedan', curCat='front', marks=[], photos=[], savedLink='', savedPlate='', reportUrl='';
 
 function el(id){return document.getElementById(id)}
 function toast(m){const t=el('toast');t.textContent=m;t.style.display='block';setTimeout(function(){t.style.display='none'},2200)}
@@ -264,6 +265,91 @@ function shrink(file){
   });
 }
 
+
+// ---- report JPG builder ----
+function buildReport(token){
+  return new Promise(function(resolve,reject){
+    const img=new Image();
+    img.onload=function(){
+      const W=1080, pad=40;
+      const dw=W-pad*2, dh=Math.round(img.height*dw/img.width);
+      const infoLines=[
+        ['车型 Model', el('f_model').value.trim()||'-'],
+        ['颜色 Colour', el('f_colour').value.trim()||'-'],
+        ['里数 Mileage', el('f_mileage').value.trim()||'-'],
+        ['客户 Customer', el('f_name').value.trim()||'-'],
+        ['服务 Services', el('f_services').value.trim()||'-'],
+        ['日期 Date', new Date().toLocaleString('en-MY',{timeZone:'Asia/Kuala_Lumpur',day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})]
+      ];
+      const infoH=90+infoLines.length*44+30;
+      const listH=marks.length?50+marks.length*40+20:0;
+      const notes=el('f_notes').value.trim();
+      const notesH=notes?90:0;
+      const H=150+infoH+dh+30+listH+notesH+70;
+      const c=document.createElement('canvas');
+      c.width=W;c.height=H;
+      const g=c.getContext('2d');
+      g.fillStyle='#ffffff';g.fillRect(0,0,W,H);
+      // header
+      g.fillStyle='#000000';g.fillRect(0,0,W,150);
+      g.fillStyle='#F5C518';g.font='900 46px -apple-system,Segoe UI,sans-serif';
+      g.fillText('GRANDLAB DETAILING',pad,62);
+      g.fillStyle='#ffffff';g.font='28px -apple-system,Segoe UI,sans-serif';
+      g.fillText('接车检查报告 Vehicle Check-in Report',pad,108);
+      // plate
+      let y=150+64;
+      g.fillStyle='#000000';g.font='900 52px -apple-system,Segoe UI,sans-serif';
+      g.fillText(el('f_plate').value.trim().toUpperCase(),pad,y);
+      y+=26;
+      g.font='26px -apple-system,Segoe UI,sans-serif';
+      infoLines.forEach(function(l){
+        y+=44;
+        g.fillStyle='#888888';g.fillText(l[0],pad,y);
+        g.fillStyle='#000000';g.fillText(l[1],pad+260,y);
+      });
+      y+=30;
+      // diagram + marks
+      g.drawImage(img,pad,y,dw,dh);
+      marks.forEach(function(m){
+        const mx=pad+dw*m.x/100, my=y+dh*m.y/100;
+        g.beginPath();g.arc(mx,my,17,0,7);
+        g.fillStyle=DMG[m.type][2];g.fill();
+        g.lineWidth=3;g.strokeStyle='#ffffff';g.stroke();
+        g.fillStyle='#ffffff';g.font='900 19px -apple-system,Segoe UI,sans-serif';
+        g.textAlign='center';g.fillText(String(m.n),mx,my+7);g.textAlign='left';
+      });
+      y+=dh+30;
+      // marks list
+      if(marks.length){
+        g.fillStyle='#000000';g.font='900 28px -apple-system,Segoe UI,sans-serif';
+        g.fillText('车损标记 DAMAGE MARKS ('+marks.length+')',pad,y+30);
+        y+=50;
+        g.font='26px -apple-system,Segoe UI,sans-serif';
+        marks.forEach(function(m){
+          y+=40;
+          g.beginPath();g.arc(pad+12,y-9,11,0,7);
+          g.fillStyle=DMG[m.type][2];g.fill();
+          g.fillStyle='#000000';
+          g.fillText('#'+m.n+'  '+DMG[m.type][0]+' '+DMG[m.type][1],pad+40,y);
+        });
+        y+=20;
+      }
+      if(notes){
+        g.fillStyle='#000000';g.font='900 28px -apple-system,Segoe UI,sans-serif';
+        g.fillText('备注 NOTES',pad,y+30);
+        g.font='26px -apple-system,Segoe UI,sans-serif';
+        g.fillText(notes.slice(0,60),pad,y+70);
+        y+=90;
+      }
+      g.fillStyle='#888888';g.font='22px -apple-system,Segoe UI,sans-serif';
+      g.fillText('照片 Photos: '+photos.length+' 张 · GrandLab Detailing · PJS 13, Petaling Jaya',pad,H-30);
+      c.toBlob(function(b){ b?resolve(b):reject(new Error('report render failed')) },'image/jpeg',0.88);
+    };
+    img.onerror=function(){reject(new Error('diagram load failed'))};
+    img.src=DIAGRAMS[curBody];
+  });
+}
+
 // ---- save ----
 async function saveAll(){
   const plate=el('f_plate').value.trim().toUpperCase();
@@ -285,6 +371,12 @@ async function saveAll(){
       if(up.error)throw up.error;
       photoMeta.push({cat:p.cat,path:fname});
     }
+    btn.textContent='生成报告 building report...';
+    try{
+      const rblob=await buildReport(token);
+      const rup=await sb.storage.from('inspections').upload(token+'/report.jpg',rblob,{contentType:'image/jpeg'});
+      if(!rup.error){reportUrl=sb.storage.from('inspections').getPublicUrl(token+'/report.jpg').data.publicUrl;}
+    }catch(e){/* report optional, continue */}
     btn.textContent='保存记录 saving...';
     const gu=await sb.auth.getUser();
     const ins=await sb.from('gl_inspections').insert({
@@ -301,6 +393,7 @@ async function saveAll(){
     savedPlate=plate;
     savedLink=location.origin+location.pathname.replace(/[^/]*$/,'')+'gl-inspect-view.html?t='+token;
     el('linkbox').textContent=savedLink;
+    if(reportUrl){const rl=el('reportlink');rl.href=reportUrl;rl.classList.remove('hide');}
     el('done').classList.remove('hide');
     el('done').scrollIntoView({behavior:'smooth'});
     btn.textContent='✅ 已保存 SAVED';
@@ -321,7 +414,8 @@ function waMsg(){
     '📍 车损标记 Marks: '+marks.length+' 处\n'+
     '📷 照片 Photos: '+photos.length+' 张\n'+
     '━━━━━━━━━━━━━━\n'+
-    '👉 点击看照片 View photos:\n'+savedLink;
+    (reportUrl?('📄 检查报告 Report:\n'+reportUrl+'\n\n'):'')+
+    '👉 全部照片 All photos:\n'+savedLink;
 }
 function sendWA(){window.open('https://wa.me/?text='+encodeURIComponent(waMsg()),'_blank')}
 function copyWA(){navigator.clipboard.writeText(waMsg()).then(function(){toast('已复制 copied!')})}
