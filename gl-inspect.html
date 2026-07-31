@@ -214,7 +214,7 @@ function photoBreakdown(sep){
 }
 const CTYPES=[['walkin','WALK-IN'],['workshop','WORKSHOP'],['showroom','SHOWROOM'],['boss','BOSS']];
 let curType=0, curBody='sedan', curCat='front', marks=[], photos=[], savedLink='', savedPlate='', reportUrl='';
-let curCust='walkin', svcList=[], svcCache=null, waPhone='', savedType='';
+let curCust='walkin', svcList=[], svcCache=null, waPhone='', savedType='', frontUrl='', frontIsFront=false;
 
 function el(id){return document.getElementById(id)}
 function toast(m){const t=el('toast');t.textContent=m;t.style.display='block';setTimeout(function(){t.style.display='none'},2200)}
@@ -755,7 +755,7 @@ async function saveAll(){
 
   const token=crypto.randomUUID().replace(/-/g,'').slice(0,20);
   try{
-    const photoMeta=[];
+    const photoMeta=[]; frontUrl=''; frontIsFront=false;
     const catCount={};
     for(let i=0;i<photos.length;i++){
       btn.textContent='Uploading photo '+(i+1)+'/'+photos.length+'...';
@@ -767,6 +767,14 @@ async function saveAll(){
         .upload(token+'/'+fname,blob,{contentType:'image/jpeg'});
       if(up.error)throw up.error;
       photoMeta.push({cat:p.cat,path:fname});
+      // first FRONT photo (or the very first photo) drives the WhatsApp link preview
+      if(!frontUrl && (p.cat==='front' || i===0)){
+        frontUrl=sb.storage.from('inspections').getPublicUrl(token+'/'+fname).data.publicUrl;
+      }
+      if(p.cat==='front' && !frontIsFront){
+        frontUrl=sb.storage.from('inspections').getPublicUrl(token+'/'+fname).data.publicUrl;
+        frontIsFront=true;
+      }
     }
     btn.textContent='Building report...';
     try{
@@ -836,8 +844,8 @@ function waMsg(){
     '📷 Photos: '+photos.length+'\n'+
     (photos.length?('   '+photoBreakdown('\n   ')+'\n'):'')+
     '━━━━━━━━━━━━━━\n'+
-    (reportUrl?('📄 Inspection report:\n'+reportUrl+'\n\n'):'')+
-    '👉 All photos:\n'+savedLink;
+    (frontUrl?('📷 Car photo:\n'+frontUrl+'\n\n'):'')+
+    '👉 Full report & all photos:\n'+savedLink;
 }
 function sendWA(){window.open('https://wa.me/?text='+encodeURIComponent(waMsg()),'_blank')}
 

@@ -46,6 +46,10 @@ h1 span{color:var(--gold)}
       <div class="kv" id="kv_type"><span class="k">Type</span><span id="v_type"></span></div>
       <div class="kv"><span class="k">Services</span><span id="v_services"></span></div>
       <div class="kv"><span class="k">Staff</span><span id="v_staff"></span></div>
+      <a id="v_report" class="hide" target="_blank"
+         style="display:block;margin-top:14px;background:var(--gold);color:#000;text-align:center;
+                padding:13px;border-radius:12px;font-weight:800;text-decoration:none;font-size:15px">
+        📄 OPEN INSPECTION REPORT (JPG)</a>
     </div>
 
     <div class="card" id="markcard">
@@ -96,6 +100,10 @@ function el(id){return document.getElementById(id)}
   }else{ el('kv_type').classList.add('hide') }
   el('v_services').textContent=d.services||'-';
   el('v_staff').textContent=d.staff_email||'-';
+  // report.jpg sits next to the photos in the same folder
+  const rl=el('v_report');
+  rl.href=sb.storage.from('inspections').getPublicUrl(d.share_token+'/report.jpg').data.publicUrl;
+  rl.classList.remove('hide');
 
   el('diagimg').src=DIAGRAMS[d.car_type]||DIAGRAMS.sedan;
 
