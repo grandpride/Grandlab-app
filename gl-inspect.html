@@ -77,10 +77,6 @@ label{font-size:11px;color:var(--text2);display:block;margin-bottom:4px}
       <div><label>车型 Model</label><input id="f_model" placeholder="Alphard"></div>
     </div>
     <div class="row">
-      <div><label>颜色 Colour</label><input id="f_colour"></div>
-      <div><label>里数 Mileage</label><input id="f_mileage" inputmode="numeric"></div>
-    </div>
-    <div class="row">
       <div><label>客户 Customer</label><input id="f_name"></div>
       <div><label>电话 Phone</label><input id="f_phone" inputmode="tel"></div>
     </div>
@@ -275,8 +271,6 @@ function buildReport(token){
       const dw=W-pad*2, dh=Math.round(img.height*dw/img.width);
       const infoLines=[
         ['车型 Model', el('f_model').value.trim()||'-'],
-        ['颜色 Colour', el('f_colour').value.trim()||'-'],
-        ['里数 Mileage', el('f_mileage').value.trim()||'-'],
         ['客户 Customer', el('f_name').value.trim()||'-'],
         ['服务 Services', el('f_services').value.trim()||'-'],
         ['日期 Date', new Date().toLocaleString('en-MY',{timeZone:'Asia/Kuala_Lumpur',day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})]
@@ -381,8 +375,7 @@ async function saveAll(){
     const gu=await sb.auth.getUser();
     const ins=await sb.from('gl_inspections').insert({
       share_token:token, plate:plate, car_type:curBody,
-      model:el('f_model').value.trim(), colour:el('f_colour').value.trim(),
-      mileage:el('f_mileage').value.trim(), customer_name:el('f_name').value.trim(),
+      model:el('f_model').value.trim(), customer_name:el('f_name').value.trim(),
       phone:el('f_phone').value.trim(), services:el('f_services').value.trim(),
       marks:marks, notes:el('f_notes').value.trim(),
       photo_count:photos.length, photos:photoMeta,
@@ -409,7 +402,6 @@ function waMsg(){
     '━━━━━━━━━━━━━━\n'+
     '🔖 车牌 Plate: *'+savedPlate+'*\n'+
     (el('f_model').value.trim()?('🚙 车型 Model: '+el('f_model').value.trim()+'\n'):'')+
-    (el('f_colour').value.trim()?('🎨 颜色 Colour: '+el('f_colour').value.trim()+'\n'):'')+
     '📅 日期 Date: '+now+'\n'+
     '📍 车损标记 Marks: '+marks.length+' 处\n'+
     '📷 照片 Photos: '+photos.length+' 张\n'+

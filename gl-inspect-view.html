@@ -43,8 +43,6 @@ h1 span{color:var(--gold)}
       <div class="plate" id="v_plate"></div>
       <div class="kv"><span class="k">日期 Date</span><span id="v_date"></span></div>
       <div class="kv"><span class="k">车型 Model</span><span id="v_model"></span></div>
-      <div class="kv"><span class="k">颜色 Colour</span><span id="v_colour"></span></div>
-      <div class="kv"><span class="k">里数 Mileage</span><span id="v_mileage"></span></div>
       <div class="kv"><span class="k">服务 Services</span><span id="v_services"></span></div>
       <div class="kv"><span class="k">接车人 Staff</span><span id="v_staff"></span></div>
     </div>
@@ -91,8 +89,6 @@ function el(id){return document.getElementById(id)}
   el('v_plate').textContent=d.plate;
   el('v_date').textContent=new Date(d.created_at).toLocaleString('en-MY',{timeZone:'Asia/Kuala_Lumpur',dateStyle:'medium',timeStyle:'short'});
   el('v_model').textContent=d.model||'-';
-  el('v_colour').textContent=d.colour||'-';
-  el('v_mileage').textContent=d.mileage||'-';
   el('v_services').textContent=d.services||'-';
   el('v_staff').textContent=d.staff_email||'-';
 
