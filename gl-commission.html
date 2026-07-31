@@ -67,11 +67,14 @@ td input,td select{padding:7px;font-size:13px}
     <div id="pindots" style="font-size:30px;letter-spacing:12px;height:40px;color:var(--gold)"></div>
     <div id="pinerr" class="hint" style="color:var(--red);height:16px"></div>
     <div id="pinpad" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:12px"></div>
-    <button class="btn btn2" style="margin-top:12px" onclick="signOut()">Sign out</button>
+    <a class="btn btn2" style="margin-top:12px;display:block;text-decoration:none;text-align:center"
+       href="gl-hub.html">&#8592; BACK TO HUB</a>
+    <button class="btn btn2" style="margin-top:8px" onclick="signOut()">Sign out</button>
   </div>
 </div>
 
 <div class="wrap hide" id="app">
+  <a href="gl-hub.html" style="color:var(--text2);font-size:12px;text-decoration:none">&#8592; Hub</a>
   <h1>GRAND<span>LAB</span> FILM COMMISSION</h1>
   <div class="sub">PPF &middot; Wrapping &middot; Tinted</div>
 
@@ -94,6 +97,7 @@ td input,td select{padding:7px;font-size:13px}
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
 <script>
 const SUPABASE_URL='https://eychljpzorzmaveixlnu.supabase.co';
 const SUPABASE_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV5Y2hsanB6b3J6bWF2ZWl4bG51Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2NDk2NjQsImV4cCI6MjA5NzIyNTY2NH0.6dA1zhz5ZIwf8byFB8vhfOzPI-uPPdPihEr1b8GG_oA';
@@ -341,8 +345,9 @@ function openForm(job,line){
      '<span style="color:var(--text2);font-weight:400;text-transform:none"> &mdash; for AXFilm warranty</span></div>'+
      '<div class="row"><div><input id="f_serial" placeholder="Scan or type serial / roll no." autocomplete="off"></div>'+
      '<div style="flex:0 0 96px"><button class="btn btn2" style="padding:11px" onclick="addSerial()">ADD</button></div></div>'+
-     '<button class="btn btn2 hide" id="f_scanbtn" onclick="scanSerial()">SCAN WITH CAMERA</button>'+
-     '<video id="f_video" class="hide" style="width:100%;border-radius:10px;margin-top:8px" playsinline></video>'+
+     '<button class="btn btn2" id="f_scanbtn" onclick="scanSerial()">&#128247; SCAN QR / BARCODE</button>'+
+     '<video id="f_video" class="hide" style="width:100%;border-radius:10px;margin-top:8px;background:#000" playsinline muted></video>'+
+     '<button class="btn btn2 hide" id="f_stopbtn" style="margin-top:6px" onclick="stopScan()">STOP CAMERA</button>'+
      '<div id="f_serials"></div>'+
      '<div class="hint">A barcode scanner types straight into the box. Add one per roll used.</div>'+
    '</div>'+
@@ -357,7 +362,7 @@ function openForm(job,line){
   el('f_serial').addEventListener('keydown',function(e){
     if(e.key==='Enter'){e.preventDefault();addSerial()}   // hardware scanners send Enter
   });
-  if('BarcodeDetector' in window)el('f_scanbtn').classList.remove('hide');
+
   renderSerials();
   addPerson('Koko','senior');
   calc();
@@ -500,27 +505,57 @@ function addSerial(v){
   inp.value=''; inp.focus(); renderSerials();
 }
 function rmSerial(i){ CUR.serials.splice(i,1); renderSerials(); }
+let SCAN_STREAM=null;
+function stopScan(){
+  if(SCAN_STREAM){SCAN_STREAM.getTracks().forEach(function(t){t.stop()});SCAN_STREAM=null}
+  const v=el('f_video'); if(v){v.classList.add('hide');v.srcObject=null}
+  const b=el('f_stopbtn'); if(b)b.classList.add('hide');
+}
 async function scanSerial(){
   const v=el('f_video');
   try{
-    const stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}});
-    v.srcObject=stream; v.classList.remove('hide'); await v.play();
-    const det=new BarcodeDetector();
-    const tick=async function(){
-      if(v.classList.contains('hide'))return;
-      try{
-        const codes=await det.detect(v);
-        if(codes&&codes.length){
-          addSerial(codes[0].rawValue);
-          toast('Scanned '+codes[0].rawValue);
-          stream.getTracks().forEach(function(t){t.stop()});
-          v.classList.add('hide'); return;
+    SCAN_STREAM=await navigator.mediaDevices.getUserMedia({
+      video:{facingMode:{ideal:'environment'}}, audio:false });
+    v.srcObject=SCAN_STREAM;
+    v.setAttribute('playsinline','');   // iPhone will not inline-play without this
+    v.muted=true;
+    v.classList.remove('hide');
+    el('f_stopbtn').classList.remove('hide');
+    await v.play();
+  }catch(e){
+    toast('Camera blocked - allow camera access, or type the code');
+    stopScan(); return;
+  }
+  // fast path where the browser has it (Chrome/Android), jsQR everywhere else (incl. iPhone)
+  let det=null;
+  try{ if('BarcodeDetector' in window) det=new BarcodeDetector(); }catch(e){}
+  const cv=document.createElement('canvas'), cx=cv.getContext('2d',{willReadFrequently:true});
+  const tick=async function(){
+    if(!SCAN_STREAM)return;
+    if(v.readyState===v.HAVE_ENOUGH_DATA){
+      let code=null;
+      if(det){
+        try{ const r=await det.detect(v); if(r&&r.length)code=r[0].rawValue; }catch(e){}
+      }
+      if(!code && window.jsQR){
+        cv.width=v.videoWidth; cv.height=v.videoHeight;
+        if(cv.width&&cv.height){
+          cx.drawImage(v,0,0,cv.width,cv.height);
+          const img=cx.getImageData(0,0,cv.width,cv.height);
+          const q=jsQR(img.data,img.width,img.height,{inversionAttempts:'dontInvert'});
+          if(q&&q.data)code=q.data;
         }
-      }catch(e){}
-      requestAnimationFrame(tick);
-    };
-    tick();
-  }catch(e){ toast('Camera not available - type it instead'); v.classList.add('hide'); }
+      }
+      if(code){
+        addSerial(code);
+        toast('Scanned: '+code);
+        if(navigator.vibrate)navigator.vibrate(60);
+        stopScan(); return;
+      }
+    }
+    requestAnimationFrame(tick);
+  };
+  tick();
 }
 
 // ---------- PENDING / APPROVED ----------
