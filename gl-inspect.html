@@ -43,7 +43,8 @@ label{font-size:11px;color:var(--text2);display:block;margin-bottom:4px}
 .cathead{display:flex;justify-content:space-between;align-items:center}
 .cathead .nm{font-size:14px;font-weight:700}
 .cathead .cnt{color:var(--text2);font-size:12px;margin-left:8px}
-.addbtn{background:var(--card2);border:1px solid var(--gold);color:var(--gold);border-radius:20px;padding:6px 16px;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit}
+.addbtn{background:var(--card2);border:1px solid var(--gold);color:var(--gold);border-radius:20px;padding:7px 13px;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit;white-space:nowrap}
+.addbtn.upl{border-color:var(--border);color:var(--text2)}
 .thumbs{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
 .thumbs .th{position:relative}
 .thumbs img{width:64px;height:64px;object-fit:cover;border-radius:8px;border:1px solid var(--border);display:block}
@@ -159,7 +160,8 @@ label{font-size:11px;color:var(--text2);display:block;margin-bottom:4px}
   <div class="card">
     <div class="sec">4 · PHOTOS <span style="color:var(--text2);font-weight:400">— grouped by position · no minimum</span></div>
     <div id="cats"></div>
-    <input type="file" id="file" accept="image/*" multiple class="hide">
+    <input type="file" id="fileCam" accept="image/*" capture="environment" class="hide">
+    <input type="file" id="fileLib" accept="image/*" multiple class="hide">
     <div class="hint" id="phcount">0 photos total</div>
   </div>
 
@@ -649,18 +651,24 @@ CATS.forEach(function(c){
   const d=document.createElement('div');
   d.className='catrow';
   d.innerHTML='<div class="cathead"><div><span class="nm">'+c[1]+'</span><span class="cnt" id="cnt_'+c[0]+'"></span></div>'+
-    '<button class="addbtn" onclick="addPhoto(&quot;'+c[0]+'&quot;)">📷 +</button></div>'+
+    '<div style="display:flex;gap:6px">'+
+    '<button class="addbtn" onclick="takePhoto(&quot;'+c[0]+'&quot;)">📷 CAMERA</button>'+
+    '<button class="addbtn upl" onclick="uploadPhoto(&quot;'+c[0]+'&quot;)">🖼 UPLOAD</button>'+
+    '</div></div>'+
     '<div class="thumbs" id="th_'+c[0]+'"></div>';
   catsBox.appendChild(d);
 });
-function addPhoto(cat){curCat=cat;el('file').click()}
-el('file').addEventListener('change',function(e){
+function takePhoto(cat){curCat=cat;el('fileCam').click()}     // opens the camera
+function uploadPhoto(cat){curCat=cat;el('fileLib').click()}   // opens gallery / files
+function onPicked(e){
   for(const f of e.target.files){
     photos.push({file:f,cat:curCat});
   }
   e.target.value='';
   renderPhotos();
-});
+}
+el('fileCam').addEventListener('change',onPicked);
+el('fileLib').addEventListener('change',onPicked);
 function delPhoto(i){photos.splice(i,1);renderPhotos()}
 function renderPhotos(){
   CATS.forEach(function(c){
