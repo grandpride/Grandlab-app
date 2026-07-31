@@ -46,6 +46,8 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--gold)}
 .thumbs{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
 .thumbs img{width:56px;height:56px;object-fit:cover;border-radius:8px;border:1px solid var(--border)}
 .grp{font-size:11px;font-weight:800;color:var(--gold);letter-spacing:.08em;margin:16px 0 4px}
+.skipx{background:none;border:1px solid var(--border);color:var(--text2);border-radius:50%;width:28px;height:28px;font-size:14px;cursor:pointer;font-family:inherit;flex-shrink:0}
+.skipx:active{border-color:var(--red);color:var(--red)}
 .hide{display:none!important}
 #login{max-width:400px;margin:80px auto}
 .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--gold);color:#000;padding:10px 20px;border-radius:24px;font-weight:800;font-size:14px;display:none;z-index:99}
@@ -111,7 +113,9 @@ const LISTS={
    'Bubbles','Dust specks','Edge gaps','Peeling at edges',
    'Defroster lines intact','Cut lines clean','Window up & down test']}
 };
-const STAGES=[['film','FILM CHECK (Koko)'],['final','FINAL CHECK (Shafiq)']];
+const STAGES=[['film','FILM CHECK (Koko / Jimmy / Alex)'],['final','FINAL CHECK (Shafiq / Jimmy / Alex)']];
+// QC starts fresh from this date - anything before is not shown
+const QC_START = Date.parse('2026-08-01T00:00:00+08:00');
 
 let TECHS=[], CUR=null, TAB='new';
 
@@ -157,7 +161,7 @@ function areasOf(job){
 async function loadNew(){
   const box=el('v_new');
   box.innerHTML='<div class="card"><div class="empty">Loading...</div></div>';
-  const since=Date.now()-10*86400000;
+  const since=Math.max(QC_START, Date.now()-10*86400000);
   const j=await sb.from('gl_jobs')
     .select('id,plate,model,services,stage,created_at')
     .gte('created_at',since).order('created_at',{ascending:false}).limit(120);
@@ -166,8 +170,10 @@ async function loadNew(){
   const ids=jobs.map(function(x){return x.id});
   if(ids.length){
     const q=await sb.from('gl_qc').select('job_id,stage').in('job_id',ids);
+    const sk=await sb.from('gl_qc_skips').select('job_id').in('job_id',ids);
+    const skip={}; (sk.data||[]).forEach(function(x){skip[x.job_id]=1});
     const seen={}; (q.data||[]).forEach(function(x){seen[x.job_id+'|'+x.stage]=1});
-    jobs=jobs.map(function(x){
+    jobs=jobs.filter(function(x){return !skip[x.id]}).map(function(x){
       x._film=areasOf(x).some(function(a){return a!=='detailing'});
       x._doneFilm=!!seen[x.id+'|film']; x._doneFinal=!!seen[x.id+'|final'];
       return x;
@@ -187,11 +193,25 @@ async function loadNew(){
         '<div class="sub2">'+ar.map(function(a){return LISTS[a].label.split(' ')[0]}).join(' + ')+
           (x._doneFilm?' &middot; film check done':'')+'</div></div>'+
         '<span class="pill" style="background:'+col+'22;color:'+col+';border:1px solid '+col+'55">'+
-          (need==='film'?'FILM':'FINAL')+'</span></div>';
+          (need==='film'?'FILM':'FINAL')+'</span>'+
+        '<button class="skipx" data-skip="'+i+'" title="Not needed">&times;</button></div>';
     }).join('')+'</div>';
   Array.from(box.querySelectorAll('.jrow')).forEach(function(d,i){
     d.onclick=function(){openQC(jobs[i])};
+    const x=d.querySelector('.skipx');
+    if(x)x.onclick=function(e){e.stopPropagation();skipJob(jobs[i],d)};
   });
+}
+
+
+async function skipJob(j,row){
+  const gu=await sb.auth.getUser();
+  const r=await sb.from('gl_qc_skips').insert({job_id:j.id,staff_email:gu.data.user?gu.data.user.email:''});
+  if(r.error && r.error.code!=='23505'){toast('Could not remove');return}
+  row.remove();
+  const left=el('v_new').querySelectorAll('.jrow').length;
+  if(!left)el('v_new').innerHTML='<div class="card"><div class="sec">TO CHECK</div><div class="empty">Nothing waiting \u2713</div></div>';
+  toast('Removed '+(j.plate||''));
 }
 
 // ---------- QC FORM ----------

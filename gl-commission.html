@@ -74,7 +74,10 @@ td input,td select{padding:7px;font-size:13px}
 </div>
 
 <div class="wrap hide" id="app">
-  <a href="gl-hub.html" style="color:var(--text2);font-size:12px;text-decoration:none">&#8592; Hub</a>
+  <div style="display:flex;justify-content:space-between;align-items:center">
+    <a href="gl-hub.html" style="color:var(--text2);font-size:12px;text-decoration:none">&#8592; Hub</a>
+    <button onclick="lockApp()" style="background:var(--card2);border:1px solid var(--border);color:var(--text2);border-radius:16px;padding:5px 12px;font-size:11px;font-weight:800;cursor:pointer;font-family:inherit">&#128274; LOCK</button>
+  </div>
   <h1>GRAND<span>LAB</span> FILM COMMISSION</h1>
   <div class="sub">PPF &middot; Wrapping &middot; Tinted</div>
 
@@ -165,6 +168,12 @@ function pinKey(k){
       pinBuf=''; setTimeout(drawDots,200);
     }
   }
+}
+function lockApp(){
+  sessionStorage.removeItem('gl_comm_ok');
+  pinBuf='';
+  el('app').classList.add('hide');
+  showPin();
 }
 async function signOut(){
   sessionStorage.removeItem('gl_comm_ok');
