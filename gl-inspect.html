@@ -151,8 +151,9 @@ label{font-size:11px;color:var(--text2);display:block;margin-bottom:4px}
     <div style="font-weight:800;font-size:17px">Saved</div>
     <div id="linkbox"></div>
     <a id="reportlink" class="hide" style="color:var(--gold);font-size:13px;display:block;margin-bottom:10px" target="_blank">📄 OPEN INSPECTION REPORT (JPG)</a>
-    <button class="btn hide" id="wadirect" onclick="sendWADirect()">📤 SEND TO CUSTOMER</button>
-    <button class="btn" id="wapick" style="margin-top:8px" onclick="sendWA()">👥 CHOOSE CHAT / GROUP</button>
+    <button class="btn hide" id="washare" onclick="sendWAPhoto()">📸 SHARE PHOTO + DETAILS</button>
+    <button class="btn btn2 hide" id="wadirect" style="margin-top:8px" onclick="sendWADirect()">📤 SEND TO CUSTOMER (text only)</button>
+    <button class="btn btn2" id="wapick" style="margin-top:8px" onclick="sendWA()">👥 CHOOSE CHAT / GROUP (text only)</button>
     <button class="btn btn2" style="margin-top:8px" onclick="copyWA()">📋 COPY MESSAGE</button>
     <button class="btn btn2" style="margin-top:8px" onclick="location.reload()">➕ NEXT VEHICLE</button>
   </div>
@@ -628,15 +629,21 @@ async function saveAll(){
     savedType = (curCust==='walkin') ? '' :
       ('🏢 '+CTYPES.filter(function(t){return t[0]===curCust})[0][1]+
        (el('f_workshop').value.trim()?': '+el('f_workshop').value.trim():''));
+    // photo share only works on phones/tablets that support the file share sheet
+    const canShareFiles = !!(navigator.canShare && navigator.share);
+    el('washare').classList.toggle('hide', !(canShareFiles && photos.length));
+    if(canShareFiles && photos.length){
+      const hasFront = photos.filter(function(x){return x.cat==='front'}).length>0;
+      el('washare').textContent = hasFront ? '📸 SHARE FRONT PHOTO + DETAILS' : '📸 SHARE PHOTO + DETAILS';
+    }
     const wd=el('wadirect');
     if(waPhone){
       wd.textContent='📤 SEND TO '+(el('f_name').value.trim()||'CUSTOMER').toUpperCase();
       wd.classList.remove('hide');
-      el('wapick').className='btn btn2';
     }else{
       wd.classList.add('hide');
-      el('wapick').className='btn';
     }
+    el('wapick').className='btn btn2';
     el('wapick').style.marginTop='8px';
 
     savedLink=location.origin+location.pathname.replace(/[^/]*$/,'')+'gl-inspect-view.html?t='+token;
@@ -668,6 +675,30 @@ function waMsg(){
     '👉 All photos:\n'+savedLink;
 }
 function sendWA(){window.open('https://wa.me/?text='+encodeURIComponent(waMsg()),'_blank')}
+
+// Share the front photo WITH the details as a caption, via the phone's share sheet.
+// wa.me links cannot attach images - this is the only way to send photo + text together.
+async function sendWAPhoto(){
+  const msg=waMsg();
+  const p = photos.filter(function(x){return x.cat==='front'})[0] || photos[0];
+  if(!p){ sendWA(); return; }
+  try{
+    const blob=await shrink(p.file);
+    const fname=(savedPlate||'vehicle').replace(/[^A-Za-z0-9]+/g,'_')+'_front.jpg';
+    const file=new File([blob],fname,{type:'image/jpeg'});
+    if(navigator.canShare && navigator.canShare({files:[file]})){
+      // copy the text too - some phones drop the caption when sharing a file
+      try{ await navigator.clipboard.writeText(msg); }catch(e){}
+      await navigator.share({files:[file], text:msg});
+      return;
+    }
+    toast('Sharing not supported here - sending text only');
+  }catch(err){
+    if(err && err.name==='AbortError') return;   // staff cancelled the share sheet
+    toast('Share failed - sending text only');
+  }
+  sendWA();
+}
 function sendWADirect(){
   if(!waPhone){toast('No phone number');return}
   window.open('https://wa.me/'+waPhone+'?text='+encodeURIComponent(waMsg()),'_blank');
