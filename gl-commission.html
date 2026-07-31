@@ -80,12 +80,14 @@ td input,td select{padding:7px;font-size:13px}
     <button class="tab"    data-t="pend"   onclick="setTab('pend')">PENDING</button>
     <button class="tab"    data-t="done"   onclick="setTab('done')">APPROVED</button>
     <button class="tab"    data-t="report" onclick="setTab('report')">REPORT</button>
+    <button class="tab"    data-t="rates"  onclick="setTab('rates')">RATES</button>
   </div>
 
   <div id="v_new"></div>
   <div id="v_pend" class="hide"></div>
   <div id="v_done" class="hide"></div>
   <div id="v_report" class="hide"></div>
+  <div id="v_rates" class="hide"></div>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -187,13 +189,14 @@ async function boot(){
 
 function setTab(t){
   TAB=t;
-  ['new','pend','done','report'].forEach(function(k){
+  ['new','pend','done','report','rates'].forEach(function(k){
     el('v_'+k).classList.toggle('hide',k!==t);
   });
   Array.from(document.querySelectorAll('.tab')).forEach(function(b){
     b.classList.toggle('on',b.dataset.t===t);
   });
-  if(t==='new')loadNew(); if(t==='pend')loadList('pend'); if(t==='done')loadList('done'); if(t==='report')loadReport();
+  if(t==='new')loadNew(); if(t==='pend')loadList('pend'); if(t==='done')loadList('done');
+  if(t==='report')loadReport(); if(t==='rates')loadRates();
 }
 
 // ---------- rate matching ----------
@@ -244,41 +247,45 @@ async function loadNew(){
     .select('id,plate,model,car_type,services,created_at,stage,ready_at')
     .gte('created_at',since).order('created_at',{ascending:false}).limit(200);
   if(j.error){box.innerHTML='<div class="card"><div class="empty">Could not load jobs</div></div>';return}
-  let jobs=(j.data||[]).map(function(x){x._lines=filmLines(x);return x})
-                       .filter(function(x){return x._lines.length});
-  const ids=jobs.map(function(x){return x.id});
+  // one entry per FILM SERVICE - a car with PPF + tint is two separate
+  // commission orders, so each team is paid from its own pool
+  let items=[];
+  (j.data||[]).forEach(function(x){
+    filmLines(x).forEach(function(l){ items.push({job:x,line:l}) });
+  });
+  const ids=items.map(function(it){return it.job.id});
   if(ids.length){
-    const c=await sb.from('gl_comm_orders').select('job_id').in('job_id',ids);
-    const seen={}; (c.data||[]).forEach(function(x){seen[x.job_id]=1});
-    jobs=jobs.filter(function(x){return !seen[x.id]});
+    const c=await sb.from('gl_comm_orders').select('job_id,service_name').in('job_id',ids);
+    const seen={}; (c.data||[]).forEach(function(x){seen[x.job_id+'||'+(x.service_name||'')]=1});
+    items=items.filter(function(it){return !seen[it.job.id+'||'+it.line.name]});
   }
-  if(!jobs.length){
+  if(!items.length){
     box.innerHTML='<div class="card"><div class="sec">NEW JOBS</div><div class="empty">No film jobs waiting &#10003;</div></div>';
     return;
   }
-  box.innerHTML='<div class="card"><div class="sec">NEW JOBS ('+jobs.length+')</div>'+
-    jobs.map(function(x,i){
-      const l=x._lines[0];
-      const total=x._lines.reduce(function(a,b){return a+Number(b.rate.amount)},0);
+  box.innerHTML='<div class="card"><div class="sec">NEW JOBS ('+items.length+')</div>'+
+    items.map(function(it,i){
+      const bike=isBike(it.job);
       return '<div class="jrow" data-i="'+i+'">'+
-        '<div class="pl">'+esc(x.plate||'-')+'</div>'+
-        '<div class="mid"><div>'+esc(x.model||'')+'</div>'+
-        '<div class="sub2">'+esc(l.name)+(x._lines.length>1?(' +'+(x._lines.length-1)+' more'):'')+'</div></div>'+
-        '<div class="rm">'+rm(total)+'</div></div>';
+        '<div class="pl">'+esc(it.job.plate||'-')+'</div>'+
+        '<div class="mid"><div>'+esc(it.job.model||'')+
+          (bike?' <span class="pill" style="background:var(--gold);color:#000">BIKE</span>':'')+'</div>'+
+        '<div class="sub2">'+esc(it.line.name)+'</div></div>'+
+        '<div class="rm">'+rm(it.line.rate.amount)+'</div></div>';
     }).join('')+'</div>';
   Array.from(box.querySelectorAll('.jrow')).forEach(function(d,i){
-    d.onclick=function(){openForm(jobs[i])};
+    d.onclick=function(){openForm(items[i].job,items[i].line)};
   });
 }
 
 // ---------- FORM ----------
-function openForm(job){
+function openForm(job,line){
   const bike=isBike(job);
-  CUR={job:job,lines:job._lines,zones:{},people:[],bike:bike,serials:[]};
+  CUR={job:job,line:line,lines:[line],zones:{},people:[],bike:bike,serials:[]};
   const ZONES = bike?ZONES_BIKE:ZONES_CAR;
   CUR.ZONES=ZONES;
-  const base=CUR.lines.reduce(function(a,b){return a+Number(b.rate.amount)},0);
-  const th=Math.max.apply(null,CUR.lines.map(function(l){return Number(l.rate.target_hours)||8}));
+  const base=Number(line.rate.amount)||0;
+  const th=Number(line.rate.target_hours)||8;
   const nowLocal=new Date(Date.now()+8*3600000).toISOString().slice(0,16);
   el('v_new').innerHTML=
    '<button class="btn btn2" style="margin-bottom:12px" onclick="loadNew()">&#8592; BACK TO LIST</button>'+
@@ -286,10 +293,11 @@ function openForm(job){
      (bike?' <span class="pill" style="background:var(--gold);color:#000;margin-left:6px">BIKE</span>':'')+'</div>'+
      '<div class="big">'+esc(job.plate||'-')+'</div>'+
      '<div class="hint">'+esc(job.model||'')+'</div>'+
-     '<div style="margin-top:10px">'+CUR.lines.map(function(l){
-        return '<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);font-size:13px">'+
-        '<span>'+esc(l.name)+'</span><span class="rm">'+rm(l.rate.amount)+'</span></div>';}).join('')+
+     '<div style="margin-top:10px">'+
+        '<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);font-size:13px">'+
+        '<span>'+esc(line.name)+'</span><span class="rm">'+rm(line.rate.amount)+'</span></div>'+
      '</div>'+
+     '<div class="hint">One order per film service. Other services on this car are entered separately.</div>'+
      '<div style="display:flex;justify-content:space-between;margin-top:10px;font-weight:900">'+
        '<span>BASE COMMISSION</span><span class="tot" id="f_base">'+rm(base)+'</span></div>'+
    '</div>'+
@@ -450,11 +458,11 @@ async function saveOrder(){
     return v?{zone:z,staff:v}:null;
   }).filter(Boolean);
   const gu=await sb.auth.getUser();
-  const L=CUR.lines[0];
+  const L=CUR.line;
   const r=await sb.from('gl_comm_orders').insert({
     job_id:CUR.job.id, plate:CUR.job.plate, model:CUR.job.model,
     category:L.rate.category, brand:L.rate.brand, package:L.rate.package,
-    service_name:CUR.lines.map(function(l){return l.name}).join(' + '),
+    service_name:L.name,
     base_amount:CUR.base,
     start_at:el('f_start').value?new Date(el('f_start').value).toISOString():null,
     end_at:el('f_end').value?new Date(el('f_end').value).toISOString():null,
@@ -468,7 +476,8 @@ async function saveOrder(){
   });
   if(r.error){toast('Error: '+r.error.message);btn.disabled=false;btn.textContent='SUBMIT FOR APPROVAL';return}
   toast('Submitted for approval');
-  const fresh=await sb.from('gl_comm_orders').select('*').eq('job_id',CUR.job.id)
+  const fresh=await sb.from('gl_comm_orders').select('*')
+    .eq('job_id',CUR.job.id).eq('service_name',L.name)
     .order('created_at',{ascending:false}).limit(1);
   if(fresh.data&&fresh.data.length&&confirm('Submitted. Download the PDF for finance now?'))commPDF(fresh.data[0]);
   CUR=null; setTab('pend');
@@ -692,6 +701,64 @@ function commPDF(o){
   const fn='COMM_'+String(o.plate||'').replace(/[^A-Za-z0-9]+/g,'')+'_'+
     new Date(o.created_at||Date.now()).toISOString().slice(0,10)+'.pdf';
   d.save(fn);
+}
+
+
+// ---------- RATE EDITOR ----------
+async function loadRates(){
+  const box=el('v_rates');
+  box.innerHTML='<div class="card"><div class="empty">Loading...</div></div>';
+  const r=await sb.from('gl_comm_rates').select('*').order('category').order('brand').order('package');
+  if(r.error){box.innerHTML='<div class="card"><div class="empty">Could not load rates</div></div>';return}
+  RATES=(r.data||[]).filter(function(x){return x.active});
+  const rows=r.data||[];
+  const byCat={};
+  rows.forEach(function(x){ (byCat[x.category]=byCat[x.category]||[]).push(x) });
+  box.innerHTML='<div class="card"><div class="sec">COMMISSION RATES</div>'+
+    '<div class="hint" style="margin-bottom:10px">Change an amount and it applies to every new order. Manager PIN required to save.</div>'+
+    Object.keys(byCat).map(function(cat){
+      return '<div style="margin-top:14px;font-weight:900;color:var(--gold);font-size:13px">'+esc(cat)+'</div>'+
+      '<table><thead><tr><th>Brand</th><th style="width:84px">Package</th><th style="width:76px">RM</th>'+
+      '<th style="width:60px">Target h</th><th style="width:40px">On</th></tr></thead><tbody>'+
+      byCat[cat].map(function(x){
+        return '<tr'+(x.active?'':' style="opacity:.45"')+'>'+
+          '<td>'+esc(x.brand||('['+(x.service_match||'')+']'))+
+            (x.note?('<div class="sub2" style="font-size:10px;color:var(--text2)">'+esc(x.note)+'</div>'):'')+'</td>'+
+          '<td>'+esc(String(x.package||'').replace(/_/g,' '))+'</td>'+
+          '<td><input type="number" min="0" step="10" value="'+(Number(x.amount)||0)+'" id="ra_'+x.id+'"></td>'+
+          '<td><input type="number" min="0" step="1" value="'+(x.target_hours==null?'':x.target_hours)+'" id="rh_'+x.id+'"></td>'+
+          '<td style="text-align:center"><input type="checkbox" id="rc_'+x.id+'"'+(x.active?' checked':'')+' style="width:auto"></td>'+
+        '</tr>';
+      }).join('')+'</tbody></table>';
+    }).join('')+
+    '<button class="btn" style="margin-top:16px" onclick="saveRates()">SAVE RATE CHANGES</button>'+
+    '<div style="height:20px"></div></div>';
+  box._rows=rows;
+}
+async function saveRates(){
+  const rows=el('v_rates')._rows||[];
+  const changed=[];
+  rows.forEach(function(x){
+    const a=el('ra_'+x.id), h=el('rh_'+x.id), c=el('rc_'+x.id);
+    if(!a)return;
+    const amt=Number(a.value)||0;
+    const th=h.value===''?null:Number(h.value);
+    const act=!!c.checked;
+    if(amt!==Number(x.amount)||th!==(x.target_hours==null?null:Number(x.target_hours))||act!==!!x.active){
+      changed.push({id:x.id,amount:amt,target_hours:th,active:act,was:x.amount});
+    }
+  });
+  if(!changed.length){toast('Nothing changed');return}
+  const pin=prompt(changed.length+' rate'+(changed.length===1?'':'s')+' changed. Manager PIN to save:');
+  if(pin!==APPROVE_PIN){ if(pin!==null)toast('Wrong PIN'); return }
+  for(const c of changed){
+    const r=await sb.from('gl_comm_rates')
+      .update({amount:c.amount,target_hours:c.target_hours,active:c.active,updated_at:new Date().toISOString()})
+      .eq('id',c.id);
+    if(r.error){toast('Error: '+r.error.message);return}
+  }
+  toast(changed.length+' rate'+(changed.length===1?'':'s')+' updated');
+  loadRates();
 }
 
 // ---------- REPORT ----------
