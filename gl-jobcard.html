@@ -1322,6 +1322,14 @@ async function registerCar_(j){
 }
 async function saveAndPrint(){ const j=await saveJob(true); if(j){ toast('Saved ✓'); printSlip(j); showView('list'); } }
 
+
+/* Open the vehicle inspection app for this job. The inspection app pre-fills
+   plate / model / customer / type / services from the job and saves job_id back.
+   Additive only - nothing else in this file depends on it. */
+function openInspect(id){
+  window.open('gl-inspect.html?job='+encodeURIComponent(id),'_blank');
+}
+
 /* ---------- DETAIL ---------- */
 function openJob(id){
   const j=JOBS.find(x=>x.id===id); if(!j)return;
@@ -1344,6 +1352,9 @@ function openJob(id){
       <button class="btn btn-dark" style="flex:1" onclick="printSlip(JOBS.find(x=>x.id==='${j.id}'))"><i class="ti ti-printer"></i> Print</button>
       <button class="btn btn-ghost" style="flex:1" onclick="editJob('${j.id}')"><i class="ti ti-edit"></i> Edit</button>
     </div>
+    <button class="btn btn-block" style="margin-bottom:10px;background:#F5C518;color:#000;font-weight:800" onclick="openInspect('${j.id}')">
+      <i class="ti ti-camera-plus"></i> Vehicle Inspection
+    </button>
     <button class="btn btn-block" style="margin-bottom:8px;${j.no_show?'background:#C0392B;color:#fff':'background:transparent;border:1px solid #C0392B;color:#C0392B'}" onclick="toggleNoShow('${j.id}')">
       <i class="ti ti-user-x"></i> ${j.no_show?'Absent / No-show ✓ (tap to undo)':'Mark Absent / No-show'}
     </button>

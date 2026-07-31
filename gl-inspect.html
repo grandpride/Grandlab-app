@@ -80,6 +80,9 @@ label{font-size:11px;color:var(--text2);display:block;margin-bottom:4px}
   <h1>GRAND<span>LAB</span> INSPECTION</h1>
   <div class="sub">Vehicle Check-in Inspection · do it with the customer</div>
 
+  <div class="hint hide" id="jobtag" style="color:var(--gold);font-weight:700;margin:-6px 0 10px"></div>
+  <div class="card hide" id="jobnote" style="border-color:var(--gold);font-size:13px;color:var(--text2)"></div>
+
   <div class="card">
     <div class="sec">1 · CUSTOMER TYPE</div>
     <div class="chipbar" id="ctbar"></div>
@@ -246,6 +249,64 @@ function setBody(key,announce){
 }
 
 
+
+// ===== prefill from a job card: gl-inspect.html?job=<gl_jobs.id> =====
+let JOBID='';
+async function loadJob(){
+  const id=new URLSearchParams(location.search).get('job');
+  if(!id)return;
+  const r=await sb.from('gl_jobs')
+    .select('id,plate,model,name,hp,cust_type,workshop_name,services,car_type')
+    .eq('id',id).maybeSingle();
+  if(r.error||!r.data){toast('Job not found - fill in manually');return}
+  const j=r.data;
+  JOBID=j.id;
+
+  // customer type first, so the right fields are showing
+  const ct=(j.cust_type==='appointment')?'walkin':(j.cust_type||'walkin');
+  const idx=CTYPES.map(function(t){return t[0]}).indexOf(ct);
+  if(idx>=0){
+    curCust=ct;
+    Array.from(el('ctbar').children).forEach(function(c,k){c.classList.toggle('on',k===idx)});
+    const isWalk=(curCust==='walkin');
+    el('wsrow').classList.toggle('hide',isWalk);
+    el('custrow').classList.toggle('hide',!isWalk);
+    fillOrg();
+    if(!isWalk&&j.workshop_name)el('f_workshop').value=j.workshop_name;
+  }
+
+  if(j.plate)el('f_plate').value=j.plate;
+  if(j.model)el('f_model').value=j.model;
+  if(curCust==='walkin'){
+    if(j.name)el('f_name').value=j.name;
+    if(j.hp)el('f_phone').value=j.hp;
+  }
+  // services: gl_jobs stores [{desc:...}]
+  if(Array.isArray(j.services)){
+    j.services.forEach(function(s){
+      const n=(typeof s==='string')?s:(s&&s.desc?s.desc:'');
+      if(n&&svcList.indexOf(n)<0)svcList.push(n);
+    });
+    renderSvc();
+  }
+  const dk=typeToDiagram(j.car_type);
+  if(dk)setBody(dk,false);
+
+  // already inspected?
+  const prev=await sb.from('gl_inspections').select('share_token,created_at')
+    .eq('job_id',id).order('created_at',{ascending:false}).limit(1);
+  if(prev.data&&prev.data.length){
+    const b=el('jobnote');
+    b.innerHTML='This job was already inspected on '+
+      new Date(prev.data[0].created_at).toLocaleString('en-MY',{timeZone:'Asia/Kuala_Lumpur',dateStyle:'medium',timeStyle:'short'})+
+      ' &middot; <a href="gl-inspect-view.html?t='+prev.data[0].share_token+'" target="_blank" style="color:var(--gold)">view it</a>. Saving again adds a second record.';
+    b.classList.remove('hide');
+  }
+  el('jobtag').textContent='Linked to job '+id;
+  el('jobtag').classList.remove('hide');
+  toast('Loaded from job card');
+}
+
 // ===== workshop / showroom / boss lists — same source as gl-jobcard.html =====
 let CFG={workshops:[],showrooms:[],bosses:[]};
 async function loadCfg(){
@@ -256,6 +317,7 @@ async function loadCfg(){
     CFG.bosses   =Array.isArray(r.data.bosses)   ?r.data.bosses   :(r.data.bosses?JSON.parse(r.data.bosses):[]);
   }
   fillOrg();
+  await loadJob();
 }
 function fillOrg(){
   const list = curCust==='workshop' ? CFG.workshops
@@ -617,6 +679,7 @@ async function saveAll(){
       model:el('f_model').value.trim(), customer_name:(curCust==='walkin'?el('f_name').value.trim():null),
       phone:(curCust==='walkin'?el('f_phone').value.trim():null), services:svcList.join(', '),
       cust_type:curCust, workshop_name:(curCust==='walkin'?null:el('f_workshop').value.trim()||null),
+      job_id:JOBID||null,
       marks:marks, notes:el('f_notes').value.trim(),
       photo_count:photos.length, photos:photoMeta,
       staff_email:gu.data.user?gu.data.user.email:''
