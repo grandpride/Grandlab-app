@@ -223,11 +223,15 @@ async function openQC(job){
   // pull zone assignments from the commission order so a failure names the installer
   const c=await sb.from('gl_comm_orders').select('id,zones,splits').eq('job_id',job.id);
   CUR.comm=(c.data&&c.data.length)?c.data[0]:null;
+  const known=[];
   if(CUR.comm&&Array.isArray(CUR.comm.zones)){
-    CUR.comm.zones.forEach(function(z){ CUR.zoneMap[z.zone]=z.staff });
+    CUR.comm.zones.forEach(function(z){
+      const s=Array.isArray(z.staff)?z.staff:(z.staff?[z.staff]:[]);
+      CUR.zoneMap[z.zone]=s;
+      s.forEach(function(n){ if(n)known.push(n) });
+    });
   }
-  const known=CUR.comm?Object.keys(CUR.zoneMap).map(function(k){return CUR.zoneMap[k]}):[];
-  CUR.suggest=known.filter(function(v,i,a){return v&&a.indexOf(v)===i});
+  CUR.suggest=known.filter(function(v,i,a){return a.indexOf(v)===i});
 
   el('v_new').innerHTML=
    '<button class="btn btn2" style="margin-bottom:12px" onclick="loadNew()">&#8592; BACK</button>'+

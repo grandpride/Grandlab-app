@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Grandlab Daily &amp; Payroll</title>
+<style>
+:root{--bg:#080808;--card:#141414;--card2:#1c1c1c;--gold:#F5C518;--text:#fff;--text2:#9a9a9a;--border:#2a2a2a;--red:#ff5252;--green:#16A34A;--amber:#D97706}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:var(--text)}
+.wrap{max-width:860px;margin:0 auto;padding:16px}
+h1{font-size:20px;font-weight:900;margin:6px 0 2px}
+h1 span{color:var(--gold)}
+.sub{color:var(--text2);font-size:12px;margin-bottom:14px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:16px;margin-bottom:14px}
+.sec{font-size:12px;font-weight:800;color:var(--gold);letter-spacing:.1em;margin-bottom:10px}
+.row{display:flex;gap:8px;margin-bottom:8px}
+.row>*{flex:1}
+label{font-size:11px;color:var(--text2);display:block;margin-bottom:4px}
+input,select,textarea{width:100%;background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:11px;color:var(--text);font-size:15px;font-family:inherit}
+.btn{display:block;width:100%;background:var(--gold);color:#000;border:none;border-radius:12px;padding:14px;font-size:15px;font-weight:800;cursor:pointer;font-family:inherit}
+.btn2{background:var(--card2);color:var(--text);border:1px solid var(--border)}
+.tabs{display:flex;gap:6px;margin-bottom:14px}
+.tab{flex:1;padding:10px;border-radius:10px;background:var(--card2);border:1px solid var(--border);color:var(--text2);font-size:12px;font-weight:800;cursor:pointer;font-family:inherit;text-align:center}
+.tab.on{background:var(--gold);color:#000;border-color:var(--gold)}
+.prow{border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:8px;background:var(--card2)}
+.prow .nm{font-weight:800;font-size:15px;margin-bottom:8px}
+.st{display:flex;gap:5px;flex-wrap:wrap}
+.st button{border:1px solid var(--border);background:var(--card);color:var(--text2);border-radius:8px;padding:7px 10px;font-size:11px;font-weight:800;cursor:pointer;font-family:inherit}
+.st button.on{color:#fff}
+.st button.present.on{background:var(--green);border-color:var(--green)}
+.st button.late.on{background:var(--amber);border-color:var(--amber)}
+.st button.absent.on{background:var(--red);border-color:var(--red)}
+.st button.excused.on{background:#555;border-color:#777}
+.st button.off.on{background:var(--border);border-color:var(--text2);color:var(--text)}
+.xtra{display:flex;gap:8px;align-items:center;margin-top:8px;font-size:12px;color:var(--text2)}
+.xtra input[type=number]{width:70px;padding:6px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;color:var(--text2);font-size:10px;font-weight:800;letter-spacing:.06em;padding:6px 3px;border-bottom:1px solid var(--border)}
+td{padding:7px 3px;border-bottom:1px solid var(--border)}
+.rm{font-weight:800;color:var(--gold);white-space:nowrap}
+.neg{color:var(--red)}
+.big{font-size:24px;font-weight:900;color:var(--gold)}
+.empty{text-align:center;color:var(--text2);font-size:13px;padding:22px 6px}
+.hint{font-size:11px;color:var(--text2);margin-top:6px}
+.hide{display:none!important}
+#login{max-width:400px;margin:80px auto}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--gold);color:#000;padding:10px 20px;border-radius:24px;font-weight:800;font-size:14px;display:none;z-index:99}
+</style>
+</head>
+<body>
+
+<div id="login" class="card hide">
+  <div class="sec">GRANDLAB STAFF LOGIN</div>
+  <div class="row"><div><label>Email</label><input id="lg_email" type="email"></div></div>
+  <div class="row"><div><label>Password</label><input id="lg_pass" type="password"></div></div>
+  <button class="btn" onclick="doLogin()">Sign In</button>
+  <div class="hint" id="lg_err"></div>
+</div>
+
+<div id="pinscr" class="hide">
+  <div class="card" style="max-width:340px;margin:70px auto;text-align:center">
+    <div class="sec">DAILY &amp; PAYROLL</div>
+    <div class="hint" style="margin-bottom:14px">Enter access PIN</div>
+    <div id="pindots" style="font-size:30px;letter-spacing:12px;height:40px;color:var(--gold)"></div>
+    <div id="pinerr" class="hint" style="color:var(--red);height:16px"></div>
+    <div id="pinpad" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:12px"></div>
+    <a class="btn btn2" style="margin-top:12px;display:block;text-decoration:none;text-align:center"
+       href="gl-hub.html">&#8592; BACK TO HUB</a>
+    <button class="btn btn2" style="margin-top:8px" onclick="signOut()">Sign out</button>
+  </div>
+</div>
+
+<div class="wrap hide" id="app">
+  <div style="display:flex;justify-content:space-between;align-items:center">
+    <a href="gl-hub.html" style="color:var(--text2);font-size:12px;text-decoration:none">&#8592; Hub</a>
+    <button onclick="lockApp()" style="background:var(--card2);border:1px solid var(--border);color:var(--text2);border-radius:16px;padding:5px 12px;font-size:11px;font-weight:800;cursor:pointer;font-family:inherit">&#128274; LOCK</button>
+  </div>
+  <h1>GRAND<span>LAB</span> DAILY</h1>
+  <div class="sub">Attendance &middot; discipline &middot; job points</div>
+
+  <div class="tabs">
+    <button class="tab on" data-t="day"   onclick="setTab('day')">TODAY</button>
+    <button class="tab"    data-t="pay"   onclick="setTab('pay')">PAYROLL</button>
+    <button class="tab"    data-t="rules" onclick="setTab('rules')">RULES</button>
+  </div>
+
+  <div id="v_day"></div>
+  <div id="v_pay" class="hide"></div>
+  <div id="v_rules" class="hide"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+<script>
+const SUPABASE_URL='https://eychljpzorzmaveixlnu.supabase.co';
+const SUPABASE_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV5Y2hsanB6b3J6bWF2ZWl4bG51Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2NDk2NjQsImV4cCI6MjA5NzIyNTY2NH0.6dA1zhz5ZIwf8byFB8vhfOzPI-uPPdPihEr1b8GG_oA';
+const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON,{auth:{persistSession:true,autoRefreshToken:true,storageKey:'gl_auth'}});
+
+const STATUSES=[['present','PRESENT'],['late','LATE'],['absent','ABSENT'],['excused','MC / NOTICE'],['off','OFF DAY']];
+let TEAM=[], RULES={}, PTS={cat:{},name:{}}, DAY={}, TAB='day';
+
+function el(id){return document.getElementById(id)}
+function toast(m){const t=el('toast');t.textContent=m;t.style.display='block';setTimeout(function(){t.style.display='none'},2400)}
+function esc(s){return String(s==null?'':s).replace(/[<>&"]/g,function(c){return {'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]})}
+function rm(n){return 'RM'+(Number(n)||0).toFixed(2)}
+function ymd(d){return new Date(d).toLocaleDateString('en-CA',{timeZone:'Asia/Kuala_Lumpur'})}
+
+const ENTRY_PIN='1919';
+let pinBuf='';
+
+(async function(){
+  const s=await sb.auth.getSession();
+  if(!s.data.session){el('login').classList.remove('hide');return}
+  if(sessionStorage.getItem('gl_daily_ok')==='1'){ openApp(); return }
+  showPin();
+})();
+
+function openApp(){
+  el('pinscr').classList.add('hide');
+  el('app').classList.remove('hide');
+  boot();
+}
+function lockApp(){
+  sessionStorage.removeItem('gl_daily_ok');
+  pinBuf='';
+  el('app').classList.add('hide');
+  showPin();
+}
+function showPin(){
+  el('pinscr').classList.remove('hide');
+  const pad=el('pinpad');
+  pad.innerHTML=['1','2','3','4','5','6','7','8','9','','0','X'].map(function(k){
+    if(k==='')return '<div></div>';
+    return '<button class="btn btn2" style="padding:16px;font-size:19px" data-k="'+k+'">'+k+'</button>';
+  }).join('');
+  Array.from(pad.querySelectorAll('button')).forEach(function(b){ b.onclick=function(){pinKey(b.dataset.k)} });
+  drawDots();
+}
+function drawDots(){ el('pindots').textContent=pinBuf.replace(/./g,'\u25cf') }
+function pinKey(k){
+  el('pinerr').textContent='';
+  if(k==='X'){ pinBuf=pinBuf.slice(0,-1); drawDots(); return }
+  if(pinBuf.length>=6)return;
+  pinBuf+=k; drawDots();
+  if(pinBuf.length===ENTRY_PIN.length){
+    if(pinBuf===ENTRY_PIN){ sessionStorage.setItem('gl_daily_ok','1'); pinBuf=''; openApp(); }
+    else{ el('pinerr').textContent='Wrong PIN'; pinBuf=''; setTimeout(drawDots,200); }
+  }
+}
+async function signOut(){
+  sessionStorage.removeItem('gl_daily_ok');
+  await sb.auth.signOut();
+  location.reload();
+}
+document.addEventListener('keydown',function(e){
+  if(el('pinscr').classList.contains('hide'))return;
+  if(/^[0-9]$/.test(e.key))pinKey(e.key);
+  if(e.key==='Backspace')pinKey('X');
+});
+async function doLogin(){
+  const r=await sb.auth.signInWithPassword({email:el('lg_email').value.trim(),password:el('lg_pass').value});
+  if(r.error){el('lg_err').textContent=r.error.message;return}
+  sessionStorage.removeItem('gl_daily_ok');
+  location.reload();
+}
+async function boot(){
+  const t=await sb.from('gl_team').select('*').eq('active',true).order('side').order('name');
+  TEAM=(t.data||[]);
+  const p=await sb.from('gl_point_rates').select('*').eq('active',true);
+  (p.data||[]).forEach(function(r){
+    if(r.kind==='deduct')RULES[r.match_value]=Number(r.value);
+    else if(r.match_type==='category')PTS.cat[r.match_value]=Number(r.value);
+    else PTS.name[r.match_value]=Number(r.value);
+  });
+  loadDay();
+}
+function setTab(t){
+  TAB=t;
+  ['day','pay','rules'].forEach(function(k){el('v_'+k).classList.toggle('hide',k!==t)});
+  Array.from(document.querySelectorAll('.tab')).forEach(function(b){b.classList.toggle('on',b.dataset.t===t)});
+  if(t==='day')loadDay(); if(t==='pay')loadPay(); if(t==='rules')loadRules();
+}
+
+// ---------- TODAY ----------
+async function loadDay(d){
+  const date=d||ymd(new Date());
+  const box=el('v_day');
+  const r=await sb.from('gl_attendance').select('*').eq('work_date',date);
+  DAY={};
+  (r.data||[]).forEach(function(x){DAY[x.name]=x});
+  const det=TEAM.filter(function(t){return t.side==='detailing'});
+  const others=TEAM.filter(function(t){return t.side!=='detailing'});
+  const block=function(list,title){
+    if(!list.length)return '';
+    return '<div class="sec" style="margin-top:14px">'+title+'</div>'+list.map(function(t){
+      const cur=DAY[t.name]||{status:'',late_min:0,duty_done:true};
+      return '<div class="prow"><div class="nm">'+esc(t.name)+'</div>'+
+        '<div class="st">'+STATUSES.map(function(s){
+          return '<button class="'+s[0]+(cur.status===s[0]?' on':'')+'" onclick="setSt(\''+esc(t.name)+'\',\''+s[0]+'\')">'+s[1]+'</button>';
+        }).join('')+'</div>'+
+        '<div class="xtra">'+
+          '<span>Late min</span><input type="number" min="0" value="'+(cur.late_min||0)+'" '+
+            'onchange="setField(\''+esc(t.name)+'\',\'late_min\',this.value)">'+
+          '<label style="margin:0 0 0 10px"><input type="checkbox" style="width:auto" '+
+            (cur.duty_done===false?'':'checked')+' onchange="setField(\''+esc(t.name)+'\',\'duty_done\',this.checked)"> duty done</label>'+
+        '</div></div>';
+    }).join('');
+  };
+  box.innerHTML='<div class="card">'+
+    '<div class="row"><div><label>Date</label><input type="date" id="d_date" value="'+date+'" onchange="loadDay(this.value)"></div></div>'+
+    block(det,'DETAILING TEAM')+block(others,'FILM / QC')+
+    '<button class="btn" style="margin-top:14px" onclick="saveDay()">SAVE DAY</button>'+
+    '<button class="btn btn2" style="margin-top:8px" onclick="allPresent()">MARK EVERYONE PRESENT</button>'+
+    '</div>';
+}
+function setSt(name,st){
+  DAY[name]=DAY[name]||{name:name,late_min:0,duty_done:true};
+  DAY[name].status=st;
+  if(st!=='late')DAY[name].late_min=0;
+  loadDayRefresh();
+}
+function setField(name,f,v){
+  DAY[name]=DAY[name]||{name:name,status:'present',duty_done:true};
+  DAY[name][f]=(f==='late_min')?Number(v):v;
+}
+function allPresent(){
+  TEAM.forEach(function(t){ DAY[t.name]={name:t.name,status:'present',late_min:0,duty_done:true} });
+  loadDayRefresh();
+}
+function loadDayRefresh(){
+  const date=el('d_date').value;
+  const keep=JSON.parse(JSON.stringify(DAY));
+  loadDay(date).then(function(){ DAY=keep; redrawMarks() });
+}
+function redrawMarks(){
+  Object.keys(DAY).forEach(function(n){
+    const rowBtns=Array.from(document.querySelectorAll('.prow')).filter(function(p){
+      return p.querySelector('.nm').textContent===n})[0];
+    if(!rowBtns)return;
+    Array.from(rowBtns.querySelectorAll('.st button')).forEach(function(b){
+      b.classList.toggle('on', b.className.split(' ')[0]===DAY[n].status);
+    });
+  });
+}
+async function saveDay(){
+  const date=el('d_date').value;
+  const gu=await sb.auth.getUser();
+  const rows=Object.keys(DAY).filter(function(n){return DAY[n].status}).map(function(n){
+    return {work_date:date,name:n,status:DAY[n].status,late_min:Number(DAY[n].late_min)||0,
+            duty_done:DAY[n].duty_done!==false,marked_by:gu.data.user?gu.data.user.email:''};
+  });
+  if(!rows.length){toast('Nothing marked');return}
+  const r=await sb.from('gl_attendance').upsert(rows,{onConflict:'work_date,name'});
+  if(r.error){toast('Error: '+r.error.message);return}
+  toast(rows.length+' saved for '+date);
+}
+
+// ---------- POINTS ----------
+function pointsFor(name,cat){
+  if(PTS.name[name]!=null)return PTS.name[name];
+  if(PTS.cat[cat]!=null)return PTS.cat[cat];
+  return 0;
+}
+
+// ---------- PAYROLL ----------
+async function loadPay(mon){
+  const box=el('v_pay');
+  const now=new Date();
+  const m=mon||ymd(now).slice(0,7);
+  box.innerHTML='<div class="card"><div class="empty">Working it out...</div></div>';
+  const from=m+'-01';
+  const to=new Date(Number(m.slice(0,4)),Number(m.slice(5,7)),1).toLocaleDateString('en-CA');
+
+  const att=await sb.from('gl_attendance').select('*').gte('work_date',from).lt('work_date',to);
+  const jobs=await sb.from('gl_jobs').select('id,services,created_at')
+    .gte('created_at',Date.parse(from+'T00:00:00+08:00'))
+    .lt('created_at',Date.parse(to+'T00:00:00+08:00'));
+  const qc=await sb.from('gl_qc').select('job_id,result')
+    .gte('created_at',from).lt('created_at',to);
+
+  // points come only from jobs that passed QC
+  const qcMap={};
+  (qc.data||[]).forEach(function(q){
+    if(qcMap[q.job_id]!=='rework')qcMap[q.job_id]=q.result;
+  });
+  const svcMap={};
+  const sres=await sb.from('gl_services').select('name,category').eq('active',true);
+  (sres.data||[]).forEach(function(s){svcMap[s.name]=s.category});
+
+  let pts=0, counted=0, skipped=0;
+  (jobs.data||[]).forEach(function(j){
+    if(qcMap[j.id]!=='pass'){skipped++;return}
+    counted++;
+    (j.services||[]).forEach(function(s){
+      const nm=(typeof s==='string')?s:(s&&s.desc?s.desc:'');
+      const cat=svcMap[nm]||'';
+      if(['Car Wash','Detailing','Coating','Motorbike'].indexOf(cat)<0)return;
+      pts+=pointsFor(nm,cat);
+    });
+  });
+
+  const det=TEAM.filter(function(t){return t.side==='detailing'});
+  const per={};
+  det.forEach(function(t){per[t.name]={name:t.name,inc:Number(t.incentive)||150,days:0,late:0,absent:0,duty:0}});
+  (att.data||[]).forEach(function(a){
+    if(!per[a.name])return;
+    if(a.status==='present'||a.status==='late')per[a.name].days++;
+    if(a.status==='late')per[a.name].late++;
+    if(a.status==='absent')per[a.name].absent++;
+    if(a.duty_done===false)per[a.name].duty++;
+  });
+
+  const totalDays=Object.keys(per).reduce(function(a,k){return a+per[k].days},0);
+  const pool=pts*(RULES.rm_per_point||1.5);
+
+  const list=Object.keys(per).map(function(k){
+    const p=per[k];
+    let ded=p.late*(RULES.late||0)+p.absent*(RULES.absent||0)+p.duty*(RULES.duty_missed||0);
+    if(ded>p.inc)ded=p.inc;                       // cannot go below zero
+    const perfect=(p.late===0&&p.absent===0&&p.duty===0&&p.days>0);
+    const bonus=perfect?(RULES.perfect_bonus||0):0;
+    const share=totalDays?(pool*p.days/totalDays):0;
+    return {name:p.name,days:p.days,late:p.late,absent:p.absent,duty:p.duty,
+            inc:p.inc,ded:ded,bonus:bonus,share:share,
+            total:(p.inc-ded)+bonus+share};
+  }).sort(function(a,b){return b.total-a.total});
+
+  const grand=list.reduce(function(a,b){return a+b.total},0);
+  box.innerHTML=
+   '<div class="card"><div class="row">'+
+     '<div><label>Month</label><input type="month" id="p_mon" value="'+m+'" onchange="loadPay(this.value)"></div></div>'+
+     '<div class="row" style="margin-top:8px">'+
+       '<div><label>QC-passed jobs</label><div class="big">'+counted+'</div></div>'+
+       '<div><label>Job points</label><div class="big">'+pts+'</div></div>'+
+       '<div><label>Points pool</label><div class="big">'+rm(pool)+'</div></div>'+
+     '</div>'+
+     (skipped?('<div class="hint">'+skipped+' job(s) not counted &mdash; no QC pass recorded.</div>'):'')+
+   '</div>'+
+   '<div class="card"><div class="sec">DETAILING PAYOUT</div>'+
+   '<table><thead><tr><th>Staff</th><th>Days</th><th>Late</th><th>Abs</th>'+
+   '<th>Incentive</th><th>Points</th><th>Total</th></tr></thead><tbody>'+
+   list.map(function(r){
+     return '<tr><td>'+esc(r.name)+'</td><td>'+r.days+'</td>'+
+       '<td'+(r.late?' class="neg"':'')+'>'+r.late+'</td>'+
+       '<td'+(r.absent?' class="neg"':'')+'>'+r.absent+'</td>'+
+       '<td>'+rm(r.inc-r.ded)+(r.ded?('<span class="neg"> -'+rm(r.ded)+'</span>'):'')+
+         (r.bonus?('<span style="color:var(--green)"> +'+rm(r.bonus)+'</span>'):'')+'</td>'+
+       '<td>'+rm(r.share)+'</td>'+
+       '<td class="rm">'+rm(r.total)+'</td></tr>';
+   }).join('')+
+   '<tr><td colspan="6" class="rm">TOTAL</td><td class="rm">'+rm(grand)+'</td></tr>'+
+   '</tbody></table>'+
+   '<button class="btn btn2" style="margin-top:12px" onclick="payPDF()">DOWNLOAD PDF</button>'+
+   '</div>';
+  box._data={month:m,list:list,pts:pts,pool:pool,counted:counted};
+}
+
+function payPDF(){
+  const d0=el('v_pay')._data; if(!d0)return;
+  if(!window.jspdf){toast('PDF library not loaded');return}
+  const {jsPDF}=window.jspdf;
+  const d=new jsPDF({unit:'mm',format:'a4'});
+  const L=16,R=194;
+  let y=18;
+  d.setFont('helvetica','bold');d.setFontSize(13);
+  d.text('GRANDLAB — DETAILING PAYOUT',L,y);
+  d.setFillColor(245,197,24);d.rect(L,y+2.5,R-L,1.6,'F'); y+=12;
+  d.setFontSize(10);d.setFont('helvetica','normal');
+  d.text('Month: '+d0.month+'      QC-passed jobs: '+d0.counted+
+         '      Points: '+d0.pts+'      Pool: '+rm(d0.pool),L,y); y+=9;
+  const cols=[L,L+40,L+58,L+76,L+104,L+134,L+164];
+  d.setFillColor(240);d.rect(L,y-4,R-L,7,'F');
+  d.setFont('helvetica','bold');d.setFontSize(9);
+  ['STAFF','DAYS','LATE','ABSENT','INCENTIVE','POINTS','TOTAL'].forEach(function(h,i){d.text(h,cols[i]+1,y)});
+  y+=6; d.setFont('helvetica','normal');
+  d0.list.forEach(function(r){
+    d.text(String(r.name),cols[0]+1,y);
+    d.text(String(r.days),cols[1]+1,y);
+    d.text(String(r.late),cols[2]+1,y);
+    d.text(String(r.absent),cols[3]+1,y);
+    d.text(rm(r.inc-r.ded)+(r.bonus?(' +'+rm(r.bonus)):''),cols[4]+1,y);
+    d.text(rm(r.share),cols[5]+1,y);
+    d.setFont('helvetica','bold'); d.text(rm(r.total),cols[6]+1,y); d.setFont('helvetica','normal');
+    y+=6; d.setDrawColor(200); d.line(L,y-4,R,y-4);
+  });
+  y+=4; d.setFont('helvetica','bold');
+  d.text('TOTAL',cols[5]+1,y);
+  d.text(rm(d0.list.reduce(function(a,b){return a+b.total},0)),cols[6]+1,y);
+  y+=20;
+  d.setFont('helvetica','normal');d.setFontSize(9);d.setTextColor(110);
+  [['PREPARED BY',L],['APPROVED BY',L+92]].forEach(function(s){
+    d.text(s[0],s[1],y); d.setDrawColor(120); d.line(s[1],y+14,s[1]+62,y+14);
+  });
+  d.save('PAYOUT_'+d0.month+'.pdf');
+}
+
+// ---------- RULES ----------
+async function loadRules(){
+  const box=el('v_rules');
+  const r=await sb.from('gl_point_rates').select('*').order('kind').order('match_type').order('match_value');
+  const rows=r.data||[];
+  const ded=rows.filter(function(x){return x.kind==='deduct'});
+  const pts=rows.filter(function(x){return x.kind==='points'});
+  box.innerHTML='<div class="card"><div class="sec">DISCIPLINE RULES (RM)</div>'+
+    '<table><tbody>'+ded.map(function(x){
+      return '<tr><td>'+esc(x.note||x.match_value)+'</td>'+
+        '<td style="width:90px"><input type="number" step="0.5" value="'+x.value+'" id="r_'+x.id+'"></td></tr>';
+    }).join('')+'</tbody></table></div>'+
+    '<div class="card"><div class="sec">JOB POINTS</div>'+
+    '<div class="hint" style="margin-bottom:8px">Exact service name wins; category is the fallback.</div>'+
+    '<table><thead><tr><th>Match</th><th>Value</th><th style="width:80px">Points</th></tr></thead><tbody>'+
+    pts.map(function(x){
+      return '<tr><td>'+esc(x.match_type)+'</td><td>'+esc(x.match_value)+'</td>'+
+        '<td><input type="number" step="1" value="'+x.value+'" id="r_'+x.id+'"></td></tr>';
+    }).join('')+'</tbody></table></div>'+
+    '<button class="btn" onclick="saveRules()">SAVE RULES</button><div style="height:24px"></div>';
+  box._rows=rows;
+}
+async function saveRules(){
+  const rows=el('v_rules')._rows||[];
+  const ch=[];
+  rows.forEach(function(x){
+    const i=el('r_'+x.id); if(!i)return;
+    const v=Number(i.value);
+    if(v!==Number(x.value))ch.push({id:x.id,value:v});
+  });
+  if(!ch.length){toast('Nothing changed');return}
+  for(const c of ch){
+    const r=await sb.from('gl_point_rates').update({value:c.value}).eq('id',c.id);
+    if(r.error){toast('Error: '+r.error.message);return}
+  }
+  toast(ch.length+' rule(s) updated');
+  RULES={};PTS={cat:{},name:{}};
+  await boot(); setTab('rules');
+}
+</script>
+</body>
+</html>

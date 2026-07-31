@@ -47,6 +47,8 @@ td input,td select{padding:7px;font-size:13px}
 .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--gold);color:#000;padding:10px 20px;border-radius:24px;font-weight:800;font-size:14px;display:none;z-index:99}
 .big{font-size:26px;font-weight:900;color:var(--gold)}
 .zrow{display:flex;gap:8px;align-items:center;margin-bottom:6px}
+.zchip{border:1px solid var(--border);background:var(--card2);color:var(--text2);border-radius:16px;padding:6px 11px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit}
+.zchip.on{background:var(--gold);color:#000;border-color:var(--gold);font-weight:800}
 .zrow .zn{width:150px;font-size:12px;color:var(--text2)}
 </style>
 </head>
@@ -108,8 +110,25 @@ const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON,{auth:{persistSession:
 
 const APPROVE_PIN='065437';
 const SENIOR_POOL=0.60, JUNIOR_POOL=0.40;
-const ZONES_CAR=['Front bumper','Bonnet','Roof','Left side','Right side','Rear'];
-const ZONES_BIKE=['Front fairing','Windshield','Front fender','Fuel tank','Side panel L','Side panel R','Tail / rear panel','Rear fender'];
+// grouped from the a-la-carte PPF part list - more than one person can share a zone
+const ZONES_CAR=[
+ ['Front','Front bumper, lip, grille, headlight'],
+ ['Bonnet','Front hood'],
+ ['Roof','Full roof, sunroof, moon roof'],
+ ['Fenders & mirrors','Front / rear fender, side mirror'],
+ ['Doors & skirts','Door, handle, cup, edges, side skirts'],
+ ['Pillars','Pillar A / B / C / D'],
+ ['Rear','Rear bumper, trunk, spoiler, lights, luggage area']
+];
+const ZONES_BIKE=[
+ ['Front fairing','Nose, headlight'],
+ ['Windshield',''],
+ ['Front fender',''],
+ ['Fuel tank',''],
+ ['Side panels','Left and right'],
+ ['Tail / rear panel',''],
+ ['Rear fender','']
+];
 function isBike(job){
   if((job.car_type||'').toLowerCase().indexOf('motor')>=0)return true;
   return /\(motor\)|motorcycle|\bbike\b/i.test(job.model||'');
@@ -335,9 +354,14 @@ function openForm(job,line){
    '<div class="card"><div class="sec">WHO APPLIED WHICH ZONE</div>'+
      '<div class="hint" style="margin-bottom:8px">Used by QC to trace a defect back to the installer.</div>'+
      CUR.ZONES.map(function(z,i){
-       return '<div class="zrow"><div class="zn">'+z+'</div>'+
-         '<select id="z_'+i+'"><option value="">-</option>'+
-         TECHS.map(function(t){return '<option>'+esc(t)+'</option>'}).join('')+'</select></div>';
+       return '<div style="padding:10px 0;border-bottom:1px solid var(--border)">'+
+         '<div style="font-size:13px;font-weight:700">'+esc(z[0])+'</div>'+
+         (z[1]?('<div class="hint" style="margin:0 0 6px">'+esc(z[1])+'</div>'):'<div style="height:6px"></div>')+
+         '<div class="chipbar">'+
+           TECHS.map(function(t){
+             return '<button class="zchip" onclick="tapZone('+i+',\''+esc(t)+'\',this)">'+esc(t)+'</button>';
+           }).join('')+
+         '</div></div>';
      }).join('')+
    '</div>'+
 
@@ -375,6 +399,14 @@ function openForm(job,line){
   renderSerials();
   addPerson('Koko','senior');
   calc();
+}
+
+
+function tapZone(i,name,btn){
+  CUR.zones[i]=CUR.zones[i]||[];
+  const k=CUR.zones[i].indexOf(name);
+  if(k>=0)CUR.zones[i].splice(k,1); else CUR.zones[i].push(name);
+  btn.classList.toggle('on',k<0);
 }
 
 function addPerson(name,role){
@@ -468,8 +500,8 @@ async function saveOrder(){
   if(!named.length){toast('Add at least one staff member');return}
   const btn=el('f_save'); btn.disabled=true; btn.textContent='Saving...';
   const zones=CUR.ZONES.map(function(z,i){
-    const v=el('z_'+i)?el('z_'+i).value:'';
-    return v?{zone:z,staff:v}:null;
+    const list=CUR.zones[i]||[];
+    return list.length?{zone:z[0],staff:list}:null;
   }).filter(Boolean);
   const gu=await sb.auth.getUser();
   const L=CUR.line;
@@ -610,7 +642,9 @@ function openOrder(o,which){
      }).join('')+
      '<tr><td colspan="3" class="tot">TOTAL</td><td class="tot">'+rm(tot)+'</td></tr></table></div>'+
    ((o.zones||[]).length?('<div class="card"><div class="sec">ZONES</div>'+
-     (o.zones||[]).map(function(z){return '<div class="zrow"><div class="zn">'+esc(z.zone)+'</div><div>'+esc(z.staff)+'</div></div>'}).join('')+
+     (o.zones||[]).map(function(z){
+        const who=Array.isArray(z.staff)?z.staff.join(', '):(z.staff||'');
+        return '<div class="zrow"><div class="zn">'+esc(z.zone)+'</div><div>'+esc(who)+'</div></div>'}).join('')+
    '</div>'):'')+
    (o.notes?('<div class="card"><div class="sec">NOTES</div><div class="hint">'+esc(o.notes)+'</div></div>'):'')+
    (o.qc_flag?('<div class="warn">QC rework raised'+(o.qc_note?(': '+esc(o.qc_note)):'')+'</div>'):'')+
@@ -694,8 +728,9 @@ function commPDF(o){
   y+=5;
   d.setFont('helvetica','normal');d.setFontSize(9);
   const zoneOf=function(name){
-    return (o.zones||[]).filter(function(z){return z.staff===name})
-      .map(function(z){return z.zone}).join(', ');
+    return (o.zones||[]).filter(function(z){
+      return Array.isArray(z.staff)?(z.staff.indexOf(name)>=0):(z.staff===name);
+    }).map(function(z){return z.zone}).join(', ');
   };
   (o.splits||[]).forEach(function(s){
     const zs=d.splitTextToSize(zoneOf(s.name)||'-',36);
