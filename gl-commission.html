@@ -231,27 +231,35 @@ function setTab(t){
 
 // ---------- rate matching ----------
 function pkgOf(name,bike){
-  const n=(name||'').toLowerCase();
-  if(/removal/.test(n))return null;                 // film removal is labour
+  const n=String(name||'').toLowerCase().replace(/\s+/g,' ');
+  const c=n.replace(/[^a-z0-9]/g,'');               // spacing-proof copy
+  if(c.indexOf('removal')>=0)return null;           // film removal is labour
   // a bike only ever has one package, whatever the car service was called
-  if(bike)return (n.indexOf('full car')>=0||n.indexOf('full front')>=0)?'full_bike':null;
-  if(n.indexOf('full car')>=0)return 'full_car';
-  if(n.indexOf('full front')>=0 && n.indexOf('basic')<0)return 'full_front';
-  if(n.indexOf('front 3')>=0)return 'front_3';
+  if(bike)return (c.indexOf('fullcar')>=0||c.indexOf('fullfront')>=0)?'full_bike':null;
+  if(c.indexOf('fullcar')>=0)return 'full_car';
+  if(c.indexOf('fullfront')>=0 && c.indexOf('basic')<0)return 'full_front';
+  if(c.indexOf('front3')>=0)return 'front_3';
   return null;                                       // part / a la carte
 }
+// Service names are often typed by hand: "AXFILM  K - SERIES", "AXFilm K-Series",
+// "AXFILM K SERIES". Strip everything but letters and digits before comparing.
+function norm_(s){ return String(s||'').toLowerCase().replace(/[^a-z0-9]/g,''); }
+
 function findRate(catHint,name,bike){
   if(!bike){
     const exact=RATES.filter(function(r){return r.service_match===name})[0];
     if(exact)return exact;
+    const near=RATES.filter(function(r){return r.service_match&&norm_(r.service_match)===norm_(name)})[0];
+    if(near)return near;
   }
   const p=pkgOf(name,bike);
   if(!p)return null;
+  const nName=norm_(name);
   // brand is the longest brand string that appears in the service name
   let best=null;
   RATES.forEach(function(r){
     if(r.package!==p||!r.brand)return;
-    if(name.toLowerCase().indexOf(r.brand.toLowerCase())>=0){
+    if(nName.indexOf(norm_(r.brand))>=0){
       if(!best||r.brand.length>best.brand.length)best=r;
     }
   });
