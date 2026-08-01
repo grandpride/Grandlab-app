@@ -106,6 +106,53 @@ label{font-size:11px;color:var(--text2);display:block;margin-bottom:4px}
 #linkbox{background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:12px;font-size:12px;word-break:break-all;color:var(--gold);margin:12px 0}
 .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--gold);color:#000;padding:10px 20px;border-radius:24px;font-weight:800;font-size:14px;display:none;z-index:99}
 </style>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+/* ===== GRANDLAB ACCESS GUARD =====
+   Who may open this page is set in the GrandPride Staff Manager (gp_staff.apps).
+   admin@grandpride.com always has full access. */
+(function(){
+  var APP_KEY = 'inspect';
+  var GP_URL='https://iefevjkeckysdluzazeq.supabase.co';
+  var GP_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImllZmV2amtlY2t5c2RsdXphemVxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEwODI1MTMsImV4cCI6MjA5NjY1ODUxM30.xVqifxHta7rPtxf0hh1C4_rexhwWQhaiOxEzVr_oM5k';
+  var MASTER=['admin@grandpride.com'];
+
+  function deny(msg){
+    document.documentElement.innerHTML =
+      '<body style="background:#080808;color:#fff;font-family:-apple-system,Segoe UI,sans-serif;'+
+      'display:flex;align-items:center;justify-content:center;height:100vh;margin:0;text-align:center">'+
+      '<div style="max-width:340px;padding:26px;border:1px solid #2a2a2a;border-radius:16px;background:#141414">'+
+      '<div style="font-size:34px">&#128274;</div>'+
+      '<div style="font-weight:900;font-size:17px;margin:10px 0;color:#F5C518">NO ACCESS</div>'+
+      '<div style="font-size:13px;color:#9a9a9a;line-height:1.5">'+msg+'</div>'+
+      '<a href="gl-hub.html" style="display:block;margin-top:18px;background:#F5C518;color:#000;'+
+      'padding:12px;border-radius:10px;font-weight:800;text-decoration:none">BACK TO HUB</a>'+
+      '</div></body>';
+  }
+
+  window.GL_GUARD = (async function(){
+    try{
+      var gl = supabase.createClient(
+        'https://eychljpzorzmaveixlnu.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV5Y2hsanB6b3J6bWF2ZWl4bG51Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2NDk2NjQsImV4cCI6MjA5NzIyNTY2NH0.6dA1zhz5ZIwf8byFB8vhfOzPI-uPPdPihEr1b8GG_oA',
+        {auth:{persistSession:true,autoRefreshToken:true,storageKey:'gl_auth'}});
+      var s = await gl.auth.getSession();
+      if(!s.data.session) return;                       // not signed in yet - the page handles login
+      var email = (s.data.session.user.email||'').toLowerCase();
+      if(MASTER.indexOf(email)>=0) return;              // master key
+      var gp = supabase.createClient(GP_URL, GP_ANON, {auth:{persistSession:false,storageKey:'gp_read'}});
+      var r = await gp.from('gp_staff').select('name,apps').ilike('email',email).maybeSingle();
+      if(r.error||!r.data){ deny('This login is not in the staff list. Ask the manager to add you.'); return; }
+      var apps = r.data.apps;
+      if(typeof apps==='string'){ try{apps=JSON.parse(apps)}catch(e){apps=[]} }
+      if(!Array.isArray(apps)) apps=[];
+      if(apps.indexOf(APP_KEY)<0){
+        deny('Hi '+(r.data.name||'')+', you do not have access to this app.<br><br>Ask the manager to enable it in Staff Manager.');
+      }
+    }catch(e){ /* if the check itself fails, do not lock anyone out */ }
+  })();
+})();
+</script>
 </head>
 <body>
 

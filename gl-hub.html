@@ -41,6 +41,56 @@ html,body{height:100%;background:var(--bg);font-family:-apple-system,BlinkMacSys
 .gate button{width:100%;background:var(--gold);color:#080808;border:none;border-radius:12px;padding:14px;font-weight:800;font-size:15px;font-family:inherit;cursor:pointer}
 .err{color:#e0533d;font-size:12px;min-height:16px;margin-bottom:6px}
 </style>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+/* Show only the tiles this person is allowed to open (set in Staff Manager). */
+(function(){
+  var GP_URL='https://iefevjkeckysdluzazeq.supabase.co';
+  var GP_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImllZmV2amtlY2t5c2RsdXphemVxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEwODI1MTMsImV4cCI6MjA5NjY1ODUxM30.xVqifxHta7rPtxf0hh1C4_rexhwWQhaiOxEzVr_oM5k';
+  var MASTER=['admin@grandpride.com'];
+  var MAP={
+    'gl-platescan.html':'platescan','gl-inspect.html':'inspect','gl-qc.html':'qc',
+    'gl-staff-appointment-FINAL.html':'joborder','gl-jobcard.html':'joborder',
+    'grandlab-pos-v2.html':'pos','gl-statement.html':'statement',
+    'gl-commission.html':'commission','gl-daily.html':'daily',
+    'gl-ladder.html':'ladder','gl-academy.html':'academy',
+    'gl-marketing.html':'marketing','gl-coating-maintenance.html':'joborder',
+    'gl-warranty-admin.html':'joborder','gl-warranty.html':'joborder'
+  };
+  window.addEventListener('DOMContentLoaded',function(){
+    (async function(){
+      try{
+        var gl=supabase.createClient('https://eychljpzorzmaveixlnu.supabase.co','eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV5Y2hsanB6b3J6bWF2ZWl4bG51Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2NDk2NjQsImV4cCI6MjA5NzIyNTY2NH0.6dA1zhz5ZIwf8byFB8vhfOzPI-uPPdPihEr1b8GG_oA',
+          {auth:{persistSession:true,autoRefreshToken:true,storageKey:'gl_auth'}});
+        var s=await gl.auth.getSession();
+        if(!s.data.session)return;
+        var email=(s.data.session.user.email||'').toLowerCase();
+        if(MASTER.indexOf(email)>=0)return;
+        var gp=supabase.createClient(GP_URL,GP_ANON,{auth:{persistSession:false,storageKey:'gp_read'}});
+        var r=await gp.from('gp_staff').select('name,apps').ilike('email',email).maybeSingle();
+        if(r.error||!r.data)return;
+        var apps=r.data.apps;
+        if(typeof apps==='string'){try{apps=JSON.parse(apps)}catch(e){apps=[]}}
+        if(!Array.isArray(apps))return;
+        Array.prototype.forEach.call(document.querySelectorAll('a.tile'),function(a){
+          var h=a.getAttribute('href')||'', file=h.split('/').pop().split('?')[0];
+          var key=MAP[file];
+          if(key && apps.indexOf(key)<0) a.style.display='none';
+        });
+        // hide a section heading if every tile under it is hidden
+        Array.prototype.forEach.call(document.querySelectorAll('.sect'),function(sec){
+          var grid=sec.nextElementSibling;
+          if(!grid||!grid.classList.contains('grid'))return;
+          var vis=Array.prototype.filter.call(grid.querySelectorAll('a.tile'),function(a){
+            return a.style.display!=='none'; }).length;
+          if(!vis){ sec.style.display='none'; grid.style.display='none'; }
+        });
+      }catch(e){}
+    })();
+  });
+})();
+</script>
 </head>
 <body>
 
