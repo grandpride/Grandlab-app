@@ -1355,12 +1355,37 @@ function openJob(id){
     <button class="btn btn-block" style="margin-bottom:10px;background:#F5C518;color:#000;font-weight:800" onclick="openInspect('${j.id}')">
       <i class="ti ti-camera-plus"></i> Vehicle Inspection
     </button>
+    <div id="inspList" style="margin-bottom:10px"></div>
     <button class="btn btn-block" style="margin-bottom:8px;${j.no_show?'background:#C0392B;color:#fff':'background:transparent;border:1px solid #C0392B;color:#C0392B'}" onclick="toggleNoShow('${j.id}')">
       <i class="ti ti-user-x"></i> ${j.no_show?'Absent / No-show ✓ (tap to undo)':'Mark Absent / No-show'}
     </button>
     <button class="btn btn-ghost btn-block" style="color:var(--danger-text);margin-bottom:14px" onclick="delJob('${j.id}')">Delete job</button>
     <button class="btn btn-ghost btn-block" onclick="showView('list')" style="margin-bottom:30px">← Back</button>`;
   showView('detail');
+  loadInspections(j.id);
+}
+
+/* Show any inspections already done for this job. Read-only, additive. */
+async function loadInspections(jobId){
+  const box=document.getElementById('inspList');
+  if(!box)return;
+  const r=await sb.from('gl_inspections')
+    .select('share_token,created_at,photo_count,marks,staff_email')
+    .eq('job_id',jobId).order('created_at',{ascending:false});
+  if(r.error||!r.data||!r.data.length)return;
+  box.innerHTML=r.data.map(function(x){
+    const d=new Date(x.created_at).toLocaleString('en-MY',
+      {timeZone:'Asia/Kuala_Lumpur',day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
+    const nm=Array.isArray(x.marks)?x.marks.length:0;
+    return '<a href="gl-inspect-view.html?t='+x.share_token+'" target="_blank" '+
+      'style="display:flex;align-items:center;gap:10px;text-decoration:none;'+
+      'border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:6px;color:var(--text)">'+
+      '<i class="ti ti-photo-check" style="color:#16A34A;font-size:20px"></i>'+
+      '<div style="flex:1"><div style="font-weight:700;font-size:13px">Inspection &middot; '+d+'</div>'+
+      '<div style="font-size:11px;color:var(--text2)">'+(x.photo_count||0)+' photos &middot; '+nm+' damage marks'+
+      (x.staff_email?(' &middot; '+x.staff_email.split('@')[0]):'')+'</div></div>'+
+      '<i class="ti ti-chevron-right" style="color:var(--text3)"></i></a>';
+  }).join('');
 }
 async function setStage(id,key){
   const patch={stage:key};

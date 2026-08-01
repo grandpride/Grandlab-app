@@ -151,6 +151,11 @@ html,body{height:100%;background:var(--bg);font-family:-apple-system,BlinkMacSys
 
       <div id="carsWrap"></div>
 
+      <div class="hist hide" id="inspCard" style="display:none">
+        <div class="hist-h"><i class="ti ti-camera-check"></i> Vehicle Inspections</div>
+        <div id="inspList"></div>
+      </div>
+
       <div class="hist">
         <div class="hist-h"><i class="ti ti-history"></i> Service History</div>
         <div id="histList"></div>
@@ -297,6 +302,7 @@ async function doSearch(raw){
       // package balances — same raw source as the click-in detail (matches numbers)
       await loadPackages(wk.phone||'', wk.plate||plate);
       await loadWalkinHistory(wk.id, wk.plate||plate);
+      loadInspections(wk.plate||plate);
       await loadCustomerCars(wk.phone||'', wk.plate||plate);
       $('cust').classList.add('show');
       return;
@@ -321,6 +327,7 @@ async function doSearch(raw){
 
   await loadPackages(prof.phone||'', veh.plate||plate);
   await loadHistory(prof.id, veh.plate||plate);
+  loadInspections(veh.plate||plate);
   await loadCustomerCars(prof.phone||'', veh.plate||plate);
   $('cust').classList.add('show');
 }
@@ -413,6 +420,7 @@ function selectCar(plate, model){
   // refresh balances + history for the newly selected car
   loadPackages((CUR&&CUR.phone)||'', plate);
   if(CUR&&CUR.ownerId) loadHistory(CUR.ownerId, plate); else loadWalkinHistory((CUR&&CUR.walkinId)||null, plate);
+  loadInspections(plate);
   loadCustomerCars((CUR&&CUR.phone)||'', plate); // re-render to move the highlight
 }
 
@@ -610,6 +618,43 @@ async function loadHistory(ownerId, plate){
   renderHistory(items.slice(0,3));
   $('moreBtn').style.display = items.length>3 ? 'block' : 'none';
 }
+
+/* Past vehicle inspections for this plate. Read-only, additive:
+   nothing else in this file depends on it, and a failure just leaves the card hidden. */
+async function loadInspections(plate){
+  const card=$('inspCard'), box=$('inspList');
+  if(!card||!box)return;
+  card.style.display='none';
+  const p=(plate||'').trim();
+  if(!p)return;
+  const {data,error}=await sb.from('gl_inspections')
+    .select('share_token,created_at,plate,model,photo_count,marks,cust_type,workshop_name,staff_email')
+    .ilike('plate',p).order('created_at',{ascending:false}).limit(20);
+  if(error||!data||!data.length)return;
+  box.innerHTML=data.map(function(x){
+    const d=new Date(x.created_at).toLocaleString('en-MY',
+      {timeZone:'Asia/Kuala_Lumpur',day:'2-digit',month:'short',year:'2-digit',hour:'2-digit',minute:'2-digit'});
+    const nm=Array.isArray(x.marks)?x.marks.length:0;
+    const who=(x.cust_type&&x.cust_type!=='walkin')
+      ? (String(x.cust_type).toUpperCase()+(x.workshop_name?': '+x.workshop_name:''))
+      : (x.staff_email?x.staff_email.split('@')[0]:'');
+    const dmg=nm?('<span style="color:#ff5252;font-weight:700">'+nm+' damage mark'+(nm===1?'':'s')+'</span>')
+                :'<span style="color:#16A34A">no damage marked</span>';
+    return '<a href="gl-inspect-view.html?t='+esc(x.share_token)+'" target="_blank" rel="noopener" '+
+      'style="display:flex;align-items:center;gap:10px;text-decoration:none;color:inherit;'+
+      'border-bottom:1px solid rgba(255,255,255,.06);padding:10px 0">'+
+      '<i class="ti ti-photo" style="font-size:20px;color:var(--gold,#f5c518)"></i>'+
+      '<div style="flex:1;min-width:0">'+
+        '<div style="font-size:13px;font-weight:700">'+esc(d)+'</div>'+
+        '<div style="font-size:11px;color:var(--text2)">'+
+          (x.photo_count||0)+' photos &middot; '+dmg+(who?(' &middot; '+esc(who)):'')+
+        '</div>'+
+      '</div>'+
+      '<i class="ti ti-chevron-right" style="color:var(--text2)"></i></a>';
+  }).join('');
+  card.style.display='block';
+}
+
 function renderHistory(list){
   if(!list.length){ $('histList').innerHTML='<div style="color:var(--text2);font-size:13px;padding:6px 0">No past records.</div>'; return; }
   $('histList').innerHTML=list.map((h,idx)=>{
