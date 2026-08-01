@@ -83,6 +83,11 @@ const SUPABASE_URL='https://eychljpzorzmaveixlnu.supabase.co';
 const SUPABASE_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV5Y2hsanB6b3J6bWF2ZWl4bG51Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2NDk2NjQsImV4cCI6MjA5NzIyNTY2NH0.6dA1zhz5ZIwf8byFB8vhfOzPI-uPPdPihEr1b8GG_oA';
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON,{auth:{persistSession:true,autoRefreshToken:true,storageKey:'gl_auth'}});
 
+// GrandPride project - staff and app access are managed there in Staff Manager
+const GP_URL='https://iefevjkeckysdluzazeq.supabase.co';
+const GP_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImllZmV2amtlY2t5c2RsdXphemVxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEwODI1MTMsImV4cCI6MjA5NjY1ODUxM30.xVqifxHta7rPtxf0hh1C4_rexhwWQhaiOxEzVr_oM5k';
+const gp=supabase.createClient(GP_URL,GP_ANON,{auth:{persistSession:false,storageKey:'gp_read'}});
+
 let TEAM=[], MODS=[], RESULTS=[], WHO='', CUR=null;
 
 function el(id){return document.getElementById(id)}
@@ -102,12 +107,43 @@ async function doLogin(){
 async function boot(){
   const t=await sb.from('gl_team').select('*').eq('active',true).order('side').order('name');
   TEAM=t.data||[];
+  await syncFromGP();
   const m=await sb.from('gl_academy_modules').select('*').eq('active',true).order('sort_order');
   MODS=m.data||[];
-  WHO=localStorage.getItem('gl_acad_who')||'';
+  WHO=sessionStorage.getItem('gl_acad_who')||'';
   await refreshResults();
   loadLearn();
 }
+
+/* Staff and app access live in the GrandPride Staff Manager (gp_staff).
+   Pull them in so access assigned there is honoured here. Read-only on the
+   GrandPride side; only gl_team is written. */
+async function syncFromGP(){
+  try{
+    const r=await gp.from('gp_staff').select('username,name,role,apps');
+    if(r.error||!r.data)return;
+    const byUser={};
+    r.data.forEach(function(x){ byUser[String(x.username||'').toLowerCase()]=x });
+    const now=new Date().toISOString();
+    for(const t of TEAM){
+      const u=t.gp_username?byUser[String(t.gp_username).toLowerCase()]:null;
+      if(!u)continue;
+      let apps=u.apps;
+      if(typeof apps==='string'){ try{apps=JSON.parse(apps)}catch(e){apps=[]} }
+      if(!Array.isArray(apps))apps=[];
+      const changed = JSON.stringify(apps)!==JSON.stringify(t.apps||[]) || u.role!==t.gp_role;
+      t.apps=apps; t.gp_role=u.role;
+      if(changed){
+        await sb.from('gl_team').update({apps:apps,gp_role:u.role,gp_synced_at:now}).eq('name',t.name);
+      }
+    }
+  }catch(e){ /* GrandPride unreachable - fall back to whatever is stored */ }
+}
+function canAcademy(t){
+  const a=Array.isArray(t.apps)?t.apps:[];
+  return a.indexOf('academy')>=0;
+}
+
 async function refreshResults(){
   const r=await sb.from('gl_academy_results').select('*').order('taken_at',{ascending:false});
   RESULTS=r.data||[];
@@ -126,39 +162,69 @@ function bestFor(name,code){
 
 // ---------- MODULES ----------
 function loadLearn(){
+  if(!WHO){ signInScreen(); return; }
   const box=el('v_learn');
-  const t=TEAM.filter(function(x){return x.name===WHO})[0];
-  const track=t?(t.side==='film'?'film':(t.side==='qc'?'qc':'detailing')):'';
-  const list=MODS.filter(function(m){return !track||m.track==='all'||m.track===track});
-  const done=WHO?list.filter(function(m){const b=bestFor(WHO,m.code);return b&&b.passed}).length:0;
+  const list=MODS.filter(function(m){return m.track==='all'});
+  const done=list.filter(function(m){const b=bestFor(WHO,m.code);return b&&b.passed}).length;
 
   box.innerHTML='<div class="card">'+
-    '<label>Who is taking this?</label>'+
-    '<select id="who" onchange="pickWho(this.value)">'+
-      '<option value="">- select your name -</option>'+
-      TEAM.map(function(x){return '<option'+(x.name===WHO?' selected':'')+'>'+esc(x.name)+'</option>'}).join('')+
-    '</select>'+
-    (WHO?('<div class="hint">'+done+' of '+list.length+' modules passed</div>'+
-      '<div class="prog" style="margin-top:8px"><div style="width:'+(list.length?Math.round(done/list.length*100):0)+'%"></div></div>'):'')+
+    '<div style="display:flex;justify-content:space-between;align-items:center">'+
+      '<div><div style="font-weight:900;font-size:17px">'+esc(WHO)+'</div>'+
+      '<div class="hint">'+done+' of '+list.length+' modules passed</div></div>'+
+      '<button class="btn2" style="border:1px solid var(--border);border-radius:16px;padding:6px 14px;'+
+        'font-size:11px;font-weight:800;cursor:pointer;font-family:inherit;background:var(--card2);color:var(--text2)"'+
+        ' onclick="signOutStaff()">SWITCH</button>'+
+    '</div>'+
+    '<div class="prog" style="margin-top:10px"><div style="width:'+(list.length?Math.round(done/list.length*100):0)+'%"></div></div>'+
   '</div>'+
   '<div class="card"><div class="sec">MODULES</div>'+
-    (WHO?list.map(function(m,i){
+    list.map(function(m){
       const b=bestFor(WHO,m.code);
       const col=b?(b.passed?'var(--green)':'var(--amber)'):'var(--text2)';
       const lbl=b?(b.passed?('PASSED '+b.score+'%'):('BEST '+b.score+'%')):'NOT TAKEN';
+      const appr=(b&&b.passed&&b.approved)?' <span class="pill" style="background:var(--gold);color:#000;margin-left:4px">SIGNED</span>':'';
       return '<div class="mrow" data-c="'+m.code+'">'+
         '<div class="nm"><div class="t">'+esc(m.title)+'</div>'+
         '<div class="s">'+esc(m.summary||'')+'</div></div>'+
-        '<span class="pill" style="background:'+col+'22;color:'+col+';border:1px solid '+col+'66">'+lbl+'</span></div>';
-    }).join('')
-    :'<div class="empty">Choose your name to begin</div>')+
+        '<span class="pill" style="background:'+col+'22;color:'+col+';border:1px solid '+col+'66">'+lbl+'</span>'+appr+'</div>';
+    }).join('')+
   '</div>';
 
   Array.from(box.querySelectorAll('.mrow')).forEach(function(d){
     d.onclick=function(){openModule(d.dataset.c)};
   });
 }
-function pickWho(v){ WHO=v; localStorage.setItem('gl_acad_who',v); loadLearn(); }
+
+// staff sign in with their own PIN so nobody can sit someone else's test
+function signInScreen(){
+  el('v_learn').innerHTML='<div class="card">'+
+    '<div class="sec">SIGN IN</div>'+
+    '<label>Your name</label>'+
+    '<select id="s_name">'+
+      '<option value="">- select -</option>'+
+      TEAM.filter(canAcademy).map(function(x){return '<option>'+esc(x.name)+'</option>'}).join('')+
+    '</select>'+
+    '<label style="margin-top:10px">Your PIN</label>'+
+    '<input id="s_pin" type="password" inputmode="numeric" maxlength="6" placeholder="4 digits">'+
+    '<div class="hint" id="s_err" style="color:var(--red);height:16px"></div>'+
+    '<button class="btn" style="margin-top:6px" onclick="staffLogin()">START</button>'+
+    '<div class="hint" style="margin-top:10px">Ask the manager for your PIN if you do not have one.<br>'+
+      'Access is set in the GrandPride Staff Manager.</div>'+
+  '</div>';
+  el('s_pin').addEventListener('keydown',function(e){ if(e.key==='Enter')staffLogin() });
+}
+function staffLogin(){
+  const n=el('s_name').value, p=el('s_pin').value.trim();
+  if(!n){el('s_err').textContent='Choose your name';return}
+  const t=TEAM.filter(function(x){return x.name===n})[0];
+  if(!t){el('s_err').textContent='Not found';return}
+  if(!canAcademy(t)){el('s_err').textContent='No Academy access - ask the manager to enable it';return}
+  if(!t.pin){el('s_err').textContent='No PIN set - ask the manager';return}
+  if(p!==String(t.pin)){el('s_err').textContent='Wrong PIN';return}
+  WHO=n; sessionStorage.setItem('gl_acad_who',n);
+  loadLearn();
+}
+function signOutStaff(){ WHO=''; sessionStorage.removeItem('gl_acad_who'); signInScreen(); }
 
 // ---------- LESSON ----------
 function openModule(code){
@@ -256,9 +322,8 @@ async function finish(){
 // ---------- PROGRESS ----------
 function loadProgress(){
   const box=el('v_progress');
-  const rows=TEAM.map(function(t){
-    const track=t.side==='film'?'film':(t.side==='qc'?'qc':'detailing');
-    const mine=MODS.filter(function(m){return m.track==='all'||m.track===track});
+  const rows=TEAM.filter(canAcademy).map(function(t){
+    const mine=MODS.filter(function(m){return m.track==='all'});
     const passed=mine.filter(function(m){const b=bestFor(t.name,m.code);return b&&b.passed});
     return {name:t.name,side:t.side,done:passed.length,total:mine.length,
             pct:mine.length?Math.round(passed.length/mine.length*100):0};
