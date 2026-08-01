@@ -208,7 +208,7 @@ function signInScreen(){
     '<input id="s_pin" type="password" inputmode="numeric" maxlength="6" placeholder="4 digits">'+
     '<div class="hint" id="s_err" style="color:var(--red);height:16px"></div>'+
     '<button class="btn" style="margin-top:6px" onclick="staffLogin()">START</button>'+
-    '<div class="hint" style="margin-top:10px">Ask the manager for your PIN if you do not have one.<br>'+
+    '<div class="hint" style="margin-top:10px">First time? Your PIN is <b>1234</b> &mdash; you will choose your own next.<br>'+
       'Access is set in the GrandPride Staff Manager.</div>'+
   '</div>';
   el('s_pin').addEventListener('keydown',function(e){ if(e.key==='Enter')staffLogin() });
@@ -221,7 +221,38 @@ function staffLogin(){
   if(!canAcademy(t)){el('s_err').textContent='No Academy access - ask the manager to enable it';return}
   if(!t.pin){el('s_err').textContent='No PIN set - ask the manager';return}
   if(p!==String(t.pin)){el('s_err').textContent='Wrong PIN';return}
+  if(!t.pin_set){ setPinScreen(t); return; }      // still on the starting PIN
   WHO=n; sessionStorage.setItem('gl_acad_who',n);
+  loadLearn();
+}
+
+// first time in: choose a PIN you will actually remember
+function setPinScreen(t){
+  el('v_learn').innerHTML='<div class="card">'+
+    '<div class="sec">CHOOSE YOUR PIN</div>'+
+    '<div class="hint" style="margin-bottom:12px">Hello '+esc(t.name)+'. Pick a 4 digit PIN you will remember. '+
+      'You will use it every time you open the Academy.</div>'+
+    '<label>New PIN</label>'+
+    '<input id="p1" type="password" inputmode="numeric" maxlength="4" placeholder="4 digits">'+
+    '<label style="margin-top:10px">Type it again</label>'+
+    '<input id="p2" type="password" inputmode="numeric" maxlength="4" placeholder="4 digits">'+
+    '<div class="hint" id="p_err" style="color:var(--red);height:16px"></div>'+
+    '<button class="btn" style="margin-top:6px" onclick="savePin(\''+esc(t.name).replace(/'/g,"\\'")+'\')">SAVE AND START</button>'+
+    '<div class="hint" style="margin-top:10px">Forgot it later? The manager can reset it back to 1234.</div>'+
+  '</div>';
+  el('p2').addEventListener('keydown',function(e){ if(e.key==='Enter')savePin(t.name) });
+}
+async function savePin(name){
+  const a=el('p1').value.trim(), b=el('p2').value.trim();
+  if(!/^\d{4}$/.test(a)){el('p_err').textContent='Use 4 digits';return}
+  if(a!==b){el('p_err').textContent='The two PINs do not match';return}
+  if(a==='1234'){el('p_err').textContent='Pick something other than 1234';return}
+  const r=await sb.from('gl_team').update({pin:a,pin_set:true}).eq('name',name);
+  if(r.error){el('p_err').textContent=r.error.message;return}
+  const t=TEAM.filter(function(x){return x.name===name})[0];
+  if(t){t.pin=a;t.pin_set=true}
+  WHO=name; sessionStorage.setItem('gl_acad_who',name);
+  toast('PIN saved');
   loadLearn();
 }
 function signOutStaff(){ WHO=''; sessionStorage.removeItem('gl_acad_who'); signInScreen(); }
@@ -319,6 +350,21 @@ async function finish(){
   CUR=null;
 }
 
+
+// manager resets a forgotten PIN back to 1234
+async function resetPin(){
+  const who=prompt('Reset whose PIN?\n\n'+TEAM.filter(canAcademy).map(function(t){return t.name}).join('\n'));
+  if(!who)return;
+  const t=TEAM.filter(function(x){return x.name.toLowerCase()===who.trim().toLowerCase()})[0];
+  if(!t){toast('Name not found');return}
+  const pin=prompt('Manager PIN to reset '+t.name+':');
+  if(pin!=='065437'){ if(pin!==null)toast('Wrong PIN'); return }
+  const r=await sb.from('gl_team').update({pin:'1234',pin_set:false}).eq('name',t.name);
+  if(r.error){toast('Error: '+r.error.message);return}
+  t.pin='1234'; t.pin_set=false;
+  toast(t.name+' reset to 1234');
+}
+
 // ---------- PROGRESS ----------
 function loadProgress(){
   const box=el('v_progress');
@@ -338,6 +384,7 @@ function loadProgress(){
         '<td style="font-weight:800;color:'+col+'">'+r.done+'/'+r.total+'</td></tr>';
     }).join('')+'</tbody></table>'+
     '<div class="hint" style="margin-top:10px">A module counts once it has been passed at the pass mark. Retakes are allowed and the best score is kept.</div>'+
+    '<button class="btn btn2" style="margin-top:12px" onclick="resetPin()">RESET A FORGOTTEN PIN</button>'+
     '</div>'+
     '<div class="card"><div class="sec">RECENT ATTEMPTS</div>'+
     (RESULTS.length?('<table><tbody>'+RESULTS.slice(0,25).map(function(r){
