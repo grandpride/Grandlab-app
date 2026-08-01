@@ -178,14 +178,12 @@ function pinKey(k){
   if(k==='X'){ pinBuf=pinBuf.slice(0,-1); drawDots(); return }
   if(pinBuf.length>=6)return;
   pinBuf+=k; drawDots();
-  if(pinBuf.length===ENTRY_PIN.length){
-    if(pinBuf===ENTRY_PIN){
-      sessionStorage.setItem('gl_comm_ok','1');
-      pinBuf=''; openApp();
-    }else{
-      el('pinerr').textContent='Wrong PIN';
-      pinBuf=''; setTimeout(drawDots,200);
-    }
+  // accept the staff PIN (4 digits) or the manager PIN (6 digits)
+  if(pinBuf===ENTRY_PIN||pinBuf===APPROVE_PIN){
+    sessionStorage.setItem('gl_comm_ok','1'); pinBuf=''; openApp(); return;
+  }
+  if(pinBuf.length>=6){
+    el('pinerr').textContent='Wrong PIN'; pinBuf=''; setTimeout(drawDots,250);
   }
 }
 function lockApp(){
