@@ -306,14 +306,29 @@ async function loadNew(){
     box.innerHTML='<div class="card"><div class="sec">NEW JOBS</div><div class="empty">No film jobs waiting &#10003;</div></div>';
     return;
   }
+  // deposit then balance often creates two job cards for one installation -
+  // flag same plate + same service so it is not paid twice
+  const dupKey=function(it){return String(it.job.plate||'').replace(/\s/g,'').toUpperCase()+'|'+norm_(it.line.name)};
+  const seenDup={};
+  items.forEach(function(it){const k=dupKey(it);seenDup[k]=(seenDup[k]||0)+1});
+  // also check whether one was already entered
+  const done={};
+  (function(){ (window.__COMM_DONE__||[]).forEach(function(x){done[x]=1}) })();
+
   box.innerHTML='<div class="card"><div class="sec">NEW JOBS ('+items.length+')</div>'+
+    (Object.keys(seenDup).filter(function(k){return seenDup[k]>1}).length
+      ? '<div class="warn">Same plate and service appears more than once &mdash; usually a deposit and a balance job card for one installation. Pay it once and remove the other.</div>'
+      : '')+
     items.map(function(it,i){
       const bike=isBike(it.job);
+      const isDup=seenDup[dupKey(it)]>1;
       return '<div class="jrow" data-i="'+i+'">'+
         '<div class="pl">'+esc(it.job.plate||'-')+'</div>'+
         '<div class="mid"><div>'+esc(it.job.model||'')+
           (bike?' <span class="pill" style="background:var(--gold);color:#000">BIKE</span>':'')+'</div>'+
-        '<div class="sub2">'+esc(it.line.name)+'</div></div>'+
+        '<div class="sub2">'+esc(it.line.name)+
+          (isDup?' <span class="pill" style="background:var(--red)22;color:var(--red);border:1px solid var(--red)">DUPLICATE?</span>':'')+
+        '</div></div>'+
         '<div class="rm">'+rm(it.line.rate.amount)+'</div>'+
         '<button class="skipx" title="Not needed">&times;</button></div>';
     }).join('')+'</div>';
@@ -1019,6 +1034,7 @@ async function loadReport(mon){
       '<input type="month" id="rp_mon" value="'+m+'" onchange="loadReport(this.value)"></div></div>'+
     '<div class="hint">Cycle: '+from+' to '+
       new Date(toD.getTime()-86400000).toLocaleDateString('en-CA')+'  (24th to 23rd)</div>'+
+    '<div class="hint" style="color:var(--gold)">Pay out on '+payDay_(m)+'</div>'+
     '<div class="row" style="margin-top:8px"><div><label>Film jobs</label><div class="big">'+jobs+'</div></div>'+
     '<div><label>Commission</label><div class="big">'+rm(paid)+'</div></div>'+
     '<div><label>On hold</label><div class="big" style="color:var(--red)">'+rm(held)+'</div></div></div></div>'+
@@ -1034,6 +1050,18 @@ async function loadReport(mon){
              rows:rows,list:list,paid:paid,held:held,jobs:jobs};
 }
 
+
+// commission for a cycle is paid on the 15th of the month after the cycle ends
+function payDay_(m){
+  const yy=Number(m.slice(0,4)), mm=Number(m.slice(5,7));
+  const d=new Date(yy,mm,15);          // cycle ends 23rd of month mm -> pay 15th of mm+1
+  return d.toLocaleDateString('en-GB',{day:'2-digit',month:'long',year:'numeric'});
+}
+function payDue_(m){
+  const yy=Number(m.slice(0,4)), mm=Number(m.slice(5,7));
+  return new Date(yy,mm,15);
+}
+
 // one PDF for the whole month, so finance gets a single sheet
 function monthPDF(){
   const d0=el('v_report')._data; if(!d0)return;
@@ -1047,7 +1075,10 @@ function monthPDF(){
   d.setFillColor(245,197,24);d.rect(L,y+2.5,R-L,1.6,'F'); y+=11;
   d.setFontSize(10);d.setFont('helvetica','normal');
   d.text('Cycle: '+d0.from+' to '+d0.toShown+'      Jobs: '+d0.jobs+
-         '      Payable: '+rm(d0.paid)+'      On hold: '+rm(d0.held),L,y); y+=9;
+         '      Payable: '+rm(d0.paid)+'      On hold: '+rm(d0.held),L,y); y+=6;
+  d.setFont('helvetica','bold');
+  d.text('Pay out on: '+payDay_(d0.month),L,y);
+  d.setFont('helvetica','normal'); y+=8;
 
   // per staff
   d.setFont('helvetica','bold');d.setFontSize(10);d.text('BY STAFF',L,y);y+=5;

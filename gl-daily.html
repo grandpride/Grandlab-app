@@ -99,6 +99,7 @@ const SUPABASE_URL='https://eychljpzorzmaveixlnu.supabase.co';
 const SUPABASE_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV5Y2hsanB6b3J6bWF2ZWl4bG51Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2NDk2NjQsImV4cCI6MjA5NzIyNTY2NH0.6dA1zhz5ZIwf8byFB8vhfOzPI-uPPdPihEr1b8GG_oA';
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON,{auth:{persistSession:true,autoRefreshToken:true,storageKey:'gl_auth'}});
 
+const PAYROLL_START='2026-08-01';   // first day the incentive scheme applies
 const STATUSES=[['present','PRESENT'],['late','LATE'],['absent','ABSENT'],['excused','MC / NOTICE'],['off','OFF DAY']];
 let TEAM=[], RULES={}, PTS={cat:{},name:{}}, DAY={}, TAB='day';
 
@@ -277,8 +278,10 @@ async function loadPay(mon){
   box.innerHTML='<div class="card"><div class="empty">Working it out...</div></div>';
   // payroll cycle runs the 24th of the previous month to the 23rd of this one
   const yy=Number(m.slice(0,4)), mm=Number(m.slice(5,7));
-  const from=new Date(yy,mm-2,24).toLocaleDateString('en-CA');   // 24th prev month
-  const to  =new Date(yy,mm-1,24).toLocaleDateString('en-CA');   // 24th this month (exclusive)
+  let from=new Date(yy,mm-2,24).toLocaleDateString('en-CA');     // 24th prev month
+  const to =new Date(yy,mm-1,24).toLocaleDateString('en-CA');    // 24th this month (exclusive)
+  // the scheme starts on this date - earlier attendance is history, not payroll
+  if(from<PAYROLL_START)from=PAYROLL_START;
 
   const att=await sb.from('gl_attendance').select('*').gte('work_date',from).lt('work_date',to);
   const jobs=await sb.from('gl_jobs').select('id,services,created_at,cust_type,plate')
@@ -345,6 +348,7 @@ async function loadPay(mon){
   box.innerHTML=
    '<div class="card"><div class="row">'+
      '<div><label>Payroll month</label><input type="month" id="p_mon" value="'+m+'" onchange="loadPay(this.value)"></div></div>'+
+     (from===PAYROLL_START?'<div class="hint" style="color:var(--gold)">First cycle &mdash; scheme starts '+PAYROLL_START+'</div>':'')+
      '<div class="hint">Cycle: '+from+' to '+
        new Date(new Date(to).getTime()-86400000).toLocaleDateString('en-CA')+'  (24th to 23rd)</div>'+
      '<div class="row" style="margin-top:8px">'+
