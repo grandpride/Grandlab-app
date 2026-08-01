@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Grandlab Skill Ladder</title>
+<style>
+:root{--bg:#080808;--card:#141414;--card2:#1c1c1c;--gold:#F5C518;--text:#fff;--text2:#9a9a9a;--border:#2a2a2a;--red:#ff5252;--green:#16A34A;--amber:#D97706}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:var(--text)}
+.wrap{max-width:860px;margin:0 auto;padding:16px}
+h1{font-size:20px;font-weight:900;margin:6px 0 2px}
+h1 span{color:var(--gold)}
+.sub{color:var(--text2);font-size:12px;margin-bottom:14px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:16px;margin-bottom:14px}
+.sec{font-size:12px;font-weight:800;color:var(--gold);letter-spacing:.1em;margin-bottom:10px}
+.row{display:flex;gap:8px;margin-bottom:8px}
+.row>*{flex:1}
+label{font-size:11px;color:var(--text2);display:block;margin-bottom:4px}
+input,select,textarea{width:100%;background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:11px;color:var(--text);font-size:15px;font-family:inherit}
+.btn{display:block;width:100%;background:var(--gold);color:#000;border:none;border-radius:12px;padding:14px;font-size:15px;font-weight:800;cursor:pointer;font-family:inherit}
+.btn2{background:var(--card2);color:var(--text);border:1px solid var(--border)}
+.tabs{display:flex;gap:6px;margin-bottom:14px}
+.tab{flex:1;padding:10px;border-radius:10px;background:var(--card2);border:1px solid var(--border);color:var(--text2);font-size:12px;font-weight:800;cursor:pointer;font-family:inherit;text-align:center}
+.tab.on{background:var(--gold);color:#000;border-color:var(--gold)}
+.prow{display:flex;align-items:center;gap:12px;padding:13px 12px;border:1px solid var(--border);border-radius:12px;margin-bottom:8px;cursor:pointer;background:var(--card2)}
+.prow:active{border-color:var(--gold)}
+.prow .nm{flex:1;font-weight:800;font-size:15px}
+.prow .cnt{font-size:11px;color:var(--text2);font-weight:400}
+.lvl{font-weight:900;font-size:14px;border-radius:8px;padding:5px 11px;white-space:nowrap}
+.lvl.none{background:var(--border);color:var(--text2)}
+.crit{display:flex;gap:10px;align-items:flex-start;padding:10px 0;border-bottom:1px solid var(--border);cursor:pointer}
+.crit .box{width:22px;height:22px;border-radius:6px;border:2px solid var(--border);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:900}
+.crit.on .box{background:var(--green);border-color:var(--green);color:#fff}
+.crit .t{flex:1;font-size:14px}
+.crit.on .t{color:var(--text2)}
+.step{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.step button{border:1px solid var(--border);background:var(--card2);color:var(--text2);border-radius:9px;padding:9px 13px;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit}
+.step button.on{background:var(--gold);color:#000;border-color:var(--gold)}
+.hint{font-size:11px;color:var(--text2);margin-top:6px}
+.warn{background:rgba(217,119,6,.12);border:1px solid var(--amber);color:#f5c97a;border-radius:10px;padding:10px;font-size:12px;margin:8px 0}
+.ok{background:rgba(22,163,74,.12);border:1px solid var(--green);color:#9ae6b4;border-radius:10px;padding:10px;font-size:12px;margin:8px 0}
+.empty{text-align:center;color:var(--text2);font-size:13px;padding:22px 6px}
+.hide{display:none!important}
+#login{max-width:400px;margin:80px auto}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--gold);color:#000;padding:10px 20px;border-radius:24px;font-weight:800;font-size:14px;display:none;z-index:99}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;color:var(--text2);font-size:10px;font-weight:800;padding:6px 4px;border-bottom:1px solid var(--border)}
+td{padding:7px 4px;border-bottom:1px solid var(--border)}
+</style>
+</head>
+<body>
+
+<div id="login" class="card hide">
+  <div class="sec">GRANDLAB STAFF LOGIN</div>
+  <div class="row"><div><label>Email</label><input id="lg_email" type="email"></div></div>
+  <div class="row"><div><label>Password</label><input id="lg_pass" type="password"></div></div>
+  <button class="btn" onclick="doLogin()">Sign In</button>
+  <div class="hint" id="lg_err"></div>
+</div>
+
+<div class="wrap hide" id="app">
+  <a href="gl-hub.html" style="color:var(--text2);font-size:12px;text-decoration:none">&#8592; Hub</a>
+  <h1>GRAND<span>LAB</span> SKILL LADDER</h1>
+  <div class="sub">Levels &middot; assessments &middot; review dates</div>
+
+  <div class="tabs">
+    <button class="tab on" data-t="team"   onclick="setTab('team')">TEAM</button>
+    <button class="tab"    data-t="levels" onclick="setTab('levels')">LEVELS</button>
+  </div>
+
+  <div id="v_team"></div>
+  <div id="v_levels" class="hide"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SUPABASE_URL='https://eychljpzorzmaveixlnu.supabase.co';
+const SUPABASE_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV5Y2hsanB6b3J6bWF2ZWl4bG51Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2NDk2NjQsImV4cCI6MjA5NzIyNTY2NH0.6dA1zhz5ZIwf8byFB8vhfOzPI-uPPdPihEr1b8GG_oA';
+const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON,{auth:{persistSession:true,autoRefreshToken:true,storageKey:'gl_auth'}});
+
+let TEAM=[], LEVELS=[], MINE={}, CUR=null;
+
+function el(id){return document.getElementById(id)}
+function toast(m){const t=el('toast');t.textContent=m;t.style.display='block';setTimeout(function(){t.style.display='none'},2400)}
+function esc(s){return String(s==null?'':s).replace(/[<>&"]/g,function(c){return {'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]})}
+function dmy(d){ if(!d)return '-'; return new Date(d+'T00:00:00').toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'2-digit'}) }
+function today(){ return new Date().toLocaleDateString('en-CA') }
+function trackOf(side){ return side==='film'?'film':(side==='qc'?'qc':'detailing') }
+function colOf(track){ return track==='film'?'#C026D3':(track==='qc'?'#0891B2':'#F5C518') }
+
+(async function(){
+  const s=await sb.auth.getSession();
+  if(s.data.session){el('app').classList.remove('hide');boot()}else{el('login').classList.remove('hide')}
+})();
+async function doLogin(){
+  const r=await sb.auth.signInWithPassword({email:el('lg_email').value.trim(),password:el('lg_pass').value});
+  if(r.error){el('lg_err').textContent=r.error.message;return}
+  location.reload();
+}
+async function boot(){
+  const t=await sb.from('gl_team').select('*').eq('active',true).order('side').order('name');
+  TEAM=t.data||[];
+  const l=await sb.from('gl_ladder_levels').select('*').eq('active',true).order('track').order('rank');
+  LEVELS=l.data||[];
+  loadTeam();
+}
+function setTab(t){
+  ['team','levels'].forEach(function(k){el('v_'+k).classList.toggle('hide',k!==t)});
+  Array.from(document.querySelectorAll('.tab')).forEach(function(b){b.classList.toggle('on',b.dataset.t===t)});
+  if(t==='team')loadTeam(); else loadLevels();
+}
+
+// ---------- TEAM ----------
+async function loadTeam(){
+  const box=el('v_team');
+  const r=await sb.from('gl_staff_ladder').select('*');
+  MINE={}; (r.data||[]).forEach(function(x){MINE[x.name]=x});
+  const unassessed=TEAM.filter(function(t){return !MINE[t.name]||!MINE[t.name].level_code}).length;
+  const due=TEAM.filter(function(t){
+    const m=MINE[t.name]; return m&&m.next_review&&m.next_review<=today();
+  }).length;
+
+  const group=function(side,title){
+    const list=TEAM.filter(function(t){return t.side===side});
+    if(!list.length)return '';
+    return '<div class="sec" style="margin-top:16px">'+title+'</div>'+list.map(function(t){
+      const m=MINE[t.name]||{};
+      const lv=m.level_code||'';
+      const def=LEVELS.filter(function(x){return x.code===lv})[0];
+      const col=colOf(trackOf(t.side));
+      const overdue=m.next_review&&m.next_review<=today();
+      return '<div class="prow" data-n="'+esc(t.name)+'">'+
+        '<div><div class="nm">'+esc(t.name)+'</div>'+
+        '<div class="cnt">'+(def?esc(def.title):'not assessed yet')+
+          (m.assessed_on?(' &middot; '+dmy(m.assessed_on)):'')+
+          (overdue?' &middot; <span style="color:var(--amber)">review due</span>':'')+
+        '</div></div>'+
+        '<div class="lvl '+(lv?'':'none')+'" style="'+(lv?('background:'+col+'22;color:'+col+';border:1px solid '+col+'66'):'')+'">'+
+          (lv||'—')+'</div></div>';
+    }).join('');
+  };
+
+  box.innerHTML='<div class="card"><div class="row">'+
+    '<div><label>Staff</label><div style="font-size:24px;font-weight:900;color:var(--gold)">'+TEAM.length+'</div></div>'+
+    '<div><label>Not assessed</label><div style="font-size:24px;font-weight:900;color:'+(unassessed?'var(--red)':'var(--green)')+'">'+unassessed+'</div></div>'+
+    '<div><label>Review due</label><div style="font-size:24px;font-weight:900;color:'+(due?'var(--amber)':'var(--green)')+'">'+due+'</div></div>'+
+    '</div>'+
+    (unassessed?('<div class="warn">'+unassessed+' staff have no level yet. Assess them before using the ladder for increments.</div>'):'')+
+    '</div>'+
+    '<div class="card">'+group('detailing','DETAILING')+group('film','FILM')+group('qc','QC')+'</div>';
+
+  Array.from(box.querySelectorAll('.prow')).forEach(function(d){
+    d.onclick=function(){openStaff(d.dataset.n)};
+  });
+}
+
+// ---------- ASSESS ONE PERSON ----------
+async function openStaff(name){
+  const t=TEAM.filter(function(x){return x.name===name})[0]||{side:'detailing'};
+  const track=trackOf(t.side);
+  const m=MINE[name]||{};
+  const opts=LEVELS.filter(function(x){return x.track===track});
+  CUR={name:name,track:track,level:m.level_code||(opts[0]?opts[0].code:''),ticked:{}};
+
+  const h=await sb.from('gl_ladder_history').select('*').eq('name',name)
+    .order('created_at',{ascending:false}).limit(6);
+
+  el('v_team').innerHTML=
+   '<button class="btn btn2" style="margin-bottom:12px" onclick="loadTeam()">&#8592; BACK</button>'+
+   '<div class="card"><div class="sec">'+esc(name)+'</div>'+
+     '<div class="hint">'+track.toUpperCase()+' track'+
+       (m.assessed_on?(' &middot; last assessed '+dmy(m.assessed_on)+(m.assessed_by?(' by '+esc(String(m.assessed_by).split('@')[0])):'')):' &middot; never assessed')+
+     '</div>'+
+     '<div class="step" style="margin-top:12px" id="lvlbar">'+
+       opts.map(function(o){
+         return '<button data-c="'+o.code+'" onclick="pickLevel(\''+o.code+'\')">'+o.code+'</button>';
+       }).join('')+
+     '</div>'+
+     '<div id="lvlinfo"></div>'+
+   '</div>'+
+   '<div class="card"><div class="sec">CAN THEY DO THIS?</div>'+
+     '<div id="crits"></div>'+
+     '<div id="critsum"></div>'+
+   '</div>'+
+   '<div class="card"><div class="sec">NOTES</div>'+
+     '<textarea id="a_notes" rows="2" placeholder="What to work on before the next review"></textarea>'+
+     '<div class="row" style="margin-top:8px"><div><label>Next review</label>'+
+       '<input type="date" id="a_next"></div></div>'+
+   '</div>'+
+   '<button class="btn" onclick="saveLevel()">SAVE ASSESSMENT</button>'+
+   ((h.data&&h.data.length)?('<div class="card" style="margin-top:14px"><div class="sec">HISTORY</div>'+
+     '<table><tbody>'+h.data.map(function(x){
+       return '<tr><td>'+dmy(x.assessed_on)+'</td><td>'+esc(x.from_level||'—')+' &rarr; <b>'+esc(x.to_level||'')+'</b></td>'+
+       '<td style="font-size:11px;color:var(--text2)">'+esc(x.notes||'')+'</td></tr>';
+     }).join('')+'</tbody></table></div>'):'')+
+   '<div style="height:30px"></div>';
+
+  pickLevel(CUR.level);
+}
+
+function pickLevel(code){
+  CUR.level=code; CUR.ticked={};
+  Array.from(el('lvlbar').children).forEach(function(b){b.classList.toggle('on',b.dataset.c===code)});
+  const def=LEVELS.filter(function(x){return x.code===code})[0];
+  if(!def)return;
+  el('lvlinfo').innerHTML='<div style="font-weight:800;font-size:16px;margin-top:6px">'+esc(def.title)+'</div>'+
+    '<div class="hint">Minimum '+def.months_min+' months at this level before the next step</div>';
+  el('crits').innerHTML=(def.criteria||[]).map(function(c,i){
+    return '<div class="crit" data-i="'+i+'"><div class="box">&#10003;</div><div class="t">'+esc(c)+'</div></div>';
+  }).join('');
+  Array.from(el('crits').children).forEach(function(d,i){
+    d.onclick=function(){ d.classList.toggle('on'); CUR.ticked[i]=d.classList.contains('on'); critSum() };
+  });
+  // default the next review from the level's minimum
+  const n=new Date(); n.setMonth(n.getMonth()+(def.months_min||3));
+  el('a_next').value=n.toLocaleDateString('en-CA');
+  critSum();
+}
+function critSum(){
+  const def=LEVELS.filter(function(x){return x.code===CUR.level})[0];
+  if(!def)return;
+  const total=(def.criteria||[]).length;
+  const done=Object.keys(CUR.ticked).filter(function(k){return CUR.ticked[k]}).length;
+  el('critsum').innerHTML = done===total && total
+    ? '<div class="ok">Meets every point for '+CUR.level+'. Ready for the next level when the minimum time is served.</div>'
+    : '<div class="warn">'+done+' of '+total+' met. Still working towards '+CUR.level+'.</div>';
+}
+
+async function saveLevel(){
+  if(!CUR)return;
+  const gu=await sb.auth.getUser();
+  const by=gu.data.user?gu.data.user.email:'';
+  const prev=(MINE[CUR.name]||{}).level_code||null;
+  const def=LEVELS.filter(function(x){return x.code===CUR.level})[0]||{};
+  const passed=(def.criteria||[]).filter(function(c,i){return CUR.ticked[i]});
+
+  const up=await sb.from('gl_staff_ladder').upsert({
+    name:CUR.name, track:CUR.track, level_code:CUR.level,
+    assessed_on:today(), assessed_by:by,
+    next_review:el('a_next').value||null,
+    notes:el('a_notes').value.trim(), updated_at:new Date().toISOString()
+  },{onConflict:'name'});
+  if(up.error){toast('Error: '+up.error.message);return}
+
+  await sb.from('gl_ladder_history').insert({
+    name:CUR.name, from_level:prev, to_level:CUR.level,
+    assessed_on:today(), assessed_by:by,
+    passed:passed, notes:el('a_notes').value.trim()
+  });
+  toast(CUR.name+' set to '+CUR.level);
+  loadTeam();
+}
+
+// ---------- LEVELS REFERENCE ----------
+async function loadLevels(){
+  const box=el('v_levels');
+  const by={};
+  LEVELS.forEach(function(l){ (by[l.track]=by[l.track]||[]).push(l) });
+  box.innerHTML=Object.keys(by).map(function(tr){
+    const col=colOf(tr);
+    return '<div class="card"><div class="sec" style="color:'+col+'">'+tr.toUpperCase()+'</div>'+
+      by[tr].map(function(l){
+        return '<div style="padding:10px 0;border-bottom:1px solid var(--border)">'+
+          '<div style="display:flex;gap:10px;align-items:center">'+
+            '<span class="lvl" style="background:'+col+'22;color:'+col+';border:1px solid '+col+'66">'+l.code+'</span>'+
+            '<b style="font-size:14px">'+esc(l.title)+'</b>'+
+            '<span class="hint" style="margin:0">min '+l.months_min+' mth</span>'+
+          '</div>'+
+          '<div style="font-size:12px;color:var(--text2);margin-top:6px;padding-left:4px">'+
+            (l.criteria||[]).map(function(c){return '&bull; '+esc(c)}).join('<br>')+
+          '</div></div>';
+      }).join('')+'</div>';
+  }).join('');
+}
+</script>
+</body>
+</html>
