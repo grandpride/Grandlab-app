@@ -1355,6 +1355,7 @@ function openJob(id){
     <button class="btn btn-block" style="margin-bottom:10px;background:#F5C518;color:#000;font-weight:800" onclick="openInspect('${j.id}')">
       <i class="ti ti-camera-plus"></i> Vehicle Inspection
     </button>
+    <div id="qcList" style="margin-bottom:10px"></div>
     <div id="inspList" style="margin-bottom:10px"></div>
     <button class="btn btn-block" style="margin-bottom:8px;${j.no_show?'background:#C0392B;color:#fff':'background:transparent;border:1px solid #C0392B;color:#C0392B'}" onclick="toggleNoShow('${j.id}')">
       <i class="ti ti-user-x"></i> ${j.no_show?'Absent / No-show ✓ (tap to undo)':'Mark Absent / No-show'}
@@ -1363,6 +1364,41 @@ function openJob(id){
     <button class="btn btn-ghost btn-block" onclick="showView('list')" style="margin-bottom:30px">← Back</button>`;
   showView('detail');
   loadInspections(j.id);
+  loadQC(j.id);
+}
+
+/* QC results for this job. Read-only, additive. */
+async function loadQC(jobId){
+  const box=document.getElementById('qcList');
+  if(!box)return;
+  const r=await sb.from('gl_qc')
+    .select('id,stage,result,fail_count,items,created_at,checked_by,rework_notes')
+    .eq('job_id',jobId).order('created_at',{ascending:false});
+  if(r.error||!r.data||!r.data.length)return;
+  box.innerHTML=r.data.map(function(q){
+    const bad=q.result==='rework';
+    const col=bad?'#C0392B':'#16A34A';
+    const d=new Date(q.created_at).toLocaleString('en-MY',
+      {timeZone:'Asia/Kuala_Lumpur',day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
+    const fails=(q.items||[]).filter(function(x){return x.result==='fail'});
+    const who=fails.map(function(f){return f.staff}).filter(function(v,i,a){return v&&a.indexOf(v)===i});
+    return '<div style="border:1px solid '+col+'55;background:'+col+'14;border-radius:10px;'+
+      'padding:10px 12px;margin-bottom:6px">'+
+      '<div style="display:flex;align-items:center;gap:8px">'+
+        '<i class="ti '+(bad?'ti-alert-triangle':'ti-circle-check')+'" style="color:'+col+';font-size:19px"></i>'+
+        '<div style="flex:1"><div style="font-weight:800;font-size:13px;color:'+col+'">'+
+          (bad?('REWORK - '+q.fail_count+' defect'+(q.fail_count===1?'':'s')):'QC PASS')+
+          ' <span style="color:var(--text2);font-weight:400">&middot; '+String(q.stage).toUpperCase()+' check</span></div>'+
+        '<div style="font-size:11px;color:var(--text2)">'+d+
+          ((q.checked_by)?(' &middot; '+String(q.checked_by).split('@')[0]):'')+
+          (who.length?(' &middot; '+who.join(', ')):'')+'</div></div>'+
+      '</div>'+
+      (fails.length?('<div style="font-size:11px;color:var(--text2);margin-top:6px;padding-left:27px">'+
+        fails.map(function(f){return '&bull; '+f.check+(f.staff?(' ('+f.staff+')'):'')}).join('<br>')+
+      '</div>'):'')+
+      (q.rework_notes?('<div style="font-size:11px;color:var(--text2);margin-top:4px;padding-left:27px">'+q.rework_notes+'</div>'):'')+
+    '</div>';
+  }).join('');
 }
 
 /* Show any inspections already done for this job. Read-only, additive. */
