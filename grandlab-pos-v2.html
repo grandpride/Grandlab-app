@@ -50,8 +50,11 @@ button,input{font-family:inherit}
 .btn-mini i{font-size:15px}
 
 /* tabs */
-.tabs{display:flex;gap:6px;padding:10px 16px 0}
-.tab{flex:1;background:var(--surface2);border:1px solid var(--line);border-radius:10px 10px 0 0;padding:9px 8px;font-size:12.5px;font-weight:800;color:var(--ink2);cursor:pointer;text-align:center;border-bottom:none;display:flex;align-items:center;justify-content:center;gap:6px}
+.tabs{display:flex;gap:6px;padding:10px 16px 0;min-width:0}
+.tab{flex:1 1 0;min-width:0;background:var(--surface2);border:1px solid var(--line);border-radius:10px 10px 0 0;padding:9px 6px;font-size:12px;font-weight:800;color:var(--ink2);cursor:pointer;text-align:center;border-bottom:none;display:flex;align-items:center;justify-content:center;gap:5px;white-space:nowrap;overflow:hidden}
+.tab .lab{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tab i{flex-shrink:0}
+.tab .cnt{flex-shrink:0}
 .tab.on{background:var(--surface);color:var(--ink);box-shadow:0 -2px 6px rgba(16,20,30,.04)}
 .tab .cnt{background:var(--gold);color:var(--ink-on-gold);font-size:10px;font-weight:800;border-radius:20px;padding:1px 6px;min-width:16px}
 .tab.on .cnt{}
@@ -340,10 +343,10 @@ button,input{font-family:inherit}
     <div>
       <div class="panel">
         <div class="tabs">
-          <div class="tab" id="tabDash" onclick="switchTab('dash')"><i class="ti ti-chart-pie"></i> Dashboard</div>
-          <div class="tab on" id="tabReady" onclick="switchTab('ready')"><i class="ti ti-receipt"></i> Ready <span class="cnt" id="cntReady">0</span></div>
-          <div class="tab" id="tabHold" onclick="switchTab('hold')"><i class="ti ti-player-pause"></i> On-hold <span class="cnt" id="cntHold">0</span></div>
-          <div class="tab" id="tabSql" onclick="switchTab('sql')"><i class="ti ti-file-invoice"></i> SQL keying <span class="cnt" id="cntSql">0</span></div>
+          <div class="tab" id="tabDash" onclick="switchTab('dash')"><i class="ti ti-chart-pie"></i> <span class="lab">Dashboard</span></div>
+          <div class="tab on" id="tabReady" onclick="switchTab('ready')"><i class="ti ti-receipt"></i> <span class="lab">Ready</span> <span class="cnt" id="cntReady">0</span></div>
+          <div class="tab" id="tabHold" onclick="switchTab('hold')"><i class="ti ti-player-pause"></i> <span class="lab">On-hold</span> <span class="cnt" id="cntHold">0</span></div>
+          <div class="tab" id="tabSql" onclick="switchTab('sql')"><i class="ti ti-file-invoice"></i> <span class="lab">SQL keying</span> <span class="cnt" id="cntSql">0</span></div>
         </div>
         <div class="panel-h">
           <span class="ttl"><i class="ti ti-list-check"></i> <span id="listTitle">Ready to bill</span></span>
@@ -800,9 +803,10 @@ async function loadDashboard(){
     }).join(''):'<div class="status">No payments this month yet.</div>'}
 
     <div class="dash-sec" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
-      <span>Sales overview · this month</span>
+      <span id="dashTxTitle">Sales overview · this month</span>
       <div style="display:flex;gap:6px;align-items:center">
-        <input type="date" id="dashRepDate" value="${new Date().toLocaleDateString('en-CA')}" style="padding:6px 8px;border:1px solid var(--line2);border-radius:8px;font-family:inherit;font-size:12px">
+        <input type="date" id="dashRepDate" value="${DASH_DAY||''}" onchange="filterDashDay(this.value)" title="Filter the list to one day" style="padding:6px 8px;border:1px solid var(--line2);border-radius:8px;font-family:inherit;font-size:12px">
+        <button class="btn-mini" onclick="filterDashDay('')" title="Show the whole month"><i class="ti ti-x"></i> All</button>
         <input type="number" id="dashOpenBal" placeholder="Opening RM" step="0.01" style="width:100px;padding:6px 8px;border:1px solid var(--line2);border-radius:8px;font-family:inherit;font-size:12px" title="Cash opening balance">
         <button class="btn-mini" style="background:#25D366;color:#fff;border-color:#25D366" onclick="sendSettlementWA()"><i class="ti ti-brand-whatsapp"></i> Settlement</button>
         <button class="btn-mini" onclick="downloadDashReport()"><i class="ti ti-file-type-pdf"></i> Day report</button>
@@ -810,8 +814,8 @@ async function loadDashboard(){
       </div>
     </div>
     <div class="dash-tx-wrap">
-      ${DASH_TX.length?`<table class="dash-tx"><thead><tr><th>Date</th><th>Customer</th><th>Plate</th><th>Method</th><th style="text-align:right">Amount</th><th></th></tr></thead><tbody>
-      ${DASH_TX.map((r,i)=>`<tr>
+      ${(()=>{const _rows=dashRows_();return _rows.length?`<table class="dash-tx"><thead><tr><th>Date</th><th>Customer</th><th>Plate</th><th>Method</th><th style="text-align:right">Amount</th><th></th></tr></thead><tbody>
+      ${_rows.map((r,i)=>`<tr>
         <td>${(r.sale_date?new Date(r.sale_date+'T00:00:00'):new Date(r.paid_at)).toLocaleDateString('en-MY',{day:'2-digit',month:'short'})}</td>
         <td class="dcust" title="${esc(titleCase(r.customer_name||'—'))}">${esc(titleCase(r.customer_name||'—'))}</td>
         <td>${esc(r.plate||'—')}</td>
@@ -819,11 +823,31 @@ async function loadDashboard(){
         <td style="text-align:right;font-weight:700">${RM(r.net_paid)}</td>
         <td class="acts" style="text-align:right;white-space:nowrap"><button class="dash-edit" onclick="openEditTx(${i})" title="Edit"><i class="ti ti-edit"></i></button> <button class="dash-edit" onclick="waTxReceipt(${i})" title="Send receipt on WhatsApp" style="color:#128C7E"><i class="ti ti-brand-whatsapp"></i></button> <button class="dash-edit" onclick="printTxReceipt(${i})" title="Receipt PDF"><i class="ti ti-receipt"></i></button> <button class="dash-edit" onclick="printTxJobOrder(${i})" title="Job Order PDF"><i class="ti ti-file-invoice"></i></button> <button class="dash-del" onclick="deleteTx(${i})" title="Delete / redo"><i class="ti ti-trash"></i></button></td>
       </tr>`).join('')}
-      </tbody></table>`:'<div class="status">No transactions this month.</div>'}
+      </tbody></table>`:`<div class="status">No transactions ${DASH_DAY?('on '+DASH_DAY):'this month'}.</div>`})()}
     </div>
     <button class="btn-mini" style="margin-top:14px" onclick="loadDashboard()"><i class="ti ti-refresh"></i> Refresh</button>
     <button class="btn-mini" style="margin-top:14px;margin-left:8px" onclick="openBackfill()"><i class="ti ti-tag"></i> Backfill sources</button>`;
 }
+
+// Sales overview list: show the whole month, or one picked day.
+let DASH_DAY='';
+function dashRows_(){
+  if(!DASH_DAY)return DASH_TX;
+  return DASH_TX.filter(function(r){
+    const d=r.sale_date?String(r.sale_date).slice(0,10)
+           :new Date(r.paid_at).toLocaleDateString('en-CA');
+    return d===DASH_DAY;
+  });
+}
+function filterDashDay(v){
+  DASH_DAY=v||'';
+  const t=$('dashTxTitle');
+  if(t)t.textContent=DASH_DAY
+    ? ('Sales overview · '+new Date(DASH_DAY+'T00:00:00').toLocaleDateString('en-GB',{weekday:'short',day:'2-digit',month:'short'}))
+    : 'Sales overview · this month';
+  loadDashboard();   // rebuilds the panel with the new filter
+}
+
 function dashChart_(perDay,maxDay,days){
   const W=Math.max(320, days*18), H=140, pad=22, bw=Math.max(6,(W-pad)/days-4);
   let bars='';
