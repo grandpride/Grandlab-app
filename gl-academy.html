@@ -197,7 +197,7 @@ async function boot(){
   await syncFromGP();
   const m=await sb.from('gl_academy_modules').select('*').eq('active',true).order('sort_order');
   MODS=m.data||[];
-  WHO=sessionStorage.getItem('gl_acad_who')||'';
+  WHO=await identify();
   await refreshResults();
   loadLearn();
 }
@@ -249,7 +249,7 @@ function bestFor(name,code){
 
 // ---------- MODULES ----------
 function loadLearn(){
-  if(!WHO){ signInScreen(); return; }
+  if(!WHO){ notOnTeam(); return; }
   const box=el('v_learn');
   const list=MODS.filter(function(m){return m.track==='all'});
   const done=list.filter(function(m){const b=bestFor(WHO,m.code);return b&&b.passed}).length;
@@ -259,9 +259,7 @@ function loadLearn(){
     '<div style="display:flex;justify-content:space-between;align-items:center">'+
       '<div><div style="font-weight:900;font-size:17px">'+esc(WHO)+'</div>'+
       '<div class="hint">'+done+' of '+list.length+' modules passed</div></div>'+
-      '<button class="btn2" style="border:1px solid var(--border);border-radius:16px;padding:6px 14px;'+
-        'font-size:11px;font-weight:800;cursor:pointer;font-family:inherit;background:var(--card2);color:var(--text2)"'+
-        ' onclick="signOutStaff()">SWITCH</button>'+
+
     '</div>'+
     '<div class="prog" style="margin-top:10px"><div style="width:'+(list.length?Math.round(done/list.length*100):0)+'%"></div></div>'+
   '</div>'+
@@ -299,66 +297,34 @@ function loadLearn(){
 
 // staff sign in with their own PIN so nobody can sit someone else's test
 function signInScreen(){
-  el('v_learn').innerHTML='<div class="card">'+
-    langBar()+
-    '<div class="sec">SIGN IN</div>'+
-    '<label>Your name</label>'+
-    '<select id="s_name">'+
-      '<option value="">- select -</option>'+
-      TEAM.filter(canAcademy).map(function(x){return '<option>'+esc(x.name)+'</option>'}).join('')+
-    '</select>'+
-    '<label style="margin-top:10px">Your PIN</label>'+
-    '<input id="s_pin" type="password" inputmode="numeric" maxlength="6" placeholder="4 digits">'+
-    '<div class="hint" id="s_err" style="color:var(--red);height:16px"></div>'+
-    '<button class="btn" style="margin-top:6px" onclick="staffLogin()">START</button>'+
-    '<div class="hint" style="margin-top:10px">First time? Your PIN is <b>1234</b> &mdash; you will choose your own next.<br>'+
-      'Access is set in the GrandPride Staff Manager.</div>'+
-  '</div>';
-  el('s_pin').addEventListener('keydown',function(e){ if(e.key==='Enter')staffLogin() });
-}
-function staffLogin(){
-  const n=el('s_name').value, p=el('s_pin').value.trim();
-  if(!n){el('s_err').textContent='Choose your name';return}
-  const t=TEAM.filter(function(x){return x.name===n})[0];
-  if(!t){el('s_err').textContent='Not found';return}
-  if(!canAcademy(t)){el('s_err').textContent='No Academy access - ask the manager to enable it';return}
-  if(!t.pin){el('s_err').textContent='No PIN set - ask the manager';return}
-  if(p!==String(t.pin)){el('s_err').textContent='Wrong PIN';return}
-  if(!t.pin_set){ setPinScreen(t); return; }      // still on the starting PIN
-  WHO=n; sessionStorage.setItem('gl_acad_who',n);
-  loadLearn();
+  el('v_learn').innerHTML='<div class="card"><div class="empty">Identifying you...</div></div>';
 }
 
-// first time in: choose a PIN you will actually remember
-function setPinScreen(t){
-  el('v_learn').innerHTML='<div class="card">'+
-    '<div class="sec">CHOOSE YOUR PIN</div>'+
-    '<div class="hint" style="margin-bottom:12px">Hello '+esc(t.name)+'. Pick a 4 digit PIN you will remember. '+
-      'You will use it every time you open the Academy.</div>'+
-    '<label>New PIN</label>'+
-    '<input id="p1" type="password" inputmode="numeric" maxlength="4" placeholder="4 digits">'+
-    '<label style="margin-top:10px">Type it again</label>'+
-    '<input id="p2" type="password" inputmode="numeric" maxlength="4" placeholder="4 digits">'+
-    '<div class="hint" id="p_err" style="color:var(--red);height:16px"></div>'+
-    '<button class="btn" style="margin-top:6px" onclick="savePin(\''+esc(t.name).replace(/'/g,"\\'")+'\')">SAVE AND START</button>'+
-    '<div class="hint" style="margin-top:10px">Forgot it later? The manager can reset it back to 1234.</div>'+
-  '</div>';
-  el('p2').addEventListener('keydown',function(e){ if(e.key==='Enter')savePin(t.name) });
+/* The person is already signed in with their own account, so work out who they
+   are from that instead of asking for a name and PIN. */
+async function identify(){
+  try{
+    const s=await sb.auth.getSession();
+    if(!s.data.session)return '';
+    const email=(s.data.session.user.email||'').toLowerCase();
+    const r=await gp.from('gp_staff').select('username,name').ilike('email',email).maybeSingle();
+    if(r.error||!r.data)return '';
+    const un=String(r.data.username||'').toLowerCase();
+    // match on the GrandPride username, since spellings differ between systems
+    let t=TEAM.filter(function(x){return String(x.gp_username||'').toLowerCase()===un})[0];
+    if(!t)t=TEAM.filter(function(x){return x.name.toLowerCase()===String(r.data.name||'').toLowerCase()})[0];
+    return t?t.name:'';
+  }catch(e){ return '' }
 }
-async function savePin(name){
-  const a=el('p1').value.trim(), b=el('p2').value.trim();
-  if(!/^\d{4}$/.test(a)){el('p_err').textContent='Use 4 digits';return}
-  if(a!==b){el('p_err').textContent='The two PINs do not match';return}
-  if(a==='1234'){el('p_err').textContent='Pick something other than 1234';return}
-  const r=await sb.from('gl_team').update({pin:a,pin_set:true}).eq('name',name);
-  if(r.error){el('p_err').textContent=r.error.message;return}
-  const t=TEAM.filter(function(x){return x.name===name})[0];
-  if(t){t.pin=a;t.pin_set=true}
-  WHO=name; sessionStorage.setItem('gl_acad_who',name);
-  toast('PIN saved');
-  loadLearn();
+
+function notOnTeam(){
+  el('v_learn').innerHTML='<div class="card">'+langBar()+
+    '<div class="sec">ACADEMY</div>'+
+    '<div class="empty">This login is not linked to a staff record yet.<br>'+
+    'Ask the manager to add you.</div></div>';
 }
-function signOutStaff(){ WHO=''; sessionStorage.removeItem('gl_acad_who'); signInScreen(); }
+
+function signOutStaff(){ /* identity comes from the login now */ }
 
 // ---------- LESSON ----------
 function openModule(code){
@@ -460,19 +426,6 @@ async function finish(){
 }
 
 
-// manager resets a forgotten PIN back to 1234
-async function resetPin(){
-  const who=prompt('Reset whose PIN?\n\n'+TEAM.filter(canAcademy).map(function(t){return t.name}).join('\n'));
-  if(!who)return;
-  const t=TEAM.filter(function(x){return x.name.toLowerCase()===who.trim().toLowerCase()})[0];
-  if(!t){toast('Name not found');return}
-  const pin=prompt('Manager PIN to reset '+t.name+':');
-  if(pin!=='065437'){ if(pin!==null)toast('Wrong PIN'); return }
-  const r=await sb.from('gl_team').update({pin:'1234',pin_set:false}).eq('name',t.name);
-  if(r.error){toast('Error: '+r.error.message);return}
-  t.pin='1234'; t.pin_set=false;
-  toast(t.name+' reset to 1234');
-}
 
 
 
@@ -583,7 +536,6 @@ function loadProgress(){
         '<td style="font-weight:800;color:'+col+'">'+r.done+'/'+r.total+'</td></tr>';
     }).join('')+'</tbody></table>'+
     '<div class="hint" style="margin-top:10px">A module counts once it has been passed at the pass mark. Retakes are allowed and the best score is kept.</div>'+
-    '<button class="btn btn2" style="margin-top:12px" onclick="resetPin()">RESET A FORGOTTEN PIN</button>'+
     '</div>'+
     '<div class="card"><div class="sec">RECENT ATTEMPTS</div>'+
     (RESULTS.length?('<table><tbody>'+RESULTS.slice(0,25).map(function(r){
