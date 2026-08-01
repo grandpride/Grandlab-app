@@ -271,15 +271,17 @@ async function loadPay(mon){
   const now=new Date();
   const m=mon||ymd(now).slice(0,7);
   box.innerHTML='<div class="card"><div class="empty">Working it out...</div></div>';
-  const from=m+'-01';
-  const to=new Date(Number(m.slice(0,4)),Number(m.slice(5,7)),1).toLocaleDateString('en-CA');
+  // payroll cycle runs the 24th of the previous month to the 23rd of this one
+  const yy=Number(m.slice(0,4)), mm=Number(m.slice(5,7));
+  const from=new Date(yy,mm-2,24).toLocaleDateString('en-CA');   // 24th prev month
+  const to  =new Date(yy,mm-1,24).toLocaleDateString('en-CA');   // 24th this month (exclusive)
 
   const att=await sb.from('gl_attendance').select('*').gte('work_date',from).lt('work_date',to);
-  const jobs=await sb.from('gl_jobs').select('id,services,created_at')
+  const jobs=await sb.from('gl_jobs').select('id,services,created_at,cust_type,plate')
     .gte('created_at',Date.parse(from+'T00:00:00+08:00'))
     .lt('created_at',Date.parse(to+'T00:00:00+08:00'));
   const qc=await sb.from('gl_qc').select('job_id,result')
-    .gte('created_at',from).lt('created_at',to);
+    .gte('created_at',from+'T00:00:00+08:00').lt('created_at',to+'T00:00:00+08:00');
 
   // points come only from jobs that passed QC
   const qcMap={};
@@ -290,8 +292,11 @@ async function loadPay(mon){
   const sres=await sb.from('gl_services').select('name,category').eq('active',true);
   (sres.data||[]).forEach(function(s){svcMap[s.name]=s.category});
 
-  let pts=0, counted=0, skipped=0;
+  // workshop / showroom / boss cars do not earn points - high volume, paid late
+  const PAYS=['walkin','appointment'];
+  let pts=0, counted=0, skipped=0, company=0;
   (jobs.data||[]).forEach(function(j){
+    if(PAYS.indexOf(j.cust_type||'walkin')<0){company++;return}
     if(qcMap[j.id]!=='pass'){skipped++;return}
     counted++;
     (j.services||[]).forEach(function(s){
@@ -302,9 +307,12 @@ async function loadPay(mon){
     });
   });
 
-  const det=TEAM.filter(function(t){return t.side==='detailing'});
+  // detailing shares the points pool; QC gets the incentive only - he decides
+  // pass/fail, and points depend on passes, so a share would be a conflict
+  const paid=TEAM.filter(function(t){return t.side==='detailing'||t.side==='qc'});
   const per={};
-  det.forEach(function(t){per[t.name]={name:t.name,inc:Number(t.incentive)||150,days:0,late:0,absent:0,duty:0}});
+  paid.forEach(function(t){per[t.name]={name:t.name,side:t.side,
+    inc:Number(t.incentive)||150,days:0,late:0,absent:0,duty:0}});
   (att.data||[]).forEach(function(a){
     if(!per[a.name])return;
     if(a.status==='present'||a.status==='late')per[a.name].days++;
@@ -313,7 +321,8 @@ async function loadPay(mon){
     if(a.duty_done===false)per[a.name].duty++;
   });
 
-  const totalDays=Object.keys(per).reduce(function(a,k){return a+per[k].days},0);
+  const totalDays=Object.keys(per).reduce(function(a,k){
+    return a+(per[k].side==='detailing'?per[k].days:0)},0);
   const pool=pts*(RULES.rm_per_point||1.5);
 
   const list=Object.keys(per).map(function(k){
@@ -322,8 +331,8 @@ async function loadPay(mon){
     if(ded>p.inc)ded=p.inc;                       // cannot go below zero
     const perfect=(p.late===0&&p.absent===0&&p.duty===0&&p.days>0);
     const bonus=perfect?(RULES.perfect_bonus||0):0;
-    const share=totalDays?(pool*p.days/totalDays):0;
-    return {name:p.name,days:p.days,late:p.late,absent:p.absent,duty:p.duty,
+    const share=(p.side==='detailing'&&totalDays)?(pool*p.days/totalDays):0;
+    return {name:p.name,side:p.side,days:p.days,late:p.late,absent:p.absent,duty:p.duty,
             inc:p.inc,ded:ded,bonus:bonus,share:share,
             total:(p.inc-ded)+bonus+share};
   }).sort(function(a,b){return b.total-a.total});
@@ -331,31 +340,39 @@ async function loadPay(mon){
   const grand=list.reduce(function(a,b){return a+b.total},0);
   box.innerHTML=
    '<div class="card"><div class="row">'+
-     '<div><label>Month</label><input type="month" id="p_mon" value="'+m+'" onchange="loadPay(this.value)"></div></div>'+
+     '<div><label>Payroll month</label><input type="month" id="p_mon" value="'+m+'" onchange="loadPay(this.value)"></div></div>'+
+     '<div class="hint">Cycle: '+from+' to '+
+       new Date(new Date(to).getTime()-86400000).toLocaleDateString('en-CA')+'  (24th to 23rd)</div>'+
      '<div class="row" style="margin-top:8px">'+
        '<div><label>QC-passed jobs</label><div class="big">'+counted+'</div></div>'+
        '<div><label>Job points</label><div class="big">'+pts+'</div></div>'+
        '<div><label>Points pool</label><div class="big">'+rm(pool)+'</div></div>'+
      '</div>'+
-     (skipped?('<div class="hint">'+skipped+' job(s) not counted &mdash; no QC pass recorded.</div>'):'')+
+     '<div class="hint">Only walk-in / appointment cars earn points. '+
+       'Workshop, showroom and boss cars are excluded.</div>'+
+     (company?('<div class="hint">'+company+' company car(s) excluded this month.</div>'):'')+
+     (skipped?('<div class="hint">'+skipped+' customer job(s) not counted &mdash; no QC pass recorded.</div>'):'')+
    '</div>'+
    '<div class="card"><div class="sec">DETAILING PAYOUT</div>'+
    '<table><thead><tr><th>Staff</th><th>Days</th><th>Late</th><th>Abs</th>'+
    '<th>Incentive</th><th>Points</th><th>Total</th></tr></thead><tbody>'+
    list.map(function(r){
-     return '<tr><td>'+esc(r.name)+'</td><td>'+r.days+'</td>'+
+     return '<tr><td>'+esc(r.name)+
+       (r.side==='qc'?'<span class="hint" style="margin-left:6px">QC</span>':'')+'</td><td>'+r.days+'</td>'+
        '<td'+(r.late?' class="neg"':'')+'>'+r.late+'</td>'+
        '<td'+(r.absent?' class="neg"':'')+'>'+r.absent+'</td>'+
        '<td>'+rm(r.inc-r.ded)+(r.ded?('<span class="neg"> -'+rm(r.ded)+'</span>'):'')+
          (r.bonus?('<span style="color:var(--green)"> +'+rm(r.bonus)+'</span>'):'')+'</td>'+
-       '<td>'+rm(r.share)+'</td>'+
+       '<td>'+(r.side==='qc'?'<span style="color:var(--text2)">-</span>':rm(r.share))+'</td>'+
        '<td class="rm">'+rm(r.total)+'</td></tr>';
    }).join('')+
    '<tr><td colspan="6" class="rm">TOTAL</td><td class="rm">'+rm(grand)+'</td></tr>'+
    '</tbody></table>'+
    '<button class="btn btn2" style="margin-top:12px" onclick="payPDF()">DOWNLOAD PDF</button>'+
    '</div>';
-  box._data={month:m,list:list,pts:pts,pool:pool,counted:counted};
+  box._data={month:m,from:from,
+    toShown:new Date(new Date(to).getTime()-86400000).toLocaleDateString('en-CA'),
+    list:list,pts:pts,pool:pool,counted:counted,company:company};
 }
 
 function payPDF(){
@@ -369,8 +386,12 @@ function payPDF(){
   d.text('GRANDLAB — DETAILING PAYOUT',L,y);
   d.setFillColor(245,197,24);d.rect(L,y+2.5,R-L,1.6,'F'); y+=12;
   d.setFontSize(10);d.setFont('helvetica','normal');
-  d.text('Month: '+d0.month+'      QC-passed jobs: '+d0.counted+
-         '      Points: '+d0.pts+'      Pool: '+rm(d0.pool),L,y); y+=9;
+  d.text('Cycle: '+d0.from+' to '+d0.toShown+'      QC-passed customer jobs: '+d0.counted+
+         '      Points: '+d0.pts+'      Pool: '+rm(d0.pool),L,y); y+=6;
+  d.setFontSize(8);d.setTextColor(120);
+  d.text('Walk-in and appointment cars only. Workshop, showroom and boss cars excluded'+
+         (d0.company?(' ('+d0.company+' this month)'):'')+'.',L,y);
+  d.setFontSize(10);d.setTextColor(0); y+=8;
   const cols=[L,L+40,L+58,L+76,L+104,L+134,L+164];
   d.setFillColor(240);d.rect(L,y-4,R-L,7,'F');
   d.setFont('helvetica','bold');d.setFontSize(9);
