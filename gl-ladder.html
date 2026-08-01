@@ -76,6 +76,7 @@ td{padding:7px 4px;border-bottom:1px solid var(--border)}
 <div class="toast" id="toast"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <script>
 const SUPABASE_URL='https://eychljpzorzmaveixlnu.supabase.co';
 const SUPABASE_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV5Y2hsanB6b3J6bWF2ZWl4bG51Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2NDk2NjQsImV4cCI6MjA5NzIyNTY2NH0.6dA1zhz5ZIwf8byFB8vhfOzPI-uPPdPihEr1b8GG_oA';
@@ -191,6 +192,7 @@ async function openStaff(name){
        '<input type="date" id="a_next"></div></div>'+
    '</div>'+
    '<button class="btn" onclick="saveLevel()">SAVE ASSESSMENT</button>'+
+   ((m&&m.level_code)?('<button class="btn btn2" style="margin-top:8px" onclick="certLadder(\''+esc(name).replace(/'/g,"\\'")+'\')">DOWNLOAD CERTIFICATE</button>'):'')+
    ((h.data&&h.data.length)?('<div class="card" style="margin-top:14px"><div class="sec">HISTORY</div>'+
      '<table><tbody>'+h.data.map(function(x){
        return '<tr><td>'+dmy(x.assessed_on)+'</td><td>'+esc(x.from_level||'—')+' &rarr; <b>'+esc(x.to_level||'')+'</b></td>'+
@@ -252,6 +254,67 @@ async function saveLevel(){
   });
   toast(CUR.name+' set to '+CUR.level);
   loadTeam();
+}
+
+
+// ---------- CERTIFICATE ----------
+function certificate(opts){
+  if(!window.jspdf){toast('PDF library not loaded');return}
+  const {jsPDF}=window.jspdf;
+  const d=new jsPDF({unit:'mm',format:'a4',orientation:'landscape'});
+  const W=297,H=210;
+  d.setFillColor(8,8,8); d.rect(0,0,W,H,'F');
+  d.setDrawColor(245,197,24); d.setLineWidth(2.2); d.rect(9,9,W-18,H-18);
+  d.setLineWidth(0.4); d.rect(13,13,W-26,H-26);
+  d.setTextColor(255,255,255); d.setFont('helvetica','bold'); d.setFontSize(26);
+  d.text('GRANDLAB',W/2,36,{align:'center'});
+  d.setTextColor(245,197,24); d.setFontSize(11); d.setFont('helvetica','normal');
+  d.text('D E T A I L I N G',W/2,43,{align:'center'});
+  d.setDrawColor(245,197,24); d.setLineWidth(0.8); d.line(W/2-30,50,W/2+30,50);
+  d.setTextColor(200,200,200); d.setFontSize(13);
+  d.text(opts.kind,W/2,64,{align:'center'});
+  d.setTextColor(150,150,150); d.setFontSize(10);
+  d.text('This is to certify that',W/2,80,{align:'center'});
+  d.setTextColor(255,255,255); d.setFont('helvetica','bold'); d.setFontSize(34);
+  d.text(String(opts.name||'').toUpperCase(),W/2,96,{align:'center'});
+  d.setDrawColor(90,90,90); d.setLineWidth(0.3); d.line(W/2-70,101,W/2+70,101);
+  d.setTextColor(150,150,150); d.setFont('helvetica','normal'); d.setFontSize(10);
+  d.text(opts.lead,W/2,112,{align:'center'});
+  d.setTextColor(245,197,24); d.setFont('helvetica','bold'); d.setFontSize(19);
+  const t=d.splitTextToSize(String(opts.subject||''),200);
+  d.text(t,W/2,124,{align:'center'});
+  let y=124+t.length*8;
+  if(opts.detail){
+    d.setTextColor(190,190,190); d.setFont('helvetica','normal'); d.setFontSize(10);
+    const dt=d.splitTextToSize(opts.detail,210);
+    d.text(dt,W/2,y+2,{align:'center'}); y+=dt.length*5+4;
+  }
+  const sy=H-42;
+  d.setDrawColor(120,120,120); d.setLineWidth(0.3);
+  d.line(45,sy,110,sy); d.line(W-110,sy,W-45,sy);
+  d.setTextColor(150,150,150); d.setFont('helvetica','normal'); d.setFontSize(9);
+  d.text('Operations Manager',77,sy+6,{align:'center'});
+  d.text('Date: '+opts.date,W-77,sy+6,{align:'center'});
+  d.setTextColor(90,90,90); d.setFontSize(7.5);
+  d.text('Certificate no. '+opts.ref+'   |   GrandPride Luxury Travel Sdn Bhd (1297143-K)   |   PJS 13, Petaling Jaya',
+         W/2,H-18,{align:'center'});
+  d.save(opts.file);
+}
+function certLadder(name){
+  const m=MINE[name];
+  if(!m||!m.level_code){toast('Assess them first');return}
+  const def=LEVELS.filter(function(x){return x.code===m.level_code})[0]||{};
+  certificate({
+    kind:'CERTIFICATE OF ACHIEVEMENT',
+    name:name,
+    lead:'has been assessed and certified at the level of',
+    subject:m.level_code+'  -  '+(def.title||''),
+    detail:String(m.track||'').toUpperCase()+' track   |   Assessed '+
+      (m.assessed_on?new Date(m.assessed_on+'T00:00:00').toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}):'-'),
+    date:new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'long',year:'numeric'}),
+    ref:'GLL-'+m.level_code+'-'+String(name).replace(/[^A-Za-z0-9]/g,'').slice(0,6).toUpperCase(),
+    file:'CERT_'+String(name).replace(/[^A-Za-z0-9]+/g,'_')+'_'+m.level_code+'.pdf'
+  });
 }
 
 // ---------- LEVELS REFERENCE ----------

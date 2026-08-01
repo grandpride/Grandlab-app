@@ -78,6 +78,7 @@ td{padding:7px 4px;border-bottom:1px solid var(--border)}
 <div class="toast" id="toast"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <script>
 const SUPABASE_URL='https://eychljpzorzmaveixlnu.supabase.co';
 const SUPABASE_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV5Y2hsanB6b3J6bWF2ZWl4bG51Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2NDk2NjQsImV4cCI6MjA5NzIyNTY2NH0.6dA1zhz5ZIwf8byFB8vhfOzPI-uPPdPihEr1b8GG_oA';
@@ -210,7 +211,8 @@ function loadLearn(){
       const b=bestFor(WHO,m.code);
       const col=b?(b.passed?'var(--green)':'var(--amber)'):'var(--text2)';
       const lbl=b?(b.passed?('PASSED '+b.score+'%'):('BEST '+b.score+'%')):'NOT TAKEN';
-      const appr=(b&&b.passed&&b.approved)?' <span class="pill" style="background:var(--gold);color:#000;margin-left:4px">SIGNED</span>':'';
+      const appr=(b&&b.passed)?'<button class="pill" style="background:var(--gold);color:#000;border:none;margin-left:6px;cursor:pointer;font-family:inherit"'+
+        ' onclick="event.stopPropagation();certFor(\''+m.code+'\')">CERTIFICATE</button>':'';
       return '<div class="mrow" data-c="'+m.code+'">'+
         '<div class="nm"><div class="t">'+esc(L(m,'title'))+'</div>'+
         '<div class="s">'+esc(L(m,'summary')||'')+'</div></div>'+
@@ -360,11 +362,12 @@ async function finish(){
   const score=Math.round(CUR.right/CUR.qs.length*100);
   const pass=score>=(CUR.mod.pass_mark||80);
   const gu=await sb.auth.getUser();
-  await sb.from('gl_academy_results').insert({
+  const ins=await sb.from('gl_academy_results').insert({
     name:WHO, module_code:CUR.code, score:score, passed:pass,
     answers:CUR.answers, taken_by:gu.data.user?gu.data.user.email:''
-  });
+  }).select().maybeSingle();
   await refreshResults();
+  window.CERT={name:WHO,mod:CUR.mod,res:(ins.data||{score:score,taken_at:new Date().toISOString()})};
   el('v_learn').innerHTML=
    '<div class="card" style="text-align:center">'+
      '<div class="big" style="color:'+(pass?'var(--green)':'var(--amber)')+'">'+score+'%</div>'+
@@ -373,7 +376,8 @@ async function finish(){
      (pass?'<div class="hint" style="color:var(--green);margin-top:8px">'+esc(WHO)+' has passed '+esc(CUR.mod.title)+'</div>'
           :'<div class="hint" style="margin-top:8px">Read the module again and retake it. No limit on tries.</div>')+
    '</div>'+
-   '<button class="btn" onclick="openModule(\''+CUR.code+'\')">READ IT AGAIN</button>'+
+   (pass?'<button class="btn" onclick="certAcademy(CERT.name,CERT.mod,CERT.res)">DOWNLOAD CERTIFICATE</button>':'')+
+   '<button class="btn btn2" style="margin-top:8px" onclick="openModule(\''+CUR.code+'\')">READ IT AGAIN</button>'+
    '<button class="btn btn2" style="margin-top:8px" onclick="loadLearn()">BACK TO MODULES</button>'+
    '<div style="height:30px"></div>';
   CUR=null;
@@ -392,6 +396,92 @@ async function resetPin(){
   if(r.error){toast('Error: '+r.error.message);return}
   t.pin='1234'; t.pin_set=false;
   toast(t.name+' reset to 1234');
+}
+
+
+
+function certFor(code){
+  const m=MODS.filter(function(x){return x.code===code})[0];
+  const b=bestFor(WHO,code);
+  if(m&&b&&b.passed)certAcademy(WHO,m,b);
+}
+
+// ---------- CERTIFICATE ----------
+/* Landscape A4, GrandLab colours. Kept in English - it is a document
+   the staff member may show elsewhere. */
+function certificate(opts){
+  if(!window.jspdf){toast('PDF library not loaded');return}
+  const {jsPDF}=window.jspdf;
+  const d=new jsPDF({unit:'mm',format:'a4',orientation:'landscape'});
+  const W=297,H=210;
+
+  // border
+  d.setFillColor(8,8,8); d.rect(0,0,W,H,'F');
+  d.setDrawColor(245,197,24); d.setLineWidth(2.2); d.rect(9,9,W-18,H-18);
+  d.setLineWidth(0.4); d.rect(13,13,W-26,H-26);
+
+  // header
+  d.setTextColor(255,255,255); d.setFont('helvetica','bold'); d.setFontSize(26);
+  d.text('GRANDLAB',W/2,36,{align:'center'});
+  d.setTextColor(245,197,24); d.setFontSize(11); d.setFont('helvetica','normal');
+  d.text('D E T A I L I N G',W/2,43,{align:'center'});
+
+  d.setDrawColor(245,197,24); d.setLineWidth(0.8);
+  d.line(W/2-30,50,W/2+30,50);
+
+  d.setTextColor(200,200,200); d.setFont('helvetica','normal'); d.setFontSize(13);
+  d.text(opts.kind,W/2,64,{align:'center'});
+
+  d.setTextColor(150,150,150); d.setFontSize(10);
+  d.text('This is to certify that',W/2,80,{align:'center'});
+
+  // name
+  d.setTextColor(255,255,255); d.setFont('helvetica','bold'); d.setFontSize(34);
+  d.text(String(opts.name||'').toUpperCase(),W/2,96,{align:'center'});
+  d.setDrawColor(90,90,90); d.setLineWidth(0.3);
+  d.line(W/2-70,101,W/2+70,101);
+
+  d.setTextColor(150,150,150); d.setFont('helvetica','normal'); d.setFontSize(10);
+  d.text(opts.lead,W/2,112,{align:'center'});
+
+  // subject
+  d.setTextColor(245,197,24); d.setFont('helvetica','bold'); d.setFontSize(19);
+  const t=d.splitTextToSize(String(opts.subject||''),200);
+  d.text(t,W/2,124,{align:'center'});
+  let y=124+t.length*8;
+
+  if(opts.detail){
+    d.setTextColor(190,190,190); d.setFont('helvetica','normal'); d.setFontSize(10);
+    d.text(opts.detail,W/2,y+2,{align:'center'});
+    y+=8;
+  }
+
+  // signatures
+  const sy=H-42;
+  d.setDrawColor(120,120,120); d.setLineWidth(0.3);
+  d.line(45,sy,110,sy); d.line(W-110,sy,W-45,sy);
+  d.setTextColor(150,150,150); d.setFontSize(9);
+  d.text('Operations Manager',77,sy+6,{align:'center'});
+  d.text('Date: '+opts.date,W-77,sy+6,{align:'center'});
+
+  d.setTextColor(90,90,90); d.setFontSize(7.5);
+  d.text('Certificate no. '+opts.ref+'   |   GrandPride Luxury Travel Sdn Bhd (1297143-K)   |   PJS 13, Petaling Jaya',
+         W/2,H-18,{align:'center'});
+
+  d.save(opts.file);
+}
+
+function certAcademy(name,mod,res){
+  certificate({
+    kind:'CERTIFICATE OF COMPLETION',
+    name:name,
+    lead:'has successfully completed the module',
+    subject:mod.title,
+    detail:'Assessment score '+res.score+'%   |   Pass mark '+(mod.pass_mark||80)+'%',
+    date:new Date(res.taken_at).toLocaleDateString('en-GB',{day:'2-digit',month:'long',year:'numeric'}),
+    ref:'GLA-'+mod.code+'-'+String(res.id||'').slice(-5).padStart(5,'0'),
+    file:'CERT_'+String(name).replace(/[^A-Za-z0-9]+/g,'_')+'_'+mod.code+'.pdf'
+  });
 }
 
 // ---------- PROGRESS ----------
