@@ -848,13 +848,21 @@ async function filterDashDay(v){
     if(!inThisMonth){
       // the dashboard only loads this month, so pull the picked day on demand
       const t=$('dashTxTitle'); if(t)t.textContent='Sales overview · loading…';
-      const next=new Date(DASH_DAY+'T00:00:00'); next.setDate(next.getDate()+1);
-      const nextStr=next.toLocaleDateString('en-CA');
+      // grab a wide window then match on the effective business date in JS -
+      // a sale_date can differ from paid_at by a day or more
+      const d0=new Date(DASH_DAY+'T00:00:00');
+      const lo=new Date(d0); lo.setDate(lo.getDate()-7);
+      const hi=new Date(d0); hi.setDate(hi.getDate()+7);
       const r=await sb.from('gl_payments')
         .select('id,job_id,invoice_no,customer_name,plate,net_paid,method,paid_at,sale_date,voided,sql_invoice_no,sql_payment_no,pkg_used_id')
-        .or('sale_date.eq.'+DASH_DAY+',and(sale_date.is.null,paid_at.gte.'+DASH_DAY+'T00:00:00%2B08:00,paid_at.lt.'+nextStr+'T00:00:00%2B08:00)')
+        .gte('paid_at',lo.toISOString()).lt('paid_at',hi.toISOString())
         .order('paid_at',{ascending:false});
-      DASH_DAY_ROWS=(r.data||[]).filter(function(x){return !x.voided});
+      DASH_DAY_ROWS=(r.data||[]).filter(function(x){
+        if(x.voided)return false;
+        const eff = x.sale_date ? String(x.sale_date).slice(0,10)
+                  : new Date(x.paid_at).toLocaleDateString('en-CA');
+        return eff===DASH_DAY;
+      });
     }
   }
   const t=$('dashTxTitle');
