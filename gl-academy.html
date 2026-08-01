@@ -89,6 +89,33 @@ const GP_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJl
 const gp=supabase.createClient(GP_URL,GP_ANON,{auth:{persistSession:false,storageKey:'gp_read'}});
 
 let TEAM=[], MODS=[], RESULTS=[], WHO='', CUR=null;
+let LANG=sessionStorage.getItem('gl_acad_lang')||'en';
+const LANGS=[['en','English'],['ms','Bahasa Melayu'],['my','\u1019\u103c\u1014\u103a\u1019\u102c']];
+
+// pick the field for the current language, falling back to English
+function L(o,base){
+  if(!o)return '';
+  if(LANG!=='en'){
+    const v=o[base+'_'+LANG];
+    if(v&&(!Array.isArray(v)||v.length))return v;
+  }
+  return o[base];
+}
+function setLang(v){
+  LANG=v; sessionStorage.setItem('gl_acad_lang',v);
+  if(WHO)sb.from('gl_team').update({lang:v}).eq('name',WHO);
+  loadLearn();
+}
+function langBar(){
+  return '<div class="chipbar" style="display:flex;gap:6px;margin-bottom:10px">'+
+    LANGS.map(function(l){
+      const on=(l[0]===LANG);
+      return '<button onclick="setLang(\''+l[0]+'\')" style="flex:1;border:1px solid '+
+        (on?'var(--gold)':'var(--border)')+';background:'+(on?'var(--gold)':'var(--card2)')+
+        ';color:'+(on?'#000':'var(--text2)')+';border-radius:9px;padding:8px;font-size:12px;'+
+        'font-weight:800;cursor:pointer;font-family:inherit">'+l[1]+'</button>';
+    }).join('')+'</div>';
+}
 
 function el(id){return document.getElementById(id)}
 function toast(m){const t=el('toast');t.textContent=m;t.style.display='block';setTimeout(function(){t.style.display='none'},2400)}
@@ -168,6 +195,7 @@ function loadLearn(){
   const done=list.filter(function(m){const b=bestFor(WHO,m.code);return b&&b.passed}).length;
 
   box.innerHTML='<div class="card">'+
+    langBar()+
     '<div style="display:flex;justify-content:space-between;align-items:center">'+
       '<div><div style="font-weight:900;font-size:17px">'+esc(WHO)+'</div>'+
       '<div class="hint">'+done+' of '+list.length+' modules passed</div></div>'+
@@ -184,8 +212,8 @@ function loadLearn(){
       const lbl=b?(b.passed?('PASSED '+b.score+'%'):('BEST '+b.score+'%')):'NOT TAKEN';
       const appr=(b&&b.passed&&b.approved)?' <span class="pill" style="background:var(--gold);color:#000;margin-left:4px">SIGNED</span>':'';
       return '<div class="mrow" data-c="'+m.code+'">'+
-        '<div class="nm"><div class="t">'+esc(m.title)+'</div>'+
-        '<div class="s">'+esc(m.summary||'')+'</div></div>'+
+        '<div class="nm"><div class="t">'+esc(L(m,'title'))+'</div>'+
+        '<div class="s">'+esc(L(m,'summary')||'')+'</div></div>'+
         '<span class="pill" style="background:'+col+'22;color:'+col+';border:1px solid '+col+'66">'+lbl+'</span>'+appr+'</div>';
     }).join('')+
   '</div>';
@@ -198,6 +226,7 @@ function loadLearn(){
 // staff sign in with their own PIN so nobody can sit someone else's test
 function signInScreen(){
   el('v_learn').innerHTML='<div class="card">'+
+    langBar()+
     '<div class="sec">SIGN IN</div>'+
     '<label>Your name</label>'+
     '<select id="s_name">'+
@@ -263,9 +292,9 @@ function openModule(code){
   if(!m)return;
   el('v_learn').innerHTML=
    '<button class="btn btn2" style="margin-bottom:12px" onclick="loadLearn()">&#8592; BACK</button>'+
-   '<div class="card"><div class="sec">'+esc(m.title)+'</div>'+
-     '<div class="hint" style="margin-bottom:10px">'+esc(m.summary||'')+'</div>'+
-     '<ul class="lesson">'+(m.content||[]).map(function(c){return '<li>'+esc(c)+'</li>'}).join('')+'</ul>'+
+   '<div class="card">'+langBar()+'<div class="sec">'+esc(L(m,'title'))+'</div>'+
+     '<div class="hint" style="margin-bottom:10px">'+esc(L(m,'summary')||'')+'</div>'+
+     '<ul class="lesson">'+(L(m,'content')||[]).map(function(c){return '<li>'+esc(c)+'</li>'}).join('')+'</ul>'+
    '</div>'+
    '<button class="btn" onclick="startQuiz(\''+code+'\')">START THE TEST</button>'+
    '<div class="hint" style="text-align:center;margin-top:8px">Pass mark '+m.pass_mark+'%. You can retake it as many times as you like.</div>'+
@@ -288,9 +317,9 @@ function renderQ(){
   el('v_learn').innerHTML=
    '<div class="prog"><div style="width:'+pct+'%"></div></div>'+
    '<div class="card">'+
-     '<div class="hint">'+esc(CUR.mod.title)+' &middot; question '+(CUR.i+1)+' of '+CUR.qs.length+'</div>'+
-     '<div style="font-size:17px;font-weight:700;margin:10px 0 14px">'+esc(q.question)+'</div>'+
-     '<div id="opts">'+(q.options||[]).map(function(o,i){
+     '<div class="hint">'+esc(L(CUR.mod,'title'))+' &middot; '+(CUR.i+1)+' / '+CUR.qs.length+'</div>'+
+     '<div style="font-size:17px;font-weight:700;margin:10px 0 14px">'+esc(L(q,'question'))+'</div>'+
+     '<div id="opts">'+(L(q,'options')||[]).map(function(o,i){
        return '<div class="opt" data-i="'+i+'"><div class="k">'+String.fromCharCode(65+i)+'</div><div>'+esc(o)+'</div></div>';
      }).join('')+'</div>'+
      '<div id="fb"></div>'+
@@ -320,7 +349,7 @@ function nextQ(){
       if(k===q.answer)d.classList.add('right');
       else if(k===CUR.pick)d.classList.add('wrong');
     });
-    el('fb').innerHTML='<div class="why"><b>'+(ok?'Correct.':'Not quite.')+'</b> '+esc(q.why||'')+'</div>';
+    el('fb').innerHTML='<div class="why"><b>'+(ok?'\u2713':'\u2717')+'</b> '+esc(L(q,'why')||'')+'</div>';
     el('nextb').textContent=(CUR.i+1<CUR.qs.length)?'NEXT QUESTION':'SEE RESULT';
     return;
   }
@@ -340,7 +369,7 @@ async function finish(){
    '<div class="card" style="text-align:center">'+
      '<div class="big" style="color:'+(pass?'var(--green)':'var(--amber)')+'">'+score+'%</div>'+
      '<div style="font-size:18px;font-weight:800;margin:6px 0">'+(pass?'PASSED':'NOT YET')+'</div>'+
-     '<div class="hint">'+CUR.right+' of '+CUR.qs.length+' correct &middot; pass mark '+(CUR.mod.pass_mark||80)+'%</div>'+
+     '<div class="hint">'+CUR.right+' / '+CUR.qs.length+' &middot; '+(CUR.mod.pass_mark||80)+'%</div>'+
      (pass?'<div class="hint" style="color:var(--green);margin-top:8px">'+esc(WHO)+' has passed '+esc(CUR.mod.title)+'</div>'
           :'<div class="hint" style="margin-top:8px">Read the module again and retake it. No limit on tries.</div>')+
    '</div>'+
