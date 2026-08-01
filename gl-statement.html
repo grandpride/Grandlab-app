@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Grandlab Statements</title>
+<style>
+:root{--bg:#080808;--card:#141414;--card2:#1c1c1c;--gold:#F5C518;--text:#fff;--text2:#9a9a9a;--border:#2a2a2a;--red:#ff5252;--green:#16A34A;--amber:#D97706}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:var(--text)}
+.wrap{max-width:900px;margin:0 auto;padding:16px}
+h1{font-size:20px;font-weight:900;margin:6px 0 2px}
+h1 span{color:var(--gold)}
+.sub{color:var(--text2);font-size:12px;margin-bottom:14px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:16px;margin-bottom:14px}
+.sec{font-size:12px;font-weight:800;color:var(--gold);letter-spacing:.1em;margin-bottom:10px}
+.row{display:flex;gap:8px;margin-bottom:8px}
+.row>*{flex:1}
+label{font-size:11px;color:var(--text2);display:block;margin-bottom:4px}
+input,select{width:100%;background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:11px;color:var(--text);font-size:15px;font-family:inherit}
+.btn{display:block;width:100%;background:var(--gold);color:#000;border:none;border-radius:12px;padding:14px;font-size:15px;font-weight:800;cursor:pointer;font-family:inherit}
+.btn2{background:var(--card2);color:var(--text);border:1px solid var(--border)}
+.wrow{display:flex;align-items:center;gap:12px;padding:14px 12px;border:1px solid var(--border);border-radius:12px;margin-bottom:8px;cursor:pointer;background:var(--card2)}
+.wrow:active{border-color:var(--gold)}
+.wrow .nm{flex:1;font-weight:800;font-size:15px}
+.wrow .cnt{font-size:11px;color:var(--text2)}
+.rm{font-weight:900;color:var(--gold);white-space:nowrap}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;color:var(--text2);font-size:10px;font-weight:800;letter-spacing:.06em;padding:6px 4px;border-bottom:1px solid var(--border)}
+td{padding:8px 4px;border-bottom:1px solid var(--border);vertical-align:top}
+td.r{text-align:right;white-space:nowrap}
+.big{font-size:26px;font-weight:900;color:var(--gold)}
+.empty{text-align:center;color:var(--text2);font-size:13px;padding:22px 6px}
+.hint{font-size:11px;color:var(--text2);margin-top:6px}
+.warn{background:rgba(217,119,6,.12);border:1px solid var(--amber);color:#f5c97a;border-radius:10px;padding:10px;font-size:12px;margin:8px 0}
+.hide{display:none!important}
+#login{max-width:400px;margin:80px auto}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--gold);color:#000;padding:10px 20px;border-radius:24px;font-weight:800;font-size:14px;display:none;z-index:99}
+.tabs{display:flex;gap:6px;margin-bottom:14px}
+.tab{flex:1;padding:10px;border-radius:10px;background:var(--card2);border:1px solid var(--border);color:var(--text2);font-size:12px;font-weight:800;cursor:pointer;font-family:inherit;text-align:center}
+.tab.on{background:var(--gold);color:#000;border-color:var(--gold)}
+</style>
+</head>
+<body>
+
+<div id="login" class="card hide">
+  <div class="sec">GRANDLAB STAFF LOGIN</div>
+  <div class="row"><div><label>Email</label><input id="lg_email" type="email"></div></div>
+  <div class="row"><div><label>Password</label><input id="lg_pass" type="password"></div></div>
+  <button class="btn" onclick="doLogin()">Sign In</button>
+  <div class="hint" id="lg_err"></div>
+</div>
+
+<div class="wrap hide" id="app">
+  <a href="gl-hub.html" style="color:var(--text2);font-size:12px;text-decoration:none">&#8592; Hub</a>
+  <h1>GRAND<span>LAB</span> STATEMENTS</h1>
+  <div class="sub">Workshop &amp; showroom monthly billing</div>
+
+  <div class="tabs">
+    <button class="tab on" data-t="open" onclick="setTab('open')">OUTSTANDING</button>
+    <button class="tab" data-t="paid" onclick="setTab('paid')">SETTLED</button>
+  </div>
+
+  <div id="v_open"></div>
+  <div id="v_paid" class="hide"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+<script>
+const SUPABASE_URL='https://eychljpzorzmaveixlnu.supabase.co';
+const SUPABASE_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV5Y2hsanB6b3J6bWF2ZWl4bG51Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2NDk2NjQsImV4cCI6MjA5NzIyNTY2NH0.6dA1zhz5ZIwf8byFB8vhfOzPI-uPPdPihEr1b8GG_oA';
+const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON,{auth:{persistSession:true,autoRefreshToken:true,storageKey:'gl_auth'}});
+const SETTLE_PIN='065437';
+
+let ROWS=[], JOBS={}, CURW=null;
+
+function el(id){return document.getElementById(id)}
+function toast(m){const t=el('toast');t.textContent=m;t.style.display='block';setTimeout(function(){t.style.display='none'},2400)}
+function esc(s){return String(s==null?'':s).replace(/[<>&"]/g,function(c){return {'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]})}
+function rm(n){return 'RM'+(Number(n)||0).toFixed(2)}
+function dmy(d){ if(!d)return '-'; return new Date(d+'T00:00:00').toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'2-digit'}) }
+function bizDate(r){ return r.sale_date ? String(r.sale_date).slice(0,10)
+                    : new Date(r.created_at).toLocaleDateString('en-CA') }
+
+(async function(){
+  const s=await sb.auth.getSession();
+  if(s.data.session){el('app').classList.remove('hide');loadOpen()}else{el('login').classList.remove('hide')}
+})();
+async function doLogin(){
+  const r=await sb.auth.signInWithPassword({email:el('lg_email').value.trim(),password:el('lg_pass').value});
+  if(r.error){el('lg_err').textContent=r.error.message;return}
+  location.reload();
+}
+function setTab(t){
+  ['open','paid'].forEach(function(k){el('v_'+k).classList.toggle('hide',k!==t)});
+  Array.from(document.querySelectorAll('.tab')).forEach(function(b){b.classList.toggle('on',b.dataset.t===t)});
+  if(t==='open')loadOpen(); else loadPaid();
+}
+
+// ---------- OUTSTANDING ----------
+async function loadOpen(){
+  const box=el('v_open');
+  box.innerHTML='<div class="card"><div class="empty">Loading...</div></div>';
+  const r=await sb.from('gl_unpaid').select('*').or('settled.is.null,settled.eq.false').order('created_at');
+  if(r.error){box.innerHTML='<div class="card"><div class="empty">'+esc(r.error.message)+'</div></div>';return}
+  ROWS=r.data||[];
+  const by={};
+  ROWS.forEach(function(x){
+    const k=(x.workshop_name&&x.workshop_name.trim())?x.workshop_name.trim():(x.customer_name||'(no name)');
+    by[k]=by[k]||{name:k,n:0,amt:0,oldest:null};
+    by[k].n++; by[k].amt+=Number(x.amount_owed)||0;
+    const d=bizDate(x); if(!by[k].oldest||d<by[k].oldest)by[k].oldest=d;
+  });
+  const list=Object.keys(by).map(function(k){return by[k]}).sort(function(a,b){return b.amt-a.amt});
+  const total=list.reduce(function(a,b){return a+b.amt},0);
+  const njobs=list.reduce(function(a,b){return a+b.n},0);
+
+  box.innerHTML='<div class="card"><div class="row">'+
+    '<div><label>Outstanding</label><div class="big">'+rm(total)+'</div></div>'+
+    '<div><label>Jobs</label><div class="big">'+njobs+'</div></div>'+
+    '<div><label>Accounts</label><div class="big">'+list.length+'</div></div></div></div>'+
+    '<div class="card"><div class="sec">ACCOUNTS</div>'+
+    (list.length?list.map(function(w,i){
+      return '<div class="wrow" data-i="'+i+'">'+
+        '<div><div class="nm">'+esc(w.name)+'</div>'+
+        '<div class="cnt">'+w.n+' job'+(w.n===1?'':'s')+' &middot; oldest '+dmy(w.oldest)+'</div></div>'+
+        '<div class="rm">'+rm(w.amt)+'</div></div>';
+    }).join(''):'<div class="empty">Nothing outstanding &#10003;</div>')+'</div>';
+  Array.from(box.querySelectorAll('.wrow')).forEach(function(d,i){
+    d.onclick=function(){openStatement(list[i].name)};
+  });
+}
+
+// ---------- ONE ACCOUNT ----------
+async function openStatement(name){
+  CURW=name;
+  const mine=ROWS.filter(function(x){
+    const k=(x.workshop_name&&x.workshop_name.trim())?x.workshop_name.trim():(x.customer_name||'(no name)');
+    return k===name;
+  }).sort(function(a,b){return bizDate(a)<bizDate(b)?-1:1});
+
+  // pull the services for each job so the statement shows what was done
+  const ids=mine.map(function(x){return x.job_id}).filter(Boolean);
+  JOBS={};
+  if(ids.length){
+    const j=await sb.from('gl_jobs').select('id,services,model').in('id',ids);
+    (j.data||[]).forEach(function(x){
+      JOBS[x.id]={model:x.model,svc:(x.services||[]).map(function(s){
+        return (typeof s==='string')?s:(s&&s.desc?s.desc:'')}).filter(Boolean).join(', ')};
+    });
+  }
+  const total=mine.reduce(function(a,b){return a+(Number(b.amount_owed)||0)},0);
+  const zero=mine.filter(function(x){return !(Number(x.amount_owed)>0)}).length;
+
+  el('v_open').innerHTML=
+   '<button class="btn btn2" style="margin-bottom:12px" onclick="loadOpen()">&#8592; BACK</button>'+
+   '<div class="card"><div class="sec">'+esc(name)+'</div>'+
+     '<div class="row"><div><label>Total due</label><div class="big">'+rm(total)+'</div></div>'+
+     '<div><label>Jobs</label><div class="big">'+mine.length+'</div></div></div>'+
+     (zero?('<div class="warn">'+zero+' job(s) have a zero balance &mdash; package or voucher jobs. They appear on the statement for the record but add nothing to the total.</div>'):'')+
+   '</div>'+
+   '<div class="card"><div class="sec">JOBS</div>'+
+     '<table><thead><tr><th>Date</th><th>Invoice</th><th>Plate</th><th>Service</th><th class="r">Amount</th></tr></thead><tbody>'+
+     mine.map(function(x){
+       const j=JOBS[x.job_id]||{};
+       return '<tr><td>'+dmy(bizDate(x))+'</td><td>'+esc(x.invoice_no||'-')+'</td>'+
+         '<td>'+esc(x.plate||'-')+'</td>'+
+         '<td style="font-size:11px;color:var(--text2)">'+esc(j.svc||'')+'</td>'+
+         '<td class="r">'+rm(x.amount_owed)+'</td></tr>';
+     }).join('')+
+     '<tr><td colspan="4" class="rm">TOTAL</td><td class="r rm">'+rm(total)+'</td></tr>'+
+     '</tbody></table></div>'+
+   '<button class="btn btn2" onclick="statementPDF()">DOWNLOAD STATEMENT PDF</button>'+
+   '<button class="btn btn2" style="margin-top:8px" onclick="invoicesPDF()">DOWNLOAD ALL INVOICES (one per page)</button>'+
+   '<button class="btn" style="margin-top:8px" onclick="settleAll()">MARK WHOLE STATEMENT AS PAID</button>'+
+   '<div style="height:30px"></div>';
+  el('v_open')._mine=mine; el('v_open')._total=total;
+}
+
+// ---------- SETTLE ----------
+async function settleAll(){
+  const mine=el('v_open')._mine||[];
+  const total=el('v_open')._total||0;
+  if(!mine.length)return;
+  if(!confirm('Mark all '+mine.length+' job(s) for '+CURW+' as PAID?\n\nTotal '+rm(total)+'\n\nThis cannot be undone from here.'))return;
+  const pin=prompt('Manager PIN to settle:');
+  if(pin!==SETTLE_PIN){ if(pin!==null)toast('Wrong PIN'); return }
+  const gu=await sb.auth.getUser();
+  const ids=mine.map(function(x){return x.id});
+  const r=await sb.from('gl_unpaid').update({
+    settled:true, settled_at:new Date().toISOString(),
+    settled_by:gu.data.user?gu.data.user.email:''
+  }).in('id',ids);
+  if(r.error){toast('Error: '+r.error.message);return}
+  toast(mine.length+' job(s) settled');
+  loadOpen();
+}
+
+// ---------- SETTLED ----------
+async function loadPaid(){
+  const box=el('v_paid');
+  box.innerHTML='<div class="card"><div class="empty">Loading...</div></div>';
+  const r=await sb.from('gl_unpaid').select('*').eq('settled',true)
+    .order('settled_at',{ascending:false}).limit(300);
+  const rows=r.data||[];
+  if(!rows.length){box.innerHTML='<div class="card"><div class="empty">Nothing settled yet</div></div>';return}
+  const by={};
+  rows.forEach(function(x){
+    const k=((x.workshop_name&&x.workshop_name.trim())?x.workshop_name.trim():(x.customer_name||'?'))+
+            ' | '+(x.settled_at?new Date(x.settled_at).toLocaleDateString('en-CA'):'?');
+    by[k]=by[k]||{k:k,n:0,amt:0,when:x.settled_at,by:x.settled_by};
+    by[k].n++; by[k].amt+=Number(x.amount_owed)||0;
+  });
+  const list=Object.keys(by).map(function(k){return by[k]});
+  box.innerHTML='<div class="card"><div class="sec">SETTLED</div>'+
+    '<table><thead><tr><th>Account &amp; date</th><th>Jobs</th><th class="r">Amount</th></tr></thead><tbody>'+
+    list.map(function(x){
+      return '<tr><td>'+esc(x.k.replace(' | ',' &middot; '))+
+        '<div class="hint">'+esc((x.by||'').split('@')[0])+'</div></td>'+
+        '<td>'+x.n+'</td><td class="r rm">'+rm(x.amt)+'</td></tr>';
+    }).join('')+'</tbody></table></div>';
+}
+
+// ---------- PDFs ----------
+function pdfHead_(d,title){
+  const L=14,R=196;
+  d.setFont('helvetica','bold');d.setFontSize(14);d.setTextColor(0);
+  d.text('GRANDLAB DETAILING',L,18);
+  d.setFontSize(9);d.setFont('helvetica','normal');d.setTextColor(90);
+  d.text('GrandPride Luxury Travel Sdn Bhd (1297143-K)',L,23);
+  d.text('PJS 13, Petaling Jaya, Selangor',L,27.5);
+  d.setFillColor(245,197,24);d.rect(L,30,R-L,1.6,'F');
+  d.setTextColor(0);d.setFont('helvetica','bold');d.setFontSize(12);
+  d.text(title,L,39);
+  return 45;
+}
+function statementPDF(){
+  const mine=el('v_open')._mine||[]; const total=el('v_open')._total||0;
+  if(!window.jspdf){toast('PDF library not loaded');return}
+  const {jsPDF}=window.jspdf;
+  const d=new jsPDF({unit:'mm',format:'a4'});
+  const L=14,R=196;
+  let y=pdfHead_(d,'STATEMENT OF ACCOUNT');
+  d.setFont('helvetica','normal');d.setFontSize(10);
+  d.text('To: '+CURW,L,y); y+=5;
+  d.text('Date: '+new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}),L,y);
+  d.text('Jobs: '+mine.length,L+90,y); y+=8;
+
+  const c=[L,L+22,L+56,L+82,L+168];
+  d.setFillColor(238);d.rect(L,y-4,R-L,7,'F');
+  d.setFont('helvetica','bold');d.setFontSize(8.5);
+  ['DATE','INVOICE','PLATE','SERVICE','AMOUNT'].forEach(function(h,i){
+    d.text(h,i===4?(R-2):(c[i]+1),y,i===4?{align:'right'}:undefined);
+  });
+  y+=5; d.setFont('helvetica','normal');d.setFontSize(8.5);
+  mine.forEach(function(x){
+    if(y>276){ d.addPage(); y=20; }
+    const j=JOBS[x.job_id]||{};
+    const svc=d.splitTextToSize(String(j.svc||''),80);
+    d.text(dmy(bizDate(x)),c[0]+1,y);
+    d.text(String(x.invoice_no||'-').slice(0,16),c[1]+1,y);
+    d.text(String(x.plate||'-').slice(0,12),c[2]+1,y);
+    d.text(svc[0]||'',c[3]+1,y);
+    d.text(rm(x.amount_owed),R-2,y,{align:'right'});
+    if(svc[1]){ y+=4; d.setTextColor(120); d.text(svc.slice(1,3).join(' '),c[3]+1,y); d.setTextColor(0); }
+    y+=5.4; d.setDrawColor(222); d.line(L,y-3.6,R,y-3.6);
+  });
+  y+=5;
+  d.setFont('helvetica','bold');d.setFontSize(12);
+  d.text('TOTAL DUE',c[3]+1,y);
+  d.text(rm(total),R-2,y,{align:'right'});
+  y+=16;
+  d.setFont('helvetica','normal');d.setFontSize(8.5);d.setTextColor(110);
+  d.text('Please settle within the agreed terms. Thank you for your business.',L,y); y+=12;
+  [['PREPARED BY',L],['RECEIVED BY',L+100]].forEach(function(s){
+    d.text(s[0],s[1],y); d.setDrawColor(120); d.line(s[1],y+13,s[1]+70,y+13);
+  });
+  d.save('STATEMENT_'+CURW.replace(/[^A-Za-z0-9]+/g,'_')+'_'+new Date().toISOString().slice(0,10)+'.pdf');
+}
+
+// every job as its own invoice page, in one file
+function invoicesPDF(){
+  const mine=el('v_open')._mine||[];
+  if(!mine.length)return;
+  if(!window.jspdf){toast('PDF library not loaded');return}
+  const {jsPDF}=window.jspdf;
+  const d=new jsPDF({unit:'mm',format:'a4'});
+  const L=14,R=196;
+  mine.forEach(function(x,i){
+    if(i)d.addPage();
+    let y=pdfHead_(d,'INVOICE');
+    const j=JOBS[x.job_id]||{};
+    d.setFont('helvetica','normal');d.setFontSize(10);
+    d.text('Invoice no: '+(x.invoice_no||'-'),L,y);
+    d.text('Date: '+dmy(bizDate(x)),L+100,y); y+=6;
+    d.text('Bill to: '+CURW,L,y); y+=6;
+    d.text('Vehicle: '+(x.plate||'-')+(j.model?('  -  '+j.model):''),L,y); y+=10;
+
+    d.setFillColor(238);d.rect(L,y-4,R-L,7,'F');
+    d.setFont('helvetica','bold');d.setFontSize(9);
+    d.text('DESCRIPTION',L+1,y); d.text('AMOUNT',R-2,y,{align:'right'});
+    y+=6; d.setFont('helvetica','normal');
+    const lines=d.splitTextToSize(String(j.svc||'Service'),150);
+    lines.forEach(function(ln){ d.text(ln,L+1,y); y+=5; });
+    d.text(rm(x.amount_owed),R-2,y-5,{align:'right'});
+    y+=4; d.setDrawColor(200); d.line(L,y,R,y); y+=8;
+    if(Number(x.deposit_used)>0){
+      d.text('Less deposit',L+1,y); d.text('-'+rm(x.deposit_used),R-2,y,{align:'right'}); y+=6;
+    }
+    d.setFont('helvetica','bold');d.setFontSize(12);
+    d.text('AMOUNT DUE',L+1,y); d.text(rm(x.amount_owed),R-2,y,{align:'right'});
+    d.setFont('helvetica','normal');d.setFontSize(8);d.setTextColor(130);
+    d.text('GrandLab Detailing  -  page '+(i+1)+' of '+mine.length,L,286);
+    d.setTextColor(0);
+  });
+  d.save('INVOICES_'+CURW.replace(/[^A-Za-z0-9]+/g,'_')+'_'+new Date().toISOString().slice(0,10)+'.pdf');
+}
+</script>
+</body>
+</html>
