@@ -42,6 +42,8 @@ th{text-align:left;color:var(--text2);font-size:10px;font-weight:800;letter-spac
 td{padding:7px 4px;border-bottom:1px solid var(--border)}
 td input,td select{padding:7px;font-size:13px}
 .tot{font-weight:900;color:var(--gold)}
+.skipx{background:none;border:1px solid var(--border);color:var(--text2);border-radius:50%;width:28px;height:28px;font-size:15px;cursor:pointer;font-family:inherit;flex-shrink:0;margin-left:8px}
+.skipx:active{border-color:var(--red);color:var(--red)}
 .hide{display:none!important}
 #login{max-width:400px;margin:80px auto}
 .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--gold);color:#000;padding:10px 20px;border-radius:24px;font-weight:800;font-size:14px;display:none;z-index:99}
@@ -294,7 +296,10 @@ async function loadNew(){
   const ids=items.map(function(it){return it.job.id});
   if(ids.length){
     const c=await sb.from('gl_comm_orders').select('job_id,service_name').in('job_id',ids);
-    const seen={}; (c.data||[]).forEach(function(x){seen[x.job_id+'||'+(x.service_name||'')]=1});
+    const sk=await sb.from('gl_comm_skips').select('job_id,service_name').in('job_id',ids);
+    const seen={};
+    (c.data||[]).forEach(function(x){seen[x.job_id+'||'+(x.service_name||'')]=1});
+    (sk.data||[]).forEach(function(x){seen[x.job_id+'||'+(x.service_name||'')]=1});
     items=items.filter(function(it){return !seen[it.job.id+'||'+it.line.name]});
   }
   if(!items.length){
@@ -309,11 +314,29 @@ async function loadNew(){
         '<div class="mid"><div>'+esc(it.job.model||'')+
           (bike?' <span class="pill" style="background:var(--gold);color:#000">BIKE</span>':'')+'</div>'+
         '<div class="sub2">'+esc(it.line.name)+'</div></div>'+
-        '<div class="rm">'+rm(it.line.rate.amount)+'</div></div>';
+        '<div class="rm">'+rm(it.line.rate.amount)+'</div>'+
+        '<button class="skipx" title="Not needed">&times;</button></div>';
     }).join('')+'</div>';
   Array.from(box.querySelectorAll('.jrow')).forEach(function(d,i){
     d.onclick=function(){openForm(items[i].job,items[i].line)};
+    const x=d.querySelector('.skipx');
+    if(x)x.onclick=function(e){e.stopPropagation();skipItem(items[i],d)};
   });
+}
+
+
+// remove a film job that needs no commission (duplicate card, redo, warranty job)
+async function skipItem(it,row){
+  if(!confirm('Remove '+(it.job.plate||'')+' - '+it.line.name+' from the list?\n\nNo commission will be paid for it.'))return;
+  const gu=await sb.auth.getUser();
+  const r=await sb.from('gl_comm_skips').insert({
+    job_id:it.job.id, service_name:it.line.name,
+    staff_email:gu.data.user?gu.data.user.email:''});
+  if(r.error && r.error.code!=='23505'){toast('Could not remove');return}
+  row.remove();
+  const left=el('v_new').querySelectorAll('.jrow').length;
+  if(!left)el('v_new').innerHTML='<div class="card"><div class="sec">NEW JOBS</div><div class="empty">No film jobs waiting \u2713</div></div>';
+  toast('Removed '+(it.job.plate||''));
 }
 
 // ---------- FORM ----------
