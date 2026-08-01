@@ -26,6 +26,9 @@ select,input{width:100%;background:var(--card2);border:1px solid var(--border);b
 .tab.on{background:var(--gold);color:#000;border-color:var(--gold)}
 .mrow{display:flex;align-items:center;gap:12px;padding:13px 12px;border:1px solid var(--border);border-radius:12px;margin-bottom:8px;cursor:pointer;background:var(--card2)}
 .mrow:active{border-color:var(--gold)}
+.mrow.locked{opacity:.45;cursor:not-allowed;background:var(--card)}
+.mrow.locked:active{border-color:var(--border)}
+.lockmsg{font-size:11px;color:var(--text2);margin-top:2px}
 .mrow .nm{flex:1}
 .mrow .t{font-weight:800;font-size:15px}
 .mrow .s{font-size:11px;color:var(--text2);margin-top:2px}
@@ -92,6 +95,15 @@ const gp=supabase.createClient(GP_URL,GP_ANON,{auth:{persistSession:false,storag
 let TEAM=[], MODS=[], RESULTS=[], WHO='', CUR=null;
 let LANG=sessionStorage.getItem('gl_acad_lang')||'en';
 const LANGS=[['en','English'],['ms','Bahasa Melayu'],['my','\u1019\u103c\u1014\u103a\u1019\u102c']];
+
+
+// short phrases that follow the chosen language
+const PHRASES={
+  locked:{en:'LOCKED',ms:'BERKUNCI',my:'\u1015\u102d\u1010\u103a\u1011\u102c\u1038'},
+  lockedBy:{en:'Pass this first:',ms:'Lulus ini dahulu:',my:'\u1024\u1021\u101b\u102c\u1000\u102d\u102f \u1021\u101b\u1004\u103a\u1021\u1031\u102c\u1004\u103a\u101b\u1019\u100a\u103a -'},
+  notTaken:{en:'NOT TAKEN',ms:'BELUM AMBIL',my:'\u1019\u101c\u102f\u1015\u103a\u101b\u101e\u1031\u1038'}
+};
+function T(k){ const p=PHRASES[k]||{}; return p[LANG]||p.en||k; }
 
 // pick the field for the current language, falling back to English
 function L(o,base){
@@ -209,8 +221,20 @@ function loadLearn(){
   '<div class="card"><div class="sec">MODULES</div>'+
     list.map(function(m){
       const b=bestFor(WHO,m.code);
+      // a module is locked until the one before it has been passed
+      const req=m.requires;
+      const reqMod=req?MODS.filter(function(x){return x.code===req})[0]:null;
+      const reqDone=!req || (function(){const r=bestFor(WHO,req);return r&&r.passed})();
+      const locked=!reqDone;
+
+      if(locked){
+        return '<div class="mrow locked">'+
+          '<div class="nm"><div class="t">&#128274; '+esc(L(m,'title'))+'</div>'+
+          '<div class="lockmsg">'+esc(T('lockedBy'))+' '+esc(reqMod?L(reqMod,'title'):req)+'</div></div>'+
+          '<span class="pill" style="background:var(--border);color:var(--text2)">'+esc(T('locked'))+'</span></div>';
+      }
       const col=b?(b.passed?'var(--green)':'var(--amber)'):'var(--text2)';
-      const lbl=b?(b.passed?('PASSED '+b.score+'%'):('BEST '+b.score+'%')):'NOT TAKEN';
+      const lbl=b?(b.passed?('PASSED '+b.score+'%'):('BEST '+b.score+'%')):esc(T('notTaken'));
       const appr=(b&&b.passed)?'<button class="pill" style="background:var(--gold);color:#000;border:none;margin-left:6px;cursor:pointer;font-family:inherit"'+
         ' onclick="event.stopPropagation();certFor(\''+m.code+'\')">CERTIFICATE</button>':'';
       return '<div class="mrow" data-c="'+m.code+'">'+
@@ -221,6 +245,7 @@ function loadLearn(){
   '</div>';
 
   Array.from(box.querySelectorAll('.mrow')).forEach(function(d){
+    if(d.classList.contains('locked'))return;
     d.onclick=function(){openModule(d.dataset.c)};
   });
 }
@@ -292,6 +317,10 @@ function signOutStaff(){ WHO=''; sessionStorage.removeItem('gl_acad_who'); signI
 function openModule(code){
   const m=MODS.filter(function(x){return x.code===code})[0];
   if(!m)return;
+  if(m.requires){
+    const r=bestFor(WHO,m.requires);
+    if(!r||!r.passed){toast(T('lockedBy'));return}
+  }
   el('v_learn').innerHTML=
    '<button class="btn btn2" style="margin-bottom:12px" onclick="loadLearn()">&#8592; BACK</button>'+
    '<div class="card">'+langBar()+'<div class="sec">'+esc(L(m,'title'))+'</div>'+
