@@ -134,7 +134,7 @@ function isBike(job){
   return /\(motor\)|motorcycle|\bbike\b/i.test(job.model||'');
 }
 
-let RATES=[], TECHS=[], CUR=null, TAB='new';
+let RATES=[], TECHS=[], CUR=null, TAB='new', EDIT=null;
 
 function el(id){return document.getElementById(id)}
 function toast(m){const t=el('toast');t.textContent=m;t.style.display='block';setTimeout(function(){t.style.display='none'},2400)}
@@ -649,6 +649,9 @@ function openOrder(o,which){
    (o.notes?('<div class="card"><div class="sec">NOTES</div><div class="hint">'+esc(o.notes)+'</div></div>'):'')+
    (o.qc_flag?('<div class="warn">QC rework raised'+(o.qc_note?(': '+esc(o.qc_note)):'')+'</div>'):'')+
    '<button class="btn btn2" style="margin-bottom:8px" onclick="pdfById(\''+o.id+'\')">DOWNLOAD PDF FOR FINANCE</button>'+
+   (o.status!=='paid'
+     ? '<button class="btn btn2" style="margin-bottom:8px" onclick="editOrder(\''+o.id+'\')">EDIT THIS ORDER</button>'
+     : '')+
    (which==='pend'
      ? '<button class="btn" onclick="decide(\''+o.id+'\',\'approved\')">APPROVE</button>'+
        '<button class="btn btn2" style="margin-top:8px" onclick="decide(\''+o.id+'\',\'hold\')">PUT ON HOLD (QC / rework)</button>'
@@ -840,12 +843,133 @@ async function saveRates(){
   loadRates();
 }
 
+
+// ---------- edit a submitted order ----------
+async function editOrder(id){
+  const pin=prompt('Manager PIN to edit:');
+  if(pin!==APPROVE_PIN){ if(pin!==null)toast('Wrong PIN'); return }
+  const r=await sb.from('gl_comm_orders').select('*').eq('id',id).maybeSingle();
+  if(r.error||!r.data){toast('Could not load order');return}
+  const o=r.data;
+  const box=el(o.status==='pending'||o.status==='hold'?'v_pend':'v_done');
+
+  box.innerHTML=
+   '<button class="btn btn2" style="margin-bottom:12px" onclick="setTab(\''+
+     (o.status==='pending'||o.status==='hold'?'pend':'done')+'\')">&#8592; CANCEL</button>'+
+   '<div class="card"><div class="sec">EDIT &mdash; '+esc(o.plate||'')+'</div>'+
+     '<div class="hint">'+esc(o.service_name||'')+'</div>'+
+     '<div class="row" style="margin-top:10px">'+
+       '<div><label>Base commission RM</label><input type="number" step="10" id="e_base" value="'+(Number(o.base_amount)||0)+'"></div>'+
+       '<div><label>Timing</label><select id="e_band">'+
+         ['ontime','nextday','late'].map(function(b){
+           const lbl={ontime:'On time - 100%',nextday:'Next day - 50%',late:'Late - 0%'}[b];
+           return '<option value="'+b+'"'+(o.timing_band===b?' selected':'')+'>'+lbl+'</option>';
+         }).join('')+'</select></div>'+
+     '</div>'+
+     '<div class="row">'+
+       '<div><label>Start</label><input type="datetime-local" id="e_start" value="'+dtLocal(o.start_at)+'"></div>'+
+       '<div><label>End</label><input type="datetime-local" id="e_end" value="'+dtLocal(o.end_at)+'"></div>'+
+     '</div>'+
+     '<div class="row"><div><label>Notes</label><input id="e_notes" value="'+esc(o.notes||'')+'"></div></div>'+
+   '</div>'+
+   '<div class="card"><div class="sec">SPLIT</div>'+
+     '<table><thead><tr><th>Staff</th><th style="width:96px">Team</th><th style="width:70px">%</th>'+
+     '<th style="width:84px">Amount</th><th style="width:28px"></th></tr></thead>'+
+     '<tbody id="e_people"></tbody></table>'+
+     '<button class="btn btn2" style="margin-top:10px" onclick="eAdd()">+ ADD STAFF</button>'+
+     '<div id="e_check"></div>'+
+     '<div style="display:flex;justify-content:space-between;margin-top:12px;font-weight:900">'+
+       '<span>TOTAL PAYOUT</span><span class="tot" id="e_total">RM0.00</span></div>'+
+   '</div>'+
+   '<button class="btn" onclick="saveEdit(\''+id+'\')">SAVE CHANGES</button>'+
+   '<div style="height:30px"></div>';
+
+  EDIT={id:id,people:(o.splits||[]).map(function(s){
+    return {name:s.name,role:s.role,pct:Number(s.pct)||0};
+  })};
+  ['e_base','e_band','e_start','e_end'].forEach(function(k){
+    el(k).addEventListener('change',eCalc);
+  });
+  eRender();
+}
+function dtLocal(iso){
+  if(!iso)return '';
+  const d=new Date(iso);
+  return new Date(d.getTime()+8*3600000).toISOString().slice(0,16);
+}
+function eAdd(){ EDIT.people.push({name:'',role:'junior',pct:0}); eRender(); }
+function eRm(i){ EDIT.people.splice(i,1); eRender(); }
+function eSet(i,k,v){ EDIT.people[i][k]=(k==='pct')?Number(v):v; eCalc(); }
+function eRender(){
+  el('e_people').innerHTML=EDIT.people.map(function(p,i){
+    return '<tr>'+
+      '<td><select onchange="eSet('+i+',\'name\',this.value)"><option value="">-</option>'+
+        TECHS.map(function(t){return '<option'+(t===p.name?' selected':'')+'>'+esc(t)+'</option>'}).join('')+'</select></td>'+
+      '<td><select onchange="eSet('+i+',\'role\',this.value)">'+
+        '<option value="senior"'+(p.role==='senior'?' selected':'')+'>Senior</option>'+
+        '<option value="junior"'+(p.role==='junior'?' selected':'')+'>Junior</option></select></td>'+
+      '<td><input type="number" min="0" max="100" value="'+p.pct+'" onchange="eSet('+i+',\'pct\',this.value)"></td>'+
+      '<td class="rm" id="eamt_'+i+'">RM0.00</td>'+
+      '<td><button style="border:none;background:none;color:var(--red);cursor:pointer;font-size:16px" onclick="eRm('+i+')">&times;</button></td>'+
+    '</tr>';
+  }).join('');
+  eCalc();
+}
+function eCalc(){
+  const base=Number(el('e_base').value)||0;
+  const band=el('e_band').value;
+  const f=band==='ontime'?1:band==='nextday'?0.5:0;
+  const pool=base*f;
+  const sen=EDIT.people.filter(function(p){return p.role==='senior'&&p.name});
+  const jun=EDIT.people.filter(function(p){return p.role==='junior'&&p.name});
+  let sPool=pool*SENIOR_POOL, jPool=pool*JUNIOR_POOL;
+  if(!sen.length&&jun.length){jPool=pool;sPool=0}
+  if(!jun.length&&sen.length){sPool=pool;jPool=0}
+  let total=0;
+  EDIT.people.forEach(function(p,i){
+    const list=p.role==='senior'?sen:jun;
+    const tp=p.role==='senior'?sPool:jPool;
+    const amt=(p.name&&list.length)?(tp*(Number(p.pct)||0)/100):0;
+    p.amount=+amt.toFixed(2); total+=p.amount;
+    const c=el('eamt_'+i); if(c)c.textContent=rm(amt);
+  });
+  el('e_total').textContent=rm(total);
+  EDIT.pool=pool; EDIT.factor=f; EDIT.band=band; EDIT.base=base;
+  const sp=sen.reduce(function(a,b){return a+(Number(b.pct)||0)},0);
+  const jp=jun.reduce(function(a,b){return a+(Number(b.pct)||0)},0);
+  let msg='';
+  if(sen.length&&sp!==100)msg+='Senior total '+sp+'%. ';
+  if(jun.length&&jp!==100)msg+='Junior total '+jp+'%. ';
+  el('e_check').innerHTML=msg?('<div class="warn">'+msg+'should be 100%</div>')
+                             :'<div class="ok">Split adds up correctly.</div>';
+}
+async function saveEdit(id){
+  const named=EDIT.people.filter(function(p){return p.name});
+  if(!named.length){toast('Add at least one staff member');return}
+  const r=await sb.from('gl_comm_orders').update({
+    base_amount:EDIT.base, timing_band:EDIT.band, timing_factor:EDIT.factor,
+    payout_pool:EDIT.pool, splits:named,
+    start_at:el('e_start').value?new Date(el('e_start').value).toISOString():null,
+    end_at:el('e_end').value?new Date(el('e_end').value).toISOString():null,
+    notes:el('e_notes').value.trim()
+  }).eq('id',id);
+  if(r.error){toast('Error: '+r.error.message);return}
+  toast('Order updated');
+  setTab('pend');
+}
+
 // ---------- REPORT ----------
-async function loadReport(){
+async function loadReport(mon){
   const box=el('v_report');
   const now=new Date();
-  const from=new Date(now.getFullYear(),now.getMonth(),1).toISOString();
-  const r=await sb.from('gl_comm_orders').select('*').gte('created_at',from);
+  const m=mon||new Date(now.getTime()+8*3600000).toISOString().slice(0,7);
+  // same 24th-to-23rd cycle used for payroll
+  const yy=Number(m.slice(0,4)), mm=Number(m.slice(5,7));
+  const fromD=new Date(yy,mm-2,24), toD=new Date(yy,mm-1,24);
+  const from=fromD.toLocaleDateString('en-CA'), to=toD.toLocaleDateString('en-CA');
+  const r=await sb.from('gl_comm_orders').select('*')
+    .gte('created_at',from+'T00:00:00+08:00').lt('created_at',to+'T00:00:00+08:00')
+    .order('created_at');
   const rows=r.data||[];
   const per={};
   let paid=0, held=0, jobs=rows.length;
@@ -861,9 +985,12 @@ async function loadReport(){
     });
   });
   const list=Object.keys(per).map(function(k){return per[k]}).sort(function(a,b){return b.amt-a.amt});
-  const mon=now.toLocaleString('en-MY',{month:'long',year:'numeric'});
-  box.innerHTML='<div class="card"><div class="sec">'+mon.toUpperCase()+'</div>'+
-    '<div class="row"><div><label>Film jobs</label><div class="big">'+jobs+'</div></div>'+
+  box.innerHTML='<div class="card">'+
+    '<div class="row"><div><label>Commission month</label>'+
+      '<input type="month" id="rp_mon" value="'+m+'" onchange="loadReport(this.value)"></div></div>'+
+    '<div class="hint">Cycle: '+from+' to '+
+      new Date(toD.getTime()-86400000).toLocaleDateString('en-CA')+'  (24th to 23rd)</div>'+
+    '<div class="row" style="margin-top:8px"><div><label>Film jobs</label><div class="big">'+jobs+'</div></div>'+
     '<div><label>Commission</label><div class="big">'+rm(paid)+'</div></div>'+
     '<div><label>On hold</label><div class="big" style="color:var(--red)">'+rm(held)+'</div></div></div></div>'+
     '<div class="card"><div class="sec">BY STAFF</div>'+
@@ -872,7 +999,70 @@ async function loadReport(){
         return '<tr><td>'+esc(p.name)+'</td><td>'+p.jobs+'</td><td class="rm">'+rm(p.amt)+'</td>'+
         '<td style="color:var(--red)">'+(p.hold?rm(p.hold):'-')+'</td></tr>';
       }).join('')+'</tbody></table>'):'<div class="empty">No commission this month yet</div>')+
+    (rows.length?'<button class="btn btn2" style="margin-top:12px" onclick="monthPDF()">DOWNLOAD MONTHLY PDF FOR FINANCE</button>':'')+
     '</div>';
+  box._data={month:m,from:from,toShown:new Date(toD.getTime()-86400000).toLocaleDateString('en-CA'),
+             rows:rows,list:list,paid:paid,held:held,jobs:jobs};
+}
+
+// one PDF for the whole month, so finance gets a single sheet
+function monthPDF(){
+  const d0=el('v_report')._data; if(!d0)return;
+  if(!window.jspdf){toast('PDF library not loaded');return}
+  const {jsPDF}=window.jspdf;
+  const d=new jsPDF({unit:'mm',format:'a4'});
+  const L=14,R=196;
+  let y=18;
+  d.setFont('helvetica','bold');d.setFontSize(13);
+  d.text('GRANDLAB — FILM COMMISSION, MONTHLY SUMMARY',L,y);
+  d.setFillColor(245,197,24);d.rect(L,y+2.5,R-L,1.6,'F'); y+=11;
+  d.setFontSize(10);d.setFont('helvetica','normal');
+  d.text('Cycle: '+d0.from+' to '+d0.toShown+'      Jobs: '+d0.jobs+
+         '      Payable: '+rm(d0.paid)+'      On hold: '+rm(d0.held),L,y); y+=9;
+
+  // per staff
+  d.setFont('helvetica','bold');d.setFontSize(10);d.text('BY STAFF',L,y);y+=5;
+  const c1=[L,L+70,L+110,L+155];
+  d.setFillColor(240);d.rect(L,y-4,R-L,7,'F');
+  d.setFontSize(9);
+  ['STAFF','JOBS','COMMISSION','ON HOLD'].forEach(function(h,i){d.text(h,c1[i]+1,y)});
+  y+=5; d.setFont('helvetica','normal');
+  d0.list.forEach(function(p){
+    d.text(String(p.name),c1[0]+1,y);
+    d.text(String(p.jobs),c1[1]+1,y);
+    d.text(rm(p.amt),c1[2]+1,y);
+    d.text(p.hold?rm(p.hold):'-',c1[3]+1,y);
+    y+=6; d.setDrawColor(210); d.line(L,y-4,R,y-4);
+  });
+  y+=6;
+
+  // per job
+  d.setFont('helvetica','bold');d.setFontSize(10);d.text('BY JOB',L,y);y+=5;
+  const c2=[L,L+26,L+92,L+120,L+142,L+168];
+  d.setFillColor(240);d.rect(L,y-4,R-L,7,'F');
+  d.setFontSize(8);
+  ['PLATE','SERVICE','STAFF','TIMING','STATUS','TOTAL'].forEach(function(h,i){d.text(h,c2[i]+1,y)});
+  y+=5; d.setFont('helvetica','normal');
+  d0.rows.forEach(function(o){
+    if(y>272){d.addPage();y=20}
+    const tot=(o.splits||[]).reduce(function(a,b){return a+Number(b.amount||0)},0);
+    d.text(String(o.plate||'-').slice(0,12),c2[0]+1,y);
+    d.text(d.splitTextToSize(String(o.service_name||''),62)[0]||'',c2[1]+1,y);
+    d.text(d.splitTextToSize((o.splits||[]).map(function(s){return s.name}).join(', '),24)[0]||'',c2[2]+1,y);
+    d.text(String(o.timing_band||'').slice(0,8),c2[3]+1,y);
+    d.text(String(o.status||'').toUpperCase().slice(0,8),c2[4]+1,y);
+    d.setFont('helvetica','bold'); d.text(rm(tot),c2[5]+1,y); d.setFont('helvetica','normal');
+    y+=5.6; d.setDrawColor(225); d.line(L,y-4,R,y-4);
+  });
+  y+=6;
+  d.setFont('helvetica','bold');d.setFontSize(11);
+  d.text('TOTAL PAYABLE',c2[3]+1,y); d.text(rm(d0.paid),c2[5]+1,y);
+  y+=18;
+  d.setFont('helvetica','normal');d.setFontSize(9);d.setTextColor(110);
+  [['PREPARED BY',L],['FINANCE',L+60],['APPROVED BY',L+120]].forEach(function(s){
+    d.text(s[0],s[1],y); d.setDrawColor(120); d.line(s[1],y+13,s[1]+48,y+13);
+  });
+  d.save('COMMISSION_'+d0.month+'.pdf');
 }
 </script>
 </body>
