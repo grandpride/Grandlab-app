@@ -1163,6 +1163,36 @@ async function jcTypeFromModel(model){
       .eq('active',true).ilike('name','%'+ml+'%').not('type','is',null).limit(1);
     if(data&&data.length&&data[0].type){ jcSetType(data[0].type); return; }
   }catch(e){}
+  // 4) spacing/punctuation-insensitive match.
+  //    Imported gl_walkin models are spaced inconsistently - "911 GT2RS" vs the
+  //    DB's "911 GT2 RS" - and passes 1-3 all match on literal text, so a single
+  //    missing space defeats them. Fetch only models sharing the first token
+  //    (bounded, avoids the 1000-row cap) and compare with all non-alphanumerics
+  //    stripped from both sides.
+  try{
+    const norm=x=>String(x||'').toLowerCase().replace(/[^a-z0-9]/g,'');
+    const target=norm(m);
+    // prefix from the NORMALISED text, not the first word: "911GT2RS" typed with
+    // no spaces at all would otherwise produce the prefix "911GT2RS" and match
+    // nothing. Two chars keeps DB names that space early ("X5 M") reachable.
+    const pref=target.slice(0,2);
+    if(target.length>=3 && pref.length===2){
+      const {data}=await sb.from('gl_car_models').select('name,type')
+        .eq('active',true).not('type','is',null).ilike('name',pref+'%').limit(400);
+      if(data&&data.length){
+        let best=null;
+        data.forEach(row=>{
+          const n=norm(row.name);
+          if(n.length<3) return;
+          let score=0;
+          if(n===target) score=9999;                                   // exact once normalised
+          else if(target.startsWith(n)||n.startsWith(target)) score=Math.min(n.length,target.length);
+          if(score && (!best||score>best.score)) best={row,score};
+        });
+        if(best&&best.score>=3){ jcSetType(best.row.type); return; }
+      }
+    }
+  }catch(e){}
 }
 
 /* Look up customer by PLATE (when phone unknown). Debounced from plate field. */
