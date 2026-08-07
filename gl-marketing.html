@@ -441,18 +441,54 @@ async function saveCounts(){
 }
 
 /* ---------- DASHBOARD ---------- */
+/* Two imports of the SAME campaign covering overlapping periods are the same
+   money counted twice - e.g. a 1-17 Jul partial export plus the 1-31 Jul full
+   month. Both rows are kept on file, but only the widest non-overlapping set
+   is ever summed. Longest period wins; anything overlapping it is ignored. */
+function pkSpan_(r){
+  const a=new Date(r.period_start), b=new Date(r.period_end);
+  return (b-a)/86400000;
+}
+function dedupImports_(rows){
+  const byCamp={};
+  (rows||[]).forEach(r=>{
+    const k=String(r.campaign_name||'').toLowerCase();
+    (byCamp[k]=byCamp[k]||[]).push(r);
+  });
+  const keep=[];
+  Object.keys(byCamp).forEach(k=>{
+    const sorted=byCamp[k].slice().sort((a,b)=>{
+      const d=pkSpan_(b)-pkSpan_(a);
+      if(d) return d;
+      return (Number(b.spend)||0)-(Number(a.spend)||0);   // tie: richer row wins
+    });
+    const kept=[];
+    sorted.forEach(r=>{
+      const rs=new Date(r.period_start), re=new Date(r.period_end);
+      const clash=kept.some(x=> new Date(x.period_end)>=rs && new Date(x.period_start)<=re );
+      if(!clash) kept.push(r);
+    });
+    keep.push.apply(keep,kept);
+  });
+  return keep;
+}
+/* ids of rows that are being ignored as superseded, for the list UI */
+function supersededIds_(){
+  const kept=new Set(dedupImports_(IMPORTS).map(r=>r.id));
+  return new Set((IMPORTS||[]).filter(r=>!kept.has(r.id)).map(r=>r.id));
+}
 function spendForMonth(ym){
-  // sum imported spend whose period overlaps this month
+  // sum imported spend whose period overlaps this month, ignoring superseded rows
   const [y,m]=ym.split('-').map(Number);
   const mStart=new Date(y,m-1,1), mEnd=new Date(y,m,0);
   let spend=0, clicks=0, messaged=0;
-  IMPORTS.forEach(r=>{
+  const rows=IMPORTS.filter(r=>{
     const ps=new Date(r.period_start), pe=new Date(r.period_end);
-    if(pe>=mStart && ps<=mEnd){ // overlaps this month
-      // only count registered campaigns
-      const reg=CAMPAIGNS.some(c=>c.name.toLowerCase()===String(r.campaign_name).toLowerCase());
-      if(reg){ spend+=Number(r.spend)||0; clicks+=Number(r.clicks)||0; messaged+=Number(r.results)||0; }
-    }
+    if(!(pe>=mStart && ps<=mEnd)) return false;
+    return CAMPAIGNS.some(c=>c.name.toLowerCase()===String(r.campaign_name).toLowerCase());
+  });
+  dedupImports_(rows).forEach(r=>{
+    spend+=Number(r.spend)||0; clicks+=Number(r.clicks)||0; messaged+=Number(r.results)||0;
   });
   return {spend,clicks,messaged};
 }
@@ -619,12 +655,16 @@ async function commitImport(){
 function renderSpendList(){
   const box=$('spendList'); if(!box) return;
   if(!IMPORTS.length){ box.innerHTML='<div class="empty">No spend imported yet.</div>'; return; }
-  box.innerHTML=IMPORTS.map(r=>`<div class="lead">
+  const sup=supersededIds_();
+  box.innerHTML=IMPORTS.map(r=>{
+    const dead=sup.has(r.id);
+    return `<div class="lead" style="${dead?'opacity:.45':''}">
     <div class="lead-top"><div>
-      <div class="lead-name">${esc(r.campaign_name)}</div>
+      <div class="lead-name">${esc(r.campaign_name)}${dead?' <span style="font-size:11px;font-weight:700;color:#e0a000;border:1px solid #6a5200;border-radius:9px;padding:1px 7px;vertical-align:middle">NOT COUNTED</span>':''}</div>
       <div class="lead-meta">${esc(r.period_start)} → ${esc(r.period_end)}</div>
       <div class="lead-meta">RM${Number(r.spend).toFixed(2)} · ${r.clicks} clicks · ${r.results} ${esc(r.result_type||'results')}</div>
-    </div></div></div>`).join('');
+      ${dead?'<div class="lead-meta" style="color:#e0a000">Covered by a longer import of the same campaign — excluded from totals so spend isn\'t counted twice.</div>':''}
+    </div></div></div>`;}).join('');
 }
 
 /* ---------- render all ---------- */
@@ -656,7 +696,7 @@ function genReport(period){
         const lab=(cp.short_label||'').toLowerCase(), nm=cp.name.toLowerCase();
         return b==='ppf' ? (lab.includes('ppf')||nm.includes('ppf')) : (lab.includes('tint')||nm.includes('tint'));
       }).map(cp=>cp.name.toLowerCase());
-      const imps=IMPORTS.filter(r=>matchNames.includes(String(r.campaign_name).toLowerCase()) && overlapsMonth(r,YM));
+      const imps=dedupImports_(IMPORTS.filter(r=>matchNames.includes(String(r.campaign_name).toLowerCase()) && overlapsMonth(r,YM)));
       if(imps.length){ bSpend=imps.reduce((a,r)=>a+ (+r.spend||0),0); bClicks=imps.reduce((a,r)=>a+(+r.clicks||0),0); bMsg=imps.reduce((a,r)=>a+(+r.results||0),0); }
     }
     return {b,label:meta[b],s,g,o,t,bSpend,bClicks,bMsg};
