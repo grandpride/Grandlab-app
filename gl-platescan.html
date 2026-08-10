@@ -997,13 +997,27 @@ async function loadExistingPkgs(){
       seen[norm(p.service_name)]=true;
       EXIST_PKGS.push({src:'gl_packages',id:p.id,name:p.service_name,bal,raw:p}); });
   }catch(e){}
-  // 2) gl_walkin simple pkg fields — only if NOT already in gl_packages (legacy rows)
+  // 2) gl_walkin simple pkg fields — only if NOT already in gl_packages (legacy rows).
+  //    pkg_name carries its count inline ("Cancoat Coating Maintenance (4 left)")
+  //    and can hold two packages at once ("A (3 left) + B (9 left)"), while
+  //    gl_packages stores the bare service name. Comparing the raw strings never
+  //    matched, so a migrated car listed the same balance twice. Split the name
+  //    into its parts and check each one against what gl_packages already showed.
   try{
     if(CUR&&CUR.walkinId){
       const {data}=await sb.from('gl_walkin').select('id,pkg_name,pkg_total,pkg_used').eq('id',CUR.walkinId).maybeSingle();
-      if(data&&data.pkg_name&&!seen[norm(data.pkg_name)]){ const bal=(data.pkg_total||0)-(data.pkg_used||0);
-        seen[norm(data.pkg_name)]=true;
-        EXIST_PKGS.push({src:'gl_walkin',id:data.id,name:data.pkg_name,bal,raw:data}); }
+      if(data&&data.pkg_name){
+        const parts=[]; const re=/([^()+]+?)\s*\((\d+)\s*left\)/g; let mm;
+        while((mm=re.exec(data.pkg_name))!==null) parts.push({name:mm[1].trim(), bal:parseInt(mm[2],10)||0});
+        if(parts.length){
+          parts.forEach(pt=>{ if(pt.bal>0 && !seen[norm(pt.name)]){ seen[norm(pt.name)]=true;
+            EXIST_PKGS.push({src:'gl_walkin',id:data.id,name:pt.name,bal:pt.bal,raw:data}); } });
+        } else if(!seen[norm(data.pkg_name)]){
+          const bal=(data.pkg_total||0)-(data.pkg_used||0);
+          seen[norm(data.pkg_name)]=true;
+          EXIST_PKGS.push({src:'gl_walkin',id:data.id,name:data.pkg_name,bal,raw:data});
+        }
+      }
     }
   }catch(e){}
   // 3) gl_pending (unclaimed) — only if NOT already shown above
