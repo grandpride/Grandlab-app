@@ -1224,10 +1224,38 @@ async function _doPlateLookup(){
   }else{
     // not in profiles — check gl_walkin by plate
     const {data:wk}=await sb.from('gl_walkin').select('*').ilike('plate',plate).limit(1).maybeSingle();
-    if(wk) fillFromWalkin_(wk);
+    if(wk){
+      fillFromWalkin_(wk);
+      // fillFromWalkin_ only fills blanks, which is right for a first lookup but
+      // wrong here: changing the plate means a different car, so the model and
+      // type must follow it instead of keeping the previous car's values.
+      if(wk.model) $('f_model').value=wk.model;
+      if(wk.car_type) jcSetType(wk.car_type);
+      else { $('f_cartype').value=''; jcTypeFromModel(wk.model); }
+      syncCarSelToPlate_(plate);
+    }
   }
   // packages are keyed by plate now — load them regardless of member/walk-in
   await loadCustPackages();
+}
+/* Keep the car dropdown in step with the plate field. Without this the selector
+   kept displaying a different car (its first option) beside the typed plate. */
+function syncCarSelToPlate_(plate){
+  const sel=$('f_carsel'); if(!sel) return;
+  const norm=x=>String(x||'').toUpperCase().replace(/\s+/g,'');
+  const P=norm(plate);
+  let matched=false;
+  Array.from(sel.options).forEach(o=>{
+    const val=o.value;
+    let cp='';
+    if(/^w\d+$/.test(val)){ const c=WALKIN_CARS[parseInt(val.slice(1),10)]; cp=c?norm(c.plate):''; }
+    else if(val!=='__new__'){ const c=(CUST_CARS||[]).find(x=>String(x.id)===val); cp=c?norm(c.plate):''; }
+    if(cp && cp===P){ o.selected=true; matched=true; } else { o.selected=false; }
+  });
+  if(!matched){
+    const na=Array.from(sel.options).find(o=>o.value==='__new__');
+    if(na) na.selected=true;
+  }
 }
 function onCarSel(){
   const v=$('f_carsel').value;
