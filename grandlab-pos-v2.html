@@ -1782,6 +1782,9 @@ async function addItem(){
   $('catModal').classList.add('show');
   setTimeout(()=>$('catSearch').focus(),50);
 }
+/* true  = buying a package on a service day uses one straight away (10 sold -> 9 left)
+   false = the customer keeps the full count and today's service is included */
+const PKG_COUNT_TODAY=true;
 let CAT_TAB='__all';
 function renderCatTabs(){
   const cats=[];
@@ -2258,6 +2261,35 @@ async function confirmPay(){
         }
       }
     }
+    // A package sold at the till has to create the balance it entitles the
+    // customer to. Without this the sale is recorded and nothing is redeemable,
+    // so the balance had to be keyed in by hand afterwards - or was forgotten.
+    try{
+      const created=[];
+      for(const it of jobServices(CUR)){
+        const nm=svcDesc(it);
+        if(!nm) continue;
+        const {data:cat}=await sb.from('gl_services')
+          .select('name,is_package,pkg_uses,pkg_type')
+          .eq('is_package',true).ilike('name',nm).limit(1).maybeSingle();
+        if(!cat || !cat.pkg_uses || cat.pkg_uses<1) continue;   // "Balance ..." rows carry no uses
+        const plate=(CUR.plate||'').toString().trim().toUpperCase();
+        if(!plate) continue;
+        // today's service is use 1, so the customer leaves with pkg_uses-1
+        const {data:ins,error:insErr}=await sb.from('gl_packages').insert({
+          owner_id: CUR.customer_id||null,
+          vehicle_label: plate,
+          service_name: cat.name,
+          total_uses: cat.pkg_uses,
+          used_uses: PKG_COUNT_TODAY?1:0,
+          status:'active',
+          source:'pos'
+        }).select().maybeSingle();
+        if(insErr) throw insErr;
+        if(ins) created.push(cat.name+' · '+(cat.pkg_uses-(PKG_COUNT_TODAY?1:0))+' left');
+      }
+      if(created.length) setTimeout(()=>toast('Package created: '+created.join(', ')),600);
+    }catch(e){ alert('Package balance NOT created: '+(e.message||e)+'\nAdd it manually in Plate Scanner.'); }
     // decrement stock for any tracked products in this order
     try{
       const prodLines=jobServices(CUR).filter(x=>x._prodId);
