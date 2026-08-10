@@ -50,11 +50,8 @@ button,input{font-family:inherit}
 .btn-mini i{font-size:15px}
 
 /* tabs */
-.tabs{display:flex;gap:6px;padding:10px 16px 0;min-width:0}
-.tab{flex:1 1 0;min-width:0;background:var(--surface2);border:1px solid var(--line);border-radius:10px 10px 0 0;padding:9px 6px;font-size:12px;font-weight:800;color:var(--ink2);cursor:pointer;text-align:center;border-bottom:none;display:flex;align-items:center;justify-content:center;gap:5px;white-space:nowrap;overflow:hidden}
-.tab .lab{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.tab i{flex-shrink:0}
-.tab .cnt{flex-shrink:0}
+.tabs{display:flex;gap:6px;padding:10px 16px 0}
+.tab{flex:1;background:var(--surface2);border:1px solid var(--line);border-radius:10px 10px 0 0;padding:9px 8px;font-size:12.5px;font-weight:800;color:var(--ink2);cursor:pointer;text-align:center;border-bottom:none;display:flex;align-items:center;justify-content:center;gap:6px}
 .tab.on{background:var(--surface);color:var(--ink);box-shadow:0 -2px 6px rgba(16,20,30,.04)}
 .tab .cnt{background:var(--gold);color:var(--ink-on-gold);font-size:10px;font-weight:800;border-radius:20px;padding:1px 6px;min-width:16px}
 .tab.on .cnt{}
@@ -309,53 +306,6 @@ button,input{font-family:inherit}
   @page{size:A4;margin:12mm}
 }
 </style>
-
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script>
-/* ===== GRANDLAB ACCESS GUARD =====
-   Who may open this page is set in the GrandPride Staff Manager (gp_staff.apps).
-   admin@grandpride.com always has full access. */
-(function(){
-  var APP_KEY = 'pos';
-  var GP_URL='https://iefevjkeckysdluzazeq.supabase.co';
-  var GP_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImllZmV2amtlY2t5c2RsdXphemVxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEwODI1MTMsImV4cCI6MjA5NjY1ODUxM30.xVqifxHta7rPtxf0hh1C4_rexhwWQhaiOxEzVr_oM5k';
-  var MASTER=['admin@grandpride.com'];
-
-  function deny(msg){
-    document.documentElement.innerHTML =
-      '<body style="background:#080808;color:#fff;font-family:-apple-system,Segoe UI,sans-serif;'+
-      'display:flex;align-items:center;justify-content:center;height:100vh;margin:0;text-align:center">'+
-      '<div style="max-width:340px;padding:26px;border:1px solid #2a2a2a;border-radius:16px;background:#141414">'+
-      '<div style="font-size:34px">&#128274;</div>'+
-      '<div style="font-weight:900;font-size:17px;margin:10px 0;color:#F5C518">NO ACCESS</div>'+
-      '<div style="font-size:13px;color:#9a9a9a;line-height:1.5">'+msg+'</div>'+
-      '<a href="gl-hub.html" style="display:block;margin-top:18px;background:#F5C518;color:#000;'+
-      'padding:12px;border-radius:10px;font-weight:800;text-decoration:none">BACK TO HUB</a>'+
-      '</div></body>';
-  }
-
-  window.GL_GUARD = (async function(){
-    try{
-      var gl = supabase.createClient(
-        'https://eychljpzorzmaveixlnu.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV5Y2hsanB6b3J6bWF2ZWl4bG51Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2NDk2NjQsImV4cCI6MjA5NzIyNTY2NH0.6dA1zhz5ZIwf8byFB8vhfOzPI-uPPdPihEr1b8GG_oA',
-        {auth:{persistSession:true,autoRefreshToken:true,storageKey:'gl_auth'}});
-      var s = await gl.auth.getSession();
-      if(!s.data.session) return;                       // not signed in yet - the page handles login
-      var email = (s.data.session.user.email||'').toLowerCase();
-      if(MASTER.indexOf(email)>=0) return;              // master key
-      var gp = supabase.createClient(GP_URL, GP_ANON, {auth:{persistSession:false,storageKey:'gp_read'}});
-      var r = await gp.from('gp_staff').select('name,apps').ilike('email',email).maybeSingle();
-      if(r.error||!r.data){ deny('This login is not in the staff list. Ask the manager to add you.'); return; }
-      var apps = r.data.apps;
-      if(typeof apps==='string'){ try{apps=JSON.parse(apps)}catch(e){apps=[]} }
-      if(!Array.isArray(apps)) apps=[];
-      if(apps.indexOf(APP_KEY)<0){
-        deny('Hi '+(r.data.name||'')+', you do not have access to this app.<br><br>Ask the manager to enable it in Staff Manager.');
-      }
-    }catch(e){ /* if the check itself fails, do not lock anyone out */ }
-  })();
-})();
-</script>
 </head>
 <body>
 
@@ -390,10 +340,10 @@ button,input{font-family:inherit}
     <div>
       <div class="panel">
         <div class="tabs">
-          <div class="tab" id="tabDash" onclick="switchTab('dash')"><i class="ti ti-chart-pie"></i> <span class="lab">Dashboard</span></div>
-          <div class="tab on" id="tabReady" onclick="switchTab('ready')"><i class="ti ti-receipt"></i> <span class="lab">Ready</span> <span class="cnt" id="cntReady">0</span></div>
-          <div class="tab" id="tabHold" onclick="switchTab('hold')"><i class="ti ti-player-pause"></i> <span class="lab">On-hold</span> <span class="cnt" id="cntHold">0</span></div>
-          <div class="tab" id="tabSql" onclick="switchTab('sql')"><i class="ti ti-file-invoice"></i> <span class="lab">SQL keying</span> <span class="cnt" id="cntSql">0</span></div>
+          <div class="tab" id="tabDash" onclick="switchTab('dash')"><i class="ti ti-chart-pie"></i> Dashboard</div>
+          <div class="tab on" id="tabReady" onclick="switchTab('ready')"><i class="ti ti-receipt"></i> Ready <span class="cnt" id="cntReady">0</span></div>
+          <div class="tab" id="tabHold" onclick="switchTab('hold')"><i class="ti ti-player-pause"></i> On-hold <span class="cnt" id="cntHold">0</span></div>
+          <div class="tab" id="tabSql" onclick="switchTab('sql')"><i class="ti ti-file-invoice"></i> SQL keying <span class="cnt" id="cntSql">0</span></div>
         </div>
         <div class="panel-h">
           <span class="ttl"><i class="ti ti-list-check"></i> <span id="listTitle">Ready to bill</span></span>
@@ -850,10 +800,9 @@ async function loadDashboard(){
     }).join(''):'<div class="status">No payments this month yet.</div>'}
 
     <div class="dash-sec" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
-      <span id="dashTxTitle">Sales overview · this month</span>
+      <span>Sales overview · this month</span>
       <div style="display:flex;gap:6px;align-items:center">
-        <input type="date" id="dashRepDate" value="${DASH_DAY||''}" onchange="filterDashDay(this.value)" title="Filter the list to one day" style="padding:6px 8px;border:1px solid var(--line2);border-radius:8px;font-family:inherit;font-size:12px">
-        <button class="btn-mini" onclick="filterDashDay('')" title="Show the whole month"><i class="ti ti-x"></i> All</button>
+        <input type="date" id="dashRepDate" value="${new Date().toLocaleDateString('en-CA')}" style="padding:6px 8px;border:1px solid var(--line2);border-radius:8px;font-family:inherit;font-size:12px">
         <input type="number" id="dashOpenBal" placeholder="Opening RM" step="0.01" style="width:100px;padding:6px 8px;border:1px solid var(--line2);border-radius:8px;font-family:inherit;font-size:12px" title="Cash opening balance">
         <button class="btn-mini" style="background:#25D366;color:#fff;border-color:#25D366" onclick="sendSettlementWA()"><i class="ti ti-brand-whatsapp"></i> Settlement</button>
         <button class="btn-mini" onclick="downloadDashReport()"><i class="ti ti-file-type-pdf"></i> Day report</button>
@@ -861,8 +810,8 @@ async function loadDashboard(){
       </div>
     </div>
     <div class="dash-tx-wrap">
-      ${(()=>{const _rows=dashRows_();return _rows.length?`<table class="dash-tx"><thead><tr><th>Date</th><th>Customer</th><th>Plate</th><th>Method</th><th style="text-align:right">Amount</th><th></th></tr></thead><tbody>
-      ${_rows.map((r,i)=>`<tr>
+      ${DASH_TX.length?`<table class="dash-tx"><thead><tr><th>Date</th><th>Customer</th><th>Plate</th><th>Method</th><th style="text-align:right">Amount</th><th></th></tr></thead><tbody>
+      ${DASH_TX.map((r,i)=>`<tr>
         <td>${(r.sale_date?new Date(r.sale_date+'T00:00:00'):new Date(r.paid_at)).toLocaleDateString('en-MY',{day:'2-digit',month:'short'})}</td>
         <td class="dcust" title="${esc(titleCase(r.customer_name||'—'))}">${esc(titleCase(r.customer_name||'—'))}</td>
         <td>${esc(r.plate||'—')}</td>
@@ -870,65 +819,11 @@ async function loadDashboard(){
         <td style="text-align:right;font-weight:700">${RM(r.net_paid)}</td>
         <td class="acts" style="text-align:right;white-space:nowrap"><button class="dash-edit" onclick="openEditTx(${i})" title="Edit"><i class="ti ti-edit"></i></button> <button class="dash-edit" onclick="waTxReceipt(${i})" title="Send receipt on WhatsApp" style="color:#128C7E"><i class="ti ti-brand-whatsapp"></i></button> <button class="dash-edit" onclick="printTxReceipt(${i})" title="Receipt PDF"><i class="ti ti-receipt"></i></button> <button class="dash-edit" onclick="printTxJobOrder(${i})" title="Job Order PDF"><i class="ti ti-file-invoice"></i></button> <button class="dash-del" onclick="deleteTx(${i})" title="Delete / redo"><i class="ti ti-trash"></i></button></td>
       </tr>`).join('')}
-      </tbody></table>`:`<div class="status">No transactions ${DASH_DAY?('on '+DASH_DAY):'this month'}.</div>`})()}
+      </tbody></table>`:'<div class="status">No transactions this month.</div>'}
     </div>
     <button class="btn-mini" style="margin-top:14px" onclick="loadDashboard()"><i class="ti ti-refresh"></i> Refresh</button>
     <button class="btn-mini" style="margin-top:14px;margin-left:8px" onclick="openBackfill()"><i class="ti ti-tag"></i> Backfill sources</button>`;
 }
-
-// Sales overview list: show the whole month, or one picked day.
-let DASH_DAY='', DASH_DAY_ROWS=null;
-function dashRows_(){
-  if(!DASH_DAY)return DASH_TX;
-  if(DASH_DAY_ROWS)return DASH_DAY_ROWS;   // day outside this month, fetched separately
-  return DASH_TX.filter(function(r){
-    const d=r.sale_date?String(r.sale_date).slice(0,10)
-           :new Date(r.paid_at).toLocaleDateString('en-CA');
-    return d===DASH_DAY;
-  });
-}
-async function filterDashDay(v){
-  DASH_DAY=v||'';
-  DASH_DAY_ROWS=null;
-  if(DASH_DAY){
-    const inThisMonth = DASH_DAY.slice(0,7)===new Date().toLocaleDateString('en-CA').slice(0,7);
-    if(!inThisMonth){
-      // the dashboard only loads this month, so pull the picked day on demand
-      const t=$('dashTxTitle'); if(t)t.textContent='Sales overview · loading…';
-      // grab a wide window then match on the effective business date in JS -
-      // a sale_date can differ from paid_at by a day or more
-      const d0=new Date(DASH_DAY+'T00:00:00');
-      const lo=new Date(d0); lo.setDate(lo.getDate()-7);
-      const hi=new Date(d0); hi.setDate(hi.getDate()+7);
-      const r=await sb.from('gl_payments')
-        .select('id,job_id,invoice_no,customer_name,plate,net_paid,method,paid_at,sale_date,voided,sql_invoice_no,sql_payment_no,pkg_used_id')
-        .gte('paid_at',lo.toISOString()).lt('paid_at',hi.toISOString())
-        .order('paid_at',{ascending:false});
-      DASH_DAY_ROWS=(r.data||[]).filter(function(x){
-        if(x.voided)return false;
-        const eff = x.sale_date ? String(x.sale_date).slice(0,10)
-                  : new Date(x.paid_at).toLocaleDateString('en-CA');
-        return eff===DASH_DAY;
-      });
-    }
-  }
-  const t=$('dashTxTitle');
-  if(t)t.textContent=DASH_DAY
-    ? ('Sales overview · '+new Date(DASH_DAY+'T00:00:00').toLocaleDateString('en-GB',{weekday:'short',day:'2-digit',month:'short'}))
-    : 'Sales overview · this month';
-  const keep=DASH_DAY_ROWS;
-  await loadDashboard();      // rebuilds the panel
-  DASH_DAY_ROWS=keep;
-  if(keep)renderDashTable_();
-}
-// redraw just the transactions table after an out-of-month fetch
-function renderDashTable_(){
-  const t=$('dashTxTitle');
-  if(t)t.textContent=DASH_DAY
-    ? ('Sales overview · '+new Date(DASH_DAY+'T00:00:00').toLocaleDateString('en-GB',{weekday:'short',day:'2-digit',month:'short'}))
-    : 'Sales overview · this month';
-}
-
 function dashChart_(perDay,maxDay,days){
   const W=Math.max(320, days*18), H=140, pad=22, bw=Math.max(6,(W-pad)/days-4);
   let bars='';

@@ -15,6 +15,13 @@ h1 span{color:var(--gold)}
 .card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:16px;margin-bottom:14px}
 .sec{font-size:12px;font-weight:800;color:var(--gold);letter-spacing:.1em;margin-bottom:10px}
 .row{display:flex;gap:8px;margin-bottom:8px}
+.dnav{display:flex;gap:8px;align-items:stretch}
+.dnav input[type=date]{flex:1;min-width:0;cursor:pointer}
+.dbtn{flex:none;background:#1c1c1e;color:#eee;border:1px solid #333;border-radius:12px;
+  padding:0 16px;font-size:15px;font-weight:800;cursor:pointer;font-family:inherit}
+.dbtn:hover{background:#262629}
+.dtoday{color:#000;background:var(--gold);border-color:var(--gold);font-size:13px;letter-spacing:.5px}
+.dwd{margin:6px 2px 10px;font-size:13px;color:#9a9a93}
 .row>*{flex:1}
 label{font-size:11px;color:var(--text2);display:block;margin-bottom:4px}
 input,select,textarea{width:100%;background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:11px;color:var(--text);font-size:15px;font-family:inherit}
@@ -147,6 +154,11 @@ const SUPABASE_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON,{auth:{persistSession:true,autoRefreshToken:true,storageKey:'gl_auth'}});
 
 const PAYROLL_START='2026-08-01';   // first day the incentive scheme applies
+/* QC gate. true  = only jobs with a recorded QC pass earn points (the design).
+                false = every walk-in/appointment job earns points.
+   Off for now: gl_qc has no records, so the gate was silently zeroing the whole
+   detailing pool. Flip back to true once QC checks are actually being recorded. */
+const QC_GATE=false;
 const STATUSES=[['present','PRESENT'],['late','LATE'],['absent','ABSENT'],['excused','MC / NOTICE'],['off','OFF DAY']];
 let TEAM=[], RULES={}, PTS={cat:{},name:{}}, DAY={}, TAB='day';
 
@@ -262,7 +274,15 @@ async function loadDay(d){
     }).join('');
   };
   box.innerHTML='<div class="card">'+
-    '<div class="row"><div><label>Date</label><input type="date" id="d_date" value="'+date+'" onchange="loadDay(this.value)"></div></div>'+
+    '<div><label>Date</label>'+
+      '<div class="dnav">'+
+        '<button type="button" class="dbtn" onclick="shiftDay(-1)" title="Previous day">&#9664;</button>'+
+        '<input type="date" id="d_date" value="'+date+'" onchange="loadDay(this.value)" onclick="openPicker(this)">'+
+        '<button type="button" class="dbtn" onclick="shiftDay(1)" title="Next day">&#9654;</button>'+
+        '<button type="button" class="dbtn dtoday" onclick="loadDay(ymd(new Date()))">TODAY</button>'+
+      '</div>'+
+      '<div class="dwd">'+dayLabel(date)+'</div>'+
+    '</div>'+
     block(det,'DETAILING TEAM')+block(others,'FILM / QC')+
     '<button class="btn" style="margin-top:14px" onclick="saveDay()">SAVE DAY</button>'+
     '<button class="btn btn2" style="margin-top:8px" onclick="allPresent()">MARK EVERYONE PRESENT</button>'+
@@ -281,6 +301,35 @@ function setField(name,f,v){
 function allPresent(){
   TEAM.forEach(function(t){ DAY[t.name]={name:t.name,status:'present',late_min:0,duty_done:true} });
   loadDayRefresh();
+}
+/* Date navigation. Attendance is nearly always today or yesterday, so arrows
+   beat opening a calendar; the field itself still opens the native picker. */
+function openPicker(inp){ try{ inp.showPicker(); }catch(e){} }
+function shiftDay(n){
+  const cur=(el('d_date')&&el('d_date').value)||ymd(new Date());
+  const p=cur.split('-').map(Number);
+  const d=new Date(p[0],p[1]-1,p[2]);
+  d.setDate(d.getDate()+n);
+  loadDay(ymd(d));
+}
+function shiftMon(n){
+  const cur=(el('p_mon')&&el('p_mon').value)||ymd(new Date()).slice(0,7);
+  const y=Number(cur.slice(0,4)), mo=Number(cur.slice(5,7));
+  const d=new Date(y,mo-1+n,1);
+  loadPay(d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'));
+}
+function dayLabel(dstr){
+  const p=String(dstr||'').split('-').map(Number);
+  if(p.length!==3||!p[0]) return '';
+  const d=new Date(p[0],p[1]-1,p[2]);
+  const wd=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][d.getDay()];
+  const t=ymd(new Date()), y=new Date(); y.setDate(y.getDate()-1);
+  let tag='';
+  if(dstr===t) tag=' &middot; today';
+  else if(dstr===ymd(y)) tag=' &middot; yesterday';
+  // Sunday is the rest day - flag it so a whole team doesn't get marked absent
+  const rest=(d.getDay()===0)?' &middot; <b style="color:var(--gold)">REST DAY</b>':'';
+  return wd+tag+rest;
 }
 function loadDayRefresh(){
   const date=el('d_date').value;
@@ -351,7 +400,10 @@ async function loadPay(mon){
   let pts=0, counted=0, skipped=0, company=0;
   (jobs.data||[]).forEach(function(j){
     if(PAYS.indexOf(j.cust_type||'walkin')<0){company++;return}
-    if(qcMap[j.id]!=='pass'){skipped++;return}
+    if(QC_GATE && qcMap[j.id]!=='pass'){skipped++;return}
+    // gate off: a recorded REWORK still earns nothing - that part is not a gate,
+    // it is the whole point of tracking rework
+    if(!QC_GATE && qcMap[j.id]==='rework'){skipped++;return}
     counted++;
     (j.services||[]).forEach(function(s){
       const nm=(typeof s==='string')?s:(s&&s.desc?s.desc:'');
@@ -393,20 +445,28 @@ async function loadPay(mon){
 
   const grand=list.reduce(function(a,b){return a+b.total},0);
   box.innerHTML=
-   '<div class="card"><div class="row">'+
-     '<div><label>Payroll month</label><input type="month" id="p_mon" value="'+m+'" onchange="loadPay(this.value)"></div></div>'+
+   '<div class="card">'+
+     '<div><label>Payroll month</label>'+
+       '<div class="dnav">'+
+         '<button type="button" class="dbtn" onclick="shiftMon(-1)" title="Previous month">&#9664;</button>'+
+         '<input type="month" id="p_mon" value="'+m+'" onchange="loadPay(this.value)" onclick="openPicker(this)">'+
+         '<button type="button" class="dbtn" onclick="shiftMon(1)" title="Next month">&#9654;</button>'+
+         '<button type="button" class="dbtn dtoday" onclick="loadPay(ymd(new Date()).slice(0,7))">THIS MONTH</button>'+
+       '</div>'+
+     '</div>'+
      (from===PAYROLL_START?'<div class="hint" style="color:var(--gold)">First cycle &mdash; scheme starts '+PAYROLL_START+'</div>':'')+
      '<div class="hint">Cycle: '+from+' to '+
        new Date(new Date(to).getTime()-86400000).toLocaleDateString('en-CA')+'  (24th to 23rd)</div>'+
      '<div class="row" style="margin-top:8px">'+
-       '<div><label>QC-passed jobs</label><div class="big">'+counted+'</div></div>'+
+       '<div><label>'+(QC_GATE?'QC-passed jobs':'Jobs counted')+'</label><div class="big">'+counted+'</div></div>'+
        '<div><label>Job points</label><div class="big">'+pts+'</div></div>'+
        '<div><label>Points pool</label><div class="big">'+rm(pool)+'</div></div>'+
      '</div>'+
      '<div class="hint">Only walk-in / appointment cars earn points. '+
        'Workshop, showroom and boss cars are excluded.</div>'+
      (company?('<div class="hint">'+company+' company car(s) excluded this month.</div>'):'')+
-     (skipped?('<div class="hint">'+skipped+' customer job(s) not counted &mdash; no QC pass recorded.</div>'):'')+
+     (skipped?('<div class="hint">'+skipped+' customer job(s) not counted &mdash; '+(QC_GATE?'no QC pass recorded.':'marked as rework.')+'</div>'):'')+
+     (QC_GATE?'':'<div class="hint" style="color:var(--gold)">QC gate OFF &mdash; all walk-in / appointment jobs earn points, QC pass not required.</div>')+
    '</div>'+
    '<div class="card"><div class="sec">DETAILING PAYOUT</div>'+
    '<table><thead><tr><th>Staff</th><th>Days</th><th>Late</th><th>Abs</th>'+
