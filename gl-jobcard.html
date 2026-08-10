@@ -1097,9 +1097,13 @@ async function _doLookup(){
         const sel=$('f_carsel');
         if(sel){
           const chosen=car?norm(car.plate):'';
+          // When a plate was typed that matches none of the known cars, select
+          // "+ Add new car" instead of letting the browser default to the first
+          // option - that showed one car's model beside another car's plate.
+          const newSel=(!car && typedPlate)?' selected':'';
           sel.innerHTML=wkCars.map((c,i)=>
             `<option value="w${i}"${norm(c.plate)===chosen?' selected':''}>${esc([c.model].filter(Boolean).join(' '))} · ${esc(c.plate||'')}</option>`
-          ).join('')+'<option value="__new__">+ Add new car</option>';
+          ).join('')+`<option value="__new__"${newSel}>+ Add new car</option>`;
         }
       }
     }catch(e){}
@@ -1242,19 +1246,62 @@ function onCarSel(){
   const c=CUST_CARS.find(x=>x.id===v);
   if(c){ $('f_model').value=[c.make,c.model].filter(Boolean).join(' '); $('f_plate').value=c.plate||''; loadCustPackages(); }
 }
+/* mirrors gl_is_coating() in the DB - coating packages are per-CAR, everything
+   else (Bathe Essence and friends) is a per-CUSTOMER pool */
+function isCoatingPkg_(name){ return /(coat|maintenance|mohs|cancoat|infinite|matte|ppf)/i.test(name||''); }
+
 async function loadCustPackages(){
-  const plate=($('f_plate').value||'').trim().toUpperCase();
+  const plate=($('f_plate').value||'').trim().toUpperCase().replace(/\s+/g,'');
   const owner=foundProfile?foundProfile.id:null;
-  if(!plate && !owner){ $('pkgChips').innerHTML=''; CAR_PACKAGES=[]; return; }
-  let q=sb.from('gl_packages').select('*').eq('status','active');
-  if(plate && owner) q=q.or(`vehicle_label.ilike.${plate},owner_id.eq.${owner}`);
-  else if(plate) q=q.ilike('vehicle_label',plate);
-  else q=q.eq('owner_id',owner);
-  const {data}=await q;
-  let pk=(data||[]).map(p=>({...p,remaining:(p.total_uses||0)-(p.used_uses||0)})).filter(p=>p.remaining>0);
+  const digits=($('f_hp').value||'').replace(/[^0-9]/g,'');
+  const core=digits.replace(/^60/,'').replace(/^0/,'');
+  if(!plate && !owner && !core){ $('pkgChips').innerHTML=''; CAR_PACKAGES=[]; return; }
+  const norm=x=>String(x||'').toUpperCase().replace(/\s+/g,'');
+
+  // every plate this customer owns - a shared package sits on whichever car it
+  // was sold against, so looking only at the car in front of us misses it
+  let plates=[];
+  if(plate) plates.push(plate);
+  try{
+    if(core.length>=7){
+      const {data:wk}=await sb.from('gl_walkin').select('plate,phone').ilike('phone','%'+core).limit(100);
+      (wk||[]).forEach(r=>{
+        const rc=String(r.phone||'').replace(/[^0-9]/g,'').replace(/^60/,'').replace(/^0/,'');
+        if(rc===core && r.plate) plates.push(norm(r.plate));
+      });
+    }
+  }catch(e){}
+  (WALKIN_CARS||[]).forEach(c=>{ if(c.plate) plates.push(norm(c.plate)); });
+  (CUST_CARS||[]).forEach(c=>{ if(c.plate) plates.push(norm(c.plate)); });
+  plates=[...new Set(plates.filter(Boolean))];
+
+  let rows=[];
+  try{
+    if(plates.length){
+      const {data}=await sb.from('gl_packages').select('*').eq('status','active')
+        .or(plates.map(pl=>`vehicle_label.ilike.${pl}`).join(','));
+      rows=rows.concat(data||[]);
+    }
+    if(owner){
+      const {data}=await sb.from('gl_packages').select('*').eq('status','active').eq('owner_id',owner);
+      rows=rows.concat(data||[]);
+    }
+  }catch(e){}
+
+  const byId={}; rows.forEach(r=>{ byId[r.id]=r; });
+  const pk=Object.values(byId)
+    .map(p=>({...p,remaining:(p.total_uses||0)-(p.used_uses||0)}))
+    .filter(p=>p.remaining>0)
+    // coating stays tied to its own car; shared packages travel with the customer
+    .filter(p=>!isCoatingPkg_(p.service_name) || !plate || norm(p.vehicle_label)===plate)
+    .sort((a,b)=>(norm(b.vehicle_label)===plate)-(norm(a.vehicle_label)===plate));
+
   CAR_PACKAGES=pk;
   if(!CAR_PACKAGES.length){ $('pkgChips').innerHTML=''; return; }
-  $('pkgChips').innerHTML=CAR_PACKAGES.map((p,i)=>`<div class="chip" onclick="usePkg('${p.id}')">🎟️ ${esc(p.service_name)} · ${p.remaining} left</div>`).join('');
+  $('pkgChips').innerHTML=CAR_PACKAGES.map(p=>{
+    const other=(plate && norm(p.vehicle_label)!==plate)?` <span style="opacity:.7">(${esc(p.vehicle_label||'')})</span>`:'';
+    return `<div class="chip" onclick="usePkg('${p.id}')">🎟️ ${esc(p.service_name)} · ${p.remaining} left${other}</div>`;
+  }).join('');
 }
 
 /* ---------- PHOTOS (ImgBB -> Supabase urls) ---------- */

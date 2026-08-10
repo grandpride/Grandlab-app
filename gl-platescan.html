@@ -1041,11 +1041,14 @@ function renderExistingPkgs(){
 }
 async function delExistPkg(i){
   const p=EXIST_PKGS[i]; if(!p) return;
-  if(!confirm('Delete this balance?\n'+(p.name||'')+' ('+p.bal+' left)\nThis removes it so you can add a fresh one.')) return;
+  if(!confirm('Remove this balance?\n'+(p.name||'')+' ('+p.bal+' left)\nIt stops showing so you can add a fresh one.')) return;
   try{
     let ok=false;
     if(p.src==='gl_packages'){
-      const {data,error}=await sb.from('gl_packages').delete().eq('id',p.id).select();
+      // Cancel rather than hard-delete. A mis-tap here used to destroy the row
+      // outright with no undo, and every query filters on status='active', so
+      // cancelling hides it just the same while keeping a record.
+      const {data,error}=await sb.from('gl_packages').update({status:'cancelled'}).eq('id',p.id).select();
       if(error) throw error;
       ok=!!(data&&data.length);
     } else if(p.src==='gl_pending'){
