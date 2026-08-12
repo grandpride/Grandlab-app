@@ -1394,10 +1394,10 @@ function collectJob(){
     customer_id:foundProfile?foundProfile.id:null,
     vehicle_id:(function(){
       const v=$('f_carsel')?$('f_carsel').value:'';
-      // walk-in cars use synthetic ids (w0, w1, …) and have no gl_vehicles row —
-      // vehicle_id is a uuid column, so only save real vehicle ids.
-      if(!v || v==='__new__' || /^w\d+$/.test(v)) return null;
-      return v;
+      // vehicle_id is a uuid column. Synthetic ids are used for cars with no
+      // gl_vehicles row - walk-ins as w0/w1, boss cars as "b_PLATE|MODEL" -
+      // so accept only a real uuid rather than blacklisting each prefix.
+      return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v) ? v : null;
     })(),
     booking_id:EDITING&&EDITING.booking_id?EDITING.booking_id:null,
     cust_type:CUR_TYPE, tier:foundProfile?foundProfile.tier:null, is_new:!foundProfile,
