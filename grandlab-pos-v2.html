@@ -746,7 +746,7 @@ async function loadDashboard(){
   // this year's payments for the totals; this month's full rows for chart + table
   const [{data:yRows,error:e1},{data:mRows,error:e2},{data:unpaidRows},{data:depRows}] = await Promise.all([
     sb.from('gl_payments').select('net_paid,method,paid_at,sale_date,voided').gte('paid_at',startYear.toISOString()),
-    sb.from('gl_payments').select('id,job_id,invoice_no,customer_name,plate,net_paid,method,paid_at,sale_date,voided,sql_invoice_no,sql_payment_no,pkg_used_id').gte('paid_at',startMonth.toISOString()).order('paid_at',{ascending:false}),
+    sb.from('gl_payments').select('id,job_id,invoice_no,customer_name,plate,net_paid,method,paid_at,sale_date,voided,sql_invoice_no,sql_payment_no,pkg_used_id,pkg_used_ids').gte('paid_at',startMonth.toISOString()).order('paid_at',{ascending:false}),
     sb.from('gl_unpaid').select('amount').then(r=>r).catch(()=>({data:[]})),
     sb.from('gl_jobs').select('dep_amt,status').gte('dep_amt',0.01).then(r=>r).catch(()=>({data:[]}))
   ]);
@@ -1016,14 +1016,16 @@ function bfFlash(jobId,ok){
 
 async function deleteTx(i){
   const r=DASH_TX[i]; if(!r) return;
-  const willRestore = !!r.pkg_used_id;
+  const restoreIds = Array.isArray(r.pkg_used_ids)&&r.pkg_used_ids.length
+      ? r.pkg_used_ids : (r.pkg_used_id!=null?[r.pkg_used_id]:[]);
+  const willRestore = restoreIds.length>0;
   if(!confirm('Delete this sale for '+(r.customer_name||'customer')+' ('+RM(r.net_paid)+')?\n\n'
     +(willRestore?'The package balance used will be added back. ':'')
     +'The job will be reopened so you can redo it, and its row on the sheet will be cleared.')) return;
-  // restore the package visit if this sale used one (so redo won't double-deduct)
-  if(r.pkg_used_id){
+  // restore every package visit this sale used (so a redo won't double-deduct)
+  for(const pid of restoreIds){
     try{
-      const {data:pk}=await sb.from('gl_packages').select('id,used_uses').eq('id',r.pkg_used_id).maybeSingle();
+      const {data:pk}=await sb.from('gl_packages').select('id,used_uses').eq('id',pid).maybeSingle();
       if(pk && (pk.used_uses||0)>0){
         await sb.from('gl_packages').update({used_uses:pk.used_uses-1}).eq('id',pk.id);
       }
@@ -1510,6 +1512,62 @@ function pkgCoverBreakdown_(){
   });
   return out;
 }
+/* Deduct one use from every selected package. Shared by the paid and unpaid
+   paths - previously only the paid path did this, so a package redeemed on an
+   unpaid bill was delivered without the balance ever moving. Returns the ids
+   actually decremented, for the audit trail. */
+async function applyPkgDeductions_(){
+  const ids=[];
+  if(PAY.voucher) return ids;
+  for(const pkg of selectedPkgs_()){
+    if(pkg.id){
+      const {data:pk}=await sb.from('gl_packages').select('id,total_uses,used_uses')
+        .eq('id',pkg.id).maybeSingle();
+      if(pk && (pk.total_uses-pk.used_uses)>0){
+        await sb.from('gl_packages').update({used_uses:(pk.used_uses||0)+1}).eq('id',pk.id);
+        ids.push(pk.id);
+      }
+    } else {
+      // per-customer pool (coating per-car, Bathe Essence shared by phone)
+      try{
+        await sb.rpc('gl_deduct_package',{
+          p_phone:(CUR.hp||CUR.phone||'').toString(),
+          p_plate:(CUR.plate||''),
+          p_service:pkg.service_name||''
+        });
+      }catch(e){ /* non-fatal: don't block the sale */ }
+    }
+  }
+  return ids;
+}
+
+/* Create the balance a newly-sold package entitles the customer to. */
+async function createSoldPackages_(){
+  const created=[];
+  for(const it of jobServices(CUR)){
+    const nm=svcDesc(it);
+    if(!nm) continue;
+    const {data:cat}=await sb.from('gl_services')
+      .select('name,is_package,pkg_uses,pkg_type')
+      .eq('is_package',true).ilike('name',nm).limit(1).maybeSingle();
+    if(!cat || !cat.pkg_uses || cat.pkg_uses<1) continue;   // "Balance ..." rows carry no uses
+    const plate=(CUR.plate||'').toString().trim().toUpperCase();
+    if(!plate) continue;
+    const {data:ins,error:insErr}=await sb.from('gl_packages').insert({
+      owner_id: CUR.customer_id||null,
+      vehicle_label: plate,
+      service_name: cat.name,
+      total_uses: cat.pkg_uses,
+      used_uses: PKG_COUNT_TODAY?1:0,
+      status:'active',
+      source:'pos'
+    }).select().maybeSingle();
+    if(insErr) throw insErr;
+    if(ins) created.push(cat.name+' - '+(cat.pkg_uses-(PKG_COUNT_TODAY?1:0))+' left');
+  }
+  return created;
+}
+
 function pkgCoverAmount_(){
   return Math.round(pkgCoverBreakdown_().reduce((a,b)=>a+b.amount,0)*100)/100;
 }
@@ -2238,56 +2296,11 @@ async function confirmPay(){
       const {error}=await sb.rpc('gl_deduct_points',{p_customer:CUR.customer_id,p_points:PAY.pointsUsed});
       if(error) throw new Error('Points: '+error.message);
     }
-    if(!PAY.voucher){
-      // one use deducted per selected package
-      for(const pkg of selectedPkgs_()){
-        if(pkg.id){
-          // specific package row selected -> deduct it directly
-          const {data:pk}=await sb.from('gl_packages').select('id,total_uses,used_uses')
-            .eq('id',pkg.id).maybeSingle();
-          if(pk && (pk.total_uses-pk.used_uses)>0){
-            await sb.from('gl_packages').update({used_uses:(pk.used_uses||0)+1}).eq('id',pk.id);
-          }
-        } else {
-          // per-customer package (no single id) -> deduct from the shared pool
-          // via the RPC (coating per-car, Bathe Essence shared by phone).
-          try{
-            await sb.rpc('gl_deduct_package',{
-              p_phone:(CUR.hp||CUR.phone||'').toString(),
-              p_plate:(CUR.plate||''),
-              p_service:pkg.service_name||''
-            });
-          }catch(e){ /* non-fatal: don't block the sale */ }
-        }
-      }
-    }
+    const PAID_PKG_IDS = await applyPkgDeductions_();
     // A package sold at the till has to create the balance it entitles the
-    // customer to. Without this the sale is recorded and nothing is redeemable,
-    // so the balance had to be keyed in by hand afterwards - or was forgotten.
+    // customer to. Without this the sale is recorded and nothing is redeemable.
     try{
-      const created=[];
-      for(const it of jobServices(CUR)){
-        const nm=svcDesc(it);
-        if(!nm) continue;
-        const {data:cat}=await sb.from('gl_services')
-          .select('name,is_package,pkg_uses,pkg_type')
-          .eq('is_package',true).ilike('name',nm).limit(1).maybeSingle();
-        if(!cat || !cat.pkg_uses || cat.pkg_uses<1) continue;   // "Balance ..." rows carry no uses
-        const plate=(CUR.plate||'').toString().trim().toUpperCase();
-        if(!plate) continue;
-        // today's service is use 1, so the customer leaves with pkg_uses-1
-        const {data:ins,error:insErr}=await sb.from('gl_packages').insert({
-          owner_id: CUR.customer_id||null,
-          vehicle_label: plate,
-          service_name: cat.name,
-          total_uses: cat.pkg_uses,
-          used_uses: PKG_COUNT_TODAY?1:0,
-          status:'active',
-          source:'pos'
-        }).select().maybeSingle();
-        if(insErr) throw insErr;
-        if(ins) created.push(cat.name+' · '+(cat.pkg_uses-(PKG_COUNT_TODAY?1:0))+' left');
-      }
+      const created=await createSoldPackages_();
       if(created.length) setTimeout(()=>toast('Package created: '+created.join(', ')),600);
     }catch(e){ alert('Package balance NOT created: '+(e.message||e)+'\nAdd it manually in Plate Scanner.'); }
     // decrement stock for any tracked products in this order
@@ -2305,7 +2318,8 @@ async function confirmPay(){
       customer_name:recordName_(CUR), phone:CUR.hp||CUR.phone||'', plate:CUR.plate||'',
       gross:PAY.gross, discount:PAY.discount, discount_by:PAY.discountBy||null,
       deposit_used:PAY.depositUsed, package_used:PAY.packageUsed,
-      pkg_used_id:(()=>{ if(PAY.voucher) return null; const f=selectedPkgs_().find(x=>isUuid(String(x.id))); return f?f.id:null; })(),
+      pkg_used_id: PAID_PKG_IDS.length?PAID_PKG_IDS[0]:null,
+      pkg_used_ids: PAID_PKG_IDS.length?PAID_PKG_IDS:null,
       wallet_used:PAY.walletUsed, points_used:PAY.pointsUsed, points_value:PAY.pointsUsed*POINTS_RATE,
       voucher_code:PAY.voucher?PAY.voucher.barcode:null, voucher_value:PAY.voucher?Number(PAY.voucher.value||0):0,
       net_paid:net, method:methodLabel, taken_by:ME,
@@ -2376,12 +2390,22 @@ async function markUnpaid(){
       uName=(prompt('No customer name on this job. Enter a name for the unpaid record:', CUR.plate||'')||'').trim();
       if(!uName){ throw new Error('Customer name required for unpaid record.'); }
     }
+    // An unpaid bill still delivers the service, so a package redeemed on it must
+    // be deducted exactly as on a paid sale, and a package SOLD on it must still
+    // create its balance. Neither happened before: markUnpaid touched no packages.
+    const UNPAID_PKG_IDS = await applyPkgDeductions_();
+    try{
+      const created=await createSoldPackages_();
+      if(created.length) setTimeout(()=>toast('Package created: '+created.join(', ')),600);
+    }catch(e){ alert('Package balance NOT created: '+(e.message||e)+'\nAdd it manually in Plate Scanner.'); }
     // record the outstanding amount
     const {error:upErr}=await sb.from('gl_unpaid').insert({
       job_id:String(CUR.id), invoice_no:invoice, customer_id:CUR.customer_id||null,
       customer_name:uName, phone:CUR.hp||CUR.phone||'', plate:CUR.plate||'',
       workshop_name:CUR.workshop_name||'', amount_owed:Math.max(0,amount),
-      gross:PAY.gross, deposit_used:PAY.depositUsed, marked_by:ME
+      gross:PAY.gross, deposit_used:PAY.depositUsed, marked_by:ME,
+      package_used: UNPAID_PKG_IDS.length>0,
+      pkg_used_ids: UNPAID_PKG_IDS.length?UNPAID_PKG_IDS:null
     });
     if(upErr) throw new Error('Unpaid record: '+upErr.message);
     // job: done + off board, status 'unpaid' (not paid -> not in takings)
