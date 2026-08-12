@@ -299,11 +299,22 @@ async function playPlate(plate,lang){
     else await playFile(`audio/${ch.toLowerCase()}.mp3`);
   }
 }
+/* Languages announced, in order. Set to ['en'] for English only.
+   Add 'ms' and/or 'zh' back to restore Malay / Chinese:
+     const ANNOUNCE_LANGS=['en','ms','zh'];
+   Each entry needs audio/msg-<lang>.mp3, and digits are read from
+   audio/<lang>-<digit>.mp3 (English uses plain audio/<digit>.mp3). */
+const ANNOUNCE_LANGS=['en'];
+
 async function announce(plate){
   await playFile('chime.mp3'); await wait(150);
-  await playPlate(plate,''); await wait(120); await playFile('audio/msg-en.mp3'); await wait(250);
-  await playPlate(plate,'ms'); await wait(120); await playFile('audio/msg-ms.mp3'); await wait(250);
-  await playPlate(plate,'zh'); await wait(120); await playFile('audio/msg-zh.mp3');
+  for(let i=0;i<ANNOUNCE_LANGS.length;i++){
+    const lang=ANNOUNCE_LANGS[i];
+    await playPlate(plate, lang==='en'?'':lang);
+    await wait(120);
+    await playFile('audio/msg-'+lang+'.mp3');
+    if(i<ANNOUNCE_LANGS.length-1) await wait(250);
+  }
 }
 function wait(ms){return new Promise(r=>setTimeout(r,ms));}
 function toggleSound(){
