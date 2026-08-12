@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>GrandLab · Sales Advisor Report</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{
+  --bg:#0E0E10; --card:#17171A; --card2:#1F1F24; --border:#2C2C33;
+  --text:#F5F5F7; --text2:#B4B4BC; --text3:#75757F;
+  --gold:#C8A24A; --green:#3FB950; --red:#E5534B;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;background:var(--bg);color:var(--text);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  padding-bottom:60px}
+.wrap{max-width:900px;margin:0 auto;padding:14px}
+.hd{display:flex;align-items:center;justify-content:space-between;gap:10px;
+  padding:14px;background:var(--card);border-bottom:1px solid var(--border);
+  position:sticky;top:0;z-index:50}
+.hd h1{margin:0;font-size:16px;font-weight:800;letter-spacing:.3px}
+.hd .sub{font-size:11px;color:var(--text3);font-weight:600}
+.btn{background:var(--card2);color:var(--text);border:1px solid var(--border);
+  border-radius:10px;padding:9px 13px;font-size:13px;font-weight:700;cursor:pointer;
+  display:inline-flex;align-items:center;gap:6px}
+.btn:active{opacity:.7}
+.btn.gold{background:var(--gold);color:#111;border-color:var(--gold)}
+.btn.sm{padding:6px 10px;font-size:12px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:14px;
+  padding:14px;margin-bottom:12px}
+.mrow{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:12px 0}
+.mlabel{font-size:15px;font-weight:800;flex:1;text-align:center}
+label{display:block;font-size:11px;font-weight:700;color:var(--text3);
+  text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px}
+input,select{width:100%;background:var(--card2);color:var(--text);
+  border:1px solid var(--border);border-radius:10px;padding:10px;font-size:14px;
+  font-family:inherit}
+input:focus,select:focus{outline:none;border-color:var(--gold)}
+.muted{color:var(--text3);font-size:12px}
+.sa-card{background:var(--card);border:1px solid var(--border);border-radius:14px;
+  padding:14px;margin-bottom:10px;cursor:pointer}
+.sa-card:active{border-color:var(--gold)}
+.sa-top{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.sa-name{font-size:16px;font-weight:800}
+.sa-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:12px}
+.stat{background:var(--card2);border-radius:10px;padding:9px 10px;text-align:center}
+.stat .k{font-size:10px;color:var(--text3);font-weight:700;text-transform:uppercase;
+  letter-spacing:.4px;margin-bottom:3px}
+.stat .v{font-size:15px;font-weight:800}
+.stat .v.gold{color:var(--gold)}
+.job{display:flex;align-items:flex-start;gap:10px;padding:11px 0;
+  border-bottom:1px solid var(--border)}
+.job:last-child{border-bottom:none}
+.job .cb{width:22px;height:22px;flex:0 0 22px;border-radius:6px;
+  border:2px solid var(--border);display:flex;align-items:center;justify-content:center;
+  cursor:pointer;font-size:14px;margin-top:2px}
+.job .cb.on{background:var(--gold);border-color:var(--gold);color:#111}
+.job .body{flex:1;min-width:0}
+.job .t1{font-size:14px;font-weight:700}
+.job .t2{font-size:11px;color:var(--text3);margin-top:2px}
+.job .amt{font-size:14px;font-weight:800;white-space:nowrap}
+.job.off .t1,.job.off .amt{color:var(--text3);text-decoration:line-through}
+.tier{display:grid;grid-template-columns:1fr 1fr 80px 34px;gap:6px;
+  align-items:center;margin-bottom:6px}
+.tier input{padding:8px;font-size:13px}
+.pill{display:inline-block;font-size:10px;font-weight:800;padding:3px 8px;
+  border-radius:20px;background:var(--card2);color:var(--text3);
+  text-transform:uppercase;letter-spacing:.4px}
+.pill.gold{background:rgba(200,162,74,.15);color:var(--gold)}
+#pinGate{position:fixed;inset:0;background:var(--bg);z-index:999;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px}
+.pin-dots{display:flex;gap:12px;margin:22px 0}
+.pin-dot{width:13px;height:13px;border-radius:50%;background:var(--card2);
+  border:1px solid var(--border)}
+.pin-dot.on{background:var(--gold);border-color:var(--gold)}
+.pad{display:grid;grid-template-columns:repeat(3,72px);gap:12px}
+.key{height:62px;background:var(--card);border:1px solid var(--border);
+  border-radius:14px;font-size:22px;font-weight:700;color:var(--text);
+  display:flex;align-items:center;justify-content:center;cursor:pointer}
+.key:active{background:var(--card2)}
+.toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);
+  background:var(--card2);border:1px solid var(--border);color:var(--text);
+  padding:11px 18px;border-radius:10px;font-size:13px;font-weight:600;
+  z-index:900;opacity:0;transition:opacity .2s;pointer-events:none}
+.toast.show{opacity:1}
+.hide{display:none!important}
+</style>
+</head>
+<body>
+
+<!-- ============ PIN GATE ============ -->
+<div id="pinGate">
+  <div style="font-size:12px;font-weight:800;color:var(--gold);letter-spacing:2px">GRANDLAB</div>
+  <div style="font-size:19px;font-weight:800;margin-top:6px">Sales Advisor Report</div>
+  <div class="muted" style="margin-top:6px">Enter PIN</div>
+  <div class="pin-dots" id="pinDots"></div>
+  <div class="pad">
+    <div class="key" onclick="pinTap('1')">1</div>
+    <div class="key" onclick="pinTap('2')">2</div>
+    <div class="key" onclick="pinTap('3')">3</div>
+    <div class="key" onclick="pinTap('4')">4</div>
+    <div class="key" onclick="pinTap('5')">5</div>
+    <div class="key" onclick="pinTap('6')">6</div>
+    <div class="key" onclick="pinTap('7')">7</div>
+    <div class="key" onclick="pinTap('8')">8</div>
+    <div class="key" onclick="pinTap('9')">9</div>
+    <div></div>
+    <div class="key" onclick="pinTap('0')">0</div>
+    <div class="key" onclick="pinDel()"><i class="ti ti-backspace"></i></div>
+  </div>
+</div>
+
+<!-- ============ APP ============ -->
+<div class="hd">
+  <div>
+    <h1>Sales Advisor Report</h1>
+    <div class="sub" id="hdSub">—</div>
+  </div>
+  <div style="display:flex;gap:6px">
+    <button class="btn sm" onclick="openSettings()"><i class="ti ti-settings"></i></button>
+    <button class="btn sm" onclick="loadMonth()"><i class="ti ti-refresh"></i></button>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <!-- month picker -->
+  <div class="mrow">
+    <button class="btn" onclick="shiftMonth(-1)"><i class="ti ti-chevron-left"></i></button>
+    <div class="mlabel" id="mLabel">—</div>
+    <button class="btn" onclick="shiftMonth(1)"><i class="ti ti-chevron-right"></i></button>
+  </div>
+
+  <!-- LIST VIEW -->
+  <div id="viewList">
+    <div id="saList"></div>
+    <div class="card" id="grandTotal" style="display:none"></div>
+  </div>
+
+  <!-- DETAIL VIEW -->
+  <div id="viewDetail" class="hide">
+    <button class="btn sm" onclick="backToList()" style="margin-bottom:12px">
+      <i class="ti ti-arrow-left"></i> All advisors</button>
+    <div id="detailHead"></div>
+    <div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <label style="margin:0">Jobs this month</label>
+        <span class="muted" id="jobCount"></span>
+      </div>
+      <div class="muted" style="margin-bottom:10px">
+        Ticked = counts toward commission. Untick anything HOD rules out.
+      </div>
+      <div id="jobList"></div>
+    </div>
+  </div>
+
+  <!-- SETTINGS VIEW -->
+  <div id="viewSettings" class="hide">
+    <button class="btn sm" onclick="closeSettings()" style="margin-bottom:12px">
+      <i class="ti ti-arrow-left"></i> Back</button>
+    <div class="card">
+      <label>Commission chart for</label>
+      <select id="setAdvisor" onchange="loadScheme()"></select>
+      <div class="muted" style="margin-top:6px">
+        DEFAULT applies to any advisor without their own chart.
+      </div>
+    </div>
+    <div class="card">
+      <label>Sales basis</label>
+      <select id="setBasis">
+        <option value="net">Net paid (money actually received)</option>
+        <option value="gross">Gross (before discount)</option>
+      </select>
+    </div>
+    <div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <label style="margin:0">Tiers</label>
+        <button class="btn sm" onclick="addTier()"><i class="ti ti-plus"></i> Tier</button>
+      </div>
+      <div class="tier" style="font-size:10px;color:var(--text3);font-weight:700">
+        <div>FROM RM</div><div>TO RM (blank = no cap)</div><div>RATE %</div><div></div>
+      </div>
+      <div id="tierRows"></div>
+      <div class="muted" style="margin-top:10px">
+        The rate is applied to the <b>full</b> qualifying sales amount, not just the
+        portion above the tier.
+      </div>
+      <button class="btn gold" style="width:100%;margin-top:14px" onclick="saveScheme()">
+        <i class="ti ti-device-floppy"></i> Save chart</button>
+    </div>
+    <div class="card">
+      <label>Preview</label>
+      <input id="setPreview" type="number" placeholder="Enter a sales figure, e.g. 50000"
+        oninput="runPreview()">
+      <div id="previewOut" class="muted" style="margin-top:8px">—</div>
+    </div>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ============ config ============ */
+const SUPABASE_URL="https://eychljpzorzmaveixlnu.supabase.co";
+const SUPABASE_ANON="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV5Y2hsanB6b3J6bWF2ZWl4bG51Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2NDk2NjQsImV4cCI6MjA5NzIyNTY2NH0.6dA1zhz5ZIwf8byFB8vhfOzPI-uPPdPihEr1b8GG_oA";
+const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON,
+  {auth:{persistSession:true,autoRefreshToken:true,storageKey:'gl_auth'}});
+
+const APP_PIN="1313";
+const SESSION_KEY="gl_sa_pin_ok";
+
+/* ============ state ============ */
+let CUR=new Date(); CUR.setDate(1);
+let ROWS=[];            // payments this month
+let SCHEMES={};         // advisor -> scheme row
+let OPEN_SA=null;
+let EDIT_TIERS=[];
+
+/* ============ helpers ============ */
+const $=id=>document.getElementById(id);
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>
+  ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const rm=n=>'RM '+(Number(n)||0).toLocaleString('en-MY',
+  {minimumFractionDigits:2,maximumFractionDigits:2});
+function toast(m){const t=$('toast');t.textContent=m;t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2200);}
+function pad2(n){return String(n).padStart(2,'0');}
+function monthBounds(d){
+  const s=new Date(d.getFullYear(),d.getMonth(),1);
+  const e=new Date(d.getFullYear(),d.getMonth()+1,1);
+  const f=x=>x.getFullYear()+'-'+pad2(x.getMonth()+1)+'-'+pad2(x.getDate());
+  return {from:f(s),to:f(e)};
+}
+function monthLabel(d){
+  return d.toLocaleDateString('en-MY',{month:'long',year:'numeric'});
+}
+
+/* ============ PIN ============ */
+let PIN="";
+function renderDots(){
+  $('pinDots').innerHTML=[0,1,2,3].map(i=>
+    `<div class="pin-dot ${i<PIN.length?'on':''}"></div>`).join('');
+}
+function pinTap(d){
+  if(PIN.length>=4)return;
+  PIN+=d; renderDots();
+  if(PIN.length===4){
+    setTimeout(()=>{
+      if(PIN===APP_PIN){ sessionStorage.setItem(SESSION_KEY,'1'); unlock(); }
+      else { toast('Wrong PIN'); PIN=""; renderDots(); }
+    },140);
+  }
+}
+function pinDel(){ PIN=PIN.slice(0,-1); renderDots(); }
+function unlock(){ $('pinGate').style.display='none'; boot(); }
+
+/* ============ boot ============ */
+async function boot(){
+  renderMonth();
+  await loadSchemes();
+  await loadMonth();
+}
+function renderMonth(){ $('mLabel').textContent=monthLabel(CUR); }
+function shiftMonth(n){
+  CUR=new Date(CUR.getFullYear(),CUR.getMonth()+n,1);
+  renderMonth(); backToList(); loadMonth();
+}
+
+/* ============ data ============ */
+async function loadSchemes(){
+  const {data,error}=await sb.from('gl_sa_scheme').select('*');
+  if(error){ toast('Scheme load failed'); console.warn(error); return; }
+  SCHEMES={}; (data||[]).forEach(r=>SCHEMES[r.advisor]=r);
+  if(!SCHEMES.DEFAULT){
+    SCHEMES.DEFAULT={advisor:'DEFAULT',basis:'net',tiers:[
+      {min:0,max:39999.99,rate:0},{min:40000,max:60000,rate:2},
+      {min:60000.01,max:80000,rate:5},{min:80000.01,max:null,rate:7}]};
+  }
+}
+function schemeFor(a){ return SCHEMES[a]||SCHEMES.DEFAULT; }
+
+async function loadMonth(){
+  const {from,to}=monthBounds(CUR);
+  $('saList').innerHTML='<div class="card muted">Loading…</div>';
+  const {data,error}=await sb.from('gl_payments')
+    .select('id,invoice_no,customer_name,plate,gross,net_paid,method,attendee,paid_at,voided,sa_excluded,sa_excluded_note')
+    .gte('paid_at',from).lt('paid_at',to)
+    .not('attendee','is',null)
+    .order('paid_at',{ascending:false});
+  if(error){
+    $('saList').innerHTML='<div class="card" style="color:var(--red)">'+
+      esc(error.message)+'</div>';
+    return;
+  }
+  ROWS=(data||[]).filter(r=>!r.voided && String(r.attendee||'').trim());
+  $('hdSub').textContent=ROWS.length+' paid jobs with an advisor';
+  renderList();
+  if(OPEN_SA) renderDetail(OPEN_SA);
+}
+
+/* ============ commission maths ============ */
+function amtOf(r,basis){
+  return Number((basis==='gross'? r.gross : r.net_paid)||0);
+}
+function commFor(advisor,total){
+  const sc=schemeFor(advisor);
+  const tiers=Array.isArray(sc.tiers)?sc.tiers:[];
+  for(const t of tiers){
+    const lo=Number(t.min||0);
+    const hi=(t.max===null||t.max===undefined||t.max==='')?Infinity:Number(t.max);
+    if(total>=lo && total<=hi) return {rate:Number(t.rate||0),
+      amount:total*Number(t.rate||0)/100};
+  }
+  return {rate:0,amount:0};
+}
+function groupByAdvisor(){
+  const g={};
+  ROWS.forEach(r=>{
+    const a=String(r.attendee).trim();
+    if(!g[a]) g[a]={advisor:a,jobs:[],counted:0,excluded:0,total:0};
+    g[a].jobs.push(r);
+    const basis=schemeFor(a).basis||'net';
+    if(r.sa_excluded){ g[a].excluded++; }
+    else { g[a].counted++; g[a].total+=amtOf(r,basis); }
+  });
+  return Object.values(g).sort((a,b)=>b.total-a.total);
+}
+
+/* ============ list view ============ */
+function renderList(){
+  const gs=groupByAdvisor();
+  if(!gs.length){
+    $('saList').innerHTML='<div class="card muted">No paid jobs with an advisor '+
+      'recorded this month.</div>';
+    $('grandTotal').style.display='none'; return;
+  }
+  $('saList').innerHTML=gs.map(g=>{
+    const c=commFor(g.advisor,g.total);
+    const own=SCHEMES[g.advisor]?'<span class="pill gold">own chart</span>':
+      '<span class="pill">default</span>';
+    return `<div class="sa-card" onclick="openDetail('${esc(g.advisor).replace(/'/g,"&#39;")}')">
+      <div class="sa-top">
+        <div>
+          <div class="sa-name">${esc(g.advisor)}</div>
+          <div class="muted" style="margin-top:3px">${g.counted} counted`+
+          (g.excluded?` · ${g.excluded} excluded`:'')+`</div>
+        </div>
+        ${own}
+      </div>
+      <div class="sa-grid">
+        <div class="stat"><div class="k">Sales</div><div class="v">${rm(g.total)}</div></div>
+        <div class="stat"><div class="k">Rate</div><div class="v">${c.rate}%</div></div>
+        <div class="stat"><div class="k">Commission</div>
+          <div class="v gold">${rm(c.amount)}</div></div>
+      </div>
+    </div>`;
+  }).join('');
+
+  const tSales=gs.reduce((s,g)=>s+g.total,0);
+  const tComm=gs.reduce((s,g)=>s+commFor(g.advisor,g.total).amount,0);
+  $('grandTotal').style.display='';
+  $('grandTotal').innerHTML=`<div style="display:flex;justify-content:space-between">
+      <span class="muted">Total advisor sales</span><b>${rm(tSales)}</b></div>
+    <div style="display:flex;justify-content:space-between;margin-top:6px">
+      <span class="muted">Total commission payable</span>
+      <b style="color:var(--gold)">${rm(tComm)}</b></div>`;
+}
+
+/* ============ detail view ============ */
+function openDetail(a){ OPEN_SA=a; renderDetail(a);
+  $('viewList').classList.add('hide'); $('viewDetail').classList.remove('hide');
+  window.scrollTo(0,0); }
+function backToList(){ OPEN_SA=null;
+  $('viewDetail').classList.add('hide'); $('viewSettings').classList.add('hide');
+  $('viewList').classList.remove('hide'); }
+
+function renderDetail(a){
+  const g=groupByAdvisor().find(x=>x.advisor===a);
+  if(!g){ backToList(); return; }
+  const sc=schemeFor(a);
+  const c=commFor(a,g.total);
+  $('detailHead').innerHTML=`<div class="card">
+    <div class="sa-top">
+      <div class="sa-name">${esc(a)}</div>
+      <span class="pill ${SCHEMES[a]?'gold':''}">${SCHEMES[a]?'own chart':'default chart'}</span>
+    </div>
+    <div class="sa-grid">
+      <div class="stat"><div class="k">Qualifying</div><div class="v">${rm(g.total)}</div></div>
+      <div class="stat"><div class="k">Rate</div><div class="v">${c.rate}%</div></div>
+      <div class="stat"><div class="k">Commission</div>
+        <div class="v gold">${rm(c.amount)}</div></div>
+    </div>
+    <div class="muted" style="margin-top:10px">Basis: ${sc.basis==='gross'?'gross':'net paid'}</div>
+  </div>`;
+
+  $('jobCount').textContent=g.counted+' / '+g.jobs.length+' counted';
+  $('jobList').innerHTML=g.jobs.map(r=>{
+    const off=!!r.sa_excluded;
+    const basis=sc.basis||'net';
+    const d=new Date(r.paid_at);
+    return `<div class="job ${off?'off':''}" id="job_${r.id}">
+      <div class="cb ${off?'':'on'}" onclick="toggleJob('${r.id}')">${off?'':'✓'}</div>
+      <div class="body">
+        <div class="t1">${esc(r.customer_name||'—')} · ${esc(r.plate||'')}</div>
+        <div class="t2">${pad2(d.getDate())}/${pad2(d.getMonth()+1)} ·
+          #${esc(r.invoice_no||'')} · ${esc(r.method||'')}</div>
+      </div>
+      <div class="amt">${rm(amtOf(r,basis))}</div>
+    </div>`;
+  }).join('')||'<div class="muted">No jobs.</div>';
+}
+
+async function toggleJob(id){
+  const r=ROWS.find(x=>String(x.id)===String(id));
+  if(!r) return;
+  const next=!r.sa_excluded;
+  r.sa_excluded=next;                       // optimistic
+  renderDetail(OPEN_SA); renderList();
+  const {error}=await sb.from('gl_payments')
+    .update({sa_excluded:next}).eq('id',r.id);
+  if(error){
+    r.sa_excluded=!next;                    // roll back
+    renderDetail(OPEN_SA); renderList();
+    toast('Could not save: '+error.message);
+  }
+}
+
+/* ============ settings ============ */
+function openSettings(){
+  const names=new Set(Object.keys(SCHEMES));
+  ROWS.forEach(r=>names.add(String(r.attendee).trim()));
+  names.add('DEFAULT');
+  const list=[...names].filter(Boolean).sort((a,b)=>
+    a==='DEFAULT'?-1:b==='DEFAULT'?1:a.localeCompare(b));
+  $('setAdvisor').innerHTML=list.map(n=>
+    `<option value="${esc(n)}">${esc(n)}${SCHEMES[n]?'':' (using default)'}</option>`).join('');
+  $('viewList').classList.add('hide'); $('viewDetail').classList.add('hide');
+  $('viewSettings').classList.remove('hide');
+  loadScheme(); window.scrollTo(0,0);
+}
+function closeSettings(){ backToList(); }
+
+function loadScheme(){
+  const a=$('setAdvisor').value;
+  const sc=SCHEMES[a]||SCHEMES.DEFAULT;
+  $('setBasis').value=sc.basis||'net';
+  EDIT_TIERS=JSON.parse(JSON.stringify(Array.isArray(sc.tiers)?sc.tiers:[]));
+  renderTiers(); runPreview();
+}
+function renderTiers(){
+  $('tierRows').innerHTML=EDIT_TIERS.map((t,i)=>`<div class="tier">
+    <input type="number" value="${t.min==null?'':t.min}"
+      oninput="EDIT_TIERS[${i}].min=this.value===''?0:Number(this.value);runPreview()">
+    <input type="number" value="${t.max==null?'':t.max}" placeholder="no cap"
+      oninput="EDIT_TIERS[${i}].max=this.value===''?null:Number(this.value);runPreview()">
+    <input type="number" step="0.1" value="${t.rate==null?'':t.rate}"
+      oninput="EDIT_TIERS[${i}].rate=Number(this.value)||0;runPreview()">
+    <button class="btn sm" onclick="delTier(${i})"><i class="ti ti-x"></i></button>
+  </div>`).join('')||'<div class="muted">No tiers — commission will be zero.</div>';
+}
+function addTier(){ EDIT_TIERS.push({min:0,max:null,rate:0}); renderTiers(); }
+function delTier(i){ EDIT_TIERS.splice(i,1); renderTiers(); runPreview(); }
+
+function runPreview(){
+  const v=Number($('setPreview').value||0);
+  if(!v){ $('previewOut').textContent='—'; return; }
+  let hit=null;
+  for(const t of EDIT_TIERS){
+    const lo=Number(t.min||0);
+    const hi=(t.max===null||t.max===undefined||t.max==='')?Infinity:Number(t.max);
+    if(v>=lo && v<=hi){ hit=t; break; }
+  }
+  if(!hit){ $('previewOut').innerHTML=
+    '<span style="color:var(--red)">No tier covers '+rm(v)+' — commission would be RM 0.</span>';
+    return; }
+  $('previewOut').innerHTML=rm(v)+' &rarr; '+Number(hit.rate||0)+'% &rarr; <b style="color:var(--gold)">'+
+    rm(v*Number(hit.rate||0)/100)+'</b>';
+}
+
+async function saveScheme(){
+  const a=$('setAdvisor').value;
+  const tiers=EDIT_TIERS.slice().sort((x,y)=>Number(x.min||0)-Number(y.min||0));
+  const row={advisor:a,tiers:tiers,basis:$('setBasis').value,
+    active:true,updated_at:new Date().toISOString()};
+  const {error}=await sb.from('gl_sa_scheme').upsert(row,{onConflict:'advisor'});
+  if(error){ toast('Save failed: '+error.message); return; }
+  SCHEMES[a]=row;
+  toast('Chart saved for '+a);
+  renderList();
+}
+
+/* ============ start ============ */
+renderDots();
+if(sessionStorage.getItem(SESSION_KEY)==='1') unlock();
+</script>
+</body>
+</html>
