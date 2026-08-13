@@ -1437,25 +1437,16 @@ async function loadCheckoutPackages(job){
   const ownerId=job.customer_id||CUR.customer_id||null;
   const phone=(job.hp||CUR.hp||CUR.phone||'').toString();
   if(!plate && !ownerId && !phone) return;
-  // PRIMARY: customer-scoped RPC (coating per-car, Bathe Essence shared by phone)
-  try{
-    const {data,error}=await sb.rpc('gl_customer_packages',{p_phone:phone||'',p_plate:plate||''});
-    if(!error && data){
-      PAY.pkgList=data.map(r=>({
-        id:null,                       // per-customer rows have no single id
-        service_name:r.out_service_name,
-        total_uses:r.out_total_uses, used_uses:r.out_used_uses,
-        remaining:Number(r.out_balance)||0,
-        scope:r.out_scope, vehicle_label:r.out_vehicle_label
-      })).filter(p=>p.remaining>0);
-      if(PAY.pkgList.length) return;
-    }
-  }catch(e){ /* fall back below */ }
-  // FALLBACK: legacy plate/owner read
+  // Read the SAME per-plate rows the Plate Scanner shows, so the two screens
+  // never disagree. The gl_customer_packages RPC pools every wash package a
+  // customer owns into one figure across all their cars, which showed 38 on a
+  // car whose own package had 17 left - and a redemption against that pooled
+  // number only ever moves one row, so it drifts. Real rows with real ids also
+  // mean deduction hits the exact package being used.
   let q=sb.from('gl_packages').select('id,owner_id,vehicle_label,service_name,total_uses,used_uses,status').eq('status','active');
-  if(plate && ownerId) q=q.or(`vehicle_label.ilike.${plate},owner_id.eq.${ownerId}`);
-  else if(plate) q=q.ilike('vehicle_label',plate);
+  if(plate) q=q.ilike('vehicle_label',plate);
   else if(ownerId) q=q.eq('owner_id',ownerId);
+  else { PAY.pkgList=[]; return; }
   const {data}=await q;
   PAY.pkgList=(data||[]).map(p=>({...p,remaining:(p.total_uses||0)-(p.used_uses||0)})).filter(p=>p.remaining>0);
 }
@@ -1635,7 +1626,8 @@ function renderCheckout(){
     ${(PAY.pkgList&&PAY.pkgList.length)?PAY.pkgList.map((p,pi)=>{
       const bal=(p.remaining!=null?p.remaining:((p.total_uses||0)-(p.used_uses||0)));
       const on=(PAY.pkgUseIdxs||[]).includes(pi);
-      const allcars = p.scope==='customer' ? ' <span style="font-size:9px;color:var(--gold-deep);border:1px solid currentColor;border-radius:5px;padding:0 3px">ALL CARS</span>' : '';
+      // packages are read per-plate now, so every row belongs to this car
+      const allcars = '';
       return `<div class="adj">
         <span class="lab"><i class="ti ti-package"></i> ${esc(cleanPkgName(p.service_name))}${allcars} <b style="color:var(--gold-deep)">· ${bal} left</b>${on?` <span style="color:var(--ink3);font-size:11px">(will use 1 → ${bal-1} left)</span>`:''}</span>
         <button class="toggle ${on?'on':''}" onclick="togglePkgUse(${pi})"><span class="dot"></span></button>
