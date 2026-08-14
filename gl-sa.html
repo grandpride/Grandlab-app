@@ -60,6 +60,8 @@ input:focus,select:focus{outline:none;border-color:var(--gold)}
 .job .body{flex:1;min-width:0}
 .job .t1{font-size:14px;font-weight:700}
 .job .t2{font-size:11px;color:var(--text3);margin-top:2px}
+.job .t3{font-size:12px;color:var(--gold);margin-top:3px;line-height:1.35}
+.job.off .t3{color:var(--text3)}
 .job .amt{font-size:14px;font-weight:800;white-space:nowrap}
 .job.off .t1,.job.off .amt{color:var(--text3);text-decoration:line-through}
 .tier{display:grid;grid-template-columns:1fr 1fr 80px 34px;gap:6px;
@@ -109,6 +111,7 @@ input:focus,select:focus{outline:none;border-color:var(--gold)}
   font-size:10px;letter-spacing:.4px;text-transform:uppercase}
 #printArea td{padding:5px 7px;border-bottom:1px solid #e3e3e3}
 #printArea td.r,#printArea th.r{text-align:right}
+#printArea td.svc{font-size:10px;color:#444;max-width:200px}
 #printArea tr.ex td{color:#999;text-decoration:line-through}
 #printArea .sum{margin-top:10px;border:1px solid #ccc;border-radius:6px;padding:10px}
 #printArea .sum div{display:flex;justify-content:space-between;font-size:12px;
@@ -329,7 +332,7 @@ async function loadMonth(){
   const {from,to}=monthBounds(CUR);
   $('saList').innerHTML='<div class="card muted">Loading…</div>';
   const {data,error}=await sb.from('gl_payments')
-    .select('id,invoice_no,customer_name,plate,gross,net_paid,method,attendee,paid_at,voided,sa_excluded,sa_excluded_note')
+    .select('id,invoice_no,customer_name,plate,gross,net_paid,method,attendee,paid_at,voided,sa_excluded,sa_excluded_note,items')
     .gte('paid_at',from).lt('paid_at',to)
     .not('attendee','is',null)
     .order('paid_at',{ascending:false});
@@ -347,6 +350,21 @@ async function loadMonth(){
 /* ============ commission maths ============ */
 function amtOf(r,basis){
   return Number((basis==='gross'? r.gross : r.net_paid)||0);
+}
+function svcList(r){
+  let it=[];
+  try{ it = r.items ? (Array.isArray(r.items)?r.items:JSON.parse(r.items)) : []; }
+  catch(e){ it=[]; }
+  if(!Array.isArray(it)) it=[];
+  return it.map(s=>{
+    const d=String((s&&s.desc)||'').trim();
+    const q=Number((s&&s.qty)||1);
+    return d ? (q>1 ? d+' ×'+q : d) : '';
+  }).filter(Boolean);
+}
+function svcText(r){
+  const l=svcList(r);
+  return l.length ? l.join(' · ') : '—';
 }
 function commFor(advisor,total){
   const sc=schemeFor(advisor);
@@ -450,6 +468,7 @@ function renderDetail(a){
       <div class="cb ${off?'':'on'}" onclick="toggleJob('${r.id}')">${off?'':'✓'}</div>
       <div class="body">
         <div class="t1">${esc(r.customer_name||'—')} · ${esc(r.plate||'')}</div>
+        <div class="t3">${esc(svcText(r))}</div>
         <div class="t2">${pad2(d.getDate())}/${pad2(d.getMonth()+1)} ·
           #${esc(r.invoice_no||'')} · ${esc(r.method||'')}</div>
       </div>
@@ -487,7 +506,7 @@ function stmtBlock(g,idx){
       <td>${esc(r.invoice_no||'')}</td>
       <td>${esc(r.customer_name||'—')}</td>
       <td>${esc(r.plate||'')}</td>
-      <td>${esc(r.method||'')}</td>
+      <td class="svc">${esc(svcText(r))}</td>
       <td class="r">${off?'excluded':rm(amtOf(r,basis))}</td>
     </tr>`;
   }).join('');
@@ -503,7 +522,7 @@ function stmtBlock(g,idx){
     </div>
     <table>
       <thead><tr><th>Date</th><th>Invoice</th><th>Customer</th><th>Plate</th>
-        <th>Method</th><th class="r">Amount</th></tr></thead>
+        <th>Services</th><th class="r">Amount</th></tr></thead>
       <tbody>${rows||'<tr><td colspan="6">No jobs.</td></tr>'}</tbody>
     </table>
     <div class="sum">
