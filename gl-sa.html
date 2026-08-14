@@ -307,6 +307,7 @@ function unlock(){ $('pinGate').style.display='none'; boot(); }
 async function boot(){
   renderMonth();
   await loadSchemes();
+  await loadStaff();
   await loadMonth();
 }
 function renderMonth(){ $('mLabel').textContent=monthLabel(CUR); }
@@ -332,7 +333,7 @@ async function loadMonth(){
   const {from,to}=monthBounds(CUR);
   $('saList').innerHTML='<div class="card muted">Loading…</div>';
   const {data,error}=await sb.from('gl_payments')
-    .select('id,invoice_no,customer_name,plate,gross,net_paid,method,attendee,paid_at,voided,sa_excluded,sa_excluded_note,items')
+    .select('id,job_id,invoice_no,customer_name,plate,gross,net_paid,method,attendee,attendee_prev,paid_at,voided,sa_excluded,sa_excluded_note,items')
     .gte('paid_at',from).lt('paid_at',to)
     .not('attendee','is',null)
     .order('paid_at',{ascending:false});
@@ -470,7 +471,10 @@ function renderDetail(a){
         <div class="t1">${esc(r.customer_name||'—')} · ${esc(r.plate||'')}</div>
         <div class="t3">${esc(svcText(r))}</div>
         <div class="t2">${pad2(d.getDate())}/${pad2(d.getMonth()+1)} ·
-          #${esc(r.invoice_no||'')} · ${esc(r.method||'')}</div>
+          #${esc(r.invoice_no||'')} · ${esc(r.method||'')}${
+          r.attendee_prev?' · <span style="color:var(--gold)">moved from '+esc(r.attendee_prev)+'</span>':''}</div>
+        <button class="btn sm" style="margin-top:7px;padding:4px 9px;font-size:11px"
+          onclick="askMove('${r.id}')"><i class="ti ti-user-share"></i> Change advisor</button>
       </div>
       <div class="amt">${rm(amtOf(r,basis))}</div>
     </div>`;
@@ -564,6 +568,53 @@ function printStatement(only){
   }
   $('printArea').innerHTML=html;
   setTimeout(()=>window.print(),80);
+}
+
+/* ============ reassign advisor ============ */
+let STAFF=[];
+async function loadStaff(){
+  try{
+    const {data}=await sb.from('gl_settings').select('data').eq('id','booking').maybeSingle();
+    let l=data&&data.data?data.data.staff_list:[];
+    if(typeof l==='string'){ try{ l=JSON.parse(l); }catch(e){ l=[]; } }
+    STAFF=Array.isArray(l)?l.filter(Boolean):[];
+  }catch(e){ STAFF=[]; }
+}
+function advisorChoices(){
+  const s=new Set(STAFF);
+  ROWS.forEach(r=>s.add(String(r.attendee).trim()));
+  return [...s].filter(Boolean).sort();
+}
+function askMove(id){
+  const r=ROWS.find(x=>String(x.id)===String(id));
+  if(!r) return;
+  const list=advisorChoices().filter(n=>n!==String(r.attendee).trim());
+  if(!list.length){ toast('No other advisor found'); return; }
+  const menu=list.map((n,i)=>(i+1)+'. '+n).join('\n');
+  const pick=prompt('Move this sale from '+r.attendee+' to:\n\n'+menu+
+    '\n\nType the number (or 0 to cancel)');
+  if(pick===null) return;
+  const i=parseInt(pick,10);
+  if(!i||i<1||i>list.length) return;
+  moveJob(r,list[i-1]);
+}
+async function moveJob(r,to){
+  const from=String(r.attendee).trim();
+  if(!confirm('Move '+(r.customer_name||'this sale')+' ('+rm(amtOf(r,schemeFor(from).basis||'net'))+
+    ')\n\nfrom '+from+'  →  '+to+' ?')) return;
+  const payload={attendee:to,attendee_prev:from,
+    attendee_changed_at:new Date().toISOString()};
+  const {error}=await sb.from('gl_payments').update(payload).eq('id',r.id);
+  if(error){ toast('Move failed: '+error.message); return; }
+  // keep the job card in step so both screens agree
+  if(r.job_id){
+    try{ await sb.from('gl_jobs').update({attendee:to}).eq('id',r.job_id); }catch(e){}
+  }
+  r.attendee=to; r.attendee_prev=from;
+  toast('Moved to '+to+' — run the sheet sync');
+  renderList();
+  if(OPEN_SA) { if(!ROWS.some(x=>String(x.attendee).trim()===OPEN_SA)) backToList();
+    else renderDetail(OPEN_SA); }
 }
 
 /* ============ settings ============ */
