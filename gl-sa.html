@@ -86,6 +86,38 @@ input:focus,select:focus{outline:none;border-color:var(--gold)}
   z-index:900;opacity:0;transition:opacity .2s;pointer-events:none}
 .toast.show{opacity:1}
 .hide{display:none!important}
+
+/* ===== printable statement ===== */
+#printArea{display:none}
+@media print{
+  @page{size:A4;margin:14mm}
+  body{background:#fff!important;color:#111!important;padding:0!important}
+  body>.hd,body>.wrap,body>.toast,body>#pinGate{display:none!important}
+  #printArea{display:block!important}
+  .pbreak{page-break-before:always}
+}
+#printArea{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  color:#111;background:#fff}
+#printArea .ph{text-align:center;border-bottom:2px solid #C8A24A;padding-bottom:10px;
+  margin-bottom:16px}
+#printArea .ph .b{font-size:11px;font-weight:800;color:#C8A24A;letter-spacing:2px}
+#printArea .ph .t{font-size:20px;font-weight:800;margin-top:4px}
+#printArea .ph .m{font-size:13px;color:#555;margin-top:3px}
+#printArea h3{font-size:15px;margin:0 0 4px;border-bottom:1px solid #ccc;padding-bottom:4px}
+#printArea table{width:100%;border-collapse:collapse;font-size:11px;margin-top:8px}
+#printArea th{background:#1A1A1A;color:#fff;text-align:left;padding:6px 7px;
+  font-size:10px;letter-spacing:.4px;text-transform:uppercase}
+#printArea td{padding:5px 7px;border-bottom:1px solid #e3e3e3}
+#printArea td.r,#printArea th.r{text-align:right}
+#printArea tr.ex td{color:#999;text-decoration:line-through}
+#printArea .sum{margin-top:10px;border:1px solid #ccc;border-radius:6px;padding:10px}
+#printArea .sum div{display:flex;justify-content:space-between;font-size:12px;
+  padding:3px 0}
+#printArea .sum .big{font-size:15px;font-weight:800;border-top:1px solid #ccc;
+  margin-top:5px;padding-top:7px}
+#printArea .sig{display:flex;gap:40px;margin-top:34px;font-size:11px;color:#444}
+#printArea .sig div{flex:1;border-top:1px solid #888;padding-top:5px}
+#printArea .blk{margin-bottom:26px}
 </style>
 </head>
 <body>
@@ -119,6 +151,8 @@ input:focus,select:focus{outline:none;border-color:var(--gold)}
     <div class="sub" id="hdSub">—</div>
   </div>
   <div style="display:flex;gap:6px">
+    <a class="btn sm" href="https://grandpride.github.io/Grandlab-app/gl-hub.html"
+      style="text-decoration:none"><i class="ti ti-arrow-left"></i> Hub</a>
     <button class="btn sm" onclick="openSettings()"><i class="ti ti-settings"></i></button>
     <button class="btn sm" onclick="loadMonth()"><i class="ti ti-refresh"></i></button>
   </div>
@@ -137,12 +171,19 @@ input:focus,select:focus{outline:none;border-color:var(--gold)}
   <div id="viewList">
     <div id="saList"></div>
     <div class="card" id="grandTotal" style="display:none"></div>
+    <button class="btn gold" id="btnStmtAll" style="width:100%;display:none"
+      onclick="printStatement(null)">
+      <i class="ti ti-file-text"></i> Monthly statement — all advisors</button>
   </div>
 
   <!-- DETAIL VIEW -->
   <div id="viewDetail" class="hide">
-    <button class="btn sm" onclick="backToList()" style="margin-bottom:12px">
-      <i class="ti ti-arrow-left"></i> All advisors</button>
+    <div style="display:flex;gap:6px;margin-bottom:12px">
+      <button class="btn sm" onclick="backToList()">
+        <i class="ti ti-arrow-left"></i> All advisors</button>
+      <button class="btn sm gold" onclick="printStatement(OPEN_SA)">
+        <i class="ti ti-file-text"></i> Statement PDF</button>
+    </div>
     <div id="detailHead"></div>
     <div class="card">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
@@ -199,6 +240,8 @@ input:focus,select:focus{outline:none;border-color:var(--gold)}
   </div>
 
 </div>
+
+<div id="printArea"></div>
 
 <div class="toast" id="toast"></div>
 
@@ -335,8 +378,10 @@ function renderList(){
   if(!gs.length){
     $('saList').innerHTML='<div class="card muted">No paid jobs with an advisor '+
       'recorded this month.</div>';
-    $('grandTotal').style.display='none'; return;
+    $('grandTotal').style.display='none';
+    $('btnStmtAll').style.display='none'; return;
   }
+  $('btnStmtAll').style.display='';
   $('saList').innerHTML=gs.map(g=>{
     const c=commFor(g.advisor,g.total);
     const own=SCHEMES[g.advisor]?'<span class="pill gold">own chart</span>':
@@ -426,6 +471,80 @@ async function toggleJob(id){
     renderDetail(OPEN_SA); renderList();
     toast('Could not save: '+error.message);
   }
+}
+
+/* ============ statement PDF ============ */
+function stmtBlock(g,idx){
+  const sc=schemeFor(g.advisor);
+  const basis=sc.basis||'net';
+  const c=commFor(g.advisor,g.total);
+  const jobs=g.jobs.slice().sort((a,b)=>new Date(a.paid_at)-new Date(b.paid_at));
+  const rows=jobs.map(r=>{
+    const d=new Date(r.paid_at);
+    const off=!!r.sa_excluded;
+    return `<tr class="${off?'ex':''}">
+      <td>${pad2(d.getDate())}/${pad2(d.getMonth()+1)}</td>
+      <td>${esc(r.invoice_no||'')}</td>
+      <td>${esc(r.customer_name||'—')}</td>
+      <td>${esc(r.plate||'')}</td>
+      <td>${esc(r.method||'')}</td>
+      <td class="r">${off?'excluded':rm(amtOf(r,basis))}</td>
+    </tr>`;
+  }).join('');
+  const tierTxt=(Array.isArray(sc.tiers)?sc.tiers:[]).map(t=>{
+    const hi=(t.max==null||t.max==='')?'above':rm(t.max);
+    return rm(t.min||0)+' – '+hi+' = '+Number(t.rate||0)+'%';
+  }).join(' &nbsp;·&nbsp; ');
+  return `<div class="blk ${idx?'pbreak':''}">
+    <h3>${esc(g.advisor)}</h3>
+    <div style="font-size:11px;color:#666">
+      Basis: ${basis==='gross'?'gross':'net paid'} &nbsp;·&nbsp;
+      ${SCHEMES[g.advisor]?'own chart':'default chart'} &nbsp;·&nbsp; ${tierTxt||'no tiers set'}
+    </div>
+    <table>
+      <thead><tr><th>Date</th><th>Invoice</th><th>Customer</th><th>Plate</th>
+        <th>Method</th><th class="r">Amount</th></tr></thead>
+      <tbody>${rows||'<tr><td colspan="6">No jobs.</td></tr>'}</tbody>
+    </table>
+    <div class="sum">
+      <div><span>Jobs counted</span><span>${g.counted} of ${g.jobs.length}</span></div>
+      <div><span>Jobs excluded</span><span>${g.excluded}</span></div>
+      <div><span>Qualifying sales</span><span><b>${rm(g.total)}</b></span></div>
+      <div><span>Commission rate</span><span>${c.rate}%</span></div>
+      <div class="big"><span>Commission payable</span>
+        <span>${rm(c.amount)}</span></div>
+    </div>
+    <div class="sig">
+      <div>Sales Advisor — ${esc(g.advisor)}</div>
+      <div>Verified by</div>
+      <div>Approved by</div>
+    </div>
+  </div>`;
+}
+
+function printStatement(only){
+  let gs=groupByAdvisor();
+  if(only) gs=gs.filter(g=>g.advisor===only);
+  if(!gs.length){ toast('Nothing to print'); return; }
+  const tSales=gs.reduce((s,g)=>s+g.total,0);
+  const tComm=gs.reduce((s,g)=>s+commFor(g.advisor,g.total).amount,0);
+  const gen=new Date();
+  let html=`<div class="ph">
+      <div class="b">GRANDLAB DETAILING</div>
+      <div class="t">Sales Advisor Commission Statement</div>
+      <div class="m">${monthLabel(CUR)}${only?' · '+esc(only):''}</div>
+      <div class="m" style="font-size:10px">Generated ${pad2(gen.getDate())}/${pad2(gen.getMonth()+1)}/${gen.getFullYear()}</div>
+    </div>`;
+  html+=gs.map((g,i)=>stmtBlock(g,i)).join('');
+  if(!only && gs.length>1){
+    html+=`<div class="sum" style="margin-top:6px">
+      <div><span>Advisors</span><span>${gs.length}</span></div>
+      <div><span>Total qualifying sales</span><span><b>${rm(tSales)}</b></span></div>
+      <div class="big"><span>Total commission payable</span><span>${rm(tComm)}</span></div>
+    </div>`;
+  }
+  $('printArea').innerHTML=html;
+  setTimeout(()=>window.print(),80);
 }
 
 /* ============ settings ============ */
