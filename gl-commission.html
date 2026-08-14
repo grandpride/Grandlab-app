@@ -700,6 +700,36 @@ async function loadList(which){
   if(r.error||!r.data||!r.data.length){
     box.innerHTML='<div class="card"><div class="empty">Nothing here</div></div>';return;
   }
+  // gl_comm_orders stores no customer name, so resolve it from the linked job
+  // (one batched query for the whole list), falling back to gl_walkin by plate
+  // for older orders whose job row has since gone.
+  const NAMES={};
+  try{
+    const ids=r.data.map(function(o){return o.job_id}).filter(Boolean);
+    if(ids.length){
+      const jr=await sb.from('gl_jobs').select('id,name,workshop_name,cust_type').in('id',ids);
+      (jr.data||[]).forEach(function(j){
+        NAMES[j.id]=(j.name||j.workshop_name||'').trim();
+      });
+    }
+    const missing=r.data.filter(function(o){ return !NAMES[o.job_id] && o.plate; })
+                        .map(function(o){ return String(o.plate).trim().toUpperCase(); });
+    if(missing.length){
+      const wr=await sb.from('gl_walkin').select('plate,name').in('plate',[...new Set(missing)]);
+      const byPlate={};
+      (wr.data||[]).forEach(function(w){
+        const k=String(w.plate||'').trim().toUpperCase();
+        if(k && w.name && !byPlate[k]) byPlate[k]=w.name;
+      });
+      r.data.forEach(function(o){
+        const k=String(o.plate||'').trim().toUpperCase();
+        if(!NAMES[o.job_id] && byPlate[k]) NAMES['P:'+k]=byPlate[k];
+      });
+    }
+  }catch(e){ /* names are a nicety - never block the list */ }
+  const custName=function(o){
+    return NAMES[o.job_id] || NAMES['P:'+String(o.plate||'').trim().toUpperCase()] || '';
+  };
   box.innerHTML='<div class="card"><div class="sec">'+(which==='pend'?'WAITING APPROVAL':'APPROVED')+' ('+r.data.length+')</div>'+
     r.data.map(function(o,i){
       const tot=(o.splits||[]).reduce(function(a,b){return a+Number(b.amount||0)},0);
@@ -707,6 +737,7 @@ async function loadList(which){
       return '<div class="jrow" data-i="'+i+'">'+
         '<div class="pl">'+esc(o.plate||'-')+'</div>'+
         '<div class="mid"><div>'+esc(o.model||'')+'</div>'+
+        (custName(o)?'<div class="sub2" style="color:#F5C518">'+esc(custName(o))+'</div>':'')+
         '<div class="sub2">'+esc((o.splits||[]).map(function(s){return s.name}).join(', '))+' &middot; '+myt(o.created_at)+'</div></div>'+
         '<span class="pill" style="background:'+col+'22;color:'+col+';border:1px solid '+col+'55">'+String(o.status).toUpperCase()+'</span>'+
         '<div class="rm">'+rm(tot)+'</div></div>';
