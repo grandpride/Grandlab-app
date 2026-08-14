@@ -205,6 +205,19 @@ input:focus,select:focus{outline:none;border-color:var(--gold)}
     <button class="btn sm" onclick="closeSettings()" style="margin-bottom:12px">
       <i class="ti ti-arrow-left"></i> Back</button>
     <div class="card">
+      <label>Advisors / attendees</label>
+      <div class="muted" style="margin-bottom:10px">
+        Shared with the Job Card &mdash; anyone added here also appears in the
+        "Attended by" dropdown on the job card.
+      </div>
+      <div id="staffList"></div>
+      <div style="display:flex;gap:8px;margin-top:10px">
+        <input id="newStaff" placeholder="New advisor name" style="flex:1">
+        <button class="btn gold" onclick="addStaff()"><i class="ti ti-plus"></i> Add</button>
+      </div>
+    </div>
+
+    <div class="card">
       <label>Commission chart for</label>
       <select id="setAdvisor" onchange="loadScheme()"></select>
       <div class="muted" style="margin-top:6px">
@@ -242,6 +255,25 @@ input:focus,select:focus{outline:none;border-color:var(--gold)}
     </div>
   </div>
 
+</div>
+
+<div id="mvModal" class="hide" style="position:fixed;inset:0;z-index:800;
+  background:rgba(0,0,0,.72);display:flex;align-items:center;justify-content:center;padding:20px">
+  <div style="background:var(--card);border:1px solid var(--border);border-radius:16px;
+    padding:18px;width:100%;max-width:380px">
+    <div style="font-size:16px;font-weight:800;margin-bottom:10px">Change advisor</div>
+    <div id="mvInfo" style="background:var(--card2);border-radius:10px;padding:11px;
+      font-size:13px;margin-bottom:14px"></div>
+    <label>Currently credited to</label>
+    <div id="mvFrom" style="font-size:15px;font-weight:800;color:var(--gold);
+      margin-bottom:14px"></div>
+    <label>Move to</label>
+    <select id="mvTo"></select>
+    <div style="display:flex;gap:8px;margin-top:16px">
+      <button class="btn" style="flex:1" onclick="closeMove()">Cancel</button>
+      <button class="btn gold" style="flex:1" onclick="confirmMove()">Move sale</button>
+    </div>
+  </div>
 </div>
 
 <div id="printArea"></div>
@@ -574,34 +606,50 @@ function printStatement(only){
 let STAFF=[];
 async function loadStaff(){
   try{
-    const {data}=await sb.from('gl_settings').select('data').eq('id','booking').maybeSingle();
-    let l=data&&data.data?data.data.staff_list:[];
+    const {data}=await sb.from('gl_board_config').select('staff_list')
+      .eq('id',1).maybeSingle();
+    let l=data?data.staff_list:[];
     if(typeof l==='string'){ try{ l=JSON.parse(l); }catch(e){ l=[]; } }
     STAFF=Array.isArray(l)?l.filter(Boolean):[];
   }catch(e){ STAFF=[]; }
+}
+async function saveStaff(){
+  const {error}=await sb.from('gl_board_config')
+    .upsert({id:1,staff_list:STAFF});
+  return error;
 }
 function advisorChoices(){
   const s=new Set(STAFF);
   ROWS.forEach(r=>s.add(String(r.attendee).trim()));
   return [...s].filter(Boolean).sort();
 }
+let MOVE_ID=null;
 function askMove(id){
   const r=ROWS.find(x=>String(x.id)===String(id));
   if(!r) return;
   const list=advisorChoices().filter(n=>n!==String(r.attendee).trim());
-  if(!list.length){ toast('No other advisor found'); return; }
-  const menu=list.map((n,i)=>(i+1)+'. '+n).join('\n');
-  const pick=prompt('Move this sale from '+r.attendee+' to:\n\n'+menu+
-    '\n\nType the number (or 0 to cancel)');
-  if(pick===null) return;
-  const i=parseInt(pick,10);
-  if(!i||i<1||i>list.length) return;
-  moveJob(r,list[i-1]);
+  if(!list.length){ toast('No other advisor \u2014 add one in Settings'); return; }
+  MOVE_ID=r.id;
+  const d=new Date(r.paid_at);
+  $('mvInfo').innerHTML='<b>'+esc(r.customer_name||'\u2014')+' \u00b7 '+esc(r.plate||'')+'</b>'+
+    '<div class="muted" style="margin-top:3px">'+pad2(d.getDate())+'/'+pad2(d.getMonth()+1)+
+    ' \u00b7 #'+esc(r.invoice_no||'')+' \u00b7 '+
+    rm(amtOf(r,schemeFor(r.attendee).basis||'net'))+'</div>'+
+    '<div style="margin-top:6px;font-size:12px;color:var(--gold)">'+esc(svcText(r))+'</div>';
+  $('mvFrom').textContent=String(r.attendee).trim();
+  $('mvTo').innerHTML=list.map(n=>'<option value="'+esc(n)+'">'+esc(n)+'</option>').join('');
+  $('mvModal').classList.remove('hide');
 }
+function closeMove(){ $('mvModal').classList.add('hide'); MOVE_ID=null; }
+function confirmMove(){
+  const r=ROWS.find(x=>String(x.id)===String(MOVE_ID));
+  const to=$('mvTo').value;
+  closeMove();
+  if(r&&to) moveJob(r,to);
+}
+
 async function moveJob(r,to){
   const from=String(r.attendee).trim();
-  if(!confirm('Move '+(r.customer_name||'this sale')+' ('+rm(amtOf(r,schemeFor(from).basis||'net'))+
-    ')\n\nfrom '+from+'  →  '+to+' ?')) return;
   const payload={attendee:to,attendee_prev:from,
     attendee_changed_at:new Date().toISOString()};
   const {error}=await sb.from('gl_payments').update(payload).eq('id',r.id);
@@ -617,6 +665,42 @@ async function moveJob(r,to){
     else renderDetail(OPEN_SA); }
 }
 
+function renderStaff(){
+  const used={};
+  ROWS.forEach(r=>{ const a=String(r.attendee||'').trim();
+    if(a) used[a]=(used[a]||0)+1; });
+  $('staffList').innerHTML=STAFF.length?STAFF.map((n,i)=>{
+    const c=used[n]||0;
+    return `<div style="display:flex;align-items:center;gap:9px;padding:8px 0;
+      border-bottom:1px solid var(--border)">
+      <div style="flex:1;font-size:14px;font-weight:600">${esc(n)}</div>
+      <span class="muted">${c?c+' this month':'no jobs'}</span>
+      <button class="btn sm" onclick="delStaff(${i})"><i class="ti ti-x"></i></button>
+    </div>`;
+  }).join(''):'<div class="muted">No advisors yet.</div>';
+}
+async function addStaff(){
+  const v=$('newStaff').value.trim();
+  if(!v) return;
+  if(STAFF.some(n=>n.toLowerCase()===v.toLowerCase())){ toast('Already on the list'); return; }
+  STAFF.push(v);
+  const err=await saveStaff();
+  if(err){ STAFF.pop(); toast('Save failed: '+err.message); return; }
+  $('newStaff').value='';
+  toast(v+' added — also on the job card now');
+  renderStaff(); openSettings();
+}
+async function delStaff(i){
+  const n=STAFF[i];
+  const used=ROWS.some(r=>String(r.attendee||'').trim()===n);
+  if(used){ toast(n+' has jobs this month — move them first'); return; }
+  STAFF.splice(i,1);
+  const err=await saveStaff();
+  if(err){ STAFF.splice(i,0,n); toast('Delete failed: '+err.message); return; }
+  toast(n+' removed');
+  renderStaff();
+}
+
 /* ============ settings ============ */
 function openSettings(){
   const names=new Set(Object.keys(SCHEMES));
@@ -628,7 +712,7 @@ function openSettings(){
     `<option value="${esc(n)}">${esc(n)}${SCHEMES[n]?'':' (using default)'}</option>`).join('');
   $('viewList').classList.add('hide'); $('viewDetail').classList.add('hide');
   $('viewSettings').classList.remove('hide');
-  loadScheme(); window.scrollTo(0,0);
+  renderStaff(); loadScheme(); window.scrollTo(0,0);
 }
 function closeSettings(){ backToList(); }
 
