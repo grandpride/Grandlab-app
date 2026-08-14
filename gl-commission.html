@@ -363,6 +363,7 @@ async function loadNew(){
   (function(){ (window.__COMM_DONE__||[]).forEach(function(x){done[x]=1}) })();
 
   box.innerHTML='<div class="card"><div class="sec">NEW JOBS ('+items.length+')</div>'+
+    '<button class="btn btn2" style="margin-bottom:10px" onclick="openManualPick()">+ ADD A JOB MANUALLY</button>'+
     (Object.keys(seenDup).filter(function(k){return seenDup[k]>1}).length
       ? '<div class="warn">Same plate and service appears more than once &mdash; usually a deposit and a balance job card for one installation. Pay it once and remove the other.</div>'
       : '')+
@@ -401,6 +402,108 @@ async function skipItem(it,row){
   const left=el('v_new').querySelectorAll('.jrow').length;
   if(!left)el('v_new').innerHTML='<div class="card"><div class="sec">NEW JOBS</div><div class="empty">No film jobs waiting \u2713</div></div>';
   toast('Removed '+(it.job.plate||''));
+}
+
+/* ---------- MANUAL ADD ----------
+   Not every payable job appears in NEW JOBS. That list only shows services
+   that match a row in RATES, so anything free-text ("WRAP ON SPOILER",
+   "PPF TOUCH UP", "LABOUR CHARGES FOR ..."), mistyped ("TENKO"), or written
+   as two services in one line is silently skipped. This lets you pick any
+   recent job, choose the service line, and set the base amount by hand.     */
+var MANUAL_JOBS=[];
+async function openManualPick(){
+  const box=el('v_new');
+  box.innerHTML='<div class="card"><div class="empty">Loading jobs...</div></div>';
+  const since=Date.now()-90*86400000;
+  const j=await sb.from('gl_jobs')
+    .select('id,plate,model,car_type,services,created_at,name,workshop_name')
+    .gte('created_at',since).order('created_at',{ascending:false}).limit(300);
+  if(j.error){ box.innerHTML='<div class="card"><div class="empty">Could not load jobs</div></div>'; return; }
+  MANUAL_JOBS=j.data||[];
+  renderManualPick('');
+}
+function manualSvcNames(job){
+  const out=[];
+  (job.services||[]).forEach(function(s){
+    const nm=(typeof s==='string')?s:(s&&s.desc?s.desc:'');
+    if(nm) out.push({name:nm, price:(s&&s.price)?Number(s.price):0});
+  });
+  return out;
+}
+function renderManualPick(q){
+  const box=el('v_new');
+  const needle=String(q||'').trim().toUpperCase();
+  const rows=MANUAL_JOBS.filter(function(x){
+    if(!needle) return true;
+    return String(x.plate||'').toUpperCase().indexOf(needle)>=0
+        || String(x.model||'').toUpperCase().indexOf(needle)>=0
+        || String(x.name||'').toUpperCase().indexOf(needle)>=0;
+  }).slice(0,60);
+  box.innerHTML=
+   '<button class="btn btn2" style="margin-bottom:12px" onclick="loadNew()">&#8592; BACK TO LIST</button>'+
+   '<div class="card"><div class="sec">PICK A JOB</div>'+
+     '<div class="hint">Any job from the last 90 days &mdash; including ones NEW JOBS skipped.</div>'+
+     '<input id="mq" placeholder="Search plate, model or customer" '+
+       'style="width:100%;margin:10px 0;padding:10px;border-radius:10px;border:1px solid #333;background:#111;color:#eee;font-family:inherit">'+
+     (rows.length?rows.map(function(x,i){
+       return '<div class="jrow" data-mi="'+i+'">'+
+         '<div class="pl">'+esc(x.plate||'-')+'</div>'+
+         '<div class="mid"><div>'+esc(x.model||'')+'</div>'+
+           ((x.name||x.workshop_name)?'<div class="sub2" style="color:#F5C518">'+esc(x.name||x.workshop_name)+'</div>':'')+
+           '<div class="sub2">'+esc(manualSvcNames(x).map(function(s){return s.name}).join(', ').slice(0,90))+'</div>'+
+         '</div></div>';
+     }).join(''):'<div class="empty">No match</div>')+
+   '</div>';
+  const inp=el('mq');
+  if(inp){ inp.value=q||''; inp.oninput=function(){ renderManualPick(this.value); };
+           if(q) { inp.focus(); inp.setSelectionRange(inp.value.length,inp.value.length); } }
+  Array.from(box.querySelectorAll('.jrow')).forEach(function(d){
+    d.onclick=function(){ openManualService(rows[Number(d.getAttribute('data-mi'))]); };
+  });
+}
+function openManualService(job){
+  const box=el('v_new');
+  const svcs=manualSvcNames(job);
+  box.innerHTML=
+   '<button class="btn btn2" style="margin-bottom:12px" onclick="renderManualPick(\'\')">&#8592; BACK</button>'+
+   '<div class="card"><div class="sec">'+esc(job.plate||'')+' &middot; '+esc(job.model||'')+'</div>'+
+     '<div class="hint">Pick the service being paid, or type your own.</div>'+
+     (svcs.length?svcs.map(function(s,i){
+       return '<div class="jrow" data-si="'+i+'"><div class="mid"><div>'+esc(s.name)+'</div>'+
+         (s.price?'<div class="sub2">sold at '+rm(s.price)+'</div>':'')+'</div></div>';
+     }).join(''):'<div class="empty">This job has no service lines</div>')+
+     '<div style="margin-top:12px"><div class="sub2" style="margin-bottom:6px">Or enter manually</div>'+
+       '<input id="msvc" placeholder="Service name" style="width:100%;padding:10px;border-radius:10px;border:1px solid #333;background:#111;color:#eee;font-family:inherit">'+
+       '<input id="mamt" type="number" step="0.01" placeholder="Commission base amount (RM)" style="width:100%;margin-top:8px;padding:10px;border-radius:10px;border:1px solid #333;background:#111;color:#eee;font-family:inherit">'+
+       '<button class="btn" style="margin-top:10px" onclick="startManual(\'\',0)">CONTINUE</button>'+
+     '</div>'+
+   '</div>';
+  window.__MJOB__=job;
+  Array.from(box.querySelectorAll('.jrow')).forEach(function(d){
+    d.onclick=function(){
+      const s=svcs[Number(d.getAttribute('data-si'))];
+      el('msvc').value=s.name;
+      if(s.price) el('mamt').value=s.price;
+      el('mamt').focus();
+    };
+  });
+}
+function startManual(){
+  const job=window.__MJOB__;
+  if(!job){ toast('Pick a job first'); return; }
+  const nm=(el('msvc').value||'').trim();
+  const amt=Number(el('mamt').value||0);
+  if(!nm){ toast('Enter the service name'); return; }
+  if(!(amt>0)){ toast('Enter the commission base amount'); return; }
+  // try to reuse a real rate so category/brand/package are filled in; if none
+  // matches (the usual case here) fall back to a MANUAL rate carrying the
+  // amount you typed, so the rest of the form works unchanged.
+  const found=findRate(null,nm,isBike(job));
+  const rate=found
+    ? {category:found.category,brand:found.brand,package:found.package,
+       amount:amt,target_hours:found.target_hours||8}
+    : {category:'MANUAL',brand:'',package:'',amount:amt,target_hours:8};
+  openForm(job,{name:nm,rate:rate});
 }
 
 // ---------- FORM ----------
