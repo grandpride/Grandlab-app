@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="mobile-web-app-capable" content="yes">
+<title>MIA — GrandLab Sales Advisor</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.x/dist/tabler-icons.min.css">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+:root{--bg:#080808;--card:#141414;--card2:#1c1c1c;--gold:#F5C518;--text:#fff;--text2:#9a9a9a;--text3:#6a6a6a;--border:#2a2a2a;--green:#25D366;--red:#e0533d}
+html,body{height:100%;background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:var(--text);font-size:15px}
+.app{max-width:680px;margin:0 auto;min-height:100dvh;padding:0 16px 120px}
+
+.back{position:fixed;top:14px;left:14px;color:var(--text2);text-decoration:none;font-size:13px;z-index:20;display:flex;align-items:center;gap:5px}
+
+/* ---------- header + avatar (the signature bit) ---------- */
+.hdr{padding:52px 4px 18px;display:flex;align-items:center;gap:14px}
+.ava{position:relative;width:60px;height:60px;flex:0 0 auto}
+.ava svg,.ava img{width:100%;height:100%;border-radius:50%;display:block;object-fit:cover}
+.ava .ring{position:absolute;inset:-4px;border-radius:50%;padding:2px;
+  background:conic-gradient(from 0deg,var(--gold),rgba(245,197,24,0) 55%,var(--gold));
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
+  -webkit-mask-composite:xor;mask-composite:exclude;opacity:0;transition:opacity .25s}
+.ava.thinking .ring{opacity:1;animation:spin 1.1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.ava .dot{position:absolute;right:2px;bottom:2px;width:13px;height:13px;border-radius:50%;background:var(--green);border:2.5px solid var(--bg)}
+.hdr .nm{font-weight:900;font-size:24px;letter-spacing:.5px}
+.hdr .nm span{color:var(--gold)}
+.hdr .sub{font-size:12px;color:var(--text2);margin-top:3px}
+
+/* ---------- tabs ---------- */
+.tabs{display:flex;gap:6px;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:5px;margin-bottom:18px}
+.tab{flex:1;text-align:center;padding:10px 6px;border-radius:10px;font-size:13px;font-weight:700;color:var(--text2);cursor:pointer;border:none;background:none;font-family:inherit}
+.tab.on{background:var(--gold);color:#080808}
+
+.view{display:none}
+.view.on{display:block}
+
+/* ---------- cards + controls ---------- */
+.card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:16px;margin-bottom:14px}
+.card-t{font-size:12px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--text2);margin-bottom:11px;display:flex;align-items:center;gap:7px}
+label{display:block;font-size:11px;font-weight:700;color:var(--text2);margin-bottom:5px}
+textarea,input[type=text],input[type=email],input[type=password]{width:100%;background:#101010;border:1px solid var(--border);border-radius:11px;color:var(--text);
+  padding:12px 13px;font-size:15px;font-family:inherit;outline:none;resize:vertical;line-height:1.5}
+textarea:focus,input:focus{border-color:var(--gold)}
+textarea{min-height:120px}
+.hint{font-size:11px;color:var(--text3);margin-top:6px;line-height:1.5}
+
+.btn{border:none;border-radius:11px;padding:13px 16px;font-weight:800;font-size:14px;font-family:inherit;cursor:pointer;display:inline-flex;
+  align-items:center;justify-content:center;gap:7px}
+.btn:active{transform:scale(.985)}
+.btn:disabled{opacity:.45;cursor:default}
+.btn-pri{background:var(--gold);color:#080808}
+.btn-ghost{background:var(--card2);color:var(--text2);border:1px solid var(--border)}
+.btn-block{width:100%}
+.btn-sm{padding:7px 11px;font-size:12px;border-radius:9px}
+.row{display:flex;gap:9px}
+.row>*{flex:1}
+
+/* ---------- screenshot strip ---------- */
+.shots{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.shot{position:relative;width:64px;height:64px;border-radius:10px;overflow:hidden;border:1px solid var(--border)}
+.shot img{width:100%;height:100%;object-fit:cover}
+.shot button{position:absolute;top:2px;right:2px;width:19px;height:19px;border-radius:50%;border:none;background:rgba(0,0,0,.75);
+  color:#fff;font-size:11px;cursor:pointer;line-height:1}
+
+/* ---------- coach output ---------- */
+.blk{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:15px;margin-bottom:11px}
+.blk.lang{border-color:#33301f}
+.blk-h{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:9px}
+.blk-h .t{font-size:12px;font-weight:800;letter-spacing:.06em;color:var(--gold)}
+.blk .body{font-size:15px;line-height:1.62;white-space:pre-wrap;word-break:break-word}
+.blk.meta .body{font-size:13.5px;color:var(--text2);line-height:1.6}
+.copy{background:var(--card2);border:1px solid var(--border);color:var(--text2);border-radius:8px;padding:6px 10px;font-size:11px;
+  font-weight:700;cursor:pointer;font-family:inherit;flex:0 0 auto}
+.copy.done{background:var(--gold);color:#080808;border-color:var(--gold)}
+
+/* ---------- customer chat ---------- */
+.chat{display:flex;flex-direction:column;gap:11px;padding:4px 0 10px;min-height:220px}
+.msg{max-width:82%;padding:11px 14px;border-radius:16px;font-size:15px;line-height:1.55;white-space:pre-wrap;word-break:break-word}
+.msg.them{align-self:flex-start;background:var(--card);border:1px solid var(--border);border-bottom-left-radius:5px}
+.msg.me{align-self:flex-end;background:var(--gold);color:#080808;border-bottom-right-radius:5px;font-weight:500}
+.typing{align-self:flex-start;background:var(--card);border:1px solid var(--border);border-radius:16px;border-bottom-left-radius:5px;padding:14px 16px;display:flex;gap:5px}
+.typing i{width:7px;height:7px;border-radius:50%;background:var(--text3);animation:bob 1.2s infinite}
+.typing i:nth-child(2){animation-delay:.18s}
+.typing i:nth-child(3){animation-delay:.36s}
+@keyframes bob{0%,60%,100%{transform:translateY(0);opacity:.4}30%{transform:translateY(-5px);opacity:1}}
+.composer{position:fixed;left:0;right:0;bottom:0;background:linear-gradient(180deg,rgba(8,8,8,0),var(--bg) 22%);padding:16px;z-index:15}
+.composer-in{max-width:680px;margin:0 auto;display:flex;gap:9px;align-items:flex-end}
+.composer textarea{min-height:48px;max-height:130px;border-radius:24px;padding:13px 17px}
+.composer .btn{border-radius:50%;width:48px;height:48px;padding:0;flex:0 0 auto}
+
+.empty{text-align:center;color:var(--text3);font-size:13px;padding:34px 16px;line-height:1.6}
+.err{color:var(--red);font-size:13px;margin-top:10px;line-height:1.5}
+.ok{color:var(--green);font-size:13px;margin-top:10px}
+
+/* ---------- login gate ---------- */
+.gate{position:fixed;inset:0;background:var(--bg);z-index:50;display:flex;align-items:center;justify-content:center;padding:24px}
+.gate.hidden{display:none}
+.gate-box{width:100%;max-width:330px;text-align:center}
+.gate input{text-align:left;margin-bottom:11px}
+.gate .btn{width:100%;margin-top:4px}
+
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+
+<a class="back" href="https://grandpride.github.io/Grandlab-app/gl-hub.html"><i class="ti ti-arrow-left"></i> Hub</a>
+
+<!-- ============ LOGIN ============ -->
+<div id="gate" class="gate">
+  <div class="gate-box">
+    <div id="gateAva" style="width:78px;margin:0 auto 16px"></div>
+    <div style="font-weight:900;font-size:26px;letter-spacing:.5px">M<span style="color:var(--gold)">IA</span></div>
+    <div style="font-size:11px;color:var(--text2);letter-spacing:.24em;text-transform:uppercase;margin:6px 0 22px">Sales Advisor</div>
+    <input id="email" type="email" autocomplete="username" placeholder="Email">
+    <input id="pass" type="password" autocomplete="current-password" placeholder="Password">
+    <div class="err" id="gateErr"></div>
+    <button class="btn btn-pri" onclick="doLogin()">Sign in</button>
+  </div>
+</div>
+
+<div class="app">
+  <div class="hdr">
+    <div class="ava" id="ava"><div class="ring"></div><div class="dot"></div></div>
+    <div>
+      <div class="nm">M<span>IA</span></div>
+      <div class="sub" id="status">Ready — 8 years on the floor</div>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab on" data-v="coach" onclick="showTab('coach')">Coach</button>
+    <button class="tab" data-v="cust" onclick="showTab('cust')">Customer</button>
+    <button class="tab" data-v="set" onclick="showTab('set')">Knowledge</button>
+  </div>
+
+  <!-- ============ COACH ============ -->
+  <div class="view on" id="v-coach">
+    <div class="card">
+      <div class="card-t"><i class="ti ti-message-2-question"></i> What did the customer say?</div>
+      <textarea id="coachIn" placeholder="Paste the customer's message, or the whole chat so far.&#10;&#10;You can also drop in a screenshot below — MIA will read both sides."></textarea>
+
+      <div class="row" style="margin-top:10px">
+        <button class="btn btn-ghost btn-sm" onclick="document.getElementById('shotFile').click()">
+          <i class="ti ti-photo-up"></i> Add screenshot
+        </button>
+        <button class="btn btn-ghost btn-sm" onclick="trainMe()">
+          <i class="ti ti-barbell"></i> Train me
+        </button>
+      </div>
+      <input type="file" id="shotFile" accept="image/*" multiple hidden onchange="addShots(this)">
+      <div class="shots" id="shots"></div>
+      <div class="hint">On a PC you can copy a screenshot and press Ctrl+V anywhere on this page.</div>
+
+      <button class="btn btn-pri btn-block" style="margin-top:13px" id="coachGo" onclick="askCoach()">
+        <i class="ti ti-sparkles"></i> Write my reply
+      </button>
+      <div class="err" id="coachErr"></div>
+    </div>
+
+    <div id="coachOut"></div>
+  </div>
+
+  <!-- ============ CUSTOMER ============ -->
+  <div class="view" id="v-cust">
+    <div class="chat" id="chat"></div>
+    <div style="text-align:center;padding-bottom:20px">
+      <button class="btn btn-ghost btn-sm" onclick="resetChat()"><i class="ti ti-refresh"></i> Start over</button>
+    </div>
+    <div class="composer" id="composer" style="display:none">
+      <div class="composer-in">
+        <textarea id="custIn" rows="1" placeholder="Type as the customer…" onkeydown="custKey(event)"></textarea>
+        <button class="btn btn-pri" onclick="sendCust()"><i class="ti ti-send"></i></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ KNOWLEDGE ============ -->
+  <div class="view" id="v-set">
+    <div class="card">
+      <div class="card-t"><i class="ti ti-calendar-check"></i> Slots open right now</div>
+      <textarea id="k_slots" style="min-height:80px"></textarea>
+      <div class="hint">Update weekly. MIA offers these two when closing.</div>
+    </div>
+    <div class="card">
+      <div class="card-t"><i class="ti ti-shield-check"></i> Warranty by brand</div>
+      <textarea id="k_warranty"></textarea>
+      <div class="hint">Until this is filled in MIA will say it needs to confirm, rather than guess.</div>
+    </div>
+    <div class="card">
+      <div class="card-t"><i class="ti ti-award"></i> Why GrandLab</div>
+      <textarea id="k_differentiators"></textarea>
+    </div>
+    <div class="card">
+      <div class="card-t"><i class="ti ti-package"></i> What's in each PPF package</div>
+      <textarea id="k_packages_contents"></textarea>
+    </div>
+    <div class="card">
+      <div class="card-t"><i class="ti ti-clock"></i> How long jobs take</div>
+      <textarea id="k_duration"></textarea>
+    </div>
+    <div class="card">
+      <div class="card-t"><i class="ti ti-tag"></i> Live promotions</div>
+      <textarea id="k_promos"></textarea>
+    </div>
+    <div class="card">
+      <div class="card-t"><i class="ti ti-gift"></i> The visit offer</div>
+      <textarea id="k_visit_offer" style="min-height:80px"></textarea>
+    </div>
+    <div class="card">
+      <div class="card-t"><i class="ti ti-help-circle"></i> FAQ</div>
+      <textarea id="k_faq" style="min-height:180px"></textarea>
+    </div>
+    <div class="card">
+      <div class="card-t"><i class="ti ti-mood-smile"></i> Tone</div>
+      <textarea id="k_tone"></textarea>
+    </div>
+    <div class="card">
+      <div class="card-t"><i class="ti ti-language"></i> Language rules</div>
+      <textarea id="k_language_rules" style="min-height:150px"></textarea>
+    </div>
+    <div class="card">
+      <div class="card-t"><i class="ti ti-check"></i> Always</div>
+      <textarea id="k_always"></textarea>
+    </div>
+    <div class="card">
+      <div class="card-t"><i class="ti ti-ban"></i> Never</div>
+      <textarea id="k_never"></textarea>
+    </div>
+    <div class="card">
+      <div class="card-t"><i class="ti ti-user-circle"></i> Avatar image URL</div>
+      <input type="text" id="k_avatar_url" placeholder="Leave blank to use the built-in avatar">
+    </div>
+    <button class="btn btn-pri btn-block" onclick="saveKB()"><i class="ti ti-device-floppy"></i> Save knowledge</button>
+    <div class="ok" id="setMsg"></div>
+    <div class="hint" style="margin-top:14px">Prices come straight from the live service catalogue — you never have to type them here. Edit prices in the admin tool as usual and MIA picks them up automatically.</div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+/* ============================================================
+   MIA — GrandLab sales advisor
+   Coach tab  : writes the advisor's next WhatsApp reply in EN / BM / CN
+   Customer   : MIA talks to a customer directly
+   Knowledge  : the business facts MIA works from (prices are live)
+   ============================================================ */
+
+const SUPA_URL  = "https://eychljpzorzmaveixlnu.supabase.co";
+const SUPA_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV5Y2hsanB6b3J6bWF2ZWl4bG51Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2NDk2NjQsImV4cCI6MjA5NzIyNTY2NH0.6dA1zhz5ZIwf8byFB8vhfOzPI-uPPdPihEr1b8GG_oA";
+const MIA_FN    = SUPA_URL + "/functions/v1/mia";
+
+const sb = supabase.createClient(SUPA_URL, SUPA_ANON);
+const $  = id => document.getElementById(id);
+const esc = s => (s == null ? "" : String(s)).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c]));
+
+let KB = {};
+let SHOTS = [];          // [{media_type, data, url}]
+let CHAT = [];           // customer-tab history
+let BUSY = false;
+
+/* ---------- the avatar ---------- */
+function avatarSvg(){
+  return `<svg viewBox="0 0 100 100" aria-label="MIA">
+    <defs>
+      <clipPath id="miaClip"><circle cx="50" cy="50" r="50"/></clipPath>
+      <linearGradient id="miaBg" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#232323"/><stop offset="100%" stop-color="#101010"/>
+      </linearGradient>
+    </defs>
+    <g clip-path="url(#miaClip)">
+      <rect width="100" height="100" fill="url(#miaBg)"/>
+      <ellipse cx="50" cy="104" rx="41" ry="27" fill="#F5C518"/>
+      <ellipse cx="50" cy="107" rx="27" ry="21" fill="#1c1c1c"/>
+      <path d="M50 16c-16 0-25 11-25 27 0 9 2 15 5 20h40c3-5 5-11 5-20 0-16-9-27-25-27z" fill="#191919"/>
+      <ellipse cx="50" cy="50" rx="17" ry="21" fill="#E8B98F"/>
+      <path d="M50 18c-14 0-23 9-24 23 5 1 9-2 11-7 5 5 13 8 24 8 4 0 8-1 11-3 1 2 1 4 2 6 1-16-8-27-24-27z" fill="#0f0f0f"/>
+      <ellipse cx="43" cy="49" rx="1.9" ry="2.4" fill="#141414"/>
+      <ellipse cx="57" cy="49" rx="1.9" ry="2.4" fill="#141414"/>
+      <path d="M45 58c2 2.4 8 2.4 10 0" stroke="#141414" stroke-width="1.7" fill="none" stroke-linecap="round"/>
+      <path d="M28 52V44c0-12 10-20 22-20s22 8 22 20v8" stroke="#F5C518" stroke-width="3.2" fill="none" stroke-linecap="round"/>
+      <rect x="24.5" y="47" width="7.5" height="13" rx="3.7" fill="#F5C518"/>
+      <rect x="68" y="47" width="7.5" height="13" rx="3.7" fill="#F5C518"/>
+      <path d="M28 60v4c0 4 4 6 8 6h4" stroke="#F5C518" stroke-width="2.4" fill="none" stroke-linecap="round"/>
+      <circle cx="42" cy="70" r="2.6" fill="#F5C518"/>
+    </g>
+  </svg>`;
+}
+function paintAvatar(){
+  const url = (KB.avatar_url || "").trim();
+  const art = url ? `<img src="${esc(url)}" alt="MIA">` : avatarSvg();
+  const a = $("ava");
+  a.innerHTML = art + '<div class="ring"></div><div class="dot"></div>';
+  if ($("gateAva")) $("gateAva").innerHTML = art;
+}
+function thinking(on, label){
+  BUSY = on;
+  $("ava").classList.toggle("thinking", on);
+  $("status").textContent = on ? (label || "Thinking…") : "Ready — 8 years on the floor";
+}
+
+/* ---------- login ---------- */
+async function doLogin(){
+  const err = $("gateErr"); err.textContent = "";
+  const { error } = await sb.auth.signInWithPassword({
+    email: $("email").value.trim(),
+    password: $("pass").value
+  });
+  if (error) { err.textContent = "That didn't work — check the email and password."; return; }
+  await start();
+}
+async function start(){
+  $("gate").classList.add("hidden");
+  await loadKB();
+  paintAvatar();
+  resetChat();
+}
+sb.auth.getSession().then(({ data }) => {
+  if (data && data.session) start(); else paintAvatar();
+});
+
+/* ---------- knowledge base ---------- */
+const KB_FIELDS = ["slots","warranty","differentiators","packages_contents","duration",
+                   "promos","visit_offer","faq","tone","language_rules","always","never","avatar_url"];
+
+async function loadKB(){
+  const { data, error } = await sb.from("gl_mia_kb").select("data").eq("id","kb").maybeSingle();
+  if (error || !data) { KB = {}; return; }
+  KB = data.data || {};
+  KB_FIELDS.forEach(f => { const el = $("k_" + f); if (el) el.value = KB[f] || ""; });
+}
+async function saveKB(){
+  const msg = $("setMsg"); msg.textContent = ""; msg.className = "ok";
+  KB_FIELDS.forEach(f => { const el = $("k_" + f); if (el) KB[f] = el.value; });
+  const { error } = await sb.from("gl_mia_kb")
+    .upsert({ id: "kb", data: KB, updated_at: new Date().toISOString() });
+  if (error) { msg.className = "err"; msg.textContent = "Couldn't save: " + error.message; return; }
+  msg.textContent = "Saved. MIA is using this from the next message.";
+  paintAvatar();
+  setTimeout(() => { msg.textContent = ""; }, 3500);
+}
+
+/* ---------- tabs ---------- */
+function showTab(v){
+  document.querySelectorAll(".tab").forEach(t => t.classList.toggle("on", t.dataset.v === v));
+  document.querySelectorAll(".view").forEach(x => x.classList.remove("on"));
+  $("v-" + v).classList.add("on");
+  $("composer").style.display = (v === "cust") ? "block" : "none";
+  window.scrollTo({ top: 0 });
+}
+
+/* ---------- screenshots ---------- */
+function fileToShot(file){
+  return new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload = () => {
+      const url = r.result;
+      const m = /^data:(image\/[a-zA-Z+]+);base64,(.+)$/.exec(url);
+      if (!m) { rej(new Error("bad image")); return; }
+      res({ media_type: m[1], data: m[2], url });
+    };
+    r.onerror = () => rej(new Error("read failed"));
+    r.readAsDataURL(file);
+  });
+}
+async function addShots(input){
+  for (const f of [...input.files].slice(0, 4)) {
+    try { SHOTS.push(await fileToShot(f)); } catch (e) { /* skip unreadable file */ }
+  }
+  input.value = "";
+  renderShots();
+}
+function renderShots(){
+  $("shots").innerHTML = SHOTS.map((s, i) =>
+    `<div class="shot"><img src="${s.url}"><button onclick="dropShot(${i})">✕</button></div>`).join("");
+}
+function dropShot(i){ SHOTS.splice(i, 1); renderShots(); }
+
+window.addEventListener("paste", async e => {
+  const items = [...(e.clipboardData ? e.clipboardData.items : [])];
+  const imgs = items.filter(x => x.type && x.type.indexOf("image") === 0);
+  if (!imgs.length) return;
+  for (const it of imgs.slice(0, 4)) {
+    const f = it.getAsFile();
+    if (f) { try { SHOTS.push(await fileToShot(f)); } catch (err) {} }
+  }
+  renderShots();
+  showTab("coach");
+});
+
+/* ---------- talking to the edge function ---------- */
+async function callMia(mode, messages){
+  const { data } = await sb.auth.getSession();
+  const token = (data && data.session && data.session.access_token) || SUPA_ANON;
+  const r = await fetch(MIA_FN, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", apikey: SUPA_ANON, Authorization: "Bearer " + token },
+    body: JSON.stringify({ mode, messages })
+  });
+  let out;
+  try { out = await r.json(); } catch (e) { throw new Error("MIA sent back something unreadable."); }
+  if (!r.ok || out.error) throw new Error(out.error || ("Request failed (" + r.status + ")"));
+  return out.text || "";
+}
+
+/* ---------- coach tab ---------- */
+function trainMe(){
+  $("coachIn").value = "train me";
+  askCoach();
+}
+async function askCoach(){
+  if (BUSY) return;
+  const err = $("coachErr"); err.textContent = "";
+  const txt = $("coachIn").value.trim();
+  if (!txt && !SHOTS.length) { err.textContent = "Paste the customer's message, or add a screenshot."; return; }
+
+  const content = SHOTS.map(s => ({ type: "image", source: { type: "base64", media_type: s.media_type, data: s.data } }));
+  content.push({ type: "text", text: txt || "Here is the chat so far. What should I send next?" });
+
+  $("coachGo").disabled = true;
+  thinking(true, "Reading the chat…");
+  $("coachOut").innerHTML = '<div class="empty">Working out the best reply…</div>';
+  try {
+    const out = await callMia("coach", [{ role: "user", content }]);
+    renderCoach(out);
+  } catch (e) {
+    $("coachOut").innerHTML = "";
+    err.textContent = e.message;
+  }
+  thinking(false);
+  $("coachGo").disabled = false;
+}
+
+const SECTIONS = [
+  { k: "read", label: "Read on the customer", meta: true,  re: /📖\s*READ/ },
+  { k: "goal", label: "Goal of this message", meta: true,  re: /🎯\s*GOAL[^\n]*/ },
+  { k: "en",   label: "English",              meta: false, re: /🇬🇧\s*ENGLISH/ },
+  { k: "bm",   label: "Bahasa Melayu",        meta: false, re: /🇲🇾\s*BAHASA\s*MELAYU/ },
+  { k: "cn",   label: "中文",                  meta: false, re: /🇨🇳\s*中文/ },
+  { k: "why",  label: "Why this works",       meta: true,  re: /💡\s*WHY/ },
+  { k: "next", label: "What's next",          meta: true,  re: /(?:[\u23ED\u23EF\u27A1]\uFE0F?\s*)?WHAT[''`\u2019]?S\s*NEXT/ }
+];
+
+function renderCoach(raw){
+  const found = [];
+  SECTIONS.forEach(s => {
+    const m = s.re.exec(raw);
+    if (m) found.push({ sec: s, start: m.index, after: m.index + m[0].length });
+  });
+  found.sort((a, b) => a.start - b.start);
+
+  if (found.length < 3) {
+    $("coachOut").innerHTML =
+      `<div class="blk"><div class="blk-h"><div class="t">MIA</div>` +
+      `<button class="copy" onclick="copyTxt(this)" data-t="${esc(raw)}">Copy</button></div>` +
+      `<div class="body">${esc(raw)}</div></div>`;
+    return;
+  }
+
+  let html = "";
+  found.forEach((f, i) => {
+    const end = (i + 1 < found.length) ? found[i + 1].start : raw.length;
+    let body = raw.slice(f.after, end).replace(/[━─—]{3,}/g, "").trim();
+    if (!body) return;
+    html += `<div class="blk ${f.sec.meta ? "meta" : "lang"}">
+      <div class="blk-h"><div class="t">${esc(f.sec.label)}</div>
+        ${f.sec.meta ? "" : `<button class="copy" onclick="copyTxt(this)" data-t="${esc(body)}">Copy</button>`}
+      </div>
+      <div class="body">${esc(body)}</div></div>`;
+  });
+  $("coachOut").innerHTML = html;
+}
+
+function copyTxt(btn){
+  const t = btn.getAttribute("data-t") || "";
+  const done = () => { btn.classList.add("done"); btn.textContent = "Copied"; setTimeout(() => { btn.classList.remove("done"); btn.textContent = "Copy"; }, 1600); };
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(t).then(done, () => fallbackCopy(t, done));
+  } else fallbackCopy(t, done);
+}
+function fallbackCopy(t, done){
+  const ta = document.createElement("textarea");
+  ta.value = t; ta.style.position = "fixed"; ta.style.opacity = "0";
+  document.body.appendChild(ta); ta.select();
+  try { document.execCommand("copy"); done(); } catch (e) {}
+  ta.remove();
+}
+
+/* ---------- customer tab ---------- */
+function resetChat(){
+  CHAT = [];
+  $("chat").innerHTML = '<div class="empty">Type as if you were the customer.<br>MIA replies the way she would on WhatsApp.</div>';
+}
+function paintChat(typing){
+  const rows = CHAT.map(m =>
+    `<div class="msg ${m.role === "user" ? "me" : "them"}">${esc(m.content)}</div>`).join("");
+  $("chat").innerHTML = rows + (typing ? '<div class="typing"><i></i><i></i><i></i></div>' : "");
+  window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" });
+}
+function custKey(e){
+  if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendCust(); }
+}
+async function sendCust(){
+  if (BUSY) return;
+  const box = $("custIn");
+  const t = box.value.trim();
+  if (!t) return;
+  box.value = "";
+  CHAT.push({ role: "user", content: t });
+  paintChat(true);
+  thinking(true, "Typing…");
+  try {
+    const out = await callMia("customer", CHAT.map(m => ({ role: m.role, content: m.content })));
+    CHAT.push({ role: "assistant", content: out });
+  } catch (e) {
+    CHAT.push({ role: "assistant", content: "⚠️ " + e.message });
+  }
+  thinking(false);
+  paintChat(false);
+}
+</script>
+</body>
+</html>
