@@ -331,7 +331,7 @@ async function loadNew(){
   box.innerHTML='<div class="card"><div class="empty">Loading...</div></div>';
   const since=Date.now()-45*86400000;
   const j=await sb.from('gl_jobs')
-    .select('id,plate,model,car_type,services,created_at,stage,ready_at')
+    .select('id,plate,model,car_type,services,created_at,stage,ready_at,name,workshop_name')
     .gte('created_at',since).order('created_at',{ascending:false}).limit(200);
   if(j.error){box.innerHTML='<div class="card"><div class="empty">Could not load jobs</div></div>';return}
   // one entry per FILM SERVICE - a car with PPF + tint is two separate
@@ -373,6 +373,8 @@ async function loadNew(){
         '<div class="pl">'+esc(it.job.plate||'-')+'</div>'+
         '<div class="mid"><div>'+esc(it.job.model||'')+
           (bike?' <span class="pill" style="background:var(--gold);color:#000">BIKE</span>':'')+'</div>'+
+        ((it.job.name||it.job.workshop_name)
+          ? '<div class="sub2" style="color:#F5C518">'+esc(it.job.name||it.job.workshop_name)+'</div>' : '')+
         '<div class="sub2">'+esc(it.line.name)+
           (isDup?' <span class="pill" style="background:var(--red)22;color:var(--red);border:1px solid var(--red)">DUPLICATE?</span>':'')+
         '</div></div>'+
@@ -742,6 +744,7 @@ async function loadList(which){
         '<span class="pill" style="background:'+col+'22;color:'+col+';border:1px solid '+col+'55">'+String(o.status).toUpperCase()+'</span>'+
         '<div class="rm">'+rm(tot)+'</div></div>';
     }).join('')+'</div>';
+  r.data.forEach(function(o){ o.__cust=custName(o); });   // for the detail view
   Array.from(box.querySelectorAll('.jrow')).forEach(function(d,i){
     d.onclick=function(){openOrder(r.data[i],which)};
   });
@@ -753,6 +756,7 @@ function openOrder(o,which){
   box.innerHTML=
    '<button class="btn btn2" style="margin-bottom:12px" onclick="loadList(\''+which+'\')">&#8592; BACK</button>'+
    '<div class="card"><div class="sec">'+esc(o.plate||'')+' &middot; '+esc(o.model||'')+'</div>'+
+     (o.__cust?'<div class="hint" style="color:#F5C518">'+esc(o.__cust)+'</div>':'')+
      '<div class="hint">'+esc(o.service_name||'')+'</div>'+
      '<table style="margin-top:10px"><tr><td>Base</td><td class="rm">'+rm(o.base_amount)+'</td></tr>'+
      '<tr><td>Timing</td><td>'+String(o.timing_band).toUpperCase()+' &times;'+o.timing_factor+'</td></tr>'+
