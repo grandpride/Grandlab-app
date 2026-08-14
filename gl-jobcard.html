@@ -1320,16 +1320,17 @@ async function loadCustPackages(){
   const pk=Object.values(byId)
     .map(p=>({...p,remaining:(p.total_uses||0)-(p.used_uses||0)}))
     .filter(p=>p.remaining>0)
-    // coating stays tied to its own car; shared packages travel with the customer
-    .filter(p=>!isCoatingPkg_(p.service_name) || !plate || norm(p.vehicle_label)===plate)
-    .sort((a,b)=>(norm(b.vehicle_label)===plate)-(norm(a.vehicle_label)===plate));
+    // Show only packages belonging to THIS car, matching the Plate Scanner and
+    // POS. Listing a customer's other cars' balances here made the job card
+    // read 6 + 10 where the scanner said 6, and a chip tapped for another car
+    // would deduct from the wrong package.
+    .filter(p=>!plate || norm(p.vehicle_label)===plate);
 
   CAR_PACKAGES=pk;
   if(!CAR_PACKAGES.length){ $('pkgChips').innerHTML=''; return; }
-  $('pkgChips').innerHTML=CAR_PACKAGES.map(p=>{
-    const other=(plate && norm(p.vehicle_label)!==plate)?` <span style="opacity:.7">(${esc(p.vehicle_label||'')})</span>`:'';
-    return `<div class="chip" onclick="usePkg('${p.id}')">🎟️ ${esc(p.service_name)} · ${p.remaining} left${other}</div>`;
-  }).join('');
+  $('pkgChips').innerHTML=CAR_PACKAGES.map(p=>
+    `<div class="chip" onclick="usePkg('${p.id}')">🎟️ ${esc(p.service_name)} · ${p.remaining} left</div>`
+  ).join('');
 }
 
 /* ---------- PHOTOS (ImgBB -> Supabase urls) ---------- */
