@@ -370,7 +370,7 @@ async function start(){
   $("gate").classList.add("hidden");
   await loadKB();
   paintAvatar();
-  resetChat();
+  restoreChat();
 }
 sb.auth.getSession().then(({ data }) => {
   if (data && data.session) start(); else paintAvatar();
@@ -659,9 +659,29 @@ async function histDelete(id){
 }
 
 /* ---------- customer tab ---------- */
+const CHAT_KEY = "gl_mia_chat";
+
+function saveChat(){
+  try { localStorage.setItem(CHAT_KEY, JSON.stringify(CHAT.slice(-40))); } catch (e) { /* private mode, ignore */ }
+}
+function loadChat(){
+  try {
+    const raw = localStorage.getItem(CHAT_KEY);
+    const arr = raw ? JSON.parse(raw) : null;
+    CHAT = Array.isArray(arr) ? arr : [];
+  } catch (e) { CHAT = []; }
+}
+function emptyChat(){
+  $("chat").innerHTML = '<div class="empty">Type as if you were the customer.<br>MIA replies the way she would on WhatsApp.</div>';
+}
 function resetChat(){
   CHAT = [];
-  $("chat").innerHTML = '<div class="empty">Type as if you were the customer.<br>MIA replies the way she would on WhatsApp.</div>';
+  try { localStorage.removeItem(CHAT_KEY); } catch (e) {}
+  emptyChat();
+}
+function restoreChat(){
+  loadChat();
+  if (CHAT.length) paintChat(false); else emptyChat();
 }
 function paintChat(typing){
   const rows = CHAT.map(m =>
@@ -679,6 +699,7 @@ async function sendCust(){
   if (!t) return;
   box.value = "";
   CHAT.push({ role: "user", content: t });
+  saveChat();
   paintChat(true);
   thinking(true, "Typing…");
   try {
@@ -687,6 +708,7 @@ async function sendCust(){
   } catch (e) {
     CHAT.push({ role: "assistant", content: "⚠️ " + e.message });
   }
+  saveChat();
   thinking(false);
   paintChat(false);
 }
