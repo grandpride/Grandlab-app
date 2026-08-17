@@ -839,7 +839,35 @@ async function loadList(which){
   const custName=function(o){
     return NAMES[o.job_id] || NAMES['P:'+String(o.plate||'').trim().toUpperCase()] || '';
   };
-  box.innerHTML='<div class="card"><div class="sec">'+(which==='pend'?'WAITING APPROVAL':'APPROVED')+' ('+r.data.length+')</div>'+
+  // Payout summary: what finance has to prepare, per person. Only counts orders
+  // still awaiting payment (status 'approved'); anything already marked paid is
+  // excluded so the figure is what still needs handing over.
+  var payTot={}, grand=0, unpaidN=0;
+  r.data.forEach(function(o){
+    if(o.status!=='approved') return;
+    unpaidN++;
+    (o.splits||[]).forEach(function(sp){
+      var nm=String(sp.name||'').trim(); if(!nm) return;
+      var amt=Number(sp.amount||0)||0;
+      payTot[nm]=(payTot[nm]||0)+amt; grand+=amt;
+    });
+  });
+  var names=Object.keys(payTot).sort(function(a,b){return payTot[b]-payTot[a]});
+  var summary = (which==='done' && names.length)
+    ? '<div class="card"><div class="sec">TO PAY &mdash; '+unpaidN+' job'+(unpaidN===1?'':'s')+'</div>'+
+        names.map(function(n){
+          return '<div style="display:flex;justify-content:space-between;align-items:center;'+
+                 'padding:7px 2px;border-bottom:1px solid #222">'+
+                 '<span>'+esc(n)+'</span>'+
+                 '<span style="color:var(--gold);font-weight:800">'+rm(payTot[n])+'</span></div>';
+        }).join('')+
+        '<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 2px 2px">'+
+          '<span style="font-weight:800">TOTAL</span>'+
+          '<span style="color:var(--gold);font-weight:800;font-size:18px">'+rm(grand)+'</span></div>'+
+        '<div class="hint" style="margin-top:8px">Already-paid jobs are not counted.</div>'+
+      '</div>'
+    : '';
+  box.innerHTML=summary+'<div class="card"><div class="sec">'+(which==='pend'?'WAITING APPROVAL':'APPROVED')+' ('+r.data.length+')</div>'+
     r.data.map(function(o,i){
       const tot=(o.splits||[]).reduce(function(a,b){return a+Number(b.amount||0)},0);
       const col=o.status==='hold'?'var(--red)':o.status==='paid'?'var(--green)':'var(--amber)';
