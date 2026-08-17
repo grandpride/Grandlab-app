@@ -350,7 +350,9 @@ async function loadNew(){
     items=items.filter(function(it){return !seen[it.job.id+'||'+it.line.name]});
   }
   if(!items.length){
-    box.innerHTML='<div class="card"><div class="sec">NEW JOBS</div><div class="empty">No film jobs waiting &#10003;</div></div>';
+    box.innerHTML='<div class="card"><div class="sec">NEW JOBS</div>'+
+      '<button class="btn btn2" style="margin-bottom:10px" onclick="openManualPick()">+ ADD A JOB MANUALLY</button>'+
+      '<div class="empty">No film jobs waiting &#10003;</div></div>';
     return;
   }
   // deposit then balance often creates two job cards for one installation -
@@ -400,7 +402,9 @@ async function skipItem(it,row){
   if(r.error && r.error.code!=='23505'){toast('Could not remove');return}
   row.remove();
   const left=el('v_new').querySelectorAll('.jrow').length;
-  if(!left)el('v_new').innerHTML='<div class="card"><div class="sec">NEW JOBS</div><div class="empty">No film jobs waiting \u2713</div></div>';
+  if(!left)el('v_new').innerHTML='<div class="card"><div class="sec">NEW JOBS</div>'+
+    '<button class="btn btn2" style="margin-bottom:10px" onclick="openManualPick()">+ ADD A JOB MANUALLY</button>'+
+    '<div class="empty">No film jobs waiting \u2713</div></div>';
   toast('Removed '+(it.job.plate||''));
 }
 
