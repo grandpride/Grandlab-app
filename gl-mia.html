@@ -315,6 +315,7 @@ let LAST_LOG = null;      // { id, starred } for the reply currently on screen
 let HIST = [];
 let HIST_FILTER = "all";
 let STAGE = "auto";
+let THREAD = null;        // id of the customer conversation in progress
 
 /* ---------- the avatar ---------- */
 function avatarSvg(){
@@ -587,7 +588,7 @@ async function logCustomerTurn(question, answer){
     const { data } = await sb.auth.getSession();
     const email = (data && data.session && data.session.user.email) || null;
     await sb.from("gl_mia_log")
-      .insert({ mode: "customer", question: question, answer: answer, asked_by: email });
+      .insert({ mode: "customer", question: question, answer: answer, asked_by: email, thread_id: THREAD });
   } catch (e) { /* never break the chat */ }
 }
 
@@ -611,6 +612,30 @@ async function loadHistory(){
   renderHistory();
 }
 
+function groupThreads(rows){
+  // rows arrive newest first; group by thread, keep each thread's turns oldest first
+  const map = new Map();
+  rows.forEach(r => {
+    const key = r.thread_id || ("one:" + r.id);
+    if (!map.has(key)) map.set(key, []);
+    map.get(key).push(r);
+  });
+  const out = [];
+  map.forEach((turns, key) => {
+    turns.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+    out.push({
+      key: key,
+      threadId: turns[0].thread_id || null,
+      mode: turns[0].mode,
+      turns: turns,
+      latest: turns[turns.length - 1].created_at,
+      starred: turns.some(t => t.starred)
+    });
+  });
+  out.sort((a, b) => new Date(b.latest) - new Date(a.latest));
+  return out;
+}
+
 function renderHistory(){
   const term = ($("histSearch").value || "").toLowerCase().trim();
   const rows = term
@@ -618,26 +643,72 @@ function renderHistory(){
     : HIST;
   if (!rows.length) {
     $("histOut").innerHTML = '<div class="empty">' +
-      (HIST_FILTER === "star" ? "Nothing starred yet.<br>Star a good reply on the Coach tab."
+      (HIST_FILTER === "star" ? "Nothing starred yet.<br>Star a good reply to teach MIA."
                               : "Nothing here yet.<br>Ask MIA something and it shows up here.") + "</div>";
     return;
   }
-  $("histOut").innerHTML = rows.map(r => {
-    const when = new Date(r.created_at).toLocaleString("en-GB", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
-    const who = r.asked_by ? " · " + esc(r.asked_by.split("@")[0]) : "";
-    return `<div class="hrow ${r.starred ? "star-on" : ""}" id="h${r.id}">
-      <div class="top" onclick="document.getElementById('h${r.id}').classList.toggle('open')">
-        <div class="q">${esc((r.question || "").slice(0, 160))}${(r.question || "").length > 160 ? "…" : ""}</div>
+  const groups = groupThreads(rows);
+  $("histOut").innerHTML = groups.map(g => {
+    const when = new Date(g.latest).toLocaleString("en-GB", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
+    const first = g.turns[0];
+    const who = first.asked_by ? " · " + esc(first.asked_by.split("@")[0]) : "";
+    const count = g.turns.length > 1 ? " · " + g.turns.length + " messages" : "";
+    const tag = g.mode === "customer" ? " · customer tab" : "";
+    const body = g.turns.map(t => `
+      <div style="margin-bottom:14px">
+        <div style="font-size:12px;color:var(--gold);font-weight:700;margin-bottom:4px">CUSTOMER</div>
+        <div style="font-size:14px;line-height:1.55;margin-bottom:9px">${esc(t.question || "")}</div>
+        <div style="font-size:12px;color:var(--text2);font-weight:700;margin-bottom:4px">MIA</div>
+        <div style="font-size:14px;line-height:1.6;color:var(--text2);white-space:pre-wrap">${esc(t.answer || "")}</div>
+        <div class="acts">
+          <button class="mini ${t.starred ? "on" : ""}" onclick="histStar(${t.id}, ${!t.starred})">${t.starred ? "★ Starred" : "☆ Star"}</button>
+          <button class="mini" onclick="histCopy(${t.id})">Copy</button>
+        </div>
+      </div>`).join("");
+    return `<div class="hrow ${g.starred ? "star-on" : ""}" id="g${esc(g.key)}">
+      <div class="top" onclick="document.getElementById('g${esc(g.key)}').classList.toggle('open')">
+        <div class="q">${esc((first.question || "").slice(0, 150))}${(first.question || "").length > 150 ? "…" : ""}</div>
       </div>
-      <div class="meta">${when}${who}${r.mode === "customer" ? " · customer tab" : ""}${r.starred ? " · ⭐ approved example" : ""}</div>
-      <div class="ans">${esc(r.answer || "")}</div>
-      <div class="acts">
-        <button class="mini ${r.starred ? "on" : ""}" onclick="histStar(${r.id}, ${!r.starred})">${r.starred ? "★ Starred" : "☆ Star"}</button>
-        <button class="mini" onclick="histCopy(${r.id})">Copy reply</button>
-        <button class="mini danger" onclick="histDelete(${r.id})">Delete</button>
+      <div class="meta">${when}${who}${count}${tag}${g.starred ? " · ⭐" : ""}</div>
+      <div class="ans">${body}
+        <div class="acts" style="border-top:1px solid var(--border);padding-top:11px">
+          ${g.threadId && g.mode === "customer"
+            ? `<button class="mini on" onclick="continueThread('${esc(g.threadId)}')">↩ Continue this chat</button>` : ""}
+          <button class="mini danger" onclick="deleteGroup('${esc(g.key)}')">Delete</button>
+        </div>
       </div>
     </div>`;
   }).join("");
+}
+
+function continueThread(threadId){
+  const turns = HIST.filter(r => r.thread_id === threadId)
+                    .sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+  if (!turns.length) return;
+  CHAT = [];
+  turns.forEach(t => {
+    CHAT.push({ role: "user", content: t.question || "" });
+    CHAT.push({ role: "assistant", content: t.answer || "" });
+  });
+  THREAD = threadId;
+  saveChat();
+  showTab("cust");
+  paintChat(false);
+}
+
+async function deleteGroup(key){
+  const g = groupThreads(HIST).find(x => x.key === key);
+  if (!g) return;
+  const n = g.turns.length;
+  const preview = (g.turns[0].question || "").slice(0, 60);
+  if (!confirm("Delete " + (n > 1 ? "this whole conversation (" + n + " messages)" : "this entry") +
+               " permanently?\n\n\"" + preview + "\"\n\nThis cannot be undone.")) return;
+  const ids = g.turns.map(t => t.id);
+  const { error } = await sb.from("gl_mia_log").delete().in("id", ids);
+  if (error) return;
+  HIST = HIST.filter(r => ids.indexOf(r.id) < 0);
+  if (LAST_LOG && ids.indexOf(LAST_LOG.id) >= 0) LAST_LOG = null;
+  renderHistory();
 }
 
 async function histStar(id, next){
@@ -646,7 +717,9 @@ async function histStar(id, next){
   const row = HIST.find(r => r.id === id);
   if (row) row.starred = next;
   if (LAST_LOG && LAST_LOG.id === id) LAST_LOG.starred = next;
+  const openKeys = Array.prototype.map.call(document.querySelectorAll(".hrow.open"), function(el){ return el.id; });
   renderHistory();
+  openKeys.forEach(function(k){ const el = document.getElementById(k); if (el) el.classList.add("open"); });
 }
 
 function histCopy(id){
@@ -657,36 +730,31 @@ function histCopy(id){
   else fallbackCopy(t, function(){});
 }
 
-async function histDelete(id){
-  const row = HIST.find(r => r.id === id);
-  if (!row) return;
-  const preview = (row.question || "").slice(0, 70);
-  if (!confirm("Delete this permanently?\n\n\"" + preview + "\"\n\nThis cannot be undone.")) return;
-  const { error } = await sb.from("gl_mia_log").delete().eq("id", id);
-  if (error) return;
-  HIST = HIST.filter(r => r.id !== id);
-  if (LAST_LOG && LAST_LOG.id === id) LAST_LOG = null;
-  renderHistory();
-}
-
 /* ---------- customer tab ---------- */
 const CHAT_KEY = "gl_mia_chat";
 
+function newThread(){ return "c" + Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+
 function saveChat(){
-  try { localStorage.setItem(CHAT_KEY, JSON.stringify(CHAT.slice(-40))); } catch (e) { /* private mode, ignore */ }
+  try {
+    localStorage.setItem(CHAT_KEY, JSON.stringify({ thread: THREAD, chat: CHAT.slice(-40) }));
+  } catch (e) { /* private mode, ignore */ }
 }
 function loadChat(){
   try {
     const raw = localStorage.getItem(CHAT_KEY);
-    const arr = raw ? JSON.parse(raw) : null;
-    CHAT = Array.isArray(arr) ? arr : [];
-  } catch (e) { CHAT = []; }
+    const obj = raw ? JSON.parse(raw) : null;
+    if (obj && Array.isArray(obj.chat)) { CHAT = obj.chat; THREAD = obj.thread || newThread(); }
+    else if (Array.isArray(obj)) { CHAT = obj; THREAD = newThread(); }   // older saved format
+    else { CHAT = []; THREAD = newThread(); }
+  } catch (e) { CHAT = []; THREAD = newThread(); }
 }
 function emptyChat(){
   $("chat").innerHTML = '<div class="empty">Type as if you were the customer.<br>MIA replies the way she would on WhatsApp.</div>';
 }
 function resetChat(){
   CHAT = [];
+  THREAD = newThread();
   try { localStorage.removeItem(CHAT_KEY); } catch (e) {}
   emptyChat();
 }
