@@ -59,6 +59,11 @@ textarea{min-height:120px}
 .row>*{flex:1}
 
 /* ---------- screenshot strip ---------- */
+.chips{display:flex;gap:7px;flex-wrap:wrap;margin-top:11px}
+.chip{background:#101010;border:1px solid var(--border);color:var(--text2);border-radius:20px;padding:8px 13px;font-size:12px;
+  font-weight:700;cursor:pointer;font-family:inherit}
+.chip.on{background:var(--gold);color:#080808;border-color:var(--gold)}
+
 .shots{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
 .shot{position:relative;width:64px;height:64px;border-radius:10px;overflow:hidden;border:1px solid var(--border)}
 .shot img{width:100%;height:100%;object-fit:cover}
@@ -165,7 +170,16 @@ textarea{min-height:120px}
       <div class="card-t"><i class="ti ti-message-2-question"></i> What did the customer say?</div>
       <textarea id="coachIn" placeholder="Paste the customer's message, or the whole chat so far.&#10;&#10;You can also drop in a screenshot below — MIA will read both sides."></textarea>
 
-      <div class="row" style="margin-top:10px">
+      <label style="margin-top:13px">Where is this conversation right now?</label>
+      <div class="chips" id="stageChips">
+        <button class="chip on" data-s="auto"    onclick="pickStage(this)">Auto</button>
+        <button class="chip"    data-s="start"   onclick="pickStage(this)">Just started</button>
+        <button class="chip"    data-s="middle"  onclick="pickStage(this)">In the middle</button>
+        <button class="chip"    data-s="closing" onclick="pickStage(this)">Almost deal</button>
+        <button class="chip"    data-s="quiet"   onclick="pickStage(this)">Gone quiet</button>
+      </div>
+
+      <div class="row" style="margin-top:12px">
         <button class="btn btn-ghost btn-sm" onclick="document.getElementById('shotFile').click()">
           <i class="ti ti-photo-up"></i> Add screenshot
         </button>
@@ -300,6 +314,7 @@ let BUSY = false;
 let LAST_LOG = null;      // { id, starred } for the reply currently on screen
 let HIST = [];
 let HIST_FILTER = "all";
+let STAGE = "auto";
 
 /* ---------- the avatar ---------- */
 function avatarSvg(){
@@ -392,6 +407,12 @@ function showTab(v){
   window.scrollTo({ top: 0 });
 }
 
+/* ---------- conversation stage ---------- */
+function pickStage(btn){
+  STAGE = btn.getAttribute("data-s");
+  document.querySelectorAll("#stageChips .chip").forEach(c => c.classList.toggle("on", c === btn));
+}
+
 /* ---------- screenshots ---------- */
 function fileToShot(file){
   return new Promise((res, rej) => {
@@ -438,7 +459,7 @@ async function callMia(mode, messages){
   const r = await fetch(MIA_FN, {
     method: "POST",
     headers: { "Content-Type": "application/json", apikey: SUPA_ANON, Authorization: "Bearer " + token },
-    body: JSON.stringify({ mode, messages })
+    body: JSON.stringify({ mode, messages, stage: STAGE })
   });
   let out;
   try { out = await r.json(); } catch (e) { throw new Error("MIA sent back something unreadable."); }
