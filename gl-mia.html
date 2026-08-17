@@ -580,6 +580,17 @@ async function logAsk(question, answer){
   } catch (e) { /* logging must never break the reply */ }
 }
 
+/* Customer-tab turns are saved to the database too, so a good reply is never
+   lost to a refresh and can be starred later from the History tab. */
+async function logCustomerTurn(question, answer){
+  try {
+    const { data } = await sb.auth.getSession();
+    const email = (data && data.session && data.session.user.email) || null;
+    await sb.from("gl_mia_log")
+      .insert({ mode: "customer", question: question, answer: answer, asked_by: email });
+  } catch (e) { /* never break the chat */ }
+}
+
 async function starThis(){
   if (!LAST_LOG) return;
   const next = !LAST_LOG.starred;
@@ -618,7 +629,7 @@ function renderHistory(){
       <div class="top" onclick="document.getElementById('h${r.id}').classList.toggle('open')">
         <div class="q">${esc((r.question || "").slice(0, 160))}${(r.question || "").length > 160 ? "…" : ""}</div>
       </div>
-      <div class="meta">${when}${who}${r.starred ? " · ⭐ approved example" : ""}</div>
+      <div class="meta">${when}${who}${r.mode === "customer" ? " · customer tab" : ""}${r.starred ? " · ⭐ approved example" : ""}</div>
       <div class="ans">${esc(r.answer || "")}</div>
       <div class="acts">
         <button class="mini ${r.starred ? "on" : ""}" onclick="histStar(${r.id}, ${!r.starred})">${r.starred ? "★ Starred" : "☆ Star"}</button>
@@ -705,6 +716,7 @@ async function sendCust(){
   try {
     const out = await callMia("customer", CHAT.map(m => ({ role: m.role, content: m.content })));
     CHAT.push({ role: "assistant", content: out });
+    logCustomerTurn(t, out);
   } catch (e) {
     CHAT.push({ role: "assistant", content: "⚠️ " + e.message });
   }
