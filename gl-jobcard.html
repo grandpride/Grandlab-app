@@ -1286,28 +1286,20 @@ async function loadCustPackages(){
   if(!plate && !owner && !core){ $('pkgChips').innerHTML=''; CAR_PACKAGES=[]; return; }
   const norm=x=>String(x||'').toUpperCase().replace(/\s+/g,'');
 
-  // every plate this customer owns - a shared package sits on whichever car it
-  // was sold against, so looking only at the car in front of us misses it
-  let plates=[];
-  if(plate) plates.push(plate);
-  try{
-    if(core.length>=7){
-      const {data:wk}=await sb.from('gl_walkin').select('plate,phone').ilike('phone','%'+core).limit(100);
-      (wk||[]).forEach(r=>{
-        const rc=String(r.phone||'').replace(/[^0-9]/g,'').replace(/^60/,'').replace(/^0/,'');
-        if(rc===core && r.plate) plates.push(norm(r.plate));
-      });
-    }
-  }catch(e){}
-  (WALKIN_CARS||[]).forEach(c=>{ if(c.plate) plates.push(norm(c.plate)); });
-  (CUST_CARS||[]).forEach(c=>{ if(c.plate) plates.push(norm(c.plate)); });
-  plates=[...new Set(plates.filter(Boolean))];
-
+  // SHOP RULE: a wash package belongs to the CUSTOMER (matched on phone_key)
+  // and works on any of their cars; coating maintenance stays with its plate.
+  // Packages are never summed - each stays its own row with its own balance,
+  // so the number shown is always one real row that can be deducted from.
   let rows=[];
   try{
-    if(plates.length){
+    if(plate){
       const {data}=await sb.from('gl_packages').select('*').eq('status','active')
-        .or(plates.map(pl=>`vehicle_label.ilike.${pl}`).join(','));
+        .ilike('vehicle_label',plate);
+      rows=rows.concat(data||[]);
+    }
+    if(core.length>=8){
+      const {data}=await sb.from('gl_packages').select('*').eq('status','active')
+        .eq('phone_key',core);
       rows=rows.concat(data||[]);
     }
     if(owner){
@@ -1320,17 +1312,19 @@ async function loadCustPackages(){
   const pk=Object.values(byId)
     .map(p=>({...p,remaining:(p.total_uses||0)-(p.used_uses||0)}))
     .filter(p=>p.remaining>0)
-    // Show only packages belonging to THIS car, matching the Plate Scanner and
-    // POS. Listing a customer's other cars' balances here made the job card
-    // read 6 + 10 where the scanner said 6, and a chip tapped for another car
-    // would deduct from the wrong package.
-    .filter(p=>!plate || norm(p.vehicle_label)===plate);
+    // coating from another car is not usable here; wash packages are
+    .filter(p=>!isCoatingPkg_(p.service_name) || !plate || norm(p.vehicle_label)===plate)
+    .sort((a,b)=>(norm(b.vehicle_label)===plate)-(norm(a.vehicle_label)===plate));
 
   CAR_PACKAGES=pk;
   if(!CAR_PACKAGES.length){ $('pkgChips').innerHTML=''; return; }
-  $('pkgChips').innerHTML=CAR_PACKAGES.map(p=>
-    `<div class="chip" onclick="usePkg('${p.id}')">🎟️ ${esc(p.service_name)} · ${p.remaining} left</div>`
-  ).join('');
+  $('pkgChips').innerHTML=CAR_PACKAGES.map(p=>{
+    // name the car when the package lives on a different one, so staff can see
+    // it is the customer's shared wash rather than this car's own balance
+    const other=(plate && norm(p.vehicle_label)!==plate)
+      ? ` <span style="opacity:.7">(${esc(p.vehicle_label||'')})</span>` : '';
+    return `<div class="chip" onclick="usePkg('${p.id}')">🎟️ ${esc(p.service_name)} · ${p.remaining} left${other}</div>`;
+  }).join('');
 }
 
 /* ---------- PHOTOS (ImgBB -> Supabase urls) ---------- */

@@ -1443,12 +1443,34 @@ async function loadCheckoutPackages(job){
   // car whose own package had 17 left - and a redemption against that pooled
   // number only ever moves one row, so it drifts. Real rows with real ids also
   // mean deduction hits the exact package being used.
-  let q=sb.from('gl_packages').select('id,owner_id,vehicle_label,service_name,total_uses,used_uses,status').eq('status','active');
-  if(plate) q=q.ilike('vehicle_label',plate);
-  else if(ownerId) q=q.eq('owner_id',ownerId);
-  else { PAY.pkgList=[]; return; }
-  const {data}=await q;
-  PAY.pkgList=(data||[]).map(p=>({...p,remaining:(p.total_uses||0)-(p.used_uses||0)})).filter(p=>p.remaining>0);
+  // SHOP RULE: wash packages belong to the CUSTOMER (phone_key) and work on any
+  // of their cars; coating maintenance stays with its plate. Never summed -
+  // each package is its own row, so a redemption always hits a real balance.
+  const pk=String(phone||'').replace(/[^0-9]/g,'').replace(/^(60|0)/,'');
+  const isCoat=n=>/(coat|maintenance|mohs|cancoat|infinite|matte|ppf)/i.test(n||'');
+  const cols='id,owner_id,vehicle_label,service_name,total_uses,used_uses,phone_key,status';
+  let rows=[];
+  if(plate){
+    const {data}=await sb.from('gl_packages').select(cols).eq('status','active').ilike('vehicle_label',plate);
+    rows=rows.concat(data||[]);
+  }
+  if(pk.length>=8){
+    const {data}=await sb.from('gl_packages').select(cols).eq('status','active').eq('phone_key',pk);
+    rows=rows.concat(data||[]);
+  }
+  if(ownerId){
+    const {data}=await sb.from('gl_packages').select(cols).eq('status','active').eq('owner_id',ownerId);
+    rows=rows.concat(data||[]);
+  }
+  const byId={}; rows.forEach(r=>{ byId[r.id]=r; });
+  const P=String(plate||'').toUpperCase().replace(/\s+/g,'');
+  PAY.pkgList=Object.values(byId)
+    .map(p=>({...p,remaining:(p.total_uses||0)-(p.used_uses||0)}))
+    .filter(p=>p.remaining>0)
+    .filter(p=>!isCoat(p.service_name) || !P
+               || String(p.vehicle_label||'').toUpperCase().replace(/\s+/g,'')===P)
+    .sort((a,b)=>(String(b.vehicle_label||'').toUpperCase().replace(/\s+/g,'')===P)
+                -(String(a.vehicle_label||'').toUpperCase().replace(/\s+/g,'')===P));
 }
 
 function netDue(){
@@ -1626,8 +1648,13 @@ function renderCheckout(){
     ${(PAY.pkgList&&PAY.pkgList.length)?PAY.pkgList.map((p,pi)=>{
       const bal=(p.remaining!=null?p.remaining:((p.total_uses||0)-(p.used_uses||0)));
       const on=(PAY.pkgUseIdxs||[]).includes(pi);
-      // packages are read per-plate now, so every row belongs to this car
-      const allcars = '';
+      // a shared wash may sit on another of the customer's cars - name it so
+      // staff can see it is not this car's own balance
+      const P=String((CUR&&CUR.plate)||'').toUpperCase().replace(/\s+/g,'');
+      const vl=String(p.vehicle_label||'').toUpperCase().replace(/\s+/g,'');
+      const allcars = (P && vl && vl!==P)
+        ? ' <span style="font-size:9px;color:var(--gold-deep);border:1px solid currentColor;border-radius:5px;padding:0 3px">'+esc(p.vehicle_label)+'</span>'
+        : '';
       return `<div class="adj">
         <span class="lab"><i class="ti ti-package"></i> ${esc(cleanPkgName(p.service_name))}${allcars} <b style="color:var(--gold-deep)">· ${bal} left</b>${on?` <span style="color:var(--ink3);font-size:11px">(will use 1 → ${bal-1} left)</span>`:''}</span>
         <button class="toggle ${on?'on':''}" onclick="togglePkgUse(${pi})"><span class="dot"></span></button>
