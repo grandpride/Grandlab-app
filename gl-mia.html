@@ -31,7 +31,7 @@ html,body{height:100%;background:var(--bg);font-family:-apple-system,BlinkMacSys
 
 /* ---------- tabs ---------- */
 .tabs{display:flex;gap:6px;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:5px;margin-bottom:18px}
-.tab{flex:1;text-align:center;padding:10px 6px;border-radius:10px;font-size:13px;font-weight:700;color:var(--text2);cursor:pointer;border:none;background:none;font-family:inherit}
+.tab{flex:1;text-align:center;padding:10px 4px;border-radius:10px;font-size:12px;font-weight:700;color:var(--text2);cursor:pointer;border:none;background:none;font-family:inherit}
 .tab.on{background:var(--gold);color:#080808}
 
 .view{display:none}
@@ -91,6 +91,27 @@ textarea{min-height:120px}
 .composer textarea{min-height:48px;max-height:130px;border-radius:24px;padding:13px 17px}
 .composer .btn{border-radius:50%;width:48px;height:48px;padding:0;flex:0 0 auto}
 
+.starbar{display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--card);border:1px solid var(--border);
+  border-radius:14px;padding:12px 14px;margin-bottom:11px}
+.starbar .lbl{font-size:12px;color:var(--text2);line-height:1.45}
+.star{background:var(--card2);border:1px solid var(--border);color:var(--text2);border-radius:10px;padding:9px 13px;font-size:13px;
+  font-weight:700;cursor:pointer;font-family:inherit;flex:0 0 auto}
+.star.on{background:var(--gold);color:#080808;border-color:var(--gold)}
+
+.hrow{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:13px 14px;margin-bottom:10px}
+.hrow.star-on{border-color:var(--gold)}
+.hrow .top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.hrow .q{font-size:14px;line-height:1.5;flex:1;word-break:break-word}
+.hrow .meta{font-size:11px;color:var(--text3);margin-top:7px}
+.hrow .ans{display:none;margin-top:11px;padding-top:11px;border-top:1px solid var(--border);font-size:14px;line-height:1.6;
+  white-space:pre-wrap;color:var(--text2);word-break:break-word}
+.hrow.open .ans{display:block}
+.hrow .acts{display:flex;gap:7px;margin-top:11px}
+.mini{background:var(--card2);border:1px solid var(--border);color:var(--text2);border-radius:8px;padding:6px 10px;font-size:11px;
+  font-weight:700;cursor:pointer;font-family:inherit}
+.mini.on{background:var(--gold);color:#080808;border-color:var(--gold)}
+.mini.danger{color:var(--red)}
+
 .empty{text-align:center;color:var(--text3);font-size:13px;padding:34px 16px;line-height:1.6}
 .err{color:var(--red);font-size:13px;margin-top:10px;line-height:1.5}
 .ok{color:var(--green);font-size:13px;margin-top:10px}
@@ -134,6 +155,7 @@ textarea{min-height:120px}
   <div class="tabs">
     <button class="tab on" data-v="coach" onclick="showTab('coach')">Coach</button>
     <button class="tab" data-v="cust" onclick="showTab('cust')">Customer</button>
+    <button class="tab" data-v="hist" onclick="showTab('hist')">History</button>
     <button class="tab" data-v="set" onclick="showTab('set')">Knowledge</button>
   </div>
 
@@ -176,6 +198,20 @@ textarea{min-height:120px}
         <button class="btn btn-pri" onclick="sendCust()"><i class="ti ti-send"></i></button>
       </div>
     </div>
+  </div>
+
+  <!-- ============ HISTORY ============ -->
+  <div class="view" id="v-hist">
+    <div class="card">
+      <div class="card-t"><i class="ti ti-history"></i> Everything asked</div>
+      <input type="text" id="histSearch" placeholder="Search past questions…" oninput="renderHistory()">
+      <div class="row" style="margin-top:10px">
+        <button class="btn btn-ghost btn-sm" onclick="HIST_FILTER='all';loadHistory()">All</button>
+        <button class="btn btn-ghost btn-sm" onclick="HIST_FILTER='star';loadHistory()">⭐ Starred only</button>
+      </div>
+      <div class="hint">Starred replies are fed back to MIA as approved examples. She copies their voice on every future answer.</div>
+    </div>
+    <div id="histOut"><div class="empty">Loading…</div></div>
   </div>
 
   <!-- ============ KNOWLEDGE ============ -->
@@ -261,6 +297,9 @@ let KB = {};
 let SHOTS = [];          // [{media_type, data, url}]
 let CHAT = [];           // customer-tab history
 let BUSY = false;
+let LAST_LOG = null;      // { id, starred } for the reply currently on screen
+let HIST = [];
+let HIST_FILTER = "all";
 
 /* ---------- the avatar ---------- */
 function avatarSvg(){
@@ -349,6 +388,7 @@ function showTab(v){
   document.querySelectorAll(".view").forEach(x => x.classList.remove("on"));
   $("v-" + v).classList.add("on");
   $("composer").style.display = (v === "cust") ? "block" : "none";
+  if (v === "hist") loadHistory();
   window.scrollTo({ top: 0 });
 }
 
@@ -426,6 +466,7 @@ async function askCoach(){
   try {
     const out = await callMia("coach", [{ role: "user", content }]);
     renderCoach(out);
+    logAsk(txt || "(screenshot only)", out);
   } catch (e) {
     $("coachOut").innerHTML = "";
     err.textContent = e.message;
@@ -453,21 +494,21 @@ function renderCoach(raw){
   found.sort((a, b) => a.start - b.start);
 
   if (found.length < 3) {
-    $("coachOut").innerHTML =
+    $("coachOut").innerHTML = starBar() +
       `<div class="blk"><div class="blk-h"><div class="t">MIA</div>` +
       `<button class="copy" onclick="copyTxt(this)" data-t="${esc(raw)}">Copy</button></div>` +
       `<div class="body">${esc(raw)}</div></div>`;
     return;
   }
 
-  let html = "";
+  let html = starBar();
   found.forEach((f, i) => {
     const end = (i + 1 < found.length) ? found[i + 1].start : raw.length;
     let body = raw.slice(f.after, end).replace(/[━─—]{3,}/g, "").trim();
     if (!body) return;
     html += `<div class="blk ${f.sec.meta ? "meta" : "lang"}">
       <div class="blk-h"><div class="t">${esc(f.sec.label)}</div>
-        ${f.sec.meta ? "" : `<button class="copy" onclick="copyTxt(this)" data-t="${esc(body)}">Copy</button>`}
+        ${f.sec.meta ? "" : `<button class="copy" onclick="copyTxt(this)" data-lang="${f.sec.k}" data-t="${esc(body)}">Copy</button>`}
       </div>
       <div class="body">${esc(body)}</div></div>`;
   });
@@ -476,6 +517,10 @@ function renderCoach(raw){
 
 function copyTxt(btn){
   const t = btn.getAttribute("data-t") || "";
+  const lang = btn.getAttribute("data-lang");
+  if (lang && LAST_LOG) {
+    sb.from("gl_mia_log").update({ lang_copied: lang }).eq("id", LAST_LOG.id).then(function(){}, function(){});
+  }
   const done = () => { btn.classList.add("done"); btn.textContent = "Copied"; setTimeout(() => { btn.classList.remove("done"); btn.textContent = "Copy"; }, 1600); };
   if (navigator.clipboard && navigator.clipboard.writeText) {
     navigator.clipboard.writeText(t).then(done, () => fallbackCopy(t, done));
@@ -487,6 +532,109 @@ function fallbackCopy(t, done){
   document.body.appendChild(ta); ta.select();
   try { document.execCommand("copy"); done(); } catch (e) {}
   ta.remove();
+}
+
+/* ---------- history + starring ---------- */
+function starBar(){
+  const on = LAST_LOG && LAST_LOG.starred;
+  return `<div class="starbar">
+    <div class="lbl">Good reply? Star it and MIA will write like this from now on.</div>
+    <button class="star ${on ? "on" : ""}" id="starBtn" onclick="starThis()">${on ? "★ Saved" : "☆ Star"}</button>
+  </div>`;
+}
+
+async function logAsk(question, answer){
+  LAST_LOG = null;
+  try {
+    const { data } = await sb.auth.getSession();
+    const email = (data && data.session && data.session.user.email) || null;
+    const r = await sb.from("gl_mia_log")
+      .insert({ mode: "coach", question: question, answer: answer, asked_by: email })
+      .select("id").single();
+    if (r.data) {
+      LAST_LOG = { id: r.data.id, starred: false };
+      const b = $("starBtn");
+      if (b) { b.classList.remove("on"); b.textContent = "☆ Star"; }
+    }
+  } catch (e) { /* logging must never break the reply */ }
+}
+
+async function starThis(){
+  if (!LAST_LOG) return;
+  const next = !LAST_LOG.starred;
+  const { error } = await sb.from("gl_mia_log").update({ starred: next }).eq("id", LAST_LOG.id);
+  if (error) return;
+  LAST_LOG.starred = next;
+  const b = $("starBtn");
+  if (b) { b.classList.toggle("on", next); b.textContent = next ? "★ Saved" : "☆ Star"; }
+}
+
+async function loadHistory(){
+  $("histOut").innerHTML = '<div class="empty">Loading…</div>';
+  let q = sb.from("gl_mia_log").select("*").order("created_at", { ascending: false }).limit(100);
+  if (HIST_FILTER === "star") q = q.eq("starred", true);
+  const { data, error } = await q;
+  if (error) { $("histOut").innerHTML = '<div class="err">Could not load: ' + esc(error.message) + "</div>"; return; }
+  HIST = data || [];
+  renderHistory();
+}
+
+function renderHistory(){
+  const term = ($("histSearch").value || "").toLowerCase().trim();
+  const rows = term
+    ? HIST.filter(r => (r.question || "").toLowerCase().includes(term) || (r.answer || "").toLowerCase().includes(term))
+    : HIST;
+  if (!rows.length) {
+    $("histOut").innerHTML = '<div class="empty">' +
+      (HIST_FILTER === "star" ? "Nothing starred yet.<br>Star a good reply on the Coach tab."
+                              : "Nothing here yet.<br>Ask MIA something and it shows up here.") + "</div>";
+    return;
+  }
+  $("histOut").innerHTML = rows.map(r => {
+    const when = new Date(r.created_at).toLocaleString("en-GB", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
+    const who = r.asked_by ? " · " + esc(r.asked_by.split("@")[0]) : "";
+    return `<div class="hrow ${r.starred ? "star-on" : ""}" id="h${r.id}">
+      <div class="top" onclick="document.getElementById('h${r.id}').classList.toggle('open')">
+        <div class="q">${esc((r.question || "").slice(0, 160))}${(r.question || "").length > 160 ? "…" : ""}</div>
+      </div>
+      <div class="meta">${when}${who}${r.starred ? " · ⭐ approved example" : ""}</div>
+      <div class="ans">${esc(r.answer || "")}</div>
+      <div class="acts">
+        <button class="mini ${r.starred ? "on" : ""}" onclick="histStar(${r.id}, ${!r.starred})">${r.starred ? "★ Starred" : "☆ Star"}</button>
+        <button class="mini" onclick="histCopy(${r.id})">Copy reply</button>
+        <button class="mini danger" onclick="histDelete(${r.id})">Delete</button>
+      </div>
+    </div>`;
+  }).join("");
+}
+
+async function histStar(id, next){
+  const { error } = await sb.from("gl_mia_log").update({ starred: next }).eq("id", id);
+  if (error) return;
+  const row = HIST.find(r => r.id === id);
+  if (row) row.starred = next;
+  if (LAST_LOG && LAST_LOG.id === id) LAST_LOG.starred = next;
+  renderHistory();
+}
+
+function histCopy(id){
+  const row = HIST.find(r => r.id === id);
+  if (!row) return;
+  const t = row.answer || "";
+  if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(t);
+  else fallbackCopy(t, function(){});
+}
+
+async function histDelete(id){
+  const row = HIST.find(r => r.id === id);
+  if (!row) return;
+  const preview = (row.question || "").slice(0, 70);
+  if (!confirm("Delete this permanently?\n\n\"" + preview + "\"\n\nThis cannot be undone.")) return;
+  const { error } = await sb.from("gl_mia_log").delete().eq("id", id);
+  if (error) return;
+  HIST = HIST.filter(r => r.id !== id);
+  if (LAST_LOG && LAST_LOG.id === id) LAST_LOG = null;
+  renderHistory();
 }
 
 /* ---------- customer tab ---------- */
