@@ -1157,7 +1157,25 @@ async function printTxJobOrder(i){
     +'</div></body></html>';
   const w=window.open('','_blank'); if(w){ w.document.write(html); w.document.close(); setTimeout(()=>w.print(),600); }
 }
-function downloadDashReport(monthMode){
+async function dayTx_(dayStr){
+  // DASH_TX only holds the CURRENT month, so any earlier date filtered to
+  // nothing and the report said "no transactions". Fetch the day directly.
+  const from=new Date(dayStr+'T00:00:00'); const to=new Date(from); to.setDate(to.getDate()+1);
+  const pad=n=>String(n).padStart(2,'0');
+  const iso=d=>d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+  const cols='id,job_id,invoice_no,customer_name,plate,net_paid,method,paid_at,sale_date,voided,sql_invoice_no,sql_payment_no';
+  let rows=[];
+  // sales explicitly dated to that day
+  const a=await sb.from('gl_payments').select(cols).eq('sale_date',iso(from));
+  rows=rows.concat(a.data||[]);
+  // plus sales with no sale_date, paid within that day
+  const b=await sb.from('gl_payments').select(cols).is('sale_date',null)
+    .gte('paid_at',from.toISOString()).lt('paid_at',to.toISOString());
+  rows=rows.concat(b.data||[]);
+  const byId={}; rows.forEach(r=>{ if(!r.voided) byId[r.id]=r; });
+  return Object.values(byId).sort((x,y)=>new Date(y.paid_at)-new Date(x.paid_at));
+}
+async function downloadDashReport(monthMode){
   const now=new Date();
   // day mode: filter to the picked date; month mode: whole month
   let list=DASH_TX.slice();
@@ -1167,8 +1185,8 @@ function downloadDashReport(monthMode){
   } else {
     const dv=$('dashRepDate')?$('dashRepDate').value:'';
     const day=dv?new Date(dv+'T00:00:00'):dayStart_(now);
-    const dayEnd=new Date(day); dayEnd.setDate(dayEnd.getDate()+1);
-    list=list.filter(r=>{ const t=r.sale_date?new Date(r.sale_date+'T00:00:00'):new Date(r.paid_at); return t>=day && t<dayEnd; });
+    const pad=n=>String(n).padStart(2,'0');
+    list=await dayTx_(day.getFullYear()+'-'+pad(day.getMonth()+1)+'-'+pad(day.getDate()));
     periodLabel=day.toLocaleDateString('en-GB',{weekday:'long',day:'2-digit',month:'short',year:'numeric'});
   }
   if(!list.length){ alert('No transactions for '+periodLabel+'.'); return; }
@@ -1232,7 +1250,8 @@ async function sendSettlementWA(){
   const day=dv?new Date(dv+'T00:00:00'):dayStart_(now);
   const dayEnd=new Date(day); dayEnd.setDate(dayEnd.getDate()+1);
   // today's sales
-  const todayList=DASH_TX.filter(r=>{ const t=r.sale_date?new Date(r.sale_date+'T00:00:00'):new Date(r.paid_at); return t>=day && t<dayEnd; });
+  const pad2=n=>String(n).padStart(2,'0');
+  const todayList=await dayTx_(day.getFullYear()+'-'+pad2(day.getMonth()+1)+'-'+pad2(day.getDate()));
   // per-category totals
   const byCat={}; SETTLEMENT_METHODS.forEach(c=>byCat[c]=0);
   let todaySales=0;
@@ -2885,15 +2904,31 @@ async function settleUnpaid(r){
   if(!r || !r.id){ toast('No record'); return; }
   const amount=Number(r.amount_owed)||0;
   const who=r.customer_name||r.workshop_name||r.plate||'—';
-  if(!confirm('Mark this as PAID now?\n'+who+(r.plate?' · '+r.plate:'')+'\nAmount: '+RM(amount)+'\n\nThis records the payment and clears the unpaid balance.')) return;
+  // Ask HOW it was paid - this used to be hard-coded to cash, so every settled
+  // workshop bill landed in the takings as cash regardless of how it arrived.
+  const METHODS=[['cash','Cash'],['tng','TNG'],['bank','Bank transfer'],
+                 ['credit_card','Credit card'],['debit_card','Debit card'],
+                 ['grabpay','GrabPay'],['shopeepay','ShopeePay'],['cheque','Cheque']];
+  const pick=prompt('How was this paid?\n'+who+(r.plate?' · '+r.plate:'')+'\nAmount: '+RM(amount)+
+    '\n\n'+METHODS.map((m,i)=>(i+1)+' = '+m[1]).join('\n')+'\n\nEnter a number:','1');
+  if(pick===null) return;
+  const mi=parseInt(pick,10)-1;
+  if(isNaN(mi)||mi<0||mi>=METHODS.length){ alert('Not a valid choice.'); return; }
+  const method=METHODS[mi][0];
+  if(!confirm('Mark this as PAID now?\n'+who+(r.plate?' · '+r.plate:'')+'\nAmount: '+RM(amount)+
+    '\nMethod: '+METHODS[mi][1]+'\nInvoice: '+(r.invoice_no||'-')+
+    '\n\nThis records the payment and clears the unpaid balance.')) return;
   try{
     // 1) mark the unpaid row settled
     const {error:e1}=await sb.from('gl_unpaid').update({settled:true, settled_at:new Date().toISOString(), settled_by:ME}).eq('id',r.id);
     if(e1) throw e1;
     // 2) record a payment (so it counts in takings / exports) — carry the
     //    real customer name + plate so the sales row isn't blank.
+    // The settlement keeps the ORIGINAL GLIV so it matches the invoice already
+    // issued to the workshop and keyed into SQL Account. sale_date stays on the
+    // original job date; paid_at is now, which is when the money arrived.
     const {error:e2}=await sb.from('gl_payments').insert({
-      invoice_no:r.invoice_no||null, gross:amount, net_paid:amount, method:'cash',
+      invoice_no:r.invoice_no||null, gross:amount, net_paid:amount, method:method,
       taken_by:ME,
       customer_name:(r.customer_name||r.workshop_name||r.plate||'Settled unpaid'),
       plate:r.plate||'', job_id:r.job_id||null,
