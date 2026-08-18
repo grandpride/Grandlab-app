@@ -186,6 +186,7 @@
     <div class="gcard" data-go="sanshi"><svg viewBox="0 0 24 24"><path d="M4 4h7v16H4z"/><path d="M13 4h7v16h-7z"/><line x1="7" y1="8" x2="8" y2="8"/><line x1="16" y1="8" x2="17" y2="8"/></svg><div class="gname">三世书</div></div>
     <div class="gcard" data-go="name5"><svg viewBox="0 0 24 24"><path d="M4 20l5-14 3 8"/><path d="M14 6l3 14"/><path d="M12 14l7-2"/></svg><div class="gname">姓名五格</div></div>
     <div class="gcard" data-go="tarot"><svg viewBox="0 0 24 24"><rect x="4" y="3" width="11" height="16" rx="1.5" transform="rotate(-8 9.5 11)"/><rect x="9" y="5" width="11" height="16" rx="1.5" transform="rotate(8 14.5 13)"/><circle cx="14.5" cy="13" r="2"/></svg><div class="gname">塔罗解惑</div></div>
+    <div class="gcard" data-go="meihua"><svg viewBox="0 0 24 24"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="11" y2="12"/><line x1="13" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></svg><div class="gname">梅花易数</div></div>
   </div>
 
   <div class="grp-title">查 · 工具</div>
@@ -213,6 +214,7 @@
   <div class="ms" id="ms-name5">姓名</div>
   <div class="ms" id="ms-qimen">奇门</div>
   <div class="ms" id="ms-tarot">塔罗</div>
+  <div class="ms" id="ms-meihua">梅花易数</div>
   <div class="ms" id="ms-table">对照表</div>
 </div>
 
@@ -863,6 +865,64 @@
   <p class="note" style="color:var(--muted);">※ 以双方出生日主五行、生肖合冲，推缘分契合倾向。感情要靠两人用心经营，命理仅供参考、图个乐，不作绝对判断。</p>
 </div>
 
+<!-- ============ 梅花易数 ============ -->
+<div class="card hidden" id="card-meihua">
+  <div style="text-align:center;margin-bottom:6px;">
+    <div style="font-size:19px;font-weight:700;color:var(--gold-lite);font-family:'STKaiti','KaiTi',serif;letter-spacing:3px;">梅 花 易 数</div>
+    <div style="font-size:11px;color:var(--gold);letter-spacing:2px;">— 心中一卦 · 万物皆可占 —</div>
+  </div>
+  <p style="font-size:12.5px;color:var(--muted);text-align:center;line-height:1.7;margin-bottom:10px;">人生所有的偶然，都藏着当下的天机。<br>静心默想你的问题，起一卦看指引。</p>
+  <div id="mh-compass-wrap"></div>
+  <details open style="margin-bottom:12px;background:var(--paper-2);border:1px solid var(--line);border-radius:11px;padding:10px 12px;">
+    <summary style="font-size:13px;font-weight:700;color:var(--gold);cursor:pointer;">☯ 八卦方位盘 · 怎么看方向（对方向起卦看这里）</summary>
+    <div id="mh-bagua-plate" style="margin:14px 0;"></div>
+    <div style="font-size:12px;line-height:1.9;color:var(--ink);">
+      <b style="color:var(--cinnabar);">对着方位起卦（最正宗玩法）：</b><br>
+      1. 站在你要问的地方，<b>面向你要观察的方向</b>（例如面向大门）。<br>
+      2. 开启下方「实时罗盘」，手机放平对准，看你面向的是哪个方位。<br>
+      3. <b style="color:var(--jade);">向着你、你站的近处 = 体（你自己）</b>；<b style="color:var(--cinnabar);">前方、会有动静的那方 = 用（你问的事）。</b><br>
+      4. 然后选「🪙 硬币起卦」，摇硬币点六爻——<b>下3爻自动为体（你）、上3爻为用（那件事）</b>，起卦即可。<br>
+      <b style="color:var(--gold);">例：对着大门算「下一个进来的是男是女」</b>——面向大门起卦，看「用卦」的人物类象：阳卦（乾震坎艮）多主男，阴卦（坤巽离兑）多主女；再看用卦五行颜色、方位，就能断来人特征。<br>
+      <b style="color:var(--gold);">八卦方位：</b>坎北·离南·震东·兑西·乾西北·坤西南·艮东北·巽东南。
+    </div>
+  </details>
+  <div class="chips" id="mh-mode" style="margin-bottom:10px;">
+    <div class="chip on" data-m="time">⏱ 时间起卦</div>
+    <div class="chip" data-m="num">🔢 报数起卦</div>
+    <div class="chip" data-m="coin">🪙 硬币起卦</div>
+    <div class="chip" data-m="spin">🎡 转盘起卦</div>
+  </div>
+  <div id="mh-num-wrap" class="hidden">
+    <label class="fld">凭直觉报两个数字（1–999）</label>
+    <div style="display:flex;gap:8px;">
+      <input id="mh-n1" type="text" placeholder="第一个数" inputmode="numeric" style="flex:1;">
+      <input id="mh-n2" type="text" placeholder="第二个数" inputmode="numeric" style="flex:1;">
+    </div>
+  </div>
+  <div id="mh-coin-wrap" class="hidden">
+    <label class="fld">六爻从下往上点（公=阳，母=阴）· 下3爻为体、上3爻为用</label>
+    <div id="mh-coin-rows"></div>
+    <div style="display:flex;gap:8px;margin-top:6px;">
+      <button class="calc alt" id="mh-coin-reset" style="flex:1;font-size:12px;padding:8px;">↺ 重来</button>
+      <div id="mh-coin-status" style="flex:2;text-align:center;font-size:12px;color:var(--gold);align-self:center;">已点 0 / 6 爻</div>
+    </div>
+  </div>
+  <div id="mh-spin-wrap" class="hidden">
+    <label class="fld">拨动转盘两次：第一次转出「体（你）」，第二次转出「用（所问之事）」</label>
+    <div id="mh-spin-plate" style="position:relative;width:260px;height:260px;margin:8px auto;"></div>
+    <div style="text-align:center;">
+      <button class="calc alt" id="mh-spin-btn" style="font-size:13px;padding:9px 24px;">🎡 拨动转盘</button>
+      <div id="mh-spin-status" style="font-size:12px;color:var(--gold);margin-top:6px;">还没转 · 拨动转出第 1 卦（体）</div>
+      <button class="calc alt" id="mh-spin-reset" style="font-size:11px;padding:6px 14px;margin-top:6px;display:none;">↺ 重转</button>
+    </div>
+  </div>
+  <label class="fld" style="margin-top:8px;">想问的事（可留空）</label>
+  <input id="mh-q" type="text" maxlength="30" placeholder="例：这次合作、这段感情、近期运势…" style="margin-bottom:8px;">
+  <button class="calc" id="mh-btn">☯ 起 卦 解 卦</button>
+  <div id="mh-result"><p class="empty">选起卦方式，静心默想问题，点「起卦解卦」。</p></div>
+  <p class="note" style="color:var(--muted);">※ 梅花易数为传统象数之学，以先天八卦数起卦、以卦象类象断事。图个启发与指引，无科学依据，不预测必然，重大决定请理性判断。</p>
+</div>
+
 <!-- ============ 对照表 ============ -->
 <div class="card hidden" id="card-table">
   <label class="fld">八星磁场全表（0 和 5 为能量关键数，不成对）</label>
@@ -894,7 +954,7 @@ const $=id=>document.getElementById(id);
 function toast(msg){const t=$("toast");t.textContent=msg;t.classList.add("show");setTimeout(()=>t.classList.remove("show"),1500);}
 
 /* ---- 顶部大切换 ---- */
-const CARDS={check:"card-check",report:"card-report",plate:"card-plate",phone:"card-phone",cmp:"card-cmp",fav:"card-fav",today:"card-today",month:"card-month",match:"card-match",ziwei:"card-ziwei",bazi:"card-bazi",sanshi:"card-sanshi",name5:"card-name5",qimen:"card-qimen",tarot:"card-tarot",table:"card-table"};
+const CARDS={check:"card-check",report:"card-report",plate:"card-plate",phone:"card-phone",cmp:"card-cmp",fav:"card-fav",today:"card-today",month:"card-month",match:"card-match",ziwei:"card-ziwei",bazi:"card-bazi",sanshi:"card-sanshi",name5:"card-name5",qimen:"card-qimen",tarot:"card-tarot",meihua:"card-meihua",table:"card-table"};
 function showCard(key){
   for(const[k,id]of Object.entries(CARDS)){ $(id).classList.toggle("hidden",k!==key); $("ms-"+k).classList.toggle("active",k===key); }
   if(key==="fav")renderFav();
@@ -915,7 +975,7 @@ document.querySelectorAll("#home .gcard").forEach(c=>c.onclick=()=>showCard(c.da
 $("backbar").onclick=goHome;
 // 初始：显示首页，隐藏所有功能card
 goHome();
-["check","report","plate","phone","cmp","fav","today","month","match","ziwei","bazi","sanshi","name5","qimen","tarot","table"].forEach(k=>$("ms-"+k).onclick=()=>showCard(k));
+["check","report","plate","phone","cmp","fav","today","month","match","ziwei","bazi","sanshi","name5","qimen","tarot","meihua","table"].forEach(k=>$("ms-"+k).onclick=()=>showCard(k));
 
 /* ========== 推算号码 ========== */
 let activeTab="num",detailMode=true;
@@ -3923,6 +3983,312 @@ $("match-btn").onclick=()=>{
     <div class="reading" style="border-color:var(--gold);background:var(--paper-2);"><h4 style="color:var(--gold);">◇ 师父的话</h4>
       <p style="font-size:13px;line-height:1.95;font-family:'STKaiti','KaiTi',serif;color:var(--ink);">${masterShi}</p></div>`;
 };
+
+/* ========== 梅花易数（时间/报数起卦 · 大师级）========== */
+const MH_GUA_XIANG={
+"乾":{nature:"天",trait:"刚健、进取、领导、圆满",yao:[1,1,1]},
+"兑":{nature:"泽",trait:"喜悦、口才、社交、少女",yao:[1,1,0]},
+"离":{nature:"火",trait:"光明、热情、智慧、美丽",yao:[1,0,1]},
+"震":{nature:"雷",trait:"行动、震动、开创、长男",yao:[1,0,0]},
+"巽":{nature:"风",trait:"顺入、灵活、进退、长女",yao:[0,1,1]},
+"坎":{nature:"水",trait:"险陷、智慧、流动、中男",yao:[0,1,0]},
+"艮":{nature:"山",trait:"停止、稳重、界限、少男",yao:[0,0,1]},
+"坤":{nature:"地",trait:"柔顺、包容、承载、母亲",yao:[0,0,0]}
+};
+const MH_GUA_BY_REM={1:"乾",2:"兑",3:"离",4:"震",5:"巽",6:"坎",7:"艮",0:"坤"};
+const MH_HEX_NAME={
+"乾乾":"乾为天","乾兑":"天泽履","乾离":"天火同人","乾震":"天雷无妄","乾巽":"天风姤","乾坎":"天水讼","乾艮":"天山遁","乾坤":"天地否",
+"兑乾":"泽天夬","兑兑":"兑为泽","兑离":"泽火革","兑震":"泽雷随","兑巽":"泽风大过","兑坎":"泽水困","兑艮":"泽山咸","兑坤":"泽地萃",
+"离乾":"火天大有","离兑":"火泽睽","离离":"离为火","离震":"火雷噬嗑","离巽":"火风鼎","离坎":"火水未济","离艮":"火山旅","离坤":"火地晋",
+"震乾":"雷天大壮","震兑":"雷泽归妹","震离":"雷火丰","震震":"震为雷","震巽":"雷风恒","震坎":"雷水解","震艮":"雷山小过","震坤":"雷地豫",
+"巽乾":"风天小畜","巽兑":"风泽中孚","巽离":"风火家人","巽震":"风雷益","巽巽":"巽为风","巽坎":"风水涣","巽艮":"风山渐","巽坤":"风地观",
+"坎乾":"水天需","坎兑":"水泽节","坎离":"水火既济","坎震":"水雷屯","坎巽":"水风井","坎坎":"坎为水","坎艮":"水山蹇","坎坤":"水地比",
+"艮乾":"山天大畜","艮兑":"山泽损","艮离":"山火贲","艮震":"山雷颐","艮巽":"山风蛊","艮坎":"山水蒙","艮艮":"艮为山","艮坤":"山地剥",
+"坤乾":"地天泰","坤兑":"地泽临","坤离":"地火明夷","坤震":"地雷复","坤巽":"地风升","坤坎":"地水师","坤艮":"地山谦","坤坤":"坤为地"
+};
+const MH_HEX_MEAN={
+"乾为天":"元亨利贞，刚健中正。事业大吉、诸事顺遂，但宜守正道、防亢龙有悔。","天泽履":"如履薄冰，谨慎前行。踏实守礼则安，宜小心行事、以柔克刚。","天火同人":"与人和同，志同道合。利合作、结盟、得人心，宜开阔胸怀、广交志士。","天雷无妄":"无妄之灾，顺其自然。守正则吉、妄动则灾，宜脚踏实地、不存侥幸。","天风姤":"不期而遇，柔遇刚。有意外相逢或诱惑，宜守正、防小人近身。","天水讼":"争讼是非，宜和不宜争。有口舌官非之象，宜退让化解、忌硬碰。","天山遁":"急流勇退，明哲保身。宜退守、隐忍、避其锋芒，退一步海阔天空。","天地否":"天地不交，闭塞不通。运势暂时不顺、上下不通，宜静守待时、忍过寒冬。",
+"泽天夬":"决而能和，果断决行。宜当机立断、清除障碍，但防过刚、宜刚柔并济。","兑为泽":"和悦致祥，喜悦之象。人缘佳、多喜庆，宜以和为贵，但防口舌、乐极生悲。","泽火革":"变革除旧，顺天应人。宜改革、转变、破旧立新，时机对则大吉。","泽雷随":"随时而动，顺势而为。宜顺应潮流、随机应变，跟对人、跟对势则吉。","泽风大过":"大过之时，非常之举。压力重大、宜有担当，非常时期用非常手段，勿畏难。","泽水困":"困境待时，穷则思变。目前受困、资源不足，宜坚守信念、静待转机。","泽山咸":"两情相感，交感相应。主感情、姻缘、感应，宜真心相待，利婚恋合作。","泽地萃":"荟萃聚集，人气汇聚。利聚会、集结、招揽人才，宜把握人和、聚势而发。",
+"火天大有":"大有丰收，盛大富足。事业财运皆丰、如日中天，宜守成谦逊、防盛极而衰。","火泽睽":"乖违睽异，求同存异。有分歧、误会之象，宜沟通化解、小事可成、大事需忍。","离为火":"光明重现，附丽依存。宜依附正道、借力发光，热情有活力，但防急躁焚身。","火雷噬嗑":"咬合排除，除障得通。有阻碍需强力排除，宜果断处理是非，除障则通。","火风鼎":"鼎新革故，稳重革新。宜革新图强、稳中求变，如鼎之稳，利事业更上层楼。","火水未济":"事未完成，谨慎图成。事情尚未成功、仍在过程中，宜坚持到底、终能成事。","火山旅":"旅居在外，漂泊不定。有出行、变动、离乡之象，宜谨慎随和、柔顺待人。","火地晋":"晋升向上，光明进取。宜积极进取、争取上进，如日东升，利求职升迁。",
+"雷天大壮":"壮盛有力，宜守正道。气势正旺、力量强大，宜用壮于正、防过刚易折。","雷泽归妹":"归妹之象，宜守本分。感情或合作有不正之象，宜守礼守分、勿贪一时。","雷火丰":"丰大光明，盛极之时。事业丰盛、光明盛大，宜把握当下、防日中则昃。","震为雷":"震动奋起，动中求成。有震动、变动、惊吓之象，宜临危不乱、动而有节。","雷风恒":"恒久守常，持之以恒。宜守常道、坚持到底，利长久之事，忌见异思迁。","雷水解":"解除险难，雨过天晴。困难正在化解、否极泰来，宜把握时机、快速行动。","雷山小过":"小有过越，宜小不宜大。可做小事、不宜大举，宜谦恭谨慎、防高不成。","雷地豫":"欢豫安乐，顺时而动。有喜悦、安逸之象，宜未雨绸缪、居安思危、顺势而为。",
+"风天小畜":"小有积蓄，蓄势待发。力量尚小、暂时蓄养，宜积小成大、耐心等待时机。","风泽中孚":"诚信中孚，以诚感人。宜以诚待人、守信用，心诚则灵，利谈判、合作、婚姻。","风火家人":"家人和睦，各正其位。主家庭、内部、和睦，宜各守本分、齐家有道。","风雷益":"损上益下，增益获利。有获益、进益之象，宜把握良机、行善积德则大利。","巽为风":"顺风而行，谦逊入微。宜谦顺、灵活、循序渐进，如风无孔不入，宜柔中带韧。","风水涣":"涣散离析，宜聚人心。有涣散、分离之象，宜凝聚人心、化解隔阂、涉险济难。","风山渐":"循序渐进，稳步高升。宜按部就班、循序渐进，如树渐长，利长远之谋。","风地观":"观察瞻仰，静观其变。宜多观察、审时度势，暂不宜妄动，看清再行。",
+"水天需":"待时而进，耐心等待。时机未到、宜等待，守正养精蓄锐，需而有孚则光亨。","水泽节":"节制有度，适可而止。宜节制、守规矩、量入为出，过与不及皆不利。","水火既济":"事已成功，守成防变。事情已成、大功告成，宜守成慎终，防盛极转衰。","水雷屯":"初创艰难，起步维艰。万事开头难、初创多阻，宜坚忍不拔、广纳助力。","水风井":"井养不穷，守静养德。宜修身养德、稳定根基，如井养人，利细水长流。","坎为水":"重险相叠，险中求进。困难重重、如水洊至，宜诚心守正、临危不惧终能出险。","水山蹇":"蹇难行止，宜止不宜进。前有险阻、行路艰难，宜暂止、求助贵人、反身修德。","水地比":"亲比相辅，团结互助。宜亲近贤者、团结合作，得道多助，利结盟、找靠山。",
+"山天大畜":"大有蓄积，厚积薄发。宜积蓄实力、厚德载物，畜极而通，利长远大业。","山泽损":"损下益上，先损后益。有付出、损失之象，但损而有孚、先苦后甜，舍即是得。","山火贲":"文饰美化，内实为本。宜注重形象文饰，但勿舍本逐末，实至则名归。","山雷颐":"颐养正道，慎言节食。主养生、颐养，宜谨言慎行、修身养性、自求口实。","山风蛊":"整治积弊，除弊图新。有积弊需整治，宜大刀阔斧、拨乱反正，治蛊则元亨。","山水蒙":"启蒙教育，蒙昧待明。有蒙昧不明之象，宜虚心求教、启发开智，利学习进修。","艮为山":"稳重如山，适可而止。宜止则止、稳重自持，安分守己则无咎，动静得宜。","山地剥":"剥落衰败，宜守勿进。运势剥落、由盛转衰，宜厚下安宅、静守待复、勿妄动。",
+"地天泰":"通泰亨通，天地交泰。上下相通、诸事顺遂，是大吉之象，宜把握良机、守成防骄。","地泽临":"君临天下，以上临下。宜积极进取、把握时机，临事有方，但防乐极、宜长远。","地火明夷":"光明受伤，韬光养晦。贤者受困、光明暂晦，宜藏锋守拙、外柔内刚、静待天明。","地雷复":"一阳来复，否极泰来。转机出现、循环往复，宜把握复兴之机，柔顺渐进则吉。","地风升":"柔顺上升，积小成大。宜稳步上升、循序渐进，如苗渐长，利求职升迁、积累。","地水师":"兵众之象，纪律为先。主竞争、团队、纪律，宜师出有名、用人得当、以正制胜。","地山谦":"谦逊受益，虚怀若谷。谦者受益、满招损，宜谦虚低调、以退为进，谦谦君子终吉。","坤为地":"厚德载物，柔顺包容。宜以柔顺应世、厚德承载，先迷后得、守正则大吉。"
+};
+// 变卦：动爻变阴阳
+function mhBianGua(upG,downG,dong){
+  const up=[...MH_GUA_XIANG[upG].yao],down=[...MH_GUA_XIANG[downG].yao];
+  // 六爻从下往上：1-3爻下卦，4-6爻上卦。动爻dong(1-6)
+  if(dong<=3){down[dong-1]=down[dong-1]?0:1;}
+  else{up[dong-4]=up[dong-4]?0:1;}
+  const yaoToGua=(y)=>{for(const[k,v]of Object.entries(MH_GUA_XIANG))if(v.yao[0]===y[0]&&v.yao[1]===y[1]&&v.yao[2]===y[2])return k;};
+  return[yaoToGua(up),yaoToGua(down)];
+}
+// 卦符号绘制
+function mhYaoSVG(upG,downG){
+  const up=MH_GUA_XIANG[upG].yao,down=MH_GUA_XIANG[downG].yao;
+  const all=[up[0],up[1],up[2],down[0],down[1],down[2]]; // 从上到下显示：上卦3爻+下卦3爻
+  return all.map(y=>y?'<div style="height:7px;background:var(--gold);border-radius:2px;margin:3px 0;"></div>':'<div style="height:7px;display:flex;gap:6px;margin:3px 0;"><div style="flex:1;background:var(--gold);border-radius:2px;"></div><div style="flex:1;background:var(--gold);border-radius:2px;"></div></div>').join("");
+}
+let mhMode="time";
+let mhCoins=[]; // 从下往上6爻，1=阳 0=阴
+function mhRenderCoins(){
+  const box=$("mh-coin-rows");if(!box)return;
+  // 从上往下显示(第6爻在上)，但存储从下往上
+  let html="";
+  for(let pos=6;pos>=1;pos--){
+    const idx=pos-1;const val=mhCoins[idx];
+    const label=pos<=3?"体":"用";
+    const yaoDisplay=val===undefined?'<span style="color:var(--muted);">？</span>':val===1?'<span style="color:var(--gold);">▬▬▬ 阳(公)</span>':'<span style="color:var(--gold);">▬ ▬ 阴(母)</span>';
+    html+=`<div style="display:flex;align-items:center;gap:8px;margin:4px 0;">
+      <span style="font-size:10px;color:var(--muted);width:36px;">第${pos}爻</span>
+      <span style="font-size:9px;color:${pos<=3?'var(--jade)':'var(--cinnabar)'};width:20px;">${label}</span>
+      <button class="mh-coin-btn" data-idx="${idx}" data-v="1" style="flex:1;padding:6px;border-radius:8px;border:1px solid ${val===1?'var(--gold)':'var(--line)'};background:${val===1?'var(--paper-2)':'#fff'};font-size:12px;color:var(--ink);">公·阳</button>
+      <button class="mh-coin-btn" data-idx="${idx}" data-v="0" style="flex:1;padding:6px;border-radius:8px;border:1px solid ${val===0?'var(--gold)':'var(--line)'};background:${val===0?'var(--paper-2)':'#fff'};font-size:12px;color:var(--ink);">母·阴</button>
+    </div>`;
+  }
+  box.innerHTML=html;
+  box.querySelectorAll(".mh-coin-btn").forEach(b=>b.onclick=()=>{
+    mhCoins[+b.dataset.idx]=+b.dataset.v;mhRenderCoins();
+    const done=mhCoins.filter(x=>x!==undefined).length;
+    const st=$("mh-coin-status");if(st)st.textContent=`已点 ${done} / 6 爻`+(done===6?" ✓ 可起卦":"");
+  });
+}
+document.querySelectorAll("#mh-mode .chip").forEach(c=>c.onclick=()=>{
+  document.querySelectorAll("#mh-mode .chip").forEach(x=>x.classList.remove("on"));
+  c.classList.add("on");mhMode=c.dataset.m;
+  $("mh-num-wrap").classList.toggle("hidden",mhMode!=="num");
+  $("mh-coin-wrap").classList.toggle("hidden",mhMode!=="coin");
+  $("mh-spin-wrap").classList.toggle("hidden",mhMode!=="spin");
+  if(mhMode==="coin"){mhCoins=[];mhRenderCoins();}
+  if(mhMode==="spin"){mhSpinReset();}
+});
+{const rb=$("mh-coin-reset");if(rb)rb.onclick=()=>{mhCoins=[];mhRenderCoins();const st=$("mh-coin-status");if(st)st.textContent="已点 0 / 6 爻";};}
+// ===== 转盘起卦 =====
+const MH_SPIN_GUA=["乾","兑","离","震","巽","坎","艮","坤"]; // 8格
+let mhSpinResult={ti:null,yong:null,angle:0,spinning:false};
+function mhRenderSpinPlate(){
+  const box=$("mh-spin-plate");if(!box)return;
+  const R=115,cx=130,cy=130;
+  let labels="";
+  MH_SPIN_GUA.forEach((g,i)=>{
+    const deg=i*45;const rad=(deg-90)*Math.PI/180;
+    const lx=cx+Math.cos(rad)*(R-28),ly=cy+Math.sin(rad)*(R-28);
+    labels+=`<div style="position:absolute;left:${lx-18}px;top:${ly-12}px;width:36px;text-align:center;font-size:16px;font-weight:700;color:var(--gold-lite);">${g}</div>`;
+  });
+  // 8等分扇形背景
+  let segs="";
+  for(let i=0;i<8;i++){
+    const a1=(i*45-90-22.5)*Math.PI/180,a2=(i*45-90+22.5)*Math.PI/180;
+    const x1=cx+Math.cos(a1)*R,y1=cy+Math.sin(a1)*R,x2=cx+Math.cos(a2)*R,y2=cy+Math.sin(a2)*R;
+    const fill=i%2===0?"rgba(176,141,63,0.12)":"rgba(176,141,63,0.05)";
+    segs+=`<path d="M${cx},${cy} L${x1},${y1} A${R},${R} 0 0,1 ${x2},${y2} Z" fill="${fill}" stroke="var(--gold)" stroke-width="0.5" opacity="0.6"/>`;
+  }
+  box.innerHTML=`
+    <div style="position:absolute;left:50%;top:-4px;transform:translateX(-50%);z-index:5;color:var(--cinnabar);font-size:20px;">▼</div>
+    <div id="mh-spin-rot" style="position:relative;width:260px;height:260px;transition:transform 3s cubic-bezier(0.17,0.67,0.12,0.99);">
+      <svg width="260" height="260" style="position:absolute;top:0;left:0;"><circle cx="130" cy="130" r="115" fill="var(--ink)" stroke="var(--gold)" stroke-width="2"/>${segs}<circle cx="130" cy="130" r="14" fill="var(--gold)"/></svg>
+      ${labels}
+    </div>`;
+}
+function mhSpinReset(){
+  mhSpinResult={ti:null,yong:null,angle:0,spinning:false};
+  mhRenderSpinPlate();
+  const st=$("mh-spin-status");if(st)st.textContent="还没转 · 拨动转出第 1 卦（体）";
+  const rs=$("mh-spin-reset");if(rs)rs.style.display="none";
+  const sb=$("mh-spin-btn");if(sb)sb.disabled=false;
+}
+function mhDoSpin(){
+  if(mhSpinResult.spinning)return;
+  if(mhSpinResult.ti&&mhSpinResult.yong)return;
+  mhSpinResult.spinning=true;
+  const rot=$("mh-spin-rot");const st=$("mh-spin-status");
+  const spins=5+Math.floor(Math.random()*4); // 5-8圈
+  const landIdx=Math.floor(Math.random()*8); // 停在哪格
+  // 指针在正上方(0deg位置对应第0格乾)，要让landIdx格转到顶部
+  const targetAngle=mhSpinResult.angle+spins*360+(360-landIdx*45);
+  mhSpinResult.angle=targetAngle;
+  rot.style.transform=`rotate(${targetAngle}deg)`;
+  setTimeout(()=>{
+    const gua=MH_SPIN_GUA[landIdx];
+    if(!mhSpinResult.ti){
+      mhSpinResult.ti=gua;
+      st.innerHTML=`第1卦（体·你）= <b style="color:var(--jade);">${gua}</b> ｜ 再拨一次，转出第 2 卦（用）`;
+      mhSpinResult.spinning=false;
+    }else{
+      mhSpinResult.yong=gua;
+      st.innerHTML=`体=<b style="color:var(--jade);">${mhSpinResult.ti}</b> · 用=<b style="color:var(--cinnabar);">${gua}</b> ✓ 可起卦`;
+      const rs=$("mh-spin-reset");if(rs)rs.style.display="inline-block";
+      mhSpinResult.spinning=false;
+    }
+  },3100);
+}
+{const sb=$("mh-spin-btn");if(sb)sb.onclick=mhDoSpin;}
+{const rs=$("mh-spin-reset");if(rs)rs.onclick=mhSpinReset;}
+$("mh-btn").onclick=()=>{
+  const R=$("mh-result");const q=($("mh-q").value||"").trim();
+  let up,down,dong,method;
+  if(mhMode==="num"){
+    const n1=parseInt(($("mh-n1").value||"").replace(/[^0-9]/g,""));
+    const n2=parseInt(($("mh-n2").value||"").replace(/[^0-9]/g,""));
+    if(!n1||!n2){R.innerHTML='<p class="empty">请报两个数字（1–999）。</p>';return;}
+    up=MH_GUA_BY_REM[n1%8];down=MH_GUA_BY_REM[n2%8];dong=(n1+n2)%6;if(dong===0)dong=6;
+    method=`报数起卦（${n1}、${n2}）`;
+  }else if(mhMode==="spin"){
+    if(!mhSpinResult.ti||!mhSpinResult.yong){R.innerHTML='<p class="empty">请拨动转盘两次，转出体卦与用卦。</p>';return;}
+    // 体=下卦, 用=上卦
+    down=mhSpinResult.ti;up=mhSpinResult.yong;
+    // 动爻随机(转盘无爻信息,用随机1-6)
+    dong=Math.floor(Math.random()*6)+1;
+    method="转盘起卦";
+  }else if(mhMode==="coin"){
+    if(mhCoins.filter(x=>x!==undefined).length<6){R.innerHTML='<p class="empty">请把六爻都点完（公=阳，母=阴）。</p>';return;}
+    const yaoToGua=(y)=>{for(const[k,v]of Object.entries(MH_GUA_XIANG))if(v.yao[0]===y[0]&&v.yao[1]===y[1]&&v.yao[2]===y[2])return k;};
+    // 下卦=1-3爻(从下到上)，上卦=4-6爻
+    down=yaoToGua([mhCoins[0],mhCoins[1],mhCoins[2]]);
+    up=yaoToGua([mhCoins[3],mhCoins[4],mhCoins[5]]);
+    // 动爻：六爻阳数总和，除6取余（无0则6）
+    const yangCnt=mhCoins.reduce((a,b)=>a+b,0);
+    dong=yangCnt%6;if(dong===0)dong=6;
+    method="硬币/阴阳起卦";
+  }else{
+    const now=new Date();
+    // 用当下年月日时（简化用公历数字起卦，符合梅花「随时」精神）
+    const y=now.getFullYear()%12+1,m=now.getMonth()+1,d=now.getDate();
+    const shi=Math.floor(((now.getHours()+1)%24)/2)+1;
+    up=MH_GUA_BY_REM[(y+m+d)%8];down=MH_GUA_BY_REM[(y+m+d+shi)%8];dong=(y+m+d+shi)%6;if(dong===0)dong=6;
+    method=`时间起卦（${now.getMonth()+1}月${now.getDate()}日 ${now.getHours()}时）`;
+  }
+  const benName=MH_HEX_NAME[up+down];const benMean=MH_HEX_MEAN[benName];
+  const[bUp,bDown]=mhBianGua(up,down,dong);
+  const bianName=MH_HEX_NAME[bUp+bDown];const bianMean=MH_HEX_MEAN[bianName];
+  const upX=MH_GUA_XIANG[up],downX=MH_GUA_XIANG[down];
+  // 体用：动爻所在为用卦，另一为体卦。体为己、用为事
+  const dongInLower=dong<=3;
+  const tiG=dongInLower?up:down, yongG=dongInLower?down:up;
+  const tiX=MH_GUA_XIANG[tiG],yongX=MH_GUA_XIANG[yongG];
+  // 体用五行生克
+  const WX_OF={"乾":"金","兑":"金","离":"火","震":"木","巽":"木","坎":"水","艮":"土","坤":"土"};
+  const sheng={"木":"火","火":"土","土":"金","金":"水","水":"木"};
+  const ke={"木":"土","火":"金","土":"水","金":"木","水":"火"};
+  const tw=WX_OF[tiG],yw=WX_OF[yongG];
+  let tiyong,tycls;
+  if(tw===yw){tiyong="体用比和，同气相求，事情顺遂、有助力。";tycls="good";}
+  else if(sheng[yw]===tw){tiyong="用卦生体卦，外来生助、贵人相扶，是得助得利之象，吉。";tycls="good";}
+  else if(sheng[tw]===yw){tiyong="体卦生用卦，你需付出、耗力于此事，虽能成但较劳心，宜量力。";tycls="mid";}
+  else if(ke[yw]===tw){tiyong="用卦克体卦，外有压力阻力、事有不顺，宜谨慎、防被动，不宜强求。";tycls="bad";}
+  else if(ke[tw]===yw){tiyong="体卦克用卦，你能掌控此事、克服阻碍，主动出击可成，吉。";tycls="good";}
+// 八卦类象（断方位/颜色/人物/应期）
+const MH_XIANG={
+"乾":{dir:"西北",color:"白、金、银",person:"年长男性、领导、老板、长辈、官贵之人，多圆脸、气派、有威严",num:"1或4",time:"戌亥时（19–23点）"},
+"兑":{dir:"西",color:"白、金",person:"少女、年轻女性、口才好的人、销售或艺人，多笑脸、爱说话",num:"2或7",time:"酉时（17–19点）"},
+"离":{dir:"南",color:"红、紫、橙",person:"中年女性、美丽出众者、文职文书之人，多眼睛有神、性格开朗",num:"3或9",time:"午时（11–13点）"},
+"震":{dir:"东",color:"青、绿",person:"年轻男性、长子、性急好动者、司机或运动员，多声音大、行动快",num:"4或8",time:"卯时（5–7点）"},
+"巽":{dir:"东南",color:"青、绿、浅蓝",person:"长女、中年女性、文雅斯文之人、生意人，多身材高瘦、发质好",num:"5或8",time:"辰巳时（7–11点）"},
+"坎":{dir:"北",color:"黑、深蓝",person:"中年男性、次子、心思深沉者、水产或夜间工作者，多若有心事",num:"1或6",time:"子时（23–1点）"},
+"艮":{dir:"东北",color:"黄、褐、土色",person:"少男、小孩、稳重之人、房产或山地相关者，多个子不高、敦厚",num:"5或7",time:"丑寅时（1–5点）"},
+"坤":{dir:"西南",color:"黄、褐、土黄",person:"年长女性、母亲、众人、务农或地产之人，多脸方、温厚朴实",num:"2或8或10",time:"未申时（13–17点）"}
+};
+const yongXiang=MH_XIANG[yongG];
+const YANG_GUA=["乾","震","坎","艮"];
+const genderLine=YANG_GUA.includes(yongG)?"阳卦——若问人物，多主<b>男性</b>":"阴卦——若问人物，多主<b>女性</b>";
+// 应期：从「当下」往后推（传统梅花正解，结合体用生克定快慢）
+const GUA_XIANNUM={"乾":1,"兑":2,"离":3,"震":4,"巽":5,"坎":6,"艮":7,"坤":8};
+const SHICHEN_NAMES=["子","丑","寅","卯","辰","巳","午","未","申","酉","戌","亥"];
+function mhYingqi(yongG,tycls){
+  const now=new Date();
+  const nowH=now.getHours();
+  const curShi=Math.floor(((nowH+1)%24)/2);
+  // 应期快慢由体用生克定，offset压在1-3时辰内（不用卦数，避免推太远）
+  // 用生体/比和(good)=快=1时辰; 我生(mid)=中=2时辰; 用克体(bad)=慢=3时辰
+  const offset=tycls==="good"?1:tycls==="bad"?3:2;
+  const speed=tycls==="good"?"较快（顺遂、很快应验）":tycls==="bad"?"较慢（有阻力、需再等等）":"平缓（按部就班）";
+  const targetShi=(curShi+offset)%12;
+  const shiName=SHICHEN_NAMES[targetShi];
+  const shiStartHour=(targetShi*2+23)%24;
+  const hourRange=`${shiStartHour}–${(shiStartHour+2)%24}点`;
+  const hoursLater=offset*2;
+  return {offset,shiName,hourRange,speed,hoursLater,curShiName:SHICHEN_NAMES[curShi]};
+}
+const yq=mhYingqi(yongG,tycls);
+const duanHtml=`
+    <div class="reading" style="margin-bottom:10px;border-color:var(--cinnabar);"><h4 style="color:var(--cinnabar);">◇ 断事·类象（看用卦「${yongG}」）</h4>
+      <p style="font-size:11px;color:var(--muted);margin-bottom:8px;">依你问的是「什么」，看对应那一项——问人看男女人物，问时间看应期，问方向看方位。</p>
+      <div style="display:grid;grid-template-columns:auto 1fr;gap:6px 12px;font-size:12.5px;line-height:1.6;">
+        <b style="color:var(--gold);">男女</b><span>${genderLine}（问人物时，第一眼看这个）</span>
+        <b style="color:var(--gold);">人物</b><span>${yongXiang.person}</span>
+        <b style="color:var(--gold);">颜色</b><span>${yongXiang.color}（相关人事物多带此色，如衣着）</span>
+        <b style="color:var(--gold);">方位</b><span>${yongXiang.dir}方（人事物从此方向来或往此去）</span>
+        <b style="color:var(--gold);">应期</b><span><b>问「几点/多久」才看这项</b>：从现在（${yq.curShiName}时）算起，速度${yq.speed}，约 ${yq.hoursLater} 小时内、即 ${yq.shiName}时（${yq.hourRange}）前后</span>
+      </div>
+      <p style="font-size:11px;color:var(--muted);margin-top:8px;">※ 问「是男是女、什么颜色、什么人」——起卦即看，当下就知，不用等；只有问「几点、多久」才看应期。类象是梅花精髓也最考验灵感，属象征直觉，图个启发、不必执着、信而不迷。</p>
+    </div>`;
+  const masterShi=`此卦为「${benName}」——${benMean}<br><br>从体用来看，你自身如「${tiG}（${tiX.nature}）」，所问之事如「${yongG}（${yongX.nature}）」。${tiyong}<br><br>动爻在第${dong}爻，事情正在变化中，最终走向「${bianName}」之象——${bianMean}<br><br>师父的话：梅花易数讲「体用生克、卦象类象」，这一卦照见的是此事当下的天机与走向。但记住——卦是死的、人是活的，吉卦要惜福善用、凶卦要修心趋避。真正的命运，永远握在你自己手里。`;
+  R.innerHTML=`
+    ${q?`<div class="reading" style="margin-bottom:12px;background:var(--paper-2);"><p style="font-size:12.5px;"><b style="color:var(--gold);">所问：</b>${q.replace(/</g,"&lt;")}</p></div>`:""}
+    <div style="display:flex;gap:12px;justify-content:center;margin-bottom:14px;">
+      <div style="text-align:center;">
+        <div style="font-size:11px;color:var(--gold);font-weight:700;margin-bottom:4px;">本卦</div>
+        <div style="width:70px;padding:8px;border:1.5px solid var(--gold);border-radius:8px;background:var(--ink);">${mhYaoSVG(up,down)}</div>
+        <div style="font-size:12px;font-weight:700;color:var(--gold-lite);margin-top:5px;">${benName}</div>
+      </div>
+      <div style="display:flex;align-items:center;color:var(--gold);font-size:20px;">→</div>
+      <div style="text-align:center;">
+        <div style="font-size:11px;color:var(--jade);font-weight:700;margin-bottom:4px;">变卦</div>
+        <div style="width:70px;padding:8px;border:1.5px solid var(--jade);border-radius:8px;background:var(--ink);">${mhYaoSVG(bUp,bDown)}</div>
+        <div style="font-size:12px;font-weight:700;color:var(--jade);margin-top:5px;">${bianName}</div>
+      </div>
+    </div>
+    <div class="verdict ${tycls}" style="margin-bottom:12px;"><div class="big" style="font-size:16px;">${benName}</div><div class="small">${method} · 上${up}下${down} · ${dong}爻动</div></div>
+    <div class="reading" style="margin-bottom:10px;"><h4 style="color:var(--jade);">◇ 卦象</h4>
+      <p style="font-size:12.5px;line-height:1.8;">上卦「${up}」为${upX.nature}（${upX.trait}），下卦「${down}」为${downX.nature}（${downX.trait}）。合为「${benName}」。</p></div>
+    ${duanHtml}
+    <div class="reading" style="border-color:var(--gold);background:var(--paper-2);"><h4 style="color:var(--gold);">◇ 师父的话（大师级解卦）</h4>
+      <p style="font-size:13px;line-height:2;font-family:'STKaiti','KaiTi',serif;color:var(--ink);">${masterShi}</p></div>
+    <div style="text-align:center;margin-top:12px;"><button class="calc alt" id="mh-again" style="font-size:13px;padding:9px 20px;">☯ 再起一卦</button></div>`;
+  const again=$("mh-again");if(again)again.onclick=()=>$("mh-btn").onclick();
+};
+// 八卦方位盘（后天八卦）+ 实时罗盘
+const MH_HOUTIAN=[
+{g:"离",dir:"南",deg:0},{g:"坤",dir:"西南",deg:45},{g:"兑",dir:"西",deg:90},{g:"乾",dir:"西北",deg:135},
+{g:"坎",dir:"北",deg:180},{g:"艮",dir:"东北",deg:225},{g:"震",dir:"东",deg:270},{g:"巽",dir:"东南",deg:315}
+];
+function mhRenderPlate(){
+  const box=$("mh-bagua-plate");if(!box)return;
+  const R=110,cx=125,cy=125;
+  let items="";
+  MH_HOUTIAN.forEach(o=>{
+    const rad=(o.deg-90)*Math.PI/180;
+    const x=cx+Math.cos(rad)*R,y=cy+Math.sin(rad)*R;
+    const gx=cx+Math.cos(rad)*(R-34),gy=cy+Math.sin(rad)*(R-34);
+    items+=`<div style="position:absolute;left:${x-24}px;top:${y-16}px;width:48px;text-align:center;">
+      <div style="font-size:16px;font-weight:700;color:var(--gold-lite);">${o.g}</div>
+      <div style="font-size:9px;color:var(--muted);">${o.dir}</div></div>`;
+  });
+  box.innerHTML=`<div id="mh-plate-rot" style="position:relative;width:250px;height:250px;margin:0 auto;transition:transform 0.2s;">
+    <div style="position:absolute;inset:20px;border:2px solid var(--gold);border-radius:50%;opacity:0.4;"></div>
+    <div style="position:absolute;inset:52px;border:1px solid var(--gold);border-radius:50%;opacity:0.3;"></div>
+    <div style="position:absolute;left:50%;top:6px;transform:translateX(-50%);font-size:10px;color:var(--cinnabar);font-weight:700;">南</div>
+    <div style="position:absolute;left:50%;bottom:6px;transform:translateX(-50%);font-size:10px;color:var(--muted);">北</div>
+    <div style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:8px;height:8px;background:var(--gold);border-radius:50%;"></div>
+    ${items}
+  </div>
+  <div style="text-align:center;margin-top:6px;"><button class="calc alt" id="mh-compass-btn" style="font-size:12px;padding:7px 16px;">🧭 开启实时罗盘（手机转动）</button><div id="mh-compass-hint" style="font-size:10px;color:var(--muted);margin-top:4px;"></div></div>`;
+  const cbtn=$("mh-compass-btn");
+  if(cbtn)cbtn.onclick=()=>{
+    const hint=$("mh-compass-hint");const rot=$("mh-plate-rot");
+    function handle(e){let h=e.webkitCompassHeading!=null?e.webkitCompassHeading:(e.alpha!=null?360-e.alpha:null);if(h==null)return;rot.style.transform=`rotate(${h}deg)`;hint.textContent=`朝向 ${Math.round(h)}° · 盘已对准真实方位（南在上）`;}
+    if(typeof DeviceOrientationEvent!=="undefined"&&DeviceOrientationEvent.requestPermission){
+      DeviceOrientationEvent.requestPermission().then(s=>{if(s==="granted"){window.addEventListener("deviceorientation",handle,true);hint.textContent="罗盘已启动，转动手机试试";}else hint.textContent="需要允许方向权限才能用罗盘";}).catch(()=>hint.textContent="此设备不支持罗盘");
+    }else if(typeof DeviceOrientationEvent!=="undefined"){
+      window.addEventListener("deviceorientationabsolute",handle,true);
+      window.addEventListener("deviceorientation",handle,true);
+      hint.textContent="罗盘已启动，转动手机试试（电脑无方向感应）";
+    }else hint.textContent="此设备不支持方向感应";
+  };
+}
+mhRenderPlate();
 
 /* ========== 对照表 ========== */
 function renderTable(){
