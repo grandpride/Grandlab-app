@@ -1157,38 +1157,43 @@ async function printTxJobOrder(i){
     +'</div></body></html>';
   const w=window.open('','_blank'); if(w){ w.document.write(html); w.document.close(); setTimeout(()=>w.print(),600); }
 }
-/* Show the picked day's sales in the dashboard list. The date box previously
-   only fed the report buttons - changing it appeared to do nothing because the
-   on-screen list always showed the current month from memory. */
+/* Show the picked day's sales. Rewrites ONLY the transaction table inside the
+   existing dashboard - the totals, chart and buttons all stay put - and loads
+   the rows into DASH_TX so the edit / receipt / delete buttons keep working. */
+function dashTxTableHtml_(){
+  if(!DASH_TX.length) return '<div class="status">No transactions for this date.</div>';
+  return '<table class="dash-tx"><thead><tr><th>Date</th><th>Customer</th><th>Plate</th><th>Method</th><th style="text-align:right">Amount</th><th></th></tr></thead><tbody>'+
+    DASH_TX.map((r,i)=>'<tr>'+
+      '<td>'+(r.sale_date?new Date(r.sale_date+'T00:00:00'):new Date(r.paid_at)).toLocaleDateString('en-MY',{day:'2-digit',month:'short'})+'</td>'+
+      '<td class="dcust" title="'+esc(titleCase(r.customer_name||'—'))+'">'+esc(titleCase(r.customer_name||'—'))+'</td>'+
+      '<td>'+esc(r.plate||'—')+'</td>'+
+      '<td class="meth" title="'+esc(r.method||'')+'">'+esc(r.method||'')+'</td>'+
+      '<td style="text-align:right;font-weight:700">'+RM(r.net_paid)+'</td>'+
+      '<td class="acts" style="text-align:right;white-space:nowrap">'+
+        '<button class="dash-edit" onclick="openEditTx('+i+')" title="Edit"><i class="ti ti-edit"></i></button> '+
+        '<button class="dash-edit" onclick="waTxReceipt('+i+')" title="Send receipt on WhatsApp" style="color:#128C7E"><i class="ti ti-brand-whatsapp"></i></button> '+
+        '<button class="dash-edit" onclick="printTxReceipt('+i+')" title="Receipt PDF"><i class="ti ti-receipt"></i></button> '+
+        '<button class="dash-edit" onclick="printTxJobOrder('+i+')" title="Job Order PDF"><i class="ti ti-file-invoice"></i></button> '+
+        '<button class="dash-del" onclick="deleteTx('+i+')" title="Delete / redo"><i class="ti ti-trash"></i></button>'+
+      '</td></tr>').join('')+
+    '</tbody></table>';
+}
 async function showDayTx(){
   const dv=$('dashRepDate')?$('dashRepDate').value:'';
   if(!dv){ loadDashboard(); return; }
-  const box=$('dashList'); if(!box) return;
-  box.innerHTML='<div class="status">Loading '+esc(dv)+'…</div>';
-  let rows=[];
-  try{ rows=await dayTx_(dv); }
-  catch(e){ box.innerHTML='<div class="status">Error: '+esc(e.message||e)+'</div>'; return; }
-  const total=rows.reduce((a,r)=>a+(Number(r.net_paid)||0),0);
+  const wrap=document.querySelector('.dash-tx-wrap');
+  if(!wrap){ loadDashboard(); return; }
+  wrap.innerHTML='<div class="status">Loading '+esc(dv)+'…</div>';
+  try{ DASH_TX=await dayTx_(dv); }
+  catch(e){ wrap.innerHTML='<div class="status">Error: '+esc(e.message||e)+'</div>'; return; }
+  const total=DASH_TX.reduce((a,r)=>a+(Number(r.net_paid)||0),0);
   const d=new Date(dv+'T00:00:00');
   const label=d.toLocaleDateString('en-GB',{weekday:'short',day:'2-digit',month:'short',year:'numeric'});
-  if(!rows.length){
-    box.innerHTML='<div class="co-sub" style="margin-bottom:8px">'+esc(label)+
-      ' &middot; <b>no sales recorded</b></div>'+
-      '<button class="btn-mini" onclick="loadDashboard()">&larr; Back to this month</button>';
-    return;
-  }
-  box.innerHTML='<div class="co-sub" style="margin-bottom:8px">'+esc(label)+' &middot; '+rows.length+
-      ' sale'+(rows.length===1?'':'s')+' &middot; <b style="color:var(--gold-deep)">'+RM(total)+'</b></div>'+
-    '<button class="btn-mini" style="margin-bottom:10px" onclick="loadDashboard()">&larr; Back to this month</button>'+
-    '<table class="tbl"><thead><tr><th>Date</th><th>Invoice</th><th>Customer</th><th>Plate</th><th>Method</th><th style="text-align:right">Amount</th></tr></thead><tbody>'+
-    rows.map(r=>'<tr>'+
-      '<td>'+(r.sale_date?new Date(r.sale_date+'T00:00:00'):new Date(r.paid_at)).toLocaleDateString('en-GB',{day:'2-digit',month:'short'})+'</td>'+
-      '<td>'+esc(r.invoice_no||'')+'</td>'+
-      '<td>'+esc(r.customer_name||'')+'</td>'+
-      '<td>'+esc(r.plate||'')+'</td>'+
-      '<td>'+esc(r.method||'')+'</td>'+
-      '<td style="text-align:right">'+RM(Number(r.net_paid)||0)+'</td></tr>').join('')+
-    '</tbody></table>';
+  wrap.innerHTML='<div class="co-sub" style="margin:2px 0 8px">Showing <b>'+esc(label)+'</b> &middot; '+
+      DASH_TX.length+' sale'+(DASH_TX.length===1?'':'s')+
+      ' &middot; <b style="color:var(--gold-deep)">'+RM(total)+'</b> '+
+      '<button class="btn-mini" style="margin-left:8px" onclick="loadDashboard()">&larr; This month</button></div>'+
+    dashTxTableHtml_();
 }
 
 async function dayTx_(dayStr){
