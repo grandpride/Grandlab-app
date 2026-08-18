@@ -802,7 +802,7 @@ async function loadDashboard(){
     <div class="dash-sec" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
       <span>Sales overview · this month</span>
       <div style="display:flex;gap:6px;align-items:center">
-        <input type="date" id="dashRepDate" value="${new Date().toLocaleDateString('en-CA')}" style="padding:6px 8px;border:1px solid var(--line2);border-radius:8px;font-family:inherit;font-size:12px">
+        <input type="date" id="dashRepDate" value="${new Date().toLocaleDateString('en-CA')}" onchange="showDayTx()" style="padding:6px 8px;border:1px solid var(--line2);border-radius:8px;font-family:inherit;font-size:12px">
         <input type="number" id="dashOpenBal" placeholder="Opening RM" step="0.01" style="width:100px;padding:6px 8px;border:1px solid var(--line2);border-radius:8px;font-family:inherit;font-size:12px" title="Cash opening balance">
         <button class="btn-mini" style="background:#25D366;color:#fff;border-color:#25D366" onclick="sendSettlementWA()"><i class="ti ti-brand-whatsapp"></i> Settlement</button>
         <button class="btn-mini" onclick="downloadDashReport()"><i class="ti ti-file-type-pdf"></i> Day report</button>
@@ -1157,6 +1157,40 @@ async function printTxJobOrder(i){
     +'</div></body></html>';
   const w=window.open('','_blank'); if(w){ w.document.write(html); w.document.close(); setTimeout(()=>w.print(),600); }
 }
+/* Show the picked day's sales in the dashboard list. The date box previously
+   only fed the report buttons - changing it appeared to do nothing because the
+   on-screen list always showed the current month from memory. */
+async function showDayTx(){
+  const dv=$('dashRepDate')?$('dashRepDate').value:'';
+  if(!dv){ loadDashboard(); return; }
+  const box=$('dashList'); if(!box) return;
+  box.innerHTML='<div class="status">Loading '+esc(dv)+'…</div>';
+  let rows=[];
+  try{ rows=await dayTx_(dv); }
+  catch(e){ box.innerHTML='<div class="status">Error: '+esc(e.message||e)+'</div>'; return; }
+  const total=rows.reduce((a,r)=>a+(Number(r.net_paid)||0),0);
+  const d=new Date(dv+'T00:00:00');
+  const label=d.toLocaleDateString('en-GB',{weekday:'short',day:'2-digit',month:'short',year:'numeric'});
+  if(!rows.length){
+    box.innerHTML='<div class="co-sub" style="margin-bottom:8px">'+esc(label)+
+      ' &middot; <b>no sales recorded</b></div>'+
+      '<button class="btn-mini" onclick="loadDashboard()">&larr; Back to this month</button>';
+    return;
+  }
+  box.innerHTML='<div class="co-sub" style="margin-bottom:8px">'+esc(label)+' &middot; '+rows.length+
+      ' sale'+(rows.length===1?'':'s')+' &middot; <b style="color:var(--gold-deep)">'+RM(total)+'</b></div>'+
+    '<button class="btn-mini" style="margin-bottom:10px" onclick="loadDashboard()">&larr; Back to this month</button>'+
+    '<table class="tbl"><thead><tr><th>Date</th><th>Invoice</th><th>Customer</th><th>Plate</th><th>Method</th><th style="text-align:right">Amount</th></tr></thead><tbody>'+
+    rows.map(r=>'<tr>'+
+      '<td>'+(r.sale_date?new Date(r.sale_date+'T00:00:00'):new Date(r.paid_at)).toLocaleDateString('en-GB',{day:'2-digit',month:'short'})+'</td>'+
+      '<td>'+esc(r.invoice_no||'')+'</td>'+
+      '<td>'+esc(r.customer_name||'')+'</td>'+
+      '<td>'+esc(r.plate||'')+'</td>'+
+      '<td>'+esc(r.method||'')+'</td>'+
+      '<td style="text-align:right">'+RM(Number(r.net_paid)||0)+'</td></tr>').join('')+
+    '</tbody></table>';
+}
+
 async function dayTx_(dayStr){
   // DASH_TX only holds the CURRENT month, so any earlier date filtered to
   // nothing and the report said "no transactions". Fetch the day directly.
@@ -2830,16 +2864,31 @@ async function openUnpaid(){
         </div>
         <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
           <b>${RM(r.amount_owed)}</b>
-          <button class="btn-mini" title="Edit" onclick='openUnpaidEdit(${JSON.stringify(r).replace(/'/g,"&#39;")})'><i class="ti ti-edit"></i></button>
-          <button class="btn-mini" title="Delete this unpaid record" style="color:#C0392B" onclick='deleteUnpaid(${JSON.stringify(r).replace(/'/g,"&#39;")})'><i class="ti ti-trash"></i></button>
-          <button class="btn-mini" onclick='settleUnpaid(${JSON.stringify(r).replace(/'/g,"&#39;")})'><i class="ti ti-check"></i> Settle</button>
+          <button class="btn-mini" title="Edit" data-uact="edit" data-uid="${r.id}"><i class="ti ti-edit"></i></button>
+          <button class="btn-mini" title="Delete this unpaid record" style="color:#C0392B" data-uact="del" data-uid="${r.id}"><i class="ti ti-trash"></i></button>
+          <button class="btn-mini" data-uact="settle" data-uid="${r.id}"><i class="ti ti-check"></i> Settle</button>
         </div>
       </div>`;
     });
     html+='</div>';
   });
   $('unpaidBody').innerHTML=html;
+  // Bind handlers instead of embedding JSON in onclick: a customer name with a
+  // quote or apostrophe ("TNL TITAN SB (CEDRIC)", O'Brien) broke the attribute
+  // and the button silently did nothing at all.
+  UNPAID_ROWS={}; rows.forEach(r=>{ UNPAID_ROWS[String(r.id)]=r; });
+  Array.from($('unpaidBody').querySelectorAll('[data-uact]')).forEach(b=>{
+    b.onclick=()=>{
+      const rec=UNPAID_ROWS[b.getAttribute('data-uid')];
+      if(!rec){ toast('Record not found'); return; }
+      const a=b.getAttribute('data-uact');
+      if(a==='edit') openUnpaidEdit(rec);
+      else if(a==='del') deleteUnpaid(rec);
+      else settleUnpaid(rec);
+    };
+  });
 }
+var UNPAID_ROWS={};
 /* Open the edit modal pre-filled with an unpaid record's fields. */
 function openUnpaidEdit(r){
   $('ue_id').value=r.id;
