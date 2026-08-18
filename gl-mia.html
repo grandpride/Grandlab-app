@@ -31,7 +31,7 @@ html,body{height:100%;background:var(--bg);font-family:-apple-system,BlinkMacSys
 
 /* ---------- tabs ---------- */
 .tabs{display:flex;gap:6px;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:5px;margin-bottom:18px}
-.tab{flex:1;text-align:center;padding:10px 4px;border-radius:10px;font-size:12px;font-weight:700;color:var(--text2);cursor:pointer;border:none;background:none;font-family:inherit}
+.tab{flex:1;text-align:center;padding:9px 3px;border-radius:10px;font-size:11px;font-weight:700;color:var(--text2);cursor:pointer;border:none;background:none;font-family:inherit}
 .tab.on{background:var(--gold);color:#080808}
 
 .view{display:none}
@@ -103,6 +103,16 @@ textarea{min-height:120px}
   font-weight:700;cursor:pointer;font-family:inherit;flex:0 0 auto}
 .star.on{background:var(--gold);color:#080808;border-color:var(--gold)}
 
+.tpl{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:11px}
+.tpl .tt{font-weight:800;font-size:15px;margin-bottom:4px}
+.tpl .tm{font-size:11px;color:var(--text3);margin-bottom:11px}
+.tpl .lang{border-top:1px solid var(--border);padding-top:11px;margin-top:11px}
+.tpl .lh{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:7px}
+.tpl .lh .n{font-size:11px;font-weight:800;letter-spacing:.06em;color:var(--gold)}
+.tpl .bd{font-size:14px;line-height:1.6;white-space:pre-wrap;color:var(--text2);word-break:break-word}
+.tpl .media{display:block;margin-top:11px;font-size:12px;color:var(--gold);word-break:break-all}
+.tpl .thumb{width:100%;border-radius:11px;margin-top:11px;display:block}
+
 .hrow{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:13px 14px;margin-bottom:10px}
 .hrow.star-on{border-color:var(--gold)}
 .hrow .top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
@@ -160,6 +170,7 @@ textarea{min-height:120px}
   <div class="tabs">
     <button class="tab on" data-v="coach" onclick="showTab('coach')">Coach</button>
     <button class="tab" data-v="cust" onclick="showTab('cust')">Customer</button>
+    <button class="tab" data-v="tpl" onclick="showTab('tpl')">Templates</button>
     <button class="tab" data-v="hist" onclick="showTab('hist')">History</button>
     <button class="tab" data-v="set" onclick="showTab('set')">Knowledge</button>
   </div>
@@ -212,6 +223,41 @@ textarea{min-height:120px}
         <button class="btn btn-pri" onclick="sendCust()"><i class="ti ti-send"></i></button>
       </div>
     </div>
+  </div>
+
+  <!-- ============ TEMPLATES ============ -->
+  <div class="view" id="v-tpl">
+    <div class="card">
+      <div class="card-t"><i class="ti ti-clipboard-text"></i> Ready to send</div>
+      <div class="chips" id="tplChips"></div>
+      <div class="hint">Tap Copy, then paste straight into WhatsApp.</div>
+      <button class="btn btn-ghost btn-sm btn-block" style="margin-top:12px" onclick="tplNew()">
+        <i class="ti ti-plus"></i> New template
+      </button>
+    </div>
+
+    <div class="card" id="tplForm" style="display:none">
+      <div class="card-t"><i class="ti ti-edit"></i> <span id="tplFormTitle">New template</span></div>
+      <label>Section</label>
+      <select id="f_cat" style="width:100%;background:#101010;border:1px solid var(--border);border-radius:11px;color:var(--text);padding:12px 13px;font-size:15px;font-family:inherit;outline:none"></select>
+      <label style="margin-top:11px">Title</label>
+      <input type="text" id="f_title" placeholder="e.g. New enquiry — first reply">
+      <label style="margin-top:11px">English</label>
+      <textarea id="f_en"></textarea>
+      <label style="margin-top:11px">Bahasa Melayu</label>
+      <textarea id="f_bm"></textarea>
+      <label style="margin-top:11px">中文</label>
+      <textarea id="f_cn"></textarea>
+      <label style="margin-top:11px">Photo or link (optional)</label>
+      <input type="text" id="f_media" placeholder="https://...">
+      <div class="row" style="margin-top:13px">
+        <button class="btn btn-pri" onclick="tplSave()"><i class="ti ti-device-floppy"></i> Save</button>
+        <button class="btn btn-ghost" onclick="tplCancel()">Cancel</button>
+      </div>
+      <div class="err" id="tplErr"></div>
+    </div>
+
+    <div id="tplOut"><div class="empty">Loading…</div></div>
   </div>
 
   <!-- ============ HISTORY ============ -->
@@ -405,6 +451,7 @@ function showTab(v){
   $("v-" + v).classList.add("on");
   $("composer").style.display = (v === "cust") ? "block" : "none";
   if (v === "hist") loadHistory();
+  if (v === "tpl")  loadTpl();
   window.scrollTo({ top: 0 });
 }
 
@@ -554,6 +601,128 @@ function fallbackCopy(t, done){
   document.body.appendChild(ta); ta.select();
   try { document.execCommand("copy"); done(); } catch (e) {}
   ta.remove();
+}
+
+/* ---------- templates ---------- */
+const TPL_CATS = [
+  { k: "greeting", n: "Greeting"  },
+  { k: "promo",    n: "Promo"     },
+  { k: "ppf",      n: "PPF"       },
+  { k: "tint",     n: "Tinted"    },
+  { k: "paint",    n: "Paint info"},
+  { k: "deposit",  n: "Deposit & booking" },
+  { k: "address",  n: "Address"   },
+  { k: "gallery",  n: "Gallery"   }
+];
+let TPLS = [];
+let TPL_CAT = "greeting";
+let TPL_EDIT = null;
+
+function catName(k){
+  const c = TPL_CATS.find(x => x.k === k);
+  return c ? c.n : k;
+}
+
+async function loadTpl(){
+  $("tplChips").innerHTML = TPL_CATS.map(c =>
+    `<button class="chip ${c.k === TPL_CAT ? "on" : ""}" onclick="pickTplCat('${c.k}')">${esc(c.n)}</button>`).join("");
+  $("tplOut").innerHTML = '<div class="empty">Loading…</div>';
+  const { data, error } = await sb.from("gl_mia_templates").select("*").order("sort").order("id");
+  if (error) { $("tplOut").innerHTML = '<div class="err">Could not load: ' + esc(error.message) + "</div>"; return; }
+  TPLS = data || [];
+  renderTpl();
+}
+
+function pickTplCat(k){ TPL_CAT = k; loadTpl(); }
+
+function renderTpl(){
+  const rows = TPLS.filter(t => t.category === TPL_CAT);
+  if (!rows.length) {
+    $("tplOut").innerHTML = '<div class="empty">Nothing in ' + esc(catName(TPL_CAT)) +
+      ' yet.<br>Tap New template to add one.</div>';
+    return;
+  }
+  $("tplOut").innerHTML = rows.map(t => {
+    const langs = [["EN", t.body_en], ["BM", t.body_bm], ["CN", t.body_cn]];
+    const blocks = langs.filter(l => (l[1] || "").trim()).map(l => `
+      <div class="lang">
+        <div class="lh"><div class="n">${l[0]}</div>
+          <button class="copy" onclick="copyTxt(this)" data-t="${esc(l[1])}">Copy</button></div>
+        <div class="bd">${esc(l[1])}</div>
+      </div>`).join("");
+    const media = (t.media_url || "").trim();
+    const isImg = /\.(jpe?g|png|gif|webp)(\?|$)/i.test(media);
+    const mediaBlock = media
+      ? (isImg ? `<img class="thumb" src="${esc(media)}" alt="">` : "") +
+        `<div class="lh" style="margin-top:11px">
+           <a class="media" href="${esc(media)}" target="_blank" rel="noopener">${esc(media.slice(0, 60))}${media.length > 60 ? "…" : ""}</a>
+           <button class="copy" onclick="copyTxt(this)" data-t="${esc(media)}">Copy link</button></div>`
+      : "";
+    return `<div class="tpl">
+      <div class="tt">${esc(t.title)}</div>
+      <div class="tm">${esc(catName(t.category))}</div>
+      ${blocks}${mediaBlock}
+      <div class="acts">
+        <button class="mini" onclick="tplEdit(${t.id})">Edit</button>
+        <button class="mini danger" onclick="tplDelete(${t.id})">Delete</button>
+      </div>
+    </div>`;
+  }).join("");
+}
+
+function tplFormFill(t){
+  $("f_cat").innerHTML = TPL_CATS.map(c =>
+    `<option value="${c.k}" ${((t && t.category) || TPL_CAT) === c.k ? "selected" : ""}>${esc(c.n)}</option>`).join("");
+  $("f_title").value = t ? (t.title || "") : "";
+  $("f_en").value    = t ? (t.body_en || "") : "";
+  $("f_bm").value    = t ? (t.body_bm || "") : "";
+  $("f_cn").value    = t ? (t.body_cn || "") : "";
+  $("f_media").value = t ? (t.media_url || "") : "";
+  $("tplErr").textContent = "";
+  $("tplFormTitle").textContent = t ? "Edit template" : "New template";
+  $("tplForm").style.display = "block";
+  $("tplForm").scrollIntoView({ behavior: "smooth", block: "center" });
+}
+function tplNew(){ TPL_EDIT = null; tplFormFill(null); }
+function tplEdit(id){
+  const t = TPLS.find(x => x.id === id);
+  if (!t) return;
+  TPL_EDIT = id;
+  tplFormFill(t);
+}
+function tplCancel(){ TPL_EDIT = null; $("tplForm").style.display = "none"; }
+
+async function tplSave(){
+  const err = $("tplErr"); err.textContent = "";
+  const title = $("f_title").value.trim();
+  if (!title) { err.textContent = "Give it a title so you can find it later."; return; }
+  const row = {
+    category:  $("f_cat").value,
+    title:     title,
+    body_en:   $("f_en").value.trim(),
+    body_bm:   $("f_bm").value.trim(),
+    body_cn:   $("f_cn").value.trim(),
+    media_url: $("f_media").value.trim()
+  };
+  const q = TPL_EDIT
+    ? sb.from("gl_mia_templates").update(row).eq("id", TPL_EDIT)
+    : sb.from("gl_mia_templates").insert(row);
+  const { error } = await q;
+  if (error) { err.textContent = "Couldn't save: " + error.message; return; }
+  TPL_CAT = row.category;
+  TPL_EDIT = null;
+  $("tplForm").style.display = "none";
+  loadTpl();
+}
+
+async function tplDelete(id){
+  const t = TPLS.find(x => x.id === id);
+  if (!t) return;
+  if (!confirm("Delete this template permanently?\n\n\"" + (t.title || "") + "\"\n\nThis cannot be undone.")) return;
+  const { error } = await sb.from("gl_mia_templates").delete().eq("id", id);
+  if (error) return;
+  TPLS = TPLS.filter(x => x.id !== id);
+  renderTpl();
 }
 
 /* ---------- history + starring ---------- */
