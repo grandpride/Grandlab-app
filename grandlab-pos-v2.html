@@ -806,6 +806,7 @@ async function loadDashboard(){
         <input type="number" id="dashOpenBal" placeholder="Opening RM" step="0.01" style="width:100px;padding:6px 8px;border:1px solid var(--line2);border-radius:8px;font-family:inherit;font-size:12px" title="Cash opening balance">
         <button class="btn-mini" style="background:#25D366;color:#fff;border-color:#25D366" onclick="sendSettlementWA()"><i class="ti ti-brand-whatsapp"></i> Settlement</button>
         <button class="btn-mini" onclick="downloadDashReport()"><i class="ti ti-file-type-pdf"></i> Day report</button>
+        <input type="month" id="dashRepMonth" value="${new Date().toLocaleDateString('en-CA').slice(0,7)}" style="padding:6px 8px;border:1px solid var(--line2);border-radius:8px;font-family:inherit;font-size:12px">
         <button class="btn-mini" onclick="downloadDashReport(true)"><i class="ti ti-calendar"></i> Month</button>
       </div>
     </div>
@@ -1196,6 +1197,20 @@ async function showDayTx(){
     dashTxTableHtml_();
 }
 
+async function monthTx_(year, month){
+  const pad=n=>String(n).padStart(2,'0');
+  const from=new Date(year,month-1,1), to=new Date(year,month,1);
+  const iso=d=>d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+  const cols='id,job_id,invoice_no,customer_name,plate,net_paid,method,paid_at,sale_date,voided,sql_invoice_no,sql_payment_no,settled_from_invoice,settled_from_date';
+  let rows=[];
+  const a=await sb.from('gl_payments').select(cols).gte('sale_date',iso(from)).lt('sale_date',iso(to));
+  rows=rows.concat(a.data||[]);
+  const b=await sb.from('gl_payments').select(cols).is('sale_date',null)
+    .gte('paid_at',from.toISOString()).lt('paid_at',to.toISOString());
+  rows=rows.concat(b.data||[]);
+  const byId={}; rows.forEach(r=>{ if(!r.voided) byId[r.id]=r; });
+  return Object.values(byId).sort((x,y)=>new Date(x.paid_at)-new Date(y.paid_at));
+}
 async function dayTx_(dayStr){
   // DASH_TX only holds the CURRENT month, so any earlier date filtered to
   // nothing and the report said "no transactions". Fetch the day directly.
@@ -1220,7 +1235,12 @@ async function downloadDashReport(monthMode){
   let list=DASH_TX.slice();
   let periodLabel;
   if(monthMode){
-    periodLabel=now.toLocaleDateString('en-MY',{month:'long',year:'numeric'});
+    // the month report always used the CURRENT month, so July could never be
+    // generated. Use the picked month and fetch it straight from the database.
+    const mv=$('dashRepMonth')?$('dashRepMonth').value:'';
+    const my=mv?new Date(mv+'-01T00:00:00'):new Date(now.getFullYear(),now.getMonth(),1);
+    list=await monthTx_(my.getFullYear(), my.getMonth()+1);
+    periodLabel=my.toLocaleDateString('en-MY',{month:'long',year:'numeric'});
   } else {
     const dv=$('dashRepDate')?$('dashRepDate').value:'';
     const day=dv?new Date(dv+'T00:00:00'):dayStart_(now);
@@ -3005,15 +3025,21 @@ async function doSettle_(method, label){
     if(e1) throw e1;
     // 2) record a payment (so it counts in takings / exports) — carry the
     //    real customer name + plate so the sales row isn't blank.
-    // The settlement keeps the ORIGINAL GLIV so it matches the invoice already
-    // issued to the workshop and keyed into SQL Account. sale_date stays on the
-    // original job date; paid_at is now, which is when the money arrived.
+    // Keeps the ORIGINAL GLIV so it matches the invoice already issued to the
+    // workshop and keyed into SQL Account. sale_date is TODAY, because that is
+    // when the money actually arrived and that is the tab finance reconciles.
+    // settled_from_* preserve the link back to the job date for tracing.
+    const pad0=n=>String(n).padStart(2,'0');
+    const t=new Date();
+    const todayStr=t.getFullYear()+'-'+pad0(t.getMonth()+1)+'-'+pad0(t.getDate());
     const {error:e2}=await sb.from('gl_payments').insert({
       invoice_no:r.invoice_no||null, gross:amount, net_paid:amount, method:method,
       taken_by:ME,
       customer_name:(r.customer_name||r.workshop_name||r.plate||'Settled unpaid'),
       plate:r.plate||'', job_id:r.job_id||null,
-      sale_date:(r.sale_date?String(r.sale_date).slice(0,10):null)
+      sale_date:todayStr,
+      settled_from_invoice:(r.invoice_no||null),
+      settled_from_date:(r.sale_date?String(r.sale_date).slice(0,10):null)
     });
     if(e2) throw e2;
     toast('Settled ✓');
