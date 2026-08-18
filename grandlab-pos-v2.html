@@ -2954,24 +2954,51 @@ async function saveUnpaidEdit(){
   openUnpaid();
 }
 
-async function settleUnpaid(r){
+var _SETTLE_REC=null;
+/* Payment-method picker for settling an unpaid bill. Uses the same METHODS list
+   and .methods/.method styling as checkout - a browser prompt() asking for a
+   number was unusable at the counter. */
+function settleUnpaid(r){
   if(!r || !r.id){ toast('No record'); return; }
+  _SETTLE_REC=r;
   const amount=Number(r.amount_owed)||0;
   const who=r.customer_name||r.workshop_name||r.plate||'—';
-  // Ask HOW it was paid - this used to be hard-coded to cash, so every settled
-  // workshop bill landed in the takings as cash regardless of how it arrived.
-  const METHODS=[['cash','Cash'],['tng','TNG'],['bank','Bank transfer'],
-                 ['credit_card','Credit card'],['debit_card','Debit card'],
-                 ['grabpay','GrabPay'],['shopeepay','ShopeePay'],['cheque','Cheque']];
-  const pick=prompt('How was this paid?\n'+who+(r.plate?' · '+r.plate:'')+'\nAmount: '+RM(amount)+
-    '\n\n'+METHODS.map((m,i)=>(i+1)+' = '+m[1]).join('\n')+'\n\nEnter a number:','1');
-  if(pick===null) return;
-  const mi=parseInt(pick,10)-1;
-  if(isNaN(mi)||mi<0||mi>=METHODS.length){ alert('Not a valid choice.'); return; }
-  const method=METHODS[mi][0];
-  if(!confirm('Mark this as PAID now?\n'+who+(r.plate?' · '+r.plate:'')+'\nAmount: '+RM(amount)+
-    '\nMethod: '+METHODS[mi][1]+'\nInvoice: '+(r.invoice_no||'-')+
-    '\n\nThis records the payment and clears the unpaid balance.')) return;
+  const tenders=METHODS.filter(m=>m.k!=='app_credit'&&m.k!=='app_points')
+    .concat([{k:'bank',label:'Bank transfer',icon:'building-bank'},{k:'cheque',label:'Cheque',icon:'file-text'}]);
+  let ov=document.getElementById('settleOv');
+  if(ov) ov.remove();
+  ov=document.createElement('div');
+  ov.id='settleOv';
+  ov.className='modal show';
+  ov.innerHTML='<div class="dialog" style="max-width:460px">'+
+    '<div class="dialog-h"><h3>Settle unpaid</h3>'+
+      '<button class="closex" onclick="closeSettleOv()">&times;</button></div>'+
+    '<div class="dialog-b">'+
+    '<div style="padding:2px 0 10px">'+
+      '<div style="font-weight:800;font-size:15px">'+esc(who)+(r.plate?' &middot; '+esc(r.plate):'')+'</div>'+
+      '<div class="co-sub" style="font-size:12px">'+esc(r.invoice_no||'')+
+        (r.sale_date?' &middot; '+new Date(r.sale_date+'T00:00:00').toLocaleDateString('en-GB'):'')+'</div>'+
+      '<div style="margin-top:8px;font-size:22px;font-weight:800;color:var(--gold-deep)">'+RM(amount)+'</div>'+
+    '</div>'+
+    '<div class="section-h">Payment method</div>'+
+    '<div class="methods">'+
+      tenders.map(m=>'<div class="method" data-mk="'+m.k+'"><span class="mi"><i class="ti ti-'+m.icon+'"></i></span>'+m.label+'</div>').join('')+
+    '</div>'+
+    '<div class="co-sub" style="font-size:11px;margin-top:10px">Invoice stays as issued; payment is recorded today.</div>'+
+    '</div></div>';
+  document.body.appendChild(ov);
+  Array.from(ov.querySelectorAll('.method')).forEach(b=>{
+    b.onclick=()=>doSettle_(b.getAttribute('data-mk'), b.textContent.trim());
+  });
+}
+function closeSettleOv(){ const o=document.getElementById('settleOv'); if(o) o.remove(); _SETTLE_REC=null; }
+async function doSettle_(method, label){
+  const r=_SETTLE_REC; if(!r) return;
+  const amount=Number(r.amount_owed)||0;
+  const who=r.customer_name||r.workshop_name||r.plate||'—';
+  if(!confirm('Mark as PAID?\n'+who+(r.plate?' · '+r.plate:'')+
+    '\nAmount: '+RM(amount)+'\nMethod: '+label+'\nInvoice: '+(r.invoice_no||'-'))) return;
+  closeSettleOv();
   try{
     // 1) mark the unpaid row settled
     const {error:e1}=await sb.from('gl_unpaid').update({settled:true, settled_at:new Date().toISOString(), settled_by:ME}).eq('id',r.id);
