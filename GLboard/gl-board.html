@@ -30,7 +30,18 @@ html,body{height:100%;width:100%;overflow:hidden;background:#fff;color:#111;font
 .badge{display:inline-flex;align-items:center;gap:3px;font-size:9.5px;font-weight:700;padding:2px 6px;border-radius:5px;white-space:nowrap}
 .model{font-size:13px;color:#374151;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .plate{font-family:'JetBrains Mono',monospace;font-weight:700;font-size:14px;color:#111;background:#FACC15;display:inline-block;border-radius:6px;letter-spacing:.05em;padding:2px 9px;margin-top:4px}
-.svc{font-size:13px;color:#374151;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.svc{font-size:13px;color:#374151;font-weight:600;overflow:hidden;white-space:nowrap}
+/* Long values used to be cut off with an ellipsis, so a full plate or service
+   name could never be read from across the room. Anything too wide for its
+   column now slides sideways like a departure board and loops. Text that fits
+   is left completely still. */
+.mq{display:block;overflow:hidden;white-space:nowrap;position:relative}
+.mq-i{display:inline-block;white-space:nowrap;will-change:transform}
+.mq-i.run{animation:mqslide var(--mqd,12s) linear infinite}
+@keyframes mqslide{
+  0%,8%   {transform:translateX(0)}
+  92%,100%{transform:translateX(var(--mqx,0px))}
+}
 .status{display:inline-flex;align-items:flex-start;gap:6px;font-weight:700;font-size:13px;line-height:1.15}
 .status .dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;margin-top:3px}
 .elapsed{font-family:'JetBrains Mono',monospace;font-weight:700;font-size:15px;white-space:nowrap;overflow:hidden}
@@ -205,17 +216,17 @@ function render(){
       const techs=techList(j);
       return `<div class="row ${ready?'ready-row':''} ${vip?'vip':''}" style="height:${ROW_H-10}px">
         <div style="min-width:0;overflow:hidden">
-          <div class="cust-name">${vip?'👑 ':''}<span style="overflow:hidden;text-overflow:ellipsis">${esc(custName(j))}</span></div>
+          <div class="cust-name"><span class="mq"><span class="mq-i">${vip?'👑 ':''}${esc(custName(j))}</span></span></div>
           <div style="display:flex;gap:4px;margin-top:3px">
             ${vip?'<span class="badge" style="background:#FCE7F0;color:#E11D63">VIP</span>':'<span class="badge" style="background:#F3F4F6;color:#6B7280">STANDARD</span>'}
             ${j.is_new?'<span class="badge" style="background:#DBEAFE;color:#2563EB">NEW</span>':'<span class="badge" style="background:#DCFCE7;color:#16A34A">REGULAR</span>'}
           </div>
         </div>
         <div style="min-width:0;overflow:hidden">
-          <div class="model">${esc(j.model||'-')}</div>
+          <div class="model"><span class="mq"><span class="mq-i">${esc(j.model||'-')}</span></span></div>
           <div class="plate">${esc(j.plate||'')}</div>
         </div>
-        <div class="svc">${esc(svcText(j)||'-')}</div>
+        <div class="svc"><span class="mq"><span class="mq-i">${esc(svcText(j)||'-')}</span></span></div>
         <div style="min-width:0;overflow:hidden;padding-right:8px"><span class="status" style="color:${st.color}"><span class="dot" style="background:${st.color}"></span><span style="overflow-wrap:anywhere">${st.label}</span></span></div>
         <div class="elapsed" style="color:#6B7280;font-size:13px">${apptDisplay(j)}</div>
         <div class="elapsed" style="color:#111;font-size:13px">${j.started_at?new Date(j.started_at).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}):'<span style="color:#D1D5DB">-</span>'}</div>
@@ -228,6 +239,28 @@ function render(){
   const mn=$('moreNote');
   if(hidden>0){ mn.style.display='block'; mn.textContent=`+ ${hidden} more car${hidden>1?'s':''} not shown`; }
   else mn.style.display='none';
+  applyMarquee();
+}
+
+/* Start the slide only where the text is actually wider than its column, and
+   pace it by how much is hidden so a long name is not rushed. */
+function applyMarquee(){
+  document.querySelectorAll('.mq').forEach(box=>{
+    const inner=box.querySelector('.mq-i');
+    if(!inner) return;
+    inner.classList.remove('run');
+    const over=inner.scrollWidth-box.clientWidth;
+    if(over>4){
+      inner.style.setProperty('--mqx', (-over-4)+'px');
+      // ~22px per second, never quicker than 7s, never slower than 26s
+      const secs=Math.min(26, Math.max(7, (over+4)/22 + 5));
+      inner.style.setProperty('--mqd', secs.toFixed(1)+'s');
+      inner.classList.add('run');
+    } else {
+      inner.style.removeProperty('--mqx');
+      inner.style.removeProperty('--mqd');
+    }
+  });
 }
 
 function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
