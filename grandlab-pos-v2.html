@@ -1594,12 +1594,25 @@ function pkgCoverBreakdown_(){
     if(any) out.push({pkg, amount:Math.round(amt*100)/100});
     else unmatched.push(pkg);
   });
-  let covered=out.reduce((a,b)=>a+b.amount,0);
+  // A package whose name matches no service line covers ONE line, not the whole
+  // bill. Covering everything meant a wash package also wiped out the wiper,
+  // the polish and anything else on the order, so the balance showed RM0 when
+  // there was still money to collect.
+  // Which line? The cheapest unclaimed one. An error that way is spotted at the
+  // counter; the other way silently gives work away.
   unmatched.forEach(pkg=>{
-    const left=Math.max(0,(Number(PAY.gross)||0)-covered);
-    const amt=Math.round(left*100)/100;
-    out.push({pkg, amount:amt});
-    covered+=amt;
+    let pick=-1, pickAmt=null;
+    svcs.forEach((sv,i)=>{
+      if(claimed[i]) return;
+      const price=Number(svcPrice(sv))||0;
+      if(pickAmt===null || price<pickAmt){ pickAmt=price; pick=i; }
+    });
+    if(pick>=0){
+      claimed[pick]=true;
+      out.push({pkg, amount:Math.round((pickAmt||0)*100)/100});
+    } else {
+      out.push({pkg, amount:0});   // nothing left to cover
+    }
   });
   return out;
 }
@@ -3000,6 +3013,10 @@ function settleUnpaid(r){
         (r.sale_date?' &middot; '+new Date(r.sale_date+'T00:00:00').toLocaleDateString('en-GB'):'')+'</div>'+
       '<div style="margin-top:8px;font-size:22px;font-weight:800;color:var(--gold-deep)">'+RM(amount)+'</div>'+
     '</div>'+
+    '<div class="section-h">Date received</div>'+
+    '<input type="date" id="settleDate" value="'+new Date().toLocaleDateString('en-CA')+'" '+
+      'style="width:100%;padding:9px;border:1px solid var(--line2);border-radius:8px;font-family:inherit;font-size:14px;margin-bottom:6px">'+
+    '<div class="co-sub" style="font-size:11px;margin-bottom:10px">When the money actually came in &mdash; change it if you are keying this in later.</div>'+
     '<div class="section-h">Payment method</div>'+
     '<div class="methods">'+
       tenders.map(m=>'<div class="method" data-mk="'+m.k+'"><span class="mi"><i class="ti ti-'+m.icon+'"></i></span>'+m.label+'</div>').join('')+
@@ -3012,12 +3029,17 @@ function settleUnpaid(r){
   });
 }
 function closeSettleOv(){ const o=document.getElementById('settleOv'); if(o) o.remove(); _SETTLE_REC=null; }
+var RECV_DATE='';
 async function doSettle_(method, label){
   const r=_SETTLE_REC; if(!r) return;
   const amount=Number(r.amount_owed)||0;
   const who=r.customer_name||r.workshop_name||r.plate||'—';
+  const dEl=document.getElementById('settleDate');
+  RECV_DATE=dEl?String(dEl.value||'').trim():'';
+  const shownDate=RECV_DATE?new Date(RECV_DATE+'T00:00:00').toLocaleDateString('en-GB'):'today';
   if(!confirm('Mark as PAID?\n'+who+(r.plate?' · '+r.plate:'')+
-    '\nAmount: '+RM(amount)+'\nMethod: '+label+'\nInvoice: '+(r.invoice_no||'-'))) return;
+    '\nAmount: '+RM(amount)+'\nMethod: '+label+
+    '\nReceived: '+shownDate+'\nInvoice: '+(r.invoice_no||'-'))) return;
   closeSettleOv();
   try{
     // 1) mark the unpaid row settled
@@ -3029,9 +3051,13 @@ async function doSettle_(method, label){
     // workshop and keyed into SQL Account. sale_date is TODAY, because that is
     // when the money actually arrived and that is the tab finance reconciles.
     // settled_from_* preserve the link back to the job date for tracing.
+    // the date the money was received - reception often keys a settlement a day
+    // or two later, and the sale belongs on the day it was actually paid
     const pad0=n=>String(n).padStart(2,'0');
     const t=new Date();
-    const todayStr=t.getFullYear()+'-'+pad0(t.getMonth()+1)+'-'+pad0(t.getDate());
+    const todayStr=(RECV_DATE && /^\d{4}-\d{2}-\d{2}$/.test(RECV_DATE))
+      ? RECV_DATE
+      : (t.getFullYear()+'-'+pad0(t.getMonth()+1)+'-'+pad0(t.getDate()));
     const {error:e2}=await sb.from('gl_payments').insert({
       invoice_no:r.invoice_no||null, gross:amount, net_paid:amount, method:method,
       taken_by:ME,
