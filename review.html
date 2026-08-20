@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<!-- saved from url=(0029)https://glreview.netlify.app/ -->
+<html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GrandLab Detailing — Leave a Review</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=Manrope:wght@400;500;600;700&display=swap');
+
+  :root{
+    --bg:#0c0e10;
+    --panel:#15181c;
+    --panel-2:#1c2025;
+    --line:#2a2f36;
+    --ink:#f3f5f7;
+    --muted:#9aa3ad;
+    --gold:#c8a55b;
+    --gold-soft:#e4c98a;
+    --green:#2eb872;
+    --radius:18px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    font-family:'Manrope',sans-serif;
+    background:
+      radial-gradient(1200px 600px at 50% -10%, rgba(200,165,91,.10), transparent 60%),
+      var(--bg);
+    color:var(--ink);
+    min-height:100vh;
+    padding:28px 18px 60px;
+    display:flex;justify-content:center;
+  }
+  .wrap{width:100%;max-width:520px}
+
+  .brand{text-align:center;margin-bottom:26px}
+  .logo{
+    font-family:'Sora',sans-serif;font-weight:800;font-size:1.55rem;
+    letter-spacing:.5px;
+  }
+  .logo span{color:var(--gold)}
+  .tag{color:var(--muted);font-size:.85rem;margin-top:4px;letter-spacing:2px;text-transform:uppercase}
+
+  .stars{text-align:center;font-size:1.7rem;color:var(--gold);letter-spacing:6px;margin:18px 0 6px}
+  .lead{text-align:center;color:var(--muted);font-size:.95rem;line-height:1.55;margin-bottom:26px}
+
+  .section-label{
+    font-family:'Sora',sans-serif;font-weight:700;font-size:.78rem;
+    text-transform:uppercase;letter-spacing:2px;color:var(--gold-soft);
+    display:flex;align-items:center;gap:10px;margin:30px 0 14px;
+  }
+  .shuffle-btn{
+    margin-left:auto;border:1px solid var(--line);background:var(--panel-2);
+    color:var(--gold-soft);font-family:'Manrope',sans-serif;font-weight:600;
+    font-size:.72rem;letter-spacing:.5px;text-transform:none;
+    padding:6px 12px;border-radius:20px;cursor:pointer;transition:.2s;
+  }
+  .shuffle-btn:hover{border-color:var(--gold);color:var(--gold)}
+  .shuffle-btn:active{transform:scale(.95)}
+  .section-label .num{
+    width:24px;height:24px;border-radius:50%;background:rgba(200,165,91,.15);
+    color:var(--gold);display:grid;place-items:center;font-size:.8rem;flex:none;
+  }
+
+  .card{
+    background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
+    padding:16px 16px 14px;margin-bottom:12px;transition:.2s;
+  }
+  .card p{font-size:.95rem;line-height:1.55;color:#d7dde3}
+  .copy-btn{
+    margin-top:12px;width:100%;border:1px solid var(--line);background:var(--panel-2);
+    color:var(--ink);font-family:'Manrope',sans-serif;font-weight:600;font-size:.85rem;
+    padding:10px;border-radius:10px;cursor:pointer;transition:.2s;
+    display:flex;align-items:center;justify-content:center;gap:8px;
+  }
+  .copy-btn:hover{border-color:var(--gold);color:var(--gold-soft)}
+  .copy-btn.copied{background:var(--green);border-color:var(--green);color:#fff}
+
+  .own-input{
+    width:100%;min-height:96px;resize:vertical;
+    background:var(--panel-2);border:1px solid var(--line);border-radius:10px;
+    color:var(--ink);font-family:'Manrope',sans-serif;font-size:.95rem;line-height:1.55;
+    padding:12px;outline:none;transition:.2s;
+  }
+  .own-input:focus{border-color:var(--gold)}
+  .own-input::placeholder{color:var(--muted)}
+
+  .cta{
+    display:block;width:100%;text-align:center;text-decoration:none;
+    background:linear-gradient(135deg,var(--gold),var(--gold-soft));
+    color:#1a1407;font-family:'Sora',sans-serif;font-weight:800;font-size:1rem;
+    padding:16px;border-radius:14px;margin-top:8px;
+    box-shadow:0 8px 24px rgba(200,165,91,.25);transition:.2s;
+  }
+  .cta:hover{transform:translateY(-2px);box-shadow:0 12px 30px rgba(200,165,91,.35)}
+  .cta-fb{
+    margin-top:12px;
+    background:linear-gradient(135deg,#1877f2,#4a93ff);
+    color:#fff;
+    box-shadow:0 8px 24px rgba(24,119,242,.28);
+  }
+  .cta-fb:hover{box-shadow:0 12px 30px rgba(24,119,242,.4)}
+  .hint{text-align:center;color:var(--muted);font-size:.8rem;margin-top:10px;line-height:1.5}
+
+  .feedback-intro{text-align:center;margin-bottom:14px}
+  .feedback-intro p{color:var(--muted);font-size:.88rem;line-height:1.55}
+  .form-wrap{
+    background:#fff;border:1px solid var(--line);border-radius:var(--radius);
+    overflow:hidden;
+  }
+  .form-wrap iframe{display:block;width:100%;border:0}
+  .form-fallback{
+    display:block;text-align:center;margin-top:10px;
+    color:var(--muted);font-size:.82rem;text-decoration:none;
+    border:1px dashed var(--line);border-radius:10px;padding:10px;transition:.2s;
+  }
+  .form-fallback:hover{color:var(--gold-soft);border-color:var(--gold)}
+
+  .divider{height:1px;background:var(--line);margin:38px 0}
+  .foot{text-align:center;color:var(--muted);font-size:.78rem;line-height:1.7;margin-top:30px}
+  .foot a{color:var(--gold-soft);text-decoration:none}
+
+  .toast{
+    position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);
+    background:var(--green);color:#fff;font-weight:600;font-size:.9rem;
+    padding:12px 22px;border-radius:30px;opacity:0;pointer-events:none;transition:.25s;
+    box-shadow:0 8px 24px rgba(0,0,0,.3);
+  }
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="brand">
+    <div class="logo">Grand<span>Lab</span> Detailing</div>
+    <div class="tag">by Grandpride · Petaling Jaya</div>
+  </div>
+
+  <div class="stars">★★★★★</div>
+  <p class="lead">Loved your detailing experience? A 30-second review means the world to our team. Pick a review below, copy it, and paste it on Google.</p>
+
+  <!-- STEP 1 -->
+  <div class="section-label">
+    <span class="num">1</span> Copy a review you like
+    <button id="shuffle" class="shuffle-btn" title="Show different reviews">🔄 Shuffle</button>
+  </div>
+
+  <div id="reviews">
+      <div class="card">
+        <p>Great communication throughout and a result that genuinely impressed me. These guys know their craft.</p>
+        <button class="copy-btn">📋 Copy this review</button>
+      </div>
+      <div class="card">
+        <p>Best in PJ, no doubt. Highly recommend 🚗</p>
+        <button class="copy-btn">📋 Copy this review</button>
+      </div>
+      <div class="card">
+        <p>Clean workshop, skilled team, great results. Recommend!</p>
+        <button class="copy-btn">📋 Copy this review</button>
+      </div></div>
+
+  <div class="card own">
+    <p style="color:var(--gold-soft);font-weight:600;margin-bottom:10px">✍️ Or write your own</p>
+    <textarea id="own" class="own-input" placeholder="Type your review here..."></textarea>
+    <button class="copy-btn" data-target="own" data-own="1">📋 Copy my review</button>
+  </div>
+
+  <!-- STEP 2 -->
+  <div class="section-label"><span class="num">2</span> Paste it on Google or Facebook</div>
+  <a class="cta" href="https://g.page/r/CQuFOKTEdhA9EBM/review" target="_blank" rel="noopener">
+    ⭐ Review us on Google
+  </a>
+  <a class="cta cta-fb" href="https://www.facebook.com/GrandlabDetailingOfficial/reviews" target="_blank" rel="noopener">
+    👍 Recommend us on Facebook
+  </a>
+  <p class="hint">Tap a button, then long-press the review box and choose <b>Paste</b>. You can edit it to make it your own!</p>
+
+  <div class="divider"></div>
+
+  <!-- STEP 3 -->
+  <div class="section-label"><span class="num">3</span> Tell us how we did</div>
+  <div class="feedback-intro">
+    <p>Your feedback goes straight to our management team. Leave your details and we'll send you a reward as thanks.</p>
+  </div>
+  <div class="form-wrap">
+    <iframe id="fbform" src="https://docs.google.com/forms/d/e/1FAIpQLSf7vJXW2jOzjACiMHl9oLglqqvQGFf-zAfaj_DSrf_GQsXwsA/viewform?embedded=true" width="100%" height="1500" frameborder="0" marginheight="0" marginwidth="0" title="GrandLab feedback form">Loading…</iframe>
+  </div>
+  <a class="form-fallback" href="https://docs.google.com/forms/d/e/1FAIpQLSf7vJXW2jOzjACiMHl9oLglqqvQGFf-zAfaj_DSrf_GQsXwsA/viewform" target="_blank" rel="noopener">
+    Form not loading? Tap to open it →
+  </a>
+
+  <div class="foot">
+    GrandLab Detailing · 15, Jalan 13/2, PJS 13, 46200 Petaling Jaya<br>
+    WhatsApp: <a href="https://wa.me/60129384313">012-938 4313</a> · Mon–Sat 9:00–18:30
+  </div>
+</div>
+
+<div class="toast" id="toast">✓ Review copied — now paste it on Google!</div>
+
+<script>
+  // ─── Review pool — add as many as you like ───
+  const POOL = [
+    "Great job by the GrandLab team! Car looks amazing 👍",
+    "Super happy with the service. Will be back for sure!",
+    "Best in PJ, no doubt. Highly recommend 🚗",
+    "Quick, professional, and the results are stunning. Thanks GrandLab!",
+    "Friendly staff and top quality work. Couldn't ask for more.",
+    "My car looks brand new. So worth it!",
+    "Excellent service from start to finish. 5 stars ⭐",
+    "Really impressed with these guys. Will tell my friends!",
+    "Clean workshop, skilled team, great results. Recommend!",
+    "Fast booking and amazing finish. Love it!",
+    "Honestly the best detailing I've had. Thank you team!",
+    "Smooth experience and a flawless result. Highly recommend.",
+    "Professional and friendly. My car has never looked better.",
+    "Top service, fair price, great people. 10/10",
+    "So glad I found GrandLab. Outstanding work!",
+    "Quality work and a team that actually cares. Recommend 👌",
+    "Amazing results and a great experience overall. Thank you!",
+    "Couldn't be happier. The car looks incredible!",
+    "Brilliant service. Friendly, fast, and flawless.",
+    "Best decision bringing my car here. Highly recommend!",
+    "Brought my car to GrandLab and was blown away by the quality. Professional, punctual, and the results speak for themselves.",
+    "Fantastic experience from start to finish. Clear communication, fair pricing, and a finish that genuinely impressed me.",
+    "The GrandLab team treated my car like their own and the difference is night and day. Friendly, skilled, and highly professional.",
+    "Couldn't be happier with the results. The staff were welcoming, the workspace was immaculate, and the outcome was flawless.",
+    "Superb service! The team is knowledgeable, friendly, and meticulous. The whole process was smooth and stress-free.",
+    "Absolutely thrilled. Booking was easy, the team was professional, and the finish exceeded my expectations.",
+    "Top-notch service from a team that genuinely cares about quality. Honest pricing and great attention to detail.",
+    "Excellent work and excellent people. They went above and beyond to make sure I was happy with the result.",
+    "From the moment I walked in, the service was first-class. The team is clearly passionate about what they do.",
+    "Really professional outfit. They explained everything clearly and delivered exactly what they promised. Very happy.",
+    "The attention to detail here is unmatched. Every corner of my car was perfect. Will definitely be coming back.",
+    "Great communication throughout and a result that genuinely impressed me. These guys know their craft.",
+    "Booked in easily, dropped my car off, and picked it up looking better than new. Seamless from start to finish.",
+    "The team here are true professionals. Friendly, efficient, and the quality of work is outstanding.",
+    "I'm very particular about my car and GrandLab exceeded my standards. Highly skilled and trustworthy team.",
+    "Honestly some of the best customer service I've experienced. The results matched the warm welcome. Recommend!",
+    "Everything about the experience was premium — the space, the staff, and most importantly the final result.",
+    "They took the time to understand exactly what I wanted and delivered perfectly. Couldn't recommend them more.",
+    "A genuinely impressive operation. Clean, organised, professional, and the finished work is second to none.",
+    "Reliable, skilled, and friendly. My car came back looking spectacular. Will be a returning customer for sure.",
+    "I've been to a few detailing places around the Klang Valley and GrandLab is easily the best. The team is professional, the workshop is spotless, and the final result genuinely exceeded my expectations. Worth every ringgit.",
+    "From booking to collection, the entire experience was smooth and professional. The team kept me updated, answered all my questions, and delivered a result that left my car looking better than the day I bought it. Highly recommend.",
+    "What stood out most was how much the team cared about getting things right. They didn't rush, they paid attention to every detail, and the result speaks for itself. I'll definitely be bringing all my cars here from now on.",
+    "Premium service in every sense. The staff were welcoming and knowledgeable, the facility was immaculate, and the quality of the work was exceptional. It's rare to find a business that delivers on every front like this one.",
+    "I was a little nervous handing over my car but the GrandLab team put me at ease immediately. Their professionalism and skill were obvious, and the finished result was absolutely flawless. Five stars without hesitation.",
+    "Excellent experience all round. The booking process was easy, the team was punctual and professional, and the attention to detail was incredible. My car looks showroom-fresh and I couldn't be more pleased with the service.",
+    "Honestly one of the best service experiences I've had with any business, not just detailing. Friendly, transparent, skilled, and genuinely passionate about their craft. The results were everything I hoped for and more.",
+    "The team at GrandLab clearly takes pride in their work. Every detail was handled with care and the final result was stunning. Combine that with great customer service and fair pricing and you have a winner. Highly recommended.",
+    "I came in with high expectations and they were completely met. The professionalism of the staff, the cleanliness of the workshop, and the quality of the finished work were all top-tier. I'll be recommending them to everyone I know.",
+    "A truly first-class experience. The team was friendly and accommodating, the communication was clear throughout, and the end result was flawless. It's obvious these guys genuinely love what they do. Couldn't recommend more highly.",
+    "Top-quality work from GrandLab. The crew knew exactly what they were doing, and I'm a customer for life now. 👍",
+    "GrandLab exceeded my expectations. The team was professional and friendly throughout, and the whole experience felt premium. 10/10!",
+    "Couldn't be happier with GrandLab. They took the time to get everything right, and the end result was stunning. Worth every ringgit!",
+    "GrandLab Detailing is the real deal. Everyone was helpful and the workshop was spotless, and I couldn't be more pleased. Five stars!",
+    "Really happy with my experience at GrandLab Detailing. Communication was clear and the service was punctual, and the finish genuinely impressed me. Recommend to all!",
+    "Excellent work from the GrandLab team. Booking was easy and the team was on time, and the finish genuinely impressed me. Recommend to all!",
+    "Really happy with my experience at GrandLab Detailing. Booking was easy and the team was on time, and the end result was stunning. Worth every ringgit!",
+    "Top-quality work from GrandLab. The whole process was smooth and stress-free, and the result was absolutely flawless. Highly recommend!",
+    "Very impressed with GrandLab. The whole process was smooth and stress-free, and the quality of work was outstanding. Thank you!",
+    "GrandLab exceeded my expectations. Everyone was helpful and the workshop was spotless, and the finish genuinely impressed me. Recommend to all!",
+    "Had a great experience at GrandLab. Booking was easy and the team was on time, and the quality of work was outstanding. Thank you!",
+    "Couldn't be happier with GrandLab. The team was professional and friendly throughout, and I'll be telling all my friends. ⭐⭐⭐⭐⭐",
+    "Excellent work from the GrandLab team. The staff were welcoming and clearly skilled, and they earned my full trust. Highly recommended!",
+    "Brilliant service at GrandLab Detailing. The staff were welcoming and clearly skilled, and the end result was stunning. Worth every ringgit!",
+    "Brilliant service at GrandLab Detailing. Booking was easy and the team was on time, and I couldn't be more pleased. Five stars!",
+    "GrandLab exceeded my expectations. The team was professional and friendly throughout, and my car looks better than new. Will be back!",
+    "Top-quality work from GrandLab. They treated my car with real care, and the result was absolutely flawless. Highly recommend!",
+    "Really happy with my experience at GrandLab Detailing. They paid attention to every little detail, and I'll be telling all my friends. ⭐⭐⭐⭐⭐",
+    "Top-quality work from GrandLab. Communication was clear and the service was punctual, and I couldn't be more pleased. Five stars!",
+    "Very impressed with GrandLab. Communication was clear and the service was punctual, and I'm a customer for life now. 👍",
+    "Excellent work from the GrandLab team. The whole process was smooth and stress-free, and the result was absolutely flawless. Highly recommend!",
+    "Top-quality work from GrandLab. They took the time to get everything right, and the result was absolutely flawless. Highly recommend!",
+    "Very impressed with GrandLab. The whole process was smooth and stress-free, and the result was absolutely flawless. Highly recommend!",
+    "Excellent work from the GrandLab team. They treated my car with real care, and the whole experience felt premium. 10/10!",
+    "Brilliant service at GrandLab Detailing. Everyone was helpful and the workshop was spotless, and I couldn't be more pleased. Five stars!",
+    "Excellent work from the GrandLab team. The crew knew exactly what they were doing, and I'm a customer for life now. 👍",
+    "Brilliant service at GrandLab Detailing. The staff were welcoming and clearly skilled, and the quality of work was outstanding. Thank you!",
+    "GrandLab exceeded my expectations. The whole process was smooth and stress-free, and the quality of work was outstanding. Thank you!",
+    "Very impressed with GrandLab. They treated my car with real care, and the end result was stunning. Worth every ringgit!",
+    "Top-quality work from GrandLab. The crew knew exactly what they were doing, and the result was absolutely flawless. Highly recommend!",
+    "Brilliant service at GrandLab Detailing. Communication was clear and the service was punctual, and the result was absolutely flawless. Highly recommend!",
+    "GrandLab Detailing is the real deal. They paid attention to every little detail, and the result was absolutely flawless. Highly recommend!",
+    "Top-quality work from GrandLab. They took the time to get everything right, and the whole experience felt premium. 10/10!",
+    "Excellent work from the GrandLab team. They took the time to get everything right, and I'm a customer for life now. 👍",
+    "GrandLab Detailing is the real deal. Everyone was helpful and the workshop was spotless, and the quality of work was outstanding. Thank you!",
+    "Very impressed with GrandLab. They treated my car with real care, and I'll be telling all my friends. ⭐⭐⭐⭐⭐",
+    "GrandLab exceeded my expectations. They took the time to get everything right, and I'm a customer for life now. 👍",
+    "Top-quality work from GrandLab. Everyone was helpful and the workshop was spotless, and the result was absolutely flawless. Highly recommend!",
+    "Really happy with my experience at GrandLab Detailing. The whole process was smooth and stress-free, and the finish genuinely impressed me. Recommend to all!",
+    "Excellent work from the GrandLab team. Everyone was helpful and the workshop was spotless, and I'm a customer for life now. 👍",
+    "Really happy with my experience at GrandLab Detailing. The whole process was smooth and stress-free, and I'm a customer for life now. 👍",
+    "GrandLab Detailing did a fantastic job. They treated my car with real care, and the quality of work was outstanding. Thank you!",
+    "Top-quality work from GrandLab. The crew knew exactly what they were doing, and I couldn't be more pleased. Five stars!",
+    "Had a great experience at GrandLab. Booking was easy and the team was on time, and the end result was stunning. Worth every ringgit!",
+    "Excellent work from the GrandLab team. They treated my car with real care, and I'm a customer for life now. 👍",
+    "Top-quality work from GrandLab. Booking was easy and the team was on time, and I'll be telling all my friends. ⭐⭐⭐⭐⭐",
+    "Had a great experience at GrandLab. The crew knew exactly what they were doing, and the quality of work was outstanding. Thank you!",
+    "Had a great experience at GrandLab. The whole process was smooth and stress-free, and the result was absolutely flawless. Highly recommend!",
+    "Top-quality work from GrandLab. They paid attention to every little detail, and my car looks better than new. Will be back!",
+    "Had a great experience at GrandLab. The staff were welcoming and clearly skilled, and the finish genuinely impressed me. Recommend to all!"
+  ];
+
+  const reviewsBox = document.getElementById('reviews');
+
+  function pick3(){
+    const shuffled = [...POOL].sort(()=>Math.random()-0.5).slice(0,3);
+    reviewsBox.innerHTML = shuffled.map((t,i)=>`
+      <div class="card">
+        <p>${t}</p>
+        <button class="copy-btn">📋 Copy this review</button>
+      </div>`).join('');
+  }
+  pick3();
+
+  document.getElementById('shuffle').addEventListener('click', pick3);
+
+  // ─── Copy handling (delegated, covers shuffled cards + own box) ───
+  const toast = document.getElementById('toast');
+
+  function showCopied(btn){
+    btn.classList.add('copied');
+    const orig = btn.innerHTML;
+    btn.innerHTML = '✓ Copied!';
+    toast.classList.add('show');
+    setTimeout(()=>{
+      btn.classList.remove('copied');
+      btn.innerHTML = orig;
+      toast.classList.remove('show');
+    },1800);
+  }
+
+  function copyText(text, btn){
+    // Try the modern API first
+    if(navigator.clipboard && window.isSecureContext){
+      navigator.clipboard.writeText(text)
+        .then(()=>showCopied(btn))
+        .catch(()=>fallbackCopy(text, btn));
+    } else {
+      fallbackCopy(text, btn);
+    }
+  }
+
+  function fallbackCopy(text, btn){
+    const origLabel = btn.innerHTML;
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.setAttribute('readonly','');
+    ta.style.position = 'fixed';
+    ta.style.top = '-9999px';
+    document.body.appendChild(ta);
+    ta.select();
+    ta.setSelectionRange(0, text.length); // mobile Safari
+    let ok = false;
+    try { ok = document.execCommand('copy'); } catch(e){ ok = false; }
+    document.body.removeChild(ta);
+    if(ok){ showCopied(btn); }
+    else {
+      btn.innerHTML = '⚠️ Long-press text to copy';
+      setTimeout(()=>{ btn.innerHTML = origLabel; }, 2200);
+    }
+  }
+
+  document.body.addEventListener('click', (e)=>{
+    const btn = e.target.closest('.copy-btn');
+    if(!btn) return;
+    let text;
+    if(btn.dataset.own){
+      const el = document.getElementById('own');
+      text = el.value.trim();
+      if(!text){ el.focus(); return; }
+    } else {
+      text = btn.previousElementSibling.innerText;
+    }
+    copyText(text, btn);
+  });
+</script>
+
+
+</body></html>
