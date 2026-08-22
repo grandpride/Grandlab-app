@@ -577,6 +577,10 @@ function glAccountFor(desc){
 }
 let POINTS_RATE=0.01;
 let JOBS=[], CUR=null, PAY=null, ME='';
+/* Set when an unpaid bill is reopened: the checkout that follows re-bills under
+   that same GLIV instead of taking a new number. Cleared the moment checkout
+   ends, so it can never leak onto an unrelated sale. */
+var KEEP_INVOICE='';
 let WORKSHOPS=[], SHOWROOMS=[];
 let BRANDS=[], MODELS_CACHE={};
 
@@ -1480,6 +1484,14 @@ function openWalkin(){
   startCheckout(CUR, 0);
 }
 
+/* The invoice for this checkout: the reopened bill's original number when there
+   is one, otherwise the next in sequence. */
+async function nextInvoice_(){
+  if(KEEP_INVOICE) return KEEP_INVOICE;
+  const {data,error}=await sb.rpc('gl_next_invoice_no');
+  if(error) throw new Error('Invoice: '+error.message);
+  return data;
+}
 async function startCheckout(job, gross){
   PAY={ gross, discount:0, discountOk:false, discountBy:null, _pendingDisc:0,
         depositUsed:Number(job.dep_amt)||0, packageUsed:false,
@@ -1854,7 +1866,7 @@ function renderCheckout(){
 }
 
 function clearCheckout(){
-  CUR=null; PAY=null;
+  CUR=null; PAY=null; KEEP_INVOICE='';
   $('coBody').style.display='none'; $('coEmpty').style.display='block';
   $('addCustBtn').style.display='none';
   renderJobs();
@@ -2418,9 +2430,7 @@ async function confirmPay(){
       const prodLines=jobServices(CUR).filter(x=>x._prodId);
       for(const pl of prodLines){ await sb.rpc('gl_dec_service_stock',{p_id:pl._prodId,p_qty:1}); }
     }catch(e){ /* non-fatal */ }
-    const {data:invData,error:invErr}=await sb.rpc('gl_next_invoice_no');
-    if(invErr) throw new Error('Invoice: '+invErr.message);
-    const invoice=invData;
+    const invoice=await nextInvoice_();
     const net=netDue();
     const isUuid=v=>typeof v==='string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
     const {error:payErr}=await sb.from('gl_payments').insert({
@@ -2490,9 +2500,7 @@ async function markUnpaid(){
   if(!confirm('Mark this job DONE but UNPAID?\nIt leaves the board and is recorded as owing (workshop credit).')) return;
   $('unpaidBtn').disabled=true; $('unpaidBtn').innerHTML='<i class="ti ti-loader"></i> Saving…';
   try{
-    const {data:invData,error:invErr}=await sb.rpc('gl_next_invoice_no');
-    if(invErr) throw new Error('Invoice: '+invErr.message);
-    const invoice=invData;
+    const invoice=await nextInvoice_();
     const amount=PAY.gross - PAY.depositUsed; // still owed after any deposit
     // resolve a name; if still blank, ask so the unpaid/settled row isn't nameless
     let uName=recordName_(CUR);
@@ -2902,7 +2910,7 @@ async function openUnpaid(){
         </div>
         <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
           <b>${RM(r.amount_owed)}</b>
-          <button class="btn-mini" title="Edit" data-uact="edit" data-uid="${r.id}"><i class="ti ti-edit"></i></button>
+          <button class="btn-mini" title="Reopen in POS to change services" data-uact="reopen" data-uid="${r.id}"><i class="ti ti-edit"></i></button>
           <button class="btn-mini" title="Delete this unpaid record" style="color:#C0392B" data-uact="del" data-uid="${r.id}"><i class="ti ti-trash"></i></button>
           <button class="btn-mini" data-uact="settle" data-uid="${r.id}"><i class="ti ti-check"></i> Settle</button>
         </div>
@@ -2922,12 +2930,44 @@ async function openUnpaid(){
       const a=b.getAttribute('data-uact');
       if(a==='edit') openUnpaidEdit(rec);
       else if(a==='del') deleteUnpaid(rec);
+      else if(a==='reopen') reopenUnpaid(rec);
       else settleUnpaid(rec);
     };
   });
 }
 var UNPAID_ROWS={};
 /* Open the edit modal pre-filled with an unpaid record's fields. */
+/* Put an unpaid bill back on the Ready board so it can be checked out again -
+   to add a service, change a price, or redeem a package. Safe because an unpaid
+   bill has NO payment row: nothing to void, no invoice to cancel, nothing for
+   finance to reconcile. markUnpaid set the job to status 'unpaid'; this simply
+   sets it back to 'open' and removes the unpaid record. */
+async function reopenUnpaid(r){
+  if(!r || !r.id){ toast('No record'); return; }
+  if(!r.job_id){ alert('This unpaid record has no job attached, so it cannot be reopened.\nEdit the amount here instead.'); return; }
+  const who=r.customer_name||r.workshop_name||r.plate||'—';
+  if(!confirm('Reopen this bill in the POS?\n'+who+(r.plate?' · '+r.plate:'')+
+    '\nAmount now: '+RM(Number(r.amount_owed)||0)+
+    '\n\nIt goes back to READY TO BILL so you can change the services, then bill it again.\nThe unpaid record is removed.')) return;
+  try{
+    const {error:e1}=await sb.from('gl_jobs')
+      .update({status:'open', collected:false, on_hold:false}).eq('id',r.job_id);
+    if(e1) throw e1;
+    const {error:e2}=await sb.from('gl_unpaid').delete().eq('id',r.id);
+    if(e2) throw e2;
+    KEEP_INVOICE=r.invoice_no||'';   // re-bill under the same GLIV
+    closeModal('unpaidModal');
+    toast('Back on Ready to bill');
+    await loadJobs();
+    switchTab('ready');
+    // open it straight away so the change can be made now (same as clicking the
+    // job row: set CUR first, then start checkout with the job's own total)
+    const j=(JOBS||[]).find(x=>String(x.id)===String(r.job_id));
+    if(j){ CUR=j; startCheckout(CUR, jobTotal(CUR)); renderJobs(); }
+    else toast('Reopened — find it under Ready to bill');
+  }catch(e){ alert('Could not reopen: '+(e.message||e)); }
+}
+
 function openUnpaidEdit(r){
   $('ue_id').value=r.id;
   $('ue_name').value=r.customer_name||'';
