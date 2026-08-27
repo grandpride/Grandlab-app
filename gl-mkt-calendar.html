@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="mobile-web-app-capable" content="yes">
+<title>Grandlab Marketing</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.x/dist/tabler-icons.min.css">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+:root{--bg:#080808;--card:#141414;--card2:#1c1c1c;--gold:#F5C518;--text:#fff;--text2:#9a9a9a;--border:#2a2a2a;--ok:#3ec06a;--red:#e0533d}
+html,body{height:100%;background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:var(--text)}
+.app{max-width:640px;margin:0 auto;min-height:100dvh;padding:44px 16px 60px}
+.back{position:fixed;top:8px;left:8px;z-index:60;background:rgba(0,0,0,.65);color:var(--gold);text-decoration:none;font-size:12px;font-weight:700;padding:6px 11px;border-radius:20px;backdrop-filter:blur(4px)}
+.hdr{padding:14px 4px 18px;text-align:center}
+.logo{font-weight:900;font-size:26px;letter-spacing:1px}
+.logo span{color:var(--gold)}
+.tag{font-size:11px;color:var(--text2);letter-spacing:.25em;text-transform:uppercase;margin-top:6px}
+
+.monthbar{display:flex;align-items:center;gap:10px;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:10px 12px;margin-bottom:14px}
+.mb-btn{background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:10px;width:36px;height:36px;font-size:16px;cursor:pointer;font-family:inherit;flex-shrink:0}
+.mb-btn:active{transform:scale(.95)}
+.mb-mid{flex:1;text-align:center}
+.mb-m{font-weight:800;font-size:16px}
+.mb-s{font-size:11px;color:var(--text2);margin-top:2px}
+
+.card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:16px;margin-bottom:13px}
+.card h2{font-size:12px;color:var(--gold);text-transform:uppercase;letter-spacing:.08em;margin-bottom:11px;display:flex;align-items:center;gap:7px}
+.hero-t{font-weight:800;font-size:19px;margin-bottom:7px}
+.hero-d{font-size:13px;color:var(--text2);line-height:1.55}
+.seg{display:inline-block;font-size:10px;font-weight:800;letter-spacing:.05em;background:var(--card2);color:var(--gold);padding:4px 9px;border-radius:20px;text-transform:uppercase;margin-bottom:10px}
+.bundle{background:var(--card2);border-radius:12px;padding:12px;margin-top:12px;font-size:13px;line-height:1.6}
+.bundle .row{display:flex;justify-content:space-between;gap:10px}
+.bundle .row.tot{border-top:1px solid var(--border);margin-top:8px;padding-top:8px;font-weight:800}
+.bundle .row.tot .v{color:var(--gold)}
+.bundle .lbl{color:var(--text2)}
+
+.sec-h{font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:.08em;margin:16px 0 8px;font-weight:700}
+.task{display:flex;gap:11px;align-items:flex-start;background:var(--card2);border:1px solid transparent;border-radius:12px;padding:12px;margin-bottom:7px;cursor:pointer;transition:.12s}
+.task:active{transform:scale(.99)}
+.task.done{opacity:.45;border-color:var(--ok)}
+.task.done .tx{text-decoration:line-through}
+.box{width:21px;height:21px;border-radius:6px;border:2px solid var(--border);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:13px;color:#080808;margin-top:1px}
+.task.done .box{background:var(--ok);border-color:var(--ok)}
+.tx{font-size:13.5px;line-height:1.5;flex:1}
+.tsub{font-size:11.5px;color:var(--text2);margin-top:3px;line-height:1.45}
+
+.prog{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:13px 15px;margin-bottom:13px}
+.prog-top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:9px}
+.prog-n{font-weight:800;font-size:15px}
+.prog-p{font-size:12px;color:var(--text2)}
+.bar{height:7px;background:var(--card2);border-radius:20px;overflow:hidden}
+.bar>i{display:block;height:100%;background:var(--gold);border-radius:20px;transition:.3s;width:0}
+
+.note{font-size:12px;color:var(--text2);line-height:1.55;background:var(--card2);border-radius:10px;padding:11px;margin-top:10px}
+.warn{border-left:3px solid var(--gold)}
+
+.status{font-size:12px;color:var(--text2);text-align:center;min-height:17px;margin:8px 0}
+.foot{text-align:center;font-size:11px;color:var(--text2);margin-top:22px;line-height:1.6}
+
+.gate{position:fixed;inset:0;background:var(--bg);z-index:80;display:flex;align-items:center;justify-content:center;padding:24px}
+.gate.hidden{display:none}
+.gate-box{width:100%;max-width:340px}
+.gate label{display:block;font-size:11px;color:var(--text2);margin-bottom:4px;font-weight:600}
+.gate input{width:100%;background:#1e1e1a;border:1px solid var(--border);border-radius:12px;color:#fff;padding:13px 14px;font-size:15px;font-family:inherit;margin-bottom:12px;outline:none}
+.gate input:focus{border-color:var(--gold)}
+.gate button{width:100%;background:var(--gold);color:#080808;border:none;border-radius:12px;padding:14px;font-weight:800;font-size:15px;font-family:inherit;cursor:pointer}
+.err{color:var(--red);font-size:12px;min-height:16px;margin-bottom:6px}
+.toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(16px);background:#222;color:#fff;padding:11px 18px;border-radius:24px;font-size:13px;z-index:90;opacity:0;transition:.25s;pointer-events:none;max-width:90%}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+</style>
+</head>
+<body>
+
+<a class="back" href="https://grandpride.github.io/Grandlab-app/gl-hub.html"><i class="ti ti-arrow-left"></i> Hub</a>
+
+<div id="gate" class="gate">
+  <div class="gate-box">
+    <div class="logo" style="text-align:center;margin-bottom:6px">GRAND<span>LAB</span></div>
+    <div class="tag" style="text-align:center;margin-bottom:24px">Marketing</div>
+    <label>Email</label>
+    <input id="email" type="email" autocomplete="username" placeholder="admin@grandpride.com">
+    <label>Password</label>
+    <input id="pass" type="password" autocomplete="current-password" placeholder="Password">
+    <div class="err" id="loginErr"></div>
+    <button onclick="doLogin()">Sign in</button>
+  </div>
+</div>
+
+<div class="app">
+  <div class="hdr">
+    <div class="logo">GRAND<span>LAB</span></div>
+    <div class="tag">Marketing</div>
+  </div>
+
+  <div class="monthbar">
+    <button class="mb-btn" onclick="shiftMonth(-1)"><i class="ti ti-chevron-left"></i></button>
+    <div class="mb-mid">
+      <div class="mb-m" id="mLabel">—</div>
+      <div class="mb-s" id="mSub"></div>
+    </div>
+    <button class="mb-btn" onclick="shiftMonth(1)"><i class="ti ti-chevron-right"></i></button>
+  </div>
+
+  <div class="prog">
+    <div class="prog-top">
+      <div class="prog-n" id="progN">0 of 0 done</div>
+      <div class="prog-p" id="progP">0%</div>
+    </div>
+    <div class="bar"><i id="progBar"></i></div>
+  </div>
+
+  <div class="card" id="heroCard"></div>
+
+  <div class="status" id="status"></div>
+  <div id="taskWrap"></div>
+
+  <div class="foot">
+    Breakeven RM50–60k/month · Target RM100–150k<br>
+    Bundle prices are guides — check margin before publishing.
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SUPABASE_URL="https://eychljpzorzmaveixlnu.supabase.co";
+const SUPABASE_ANON="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV5Y2hsanB6b3J6bWF2ZWl4bG51Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2NDk2NjQsImV4cCI6MjA5NzIyNTY2NH0.6dA1zhz5ZIwf8byFB8vhfOzPI-uPPdPihEr1b8GG_oA";
+const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON,{auth:{persistSession:true,autoRefreshToken:true,storageKey:'gl_auth'}});
+const $=id=>document.getElementById(id);
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+let CUR=new Date();          // month being viewed
+let DONE={};                 // task_key -> true
+let WHO='';
+
+/* ---------------- calendar data (from GRANDLAB_PROMO_CALENDAR.md) ---------------- */
+const PLAN={
+ "2026-09":{n:"Malaysia Day",seg:"Segment B — repeat owners",
+   hero:"Signature Refresh",
+   desc:"Merdeka / Malaysia Day pride. Keep the car looking its best.",
+   lines:[["Grand Signature Wash",250],["3 Steps Polish",300],["Windscreen Polish + Coating",250]],
+   bundle:649,
+   bonus:"Free Dr.Fresh Anti-Bacteria Treatment (RM35) on any detailing above RM500.",
+   content:"Before/after paint correction reels — swirl marks under light, then gloss."},
+
+ "2026-10":{n:"Pre-Monsoon Prep",seg:"Segment A + B",
+   hero:"Monsoon Shield",
+   desc:"Rain is coming — acid rain, water spots, mud, poor visibility. The weather does the selling.",
+   lines:[["GYEON Q2 Cancoat Full Car Coating",899],["Q2 Quick View windscreen coating",400]],
+   bundle:1099,
+   bonus:"Upsell ladder: Cancoat RM899 → Cancoat Pro RM1,599 → Mohs RM2,699.",
+   content:"Water beading. Hose on a coated bonnet vs uncoated. Rain footage."},
+
+ "2026-11":{n:"Deepavali + Peak Monsoon",seg:"Segment B",
+   hero:"Festive Glow",
+   desc:"Festive shine plus heavy rain protection.",
+   lines:[["5 Steps Polish",500],["Cancoat Coating",899],["Interior UV Treatment",250]],
+   bundle:1399,
+   bonus:"Free 2× Cancoat maintenance package (RM300) on any coating above RM1,500.",
+   content:"Dark car under festive lights. Gloss reveal at night."},
+
+ "2026-12":{n:"New Car Season ⭐ BIGGEST MONTH",seg:"Segment A — build the year around this",
+   hero:"New Car Complete",
+   desc:"Year-end deliveries, bonuses paid, school holidays. New-car owners are actively shopping for protection.",
+   tiers:[["Essential","G Full Front PPF + Cancoat + X Ceramic Tint","RM5,398","RM4,899"],
+          ["Signature","X Full Front PPF + Mohs + A Series Tint","RM10,198","RM8,999"],
+          ["Ultimate","S Full Car PPF + Infinite + A Series Tint","RM23,898","RM20,900"]],
+   bonus:"All tiers: free Engine Bay Treatment + free 10× Bathe Essence package (RM300).",
+   content:"Brand-new car arriving, film going on panel by panel, final reveal.",
+   extra:"Approach 5 dealers within 10km this month — December is when they have the most cars to hand over."},
+
+ "2027-01":{n:"Post-Holiday + CNY Prep",seg:"Segment B",
+   hero:"Road Trip Recovery",
+   desc:"Repair road-trip damage, and CNY preparation begins.",
+   lines:[["Clay Wash",100],["3 Steps Polish",300],["Basic Interior Cleaning",400]],
+   bundle:649,
+   bonus:"Second push: coating maintenance reminders to everyone with balance left.",
+   content:"Bug splatter and road grime removal. Satisfying to watch."},
+
+ "2027-02":{n:"CNY + Ramadan ⭐ DOUBLE FESTIVE",seg:"Segment A + B",
+   hero:"Festive Ready",
+   desc:"Two major festivals in one month. Balik kampung, visiting, open house.",
+   lines:[["Grand Signature Wash",250],["Single Step Polish",150],["Basic Interior Cleaning",400],["Dr.Fresh",35]],
+   bundle:699,
+   bonus:"Wrap push: colour change before CNY, KTN Full Car from RM2,999. Book 3 weeks ahead.",
+   content:"Red/gold cars, festive setting, wrap reveals.",
+   extra:"Capacity fills fast. Push early booking, take deposits, don't over-promise dates."},
+
+ "2027-03":{n:"Raya Rush",seg:"Segment B",
+   hero:"Raya Ready",
+   desc:"Pre-Raya is the busiest detailing window in Malaysia.",
+   lines:[["Bathe Essence",50],["Basic Interior Cleaning",400],["Carpet Cleaning",30],["Dr.Fresh",35]],
+   bundle:429,
+   bonus:"Premium option: Signature Interior Cleaning RM1,500.",
+   content:"Interior transformations. Dirty seats → clean. Very high engagement.",
+   extra:"You'll be capacity-limited, not demand-limited. Consider a premium for last-minute slots rather than discounting."},
+
+ "2027-04":{n:"Post-Raya + Heat Season",seg:"Segment A + B",
+   hero:"Heat Defence",
+   desc:"Malaysian heat, UV damage, dashboard cracking, hot cabin.",
+   lines:[["X Series Ceramic Full Car Tint",1299],["Interior UV Treatment",250]],
+   bundle:1349,
+   bonus:"Upsell: A Series Magnetron Sputtered Full Car RM2,299 — better heat rejection.",
+   content:"Thermometer inside a tinted vs untinted car. Simple and convincing."},
+
+ "2027-05":{n:"Leather & Interior Care",seg:"Segment B",
+   hero:"Interior Revival",
+   desc:"Heat damages leather and trim; most owners never treat it.",
+   lines:[["Leather Treatment",500],["Interior UV Treatment",250],["Plastic Trim Re-Shine",200]],
+   bundle:799,
+   bonus:"",
+   content:"Cracked/faded leather restored. Trim from grey back to black."},
+
+ "2027-06":{n:"School Holidays / Road Trips",seg:"Segment A + B",
+   hero:"Highway Guard",
+   desc:"Long drives mean stone chips, bugs and highway damage.",
+   lines:[["G Series Full Front PPF",3200],["Windscreen Polish + Coating",250]],
+   bundle:3199,
+   bonus:"",
+   content:"Stone chip damage on unprotected bonnets vs PPF'd ones."},
+
+ "2027-07":{n:"Mid-Year Coating Push",seg:"Segment B",
+   hero:"Coating Upgrade",
+   desc:"Half-year mark — coating due for maintenance, or time to upgrade.",
+   lines:[["GYEON Q2 Mohs Full Car Coating",2699]],
+   bundle:2699,
+   bonus:"Existing Cancoat customers: credit RM300 toward a Mohs upgrade. Fresh Mohs includes free 2× maintenance (RM600).",
+   content:"Coating grade comparison — Cancoat vs Mohs vs Infinite.",
+   extra:"Also run the win-back campaign. Mid-year is a natural reset point."},
+
+ "2027-08":{n:"Merdeka + Anniversary",seg:"Segment A + B",
+   hero:"Merdeka Special",
+   desc:"Merdeka month plus your own business milestone.",
+   lines:[["Full Front PPF (any grade)",0]],
+   bundle:0,
+   bonus:"Free Full Car Tint upgrade to X Series Ceramic (RM1,299) with any Full Front PPF.",
+   content:"Year in review. Best cars done. Customer testimonials."}
+};
+
+/* ---------------- task template ---------------- */
+function tasksFor(ym){
+  const p=PLAN[ym]; if(!p) return [];
+  const t=[];
+  const add=(key,section,label,sub)=>t.push({key,section,label,sub:sub||''});
+
+  add('prep_offer','Prep — before month starts','Confirm this month\'s offer & final prices','Check bundle margin against material cost before publishing.');
+  add('prep_copy','Prep — before month starts','Write ad copy (English + Malay)','Show the car and the result first. Price last.');
+  add('prep_clips','Prep — before month starts','Shoot 3–5 clips for this offer','Phone on tripod. Application, squeegee/buff, reveal.');
+
+  add('lch_ad','Launch — week 1','Launch Meta ad','One hero offer only. Don\'t run five at once.');
+  add('lch_wa','Launch — week 1','WhatsApp broadcast to the right segment','Manual batches. Stay under the daily cap.');
+  add('lch_board','Launch — week 1','Update TV board promo card + website','');
+
+  for(let w=1;w<=4;w++){
+    add('post_'+w+'a','Content — 2 posts per week','Week '+w+' · Post 1','IG Reels + TikTok + Facebook — same video, three places.');
+    add('post_'+w+'b','Content — 2 posts per week','Week '+w+' · Post 2','');
+  }
+
+  add('ops_reviews','Ongoing','Ask every paid customer for a Google review','Build it into the POS checkout habit.');
+  add('ops_followup','Ongoing','Follow up every enquiry that didn\'t convert','The ones who went quiet are the cheapest to win back.');
+
+  if(p.extra) add('special','This month only',p.extra,'');
+
+  add('rev_numbers','Review — week 4','Log the numbers','Enquiries · quoted · converted · revenue from hero offer · average ticket.');
+  add('rev_next','Review — week 4','Plan next month\'s offer','');
+
+  return t;
+}
+
+/* ---------------- helpers ---------------- */
+function ymOf(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'); }
+function monthName(d){
+  return d.toLocaleDateString('en-GB',{month:'long',year:'numeric'});
+}
+function toast(m){ const t=$('toast'); t.textContent=m; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),1900); }
+function money(n){ return 'RM'+Number(n||0).toLocaleString('en-MY'); }
+
+/* ---------------- render ---------------- */
+function renderHero(){
+  const ym=ymOf(CUR), p=PLAN[ym];
+  $('mLabel').textContent=monthName(CUR);
+  $('mSub').textContent=p?p.n:'No plan for this month';
+
+  if(!p){
+    $('heroCard').innerHTML='<h2><i class="ti ti-calendar-off"></i> No plan</h2>'+
+      '<div class="hero-d">The calendar covers Sept 2026 → Aug 2027. Use the arrows to move to a month in range.</div>';
+    return;
+  }
+  let body='<div class="seg">'+esc(p.seg)+'</div>'+
+    '<div class="hero-t">'+esc(p.hero)+'</div>'+
+    '<div class="hero-d">'+esc(p.desc)+'</div>';
+
+  if(p.tiers){
+    body+='<div class="bundle">';
+    p.tiers.forEach(tr=>{
+      body+='<div class="row"><span class="lbl">'+esc(tr[0])+'</span><span class="v" style="color:var(--gold);font-weight:800">'+esc(tr[3])+'</span></div>'+
+            '<div style="font-size:11.5px;color:var(--text2);margin:-2px 0 9px">'+esc(tr[1])+' · list '+esc(tr[2])+'</div>';
+    });
+    body+='</div>';
+  } else if(p.lines && p.lines.length){
+    body+='<div class="bundle">';
+    let list=0;
+    p.lines.forEach(l=>{
+      list+=l[1];
+      body+='<div class="row"><span class="lbl">'+esc(l[0])+'</span><span>'+(l[1]?money(l[1]):'—')+'</span></div>';
+    });
+    if(p.bundle){
+      body+='<div class="row"><span class="lbl">List total</span><span>'+money(list)+'</span></div>'+
+            '<div class="row tot"><span>Bundle price</span><span class="v">'+money(p.bundle)+'</span></div>';
+    }
+    body+='</div>';
+  }
+
+  if(p.bonus) body+='<div class="note warn"><b style="color:var(--gold)">Bonus / upsell:</b> '+esc(p.bonus)+'</div>';
+  if(p.content) body+='<div class="note"><b>Content angle:</b> '+esc(p.content)+'</div>';
+
+  $('heroCard').innerHTML='<h2><i class="ti ti-target-arrow"></i> Hero offer</h2>'+body;
+}
+
+function renderTasks(){
+  const ym=ymOf(CUR), list=tasksFor(ym);
+  if(!list.length){ $('taskWrap').innerHTML=''; setProg(0,0); return; }
+
+  let html='', lastSec='';
+  list.forEach((t,i)=>{
+    if(t.section!==lastSec){ html+='<div class="sec-h">'+esc(t.section)+'</div>'; lastSec=t.section; }
+    const d=!!DONE[t.key];
+    html+='<div class="task'+(d?' done':'')+'" onclick="toggle('+i+')">'+
+            '<div class="box">'+(d?'<i class="ti ti-check"></i>':'')+'</div>'+
+            '<div class="tx">'+esc(t.label)+
+              (t.sub?'<div class="tsub">'+esc(t.sub)+'</div>':'')+
+            '</div>'+
+          '</div>';
+  });
+  $('taskWrap').innerHTML=html;
+  window._list=list;
+  const n=list.filter(t=>DONE[t.key]).length;
+  setProg(n,list.length);
+}
+
+function setProg(n,total){
+  $('progN').textContent=n+' of '+total+' done';
+  const pct=total?Math.round(n/total*100):0;
+  $('progP').textContent=pct+'%';
+  $('progBar').style.width=pct+'%';
+}
+
+/* ---------------- data ---------------- */
+async function loadMonth(){
+  const ym=ymOf(CUR);
+  DONE={};
+  renderHero(); renderTasks();
+  $('status').textContent='Loading…';
+  try{
+    const {data,error}=await sb.from('gl_mkt_tasks').select('task_key,done').eq('ym',ym);
+    if(error) throw error;
+    (data||[]).forEach(r=>{ if(r.done) DONE[r.task_key]=true; });
+    $('status').textContent='';
+  }catch(e){
+    $('status').textContent='Could not load progress — check gl_mkt_tasks exists.';
+  }
+  renderTasks();
+}
+
+async function toggle(i){
+  const t=(window._list||[])[i]; if(!t) return;
+  const ym=ymOf(CUR);
+  const next=!DONE[t.key];
+  DONE[t.key]=next;
+  renderTasks();
+  try{
+    const {error}=await sb.from('gl_mkt_tasks').upsert({
+      ym, task_key:t.key, label:t.label, section:t.section,
+      done:next, done_at: next? new Date().toISOString(): null,
+      done_by: next? WHO : null
+    },{onConflict:'ym,task_key'});
+    if(error) throw error;
+  }catch(e){
+    DONE[t.key]=!next; renderTasks();
+    toast('Could not save — try again');
+  }
+}
+
+function shiftMonth(d){
+  CUR=new Date(CUR.getFullYear(), CUR.getMonth()+d, 1);
+  loadMonth();
+}
+
+/* ---------------- auth ---------------- */
+async function doLogin(){
+  const email=$('email').value.trim(), pass=$('pass').value;
+  $('loginErr').textContent='';
+  if(!email||!pass){ $('loginErr').textContent='Enter email and password.'; return; }
+  const {error}=await sb.auth.signInWithPassword({email,password:pass});
+  if(error){ $('loginErr').textContent=error.message; return; }
+  start();
+}
+
+async function start(){
+  const {data:{session}}=await sb.auth.getSession();
+  if(!session){ $('gate').classList.remove('hidden'); return; }
+  WHO=(session.user.email||'').split('@')[0].toUpperCase();
+  $('gate').classList.add('hidden');
+  CUR=new Date(); CUR.setDate(1);
+  loadMonth();
+}
+
+$('pass').addEventListener('keydown',e=>{ if(e.key==='Enter') doLogin(); });
+start();
+</script>
+</body>
+</html>
