@@ -36,8 +36,8 @@
   .tnc b{color:var(--muted)}
   .hidden{display:none}
   /* wheel */
-  .wheel-wrap{position:relative;width:300px;height:300px;margin:10px auto 20px}
-  .wheel{width:300px;height:300px;border-radius:50%;border:6px solid var(--gold);transition:transform 5s cubic-bezier(.17,.67,.16,.99);position:relative;overflow:hidden}
+  .wheel-wrap{position:relative;width:320px;height:320px;margin:10px auto 20px;max-width:100%}
+  .wheel{width:320px;height:320px;box-sizing:border-box;border-radius:50%;border:6px solid var(--gold);transition:transform 5s cubic-bezier(.17,.67,.16,.99);position:relative;overflow:hidden}
   .pointer{position:absolute;top:-4px;left:50%;transform:translateX(-50%);width:0;height:0;border-left:16px solid transparent;border-right:16px solid transparent;border-top:28px solid var(--gold);z-index:5;filter:drop-shadow(0 2px 3px rgba(0,0,0,.5))}
   .hub{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:54px;height:54px;border-radius:50%;background:#111;border:4px solid var(--gold);z-index:4;display:flex;align-items:center;justify-content:center;font-size:22px}
   .refbox{background:linear-gradient(135deg,#1a1608,#141414);border:1.5px solid var(--gold);border-radius:14px;padding:16px;text-align:center;margin:8px 0 12px}
