@@ -109,6 +109,8 @@ const SUPABASE_URL="https://eychljpzorzmaveixlnu.supabase.co";
 const SUPABASE_ANON="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV5Y2hsanB6b3J6bWF2ZWl4bG51Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2NDk2NjQsImV4cCI6MjA5NzIyNTY2NH0.6dA1zhz5ZIwf8byFB8vhfOzPI-uPPdPihEr1b8GG_oA";
 const CS_WHATSAPP="60129384313";              // Mia
 const COOLDOWN_DAYS=7;                        // next free spin after a week
+const VALID_DAYS=30;                          // how long a won prize stays redeemable
+const fmtD=d=>d.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON,{auth:{persistSession:false}});
 const $=id=>document.getElementById(id);
 const esc=s=>(s||'').toString().replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -181,6 +183,10 @@ async function loadPrizes(){
 function savePending(o){ try{ localStorage.setItem('gl_giveaway_pending', JSON.stringify(o)); }catch(e){} }
 function readPending(){ try{ return JSON.parse(localStorage.getItem('gl_giveaway_pending')||'null'); }catch(e){ return null; } }
 function clearPending(){ try{ localStorage.removeItem('gl_giveaway_pending'); }catch(e){} }
+/* No device-level lock: one handset is often shared between customers at an
+   event, so locking the browser turned genuine customers away. The phone NUMBER
+   and the car PLATE are checked in the database at claim time - that is what
+   actually stops a repeat. */
 
 async function doSpin(){
   if(spinning || !PRIZES.length) return;
@@ -224,15 +230,29 @@ async function doRegister(){
   // known at spin time
   try{
     const since=new Date(Date.now()-COOLDOWN_DAYS*86400000).toISOString();
-    const {data:prev}=await sb.from('gl_spin_wins')
-      .select('created_at,prize_label')
+    // Check the PHONE and the PLATE. Phone alone let the same car come back on a
+    // second number; plate alone would let one person use several cars.
+    let prev=[];
+    const {data:byPhone}=await sb.from('gl_spin_wins')
+      .select('created_at,prize_label,phone,plate')
       .eq('phone','+'+phone).gte('created_at',since)
       .order('created_at',{ascending:false}).limit(1);
+    prev=prev.concat(byPhone||[]);
+    if(plate){
+      const {data:byPlate}=await sb.from('gl_spin_wins')
+        .select('created_at,prize_label,phone,plate')
+        .ilike('plate',plate).gte('created_at',since)
+        .order('created_at',{ascending:false}).limit(1);
+      prev=prev.concat(byPlate||[]);
+    }
+    // if both matched, report whichever spun most recently
+    prev.sort((a,b)=>new Date(b.created_at)-new Date(a.created_at));
     if(prev && prev.length){
       const last=new Date(prev[0].created_at);
       const next=new Date(last.getTime()+COOLDOWN_DAYS*86400000);
       $('regStep').classList.add('hidden'); $('coolStep').classList.remove('hidden');
-      $('coolMsg').innerHTML='This number already spun on <b>'+last.toLocaleDateString('en-GB')+
+      const who=(prev[0].plate&&prev[0].plate.toUpperCase()===plate)?'This car':'This number';
+      $('coolMsg').innerHTML=who+' already spun on <b>'+last.toLocaleDateString('en-GB')+
         '</b> and won <b>'+esc(prev[0].prize_label||'')+'</b>.<br><br>Your next free spin is on <b>'+
         next.toLocaleDateString('en-GB')+'</b>. Scan the code again after that date.';
       clearPending();
@@ -251,14 +271,38 @@ async function doRegister(){
     st.textContent='Could not save. Please try again.'; st.className='status err';
     return;
   }
-  CLAIMED={name:name, phone:phone, plate:plate, email:email};
+  // Save the customer to gl_walkin exactly as gl-spin.html does, so they turn up
+  // in the plate scanner and job card when they come in to claim. Without this
+  // the win is recorded but reception cannot find the customer by plate.
+  try{
+    let ex=null;
+    if(plate){
+      const {data}=await sb.from('gl_walkin').select('id,plate,model').ilike('plate',plate).limit(1).maybeSingle();
+      ex=data;
+    }
+    if(!ex){
+      // no plate match - reuse a row on the same phone that has no car yet
+      const {data}=await sb.from('gl_walkin').select('id,plate,model').eq('phone','+'+phone)
+        .or('plate.is.null,plate.eq.').limit(1).maybeSingle();
+      ex=data;
+    }
+    const wk={name:name, phone:'+'+phone, plate:plate};
+    if(ex) await sb.from('gl_walkin').update(wk).eq('id',ex.id);
+    else    await sb.from('gl_walkin').insert(wk);
+  }catch(e){ /* never block the claim on this */ }
+
+  const validTo=new Date(Date.now()+VALID_DAYS*86400000);
+  CLAIMED={name:name, phone:phone, plate:plate, email:email,
+           from:fmtD(new Date()), to:fmtD(validTo)};
   clearPending();
   const next=new Date(Date.now()+COOLDOWN_DAYS*86400000);
   $('regStep').classList.add('hidden'); $('doneStep').classList.remove('hidden');
   $('doneLabel').textContent=p.label||'';
   $('doneRef').textContent=PENDING_REF;
-  $('nextNote').innerHTML='Send us a WhatsApp to book. Your next free spin is on <b>'+
-    next.toLocaleDateString('en-GB')+'</b> &mdash; just scan this code again.';
+  $('nextNote').innerHTML='<b>Valid '+fmtD(new Date())+' &ndash; '+fmtD(validTo)+'</b><br>'+
+    'Book with our customer service before it expires.<br><br>'+
+    'Your next free spin is on <b>'+next.toLocaleDateString('en-GB')+
+    '</b> &mdash; just scan this code again.';
   $('heroSub').textContent='Prize claimed';
 }
 
@@ -272,6 +316,7 @@ function waClaim(){
     'Car Plate: '+(c.plate||'-'),
     'Prize Won: '+(p.label||'-'),
     'Code: '+(PENDING_REF||'-'),
+    'Valid: '+(c.from||'-')+' to '+(c.to||'-'),
     'From: '+EVENT_NAME
   ];
   const msg=lines.join('\n');
