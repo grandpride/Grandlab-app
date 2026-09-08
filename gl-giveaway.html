@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>GrandLab — Lucky Spin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+
+  :root{ --gold:#F5C518; --bg:#0a0a0a; --card:#141414; --border:#2a2a2a; --text:#f5f5f5; --muted:#9a9a9a; --green:#1db954; }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;padding:0 0 40px}
+  .hero{background:linear-gradient(160deg,#1a1608,#0a0a0a);padding:26px 20px 20px;text-align:center;border-bottom:1px solid var(--border)}
+  .brand{font-size:19px;font-weight:900;letter-spacing:1px}.brand span{color:var(--gold)}
+  .hero h1{font-size:25px;font-weight:900;margin:12px 0 6px;line-height:1.2}
+  .hero h1 .y{color:var(--gold)}
+  .hero p{color:var(--muted);font-size:13px}
+  .wrap{max-width:460px;margin:0 auto;padding:20px}
+  .field{margin-bottom:14px}
+  label{display:block;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:6px}
+  input,select{width:100%;background:var(--card);border:1px solid var(--border);border-radius:12px;color:var(--text);padding:13px 14px;font-size:15px;font-family:inherit;outline:none}
+  input:focus,select:focus{border-color:var(--gold)}
+  .row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .btn{width:100%;border:none;border-radius:14px;padding:16px;font-size:16px;font-weight:800;font-family:inherit;cursor:pointer;margin-top:8px}
+  .btn-gold{background:var(--gold);color:#111}
+  .btn-wa{background:var(--green);color:#fff}
+  .btn:active{transform:scale(.98)}
+  .status{text-align:center;font-size:14px;padding:12px;border-radius:10px;margin-bottom:14px}
+  .status.err{background:#3a1414;color:#ff8a8a;border:1px solid #5a2020}
+  .status.ok{background:#0f2e18;color:#7ee29a;border:1px solid #1e5a30}
+  .lookup{font-size:12px;color:var(--muted);margin-top:6px}
+  .lookup.taken{color:#ff8a8a;font-weight:700}
+  .tnc{font-size:11px;color:#666;margin-top:20px;line-height:1.6;border-top:1px solid var(--border);padding-top:14px}
+  .tnc b{color:var(--muted)}
+  .hidden{display:none}
+  /* wheel */
+  .wheel-wrap{position:relative;width:300px;height:300px;margin:10px auto 20px}
+  .wheel{width:300px;height:300px;border-radius:50%;border:6px solid var(--gold);transition:transform 5s cubic-bezier(.17,.67,.16,.99);position:relative;overflow:hidden}
+  .pointer{position:absolute;top:-4px;left:50%;transform:translateX(-50%);width:0;height:0;border-left:16px solid transparent;border-right:16px solid transparent;border-top:28px solid var(--gold);z-index:5;filter:drop-shadow(0 2px 3px rgba(0,0,0,.5))}
+  .hub{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:54px;height:54px;border-radius:50%;background:#111;border:4px solid var(--gold);z-index:4;display:flex;align-items:center;justify-content:center;font-size:22px}
+  .refbox{background:linear-gradient(135deg,#1a1608,#141414);border:1.5px solid var(--gold);border-radius:14px;padding:16px;text-align:center;margin:8px 0 12px}
+  .refbox .lbl{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+  .refbox .code{font-size:24px;font-weight:900;color:var(--gold);letter-spacing:2px;margin:4px 0}
+  .prize-won{text-align:center;font-size:22px;font-weight:900;color:var(--gold);margin:8px 0}
+  .prize-sub{text-align:center;font-size:13px;color:var(--muted);margin-bottom:6px}
+
+  /* giveaway-only additions */
+  .steps{display:flex;gap:6px;justify-content:center;margin:14px 0 4px}
+  .stepdot{width:8px;height:8px;border-radius:50%;background:#333}
+  .stepdot.on{background:var(--gold)}
+  .cool{background:#1a1206;border:1px solid #6a5200;border-radius:12px;padding:14px;margin-top:12px;color:#e0c070;font-size:13px;line-height:1.5}
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="hero">
+      <div class="brand">GRAND<span>LAB</span></div>
+      <h1>Lucky Spin</h1>
+      <p class="sub" id="heroSub">Spin the wheel &mdash; every spin wins something.</p>
+    </div>
+
+    <!-- STEP 1: spin straight away, no details asked -->
+    <div id="wheelStep" class="card">
+      <div class="wheel-wrap">
+        <div class="pointer"></div>
+        <div id="wheelDots" style="position:absolute;inset:0;z-index:3"></div>
+        <div class="wheel" style="position:absolute;inset:0;z-index:1"></div>
+        <canvas id="wheel" width="292" height="292" style="position:absolute;top:14px;left:14px;z-index:2;border-radius:50%;transition:transform 6.4s cubic-bezier(.1,.7,.03,1)"></canvas>
+      </div>
+      <button class="btn btn-gold" id="spinBtn" onclick="doSpin()">SPIN NOW</button>
+      <div id="status" class="status"></div>
+    </div>
+
+    <!-- STEP 2: they won - now collect details -->
+    <div id="regStep" class="card hidden">
+      <div class="prize-won" id="wonLabel"></div>
+      <p class="sub" style="text-align:center;margin-bottom:14px">Enter your details to claim it.</p>
+      <div class="field"><label>Name</label><input id="rName" placeholder="Your name"></div>
+      <div class="field"><label>Phone Number</label><input id="rPhone" type="tel" inputmode="numeric" placeholder="e.g. 60123456789"></div>
+      <div class="field"><label>Car Plate</label><input id="rPlate" placeholder="e.g. ABC1234" style="text-transform:uppercase"></div>
+      <button class="btn btn-gold" id="regBtn" onclick="doRegister()">CLAIM MY PRIZE</button>
+      <div id="regStatus" class="status"></div>
+    </div>
+
+    <!-- STEP 3: claimed -->
+    <div id="doneStep" class="card hidden">
+      <div class="prize-won" id="doneLabel"></div>
+      <div class="refbox">
+        <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em">Your code</div>
+        <div class="code" id="doneRef"></div>
+      </div>
+      <button class="btn btn-gold" onclick="waClaim()">SEND TO WHATSAPP TO BOOK</button>
+      <div class="cool" id="nextNote"></div>
+    </div>
+
+    <!-- cooldown -->
+    <div id="coolStep" class="card hidden">
+      <div class="prize-won">Already spun</div>
+      <div class="cool" id="coolMsg"></div>
+      <button class="btn btn-gold" onclick="waClaim()">MESSAGE US ON WHATSAPP</button>
+    </div>
+  </div>
+
+<script>
+const SUPABASE_URL="https://eychljpzorzmaveixlnu.supabase.co";
+const SUPABASE_ANON="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV5Y2hsanB6b3J6bWF2ZWl4bG51Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2NDk2NjQsImV4cCI6MjA5NzIyNTY2NH0.6dA1zhz5ZIwf8byFB8vhfOzPI-uPPdPihEr1b8GG_oA";
+const CS_WHATSAPP="60129384313";              // Mia
+const COOLDOWN_DAYS=7;                        // next free spin after a week
+const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON,{auth:{persistSession:false}});
+const $=id=>document.getElementById(id);
+const esc=s=>(s||'').toString().replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const normPhone=p=>(p||'').replace(/[^0-9]/g,'');
+let PRIZES=[], WON=null, PENDING_REF=null, spinning=false;
+
+function drawWheel(){
+  const c=$('wheel'), ctx=c.getContext('2d'), n=PRIZES.length||1, cx=146, cy=146, r=146;
+  const arc=2*Math.PI/n;
+  ctx.clearRect(0,0,292,292);
+  PRIZES.forEach((p,i)=>{
+    const a0=i*arc - Math.PI/2, a1=a0+arc;
+    const mega=!!p.is_mega;
+    ctx.beginPath(); ctx.moveTo(cx,cy); ctx.arc(cx,cy,r,a0,a1); ctx.closePath();
+    if(mega){ const g=ctx.createRadialGradient(cx,cy,30,cx,cy,r); g.addColorStop(0,'#e0202a'); g.addColorStop(1,'#8a0d13'); ctx.fillStyle=g; }
+    else { ctx.fillStyle=p.color||(i%2?'#F5C518':'#fff5cc'); }
+    ctx.fill();
+    ctx.strokeStyle=mega?'#ffd700':'#F5C518'; ctx.lineWidth=mega?2.5:1.5; ctx.stroke();
+    ctx.save(); ctx.translate(cx,cy); ctx.rotate(a0+arc/2); ctx.textAlign='right';
+    if(mega){
+      ctx.font="800 8px -apple-system,sans-serif"; ctx.fillStyle="#ffe08a"; ctx.fillText("★ MEGA PRIZE ★", r-14, -6);
+      ctx.font="800 11px -apple-system,sans-serif"; ctx.fillStyle="#fff";
+      ctx.fillText("Gyeon Coating", r-14, 8);
+    } else {
+      const light=(p.color==='#fff5cc'||!p.color||p.color==='#F5C518');
+      ctx.fillStyle = light ? '#8a6d00' : '#fff';
+      ctx.font="700 11px -apple-system,sans-serif";
+      ctx.fillText(shortLabel(p.label), r-14, 4);
+    }
+    ctx.restore();
+  });
+  // rim dots
+  const dc=$('wheelDots'); if(dc){ dc.innerHTML='';
+    for(let i=0;i<n*2;i++){ const ang=(i/(n*2))*2*Math.PI - Math.PI/2;
+      const dx=160+150*Math.cos(ang), dy=160+150*Math.sin(ang);
+      const d=document.createElement('div');
+      d.style.cssText='position:absolute;width:6px;height:6px;border-radius:50%;background:#fff;left:'+(dx-3)+'px;top:'+(dy-3)+'px;box-shadow:0 0 4px #fff';
+      dc.appendChild(d);
+    }
+  }
+}
+
+
+
+async function loadPrizes(){
+  try{
+    const {data}=await sb.from('gl_spin_prizes').select('*').eq('active',true).order('sort_order',{ascending:true});
+    PRIZES=data||[];
+  }catch(e){ PRIZES=[]; }
+  if(!PRIZES.length){ $('status').textContent='Prizes unavailable right now.'; $('spinBtn').disabled=true; return; }
+  drawWheel();
+}
+
+/* A pending spin is remembered so refreshing the page cannot re-roll a better
+   prize. The prize itself is decided server-side by gl_spin_draw. */
+function savePending(o){ try{ localStorage.setItem('gl_giveaway_pending', JSON.stringify(o)); }catch(e){} }
+function readPending(){ try{ return JSON.parse(localStorage.getItem('gl_giveaway_pending')||'null'); }catch(e){ return null; } }
+function clearPending(){ try{ localStorage.removeItem('gl_giveaway_pending'); }catch(e){} }
+
+async function doSpin(){
+  if(spinning || !PRIZES.length) return;
+  spinning=true; $('spinBtn').disabled=true; $('spinBtn').textContent='Spinning...';
+
+  let prize=null;
+  try{ const {data}=await sb.rpc('gl_spin_draw'); prize=Array.isArray(data)?data[0]:data; }catch(e){}
+  if(!prize){
+    const tot=PRIZES.reduce((s,p)=>s+Number(p.weight||1),0); let r=Math.random()*tot,a=0;
+    prize=PRIZES.find(p=>{ a+=Number(p.weight||1); return r<=a; })||PRIZES[0];
+  }
+  WON=prize;
+  const ref='GW-'+Math.random().toString(36).slice(2,6).toUpperCase();
+  PENDING_REF=ref;
+  savePending({ref:ref, prize:prize, at:Date.now()});
+
+  const idx=Math.max(0,PRIZES.findIndex(p=>p.id===prize.id));
+  const n=PRIZES.length, seg=360/n;
+  $('wheel').style.transform=`rotate(${360*8 + (360 - (idx*seg + seg/2))}deg)`;
+  setTimeout(()=>{
+    $('wheelStep').classList.add('hidden');
+    $('regStep').classList.remove('hidden');
+    $('wonLabel').textContent='You won: '+(WON.label||'');
+    $('heroSub').textContent='Almost there';
+  }, 6600);
+}
+
+async function doRegister(){
+  const name=($('rName').value||'').trim();
+  const phone=normPhone($('rPhone').value);
+  const plate=($('rPlate').value||'').trim().toUpperCase();
+  const st=$('regStatus');
+  if(!name){ st.textContent='Please enter your name.'; st.className='status err'; return; }
+  if(phone.length<9){ st.textContent='Please enter a valid phone number.'; st.className='status err'; return; }
+  if(!plate){ st.textContent='Please enter your car plate.'; st.className='status err'; return; }
+  $('regBtn').disabled=true; st.textContent='Saving...'; st.className='status';
+
+  // one spin per phone per COOLDOWN_DAYS - checked here because no phone was
+  // known at spin time
+  try{
+    const since=new Date(Date.now()-COOLDOWN_DAYS*86400000).toISOString();
+    const {data:prev}=await sb.from('gl_spin_wins')
+      .select('created_at,prize_label')
+      .eq('phone','+'+phone).gte('created_at',since)
+      .order('created_at',{ascending:false}).limit(1);
+    if(prev && prev.length){
+      const last=new Date(prev[0].created_at);
+      const next=new Date(last.getTime()+COOLDOWN_DAYS*86400000);
+      $('regStep').classList.add('hidden'); $('coolStep').classList.remove('hidden');
+      $('coolMsg').innerHTML='This number already spun on <b>'+last.toLocaleDateString('en-GB')+
+        '</b> and won <b>'+esc(prev[0].prize_label||'')+'</b>.<br><br>Your next free spin is on <b>'+
+        next.toLocaleDateString('en-GB')+'</b>. Scan the code again after that date.';
+      clearPending();
+      return;
+    }
+  }catch(e){}
+
+  const p=WON||{};
+  const {error}=await sb.from('gl_spin_wins').insert({
+    ref_code:PENDING_REF, name:name, phone:'+'+phone, plate:plate,
+    prize_id:p.id||null, prize_label:p.label||'', prize_kind:p.kind||null,
+    prize_value:p.value||null, status:'won'
+  });
+  if(error){
+    $('regBtn').disabled=false;
+    st.textContent='Could not save. Please try again.'; st.className='status err';
+    return;
+  }
+  clearPending();
+  const next=new Date(Date.now()+COOLDOWN_DAYS*86400000);
+  $('regStep').classList.add('hidden'); $('doneStep').classList.remove('hidden');
+  $('doneLabel').textContent=p.label||'';
+  $('doneRef').textContent=PENDING_REF;
+  $('nextNote').innerHTML='Send us a WhatsApp to book. Your next free spin is on <b>'+
+    next.toLocaleDateString('en-GB')+'</b> &mdash; just scan this code again.';
+  $('heroSub').textContent='Prize claimed';
+}
+
+function waClaim(){
+  const p=WON||{};
+  const msg='Hi GrandLab! I won "'+(p.label||'a prize')+'" on the Lucky Spin.'+
+            (PENDING_REF?(' My code is '+PENDING_REF+'.'):'')+' I would like to book an appointment.';
+  const isMobile=/Android|iPhone|iPad/i.test(navigator.userAgent);
+  const url=isMobile?'https://wa.me/'+CS_WHATSAPP+'?text='+encodeURIComponent(msg)
+                    :'https://web.whatsapp.com/send?phone='+CS_WHATSAPP+'&text='+encodeURIComponent(msg);
+  window.open(url,'_blank');
+}
+
+/* A spin that was never claimed is restored, so a refresh shows the same prize
+   instead of handing out a fresh roll. */
+(function init(){
+  loadPrizes();
+  const pend=readPending();
+  if(pend && pend.prize){
+    WON=pend.prize; PENDING_REF=pend.ref;
+    $('wheelStep').classList.add('hidden');
+    $('regStep').classList.remove('hidden');
+    $('wonLabel').textContent='You won: '+(WON.label||'');
+  }
+})();
+</script>
+</body>
+</html>
