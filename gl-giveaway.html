@@ -80,6 +80,7 @@
       <div class="field"><label>Name</label><input id="rName" placeholder="Your name"></div>
       <div class="field"><label>Phone Number</label><input id="rPhone" type="tel" inputmode="numeric" placeholder="e.g. 60123456789"></div>
       <div class="field"><label>Car Plate</label><input id="rPlate" placeholder="e.g. ABC1234" style="text-transform:uppercase"></div>
+      <div class="field"><label>Email</label><input id="rEmail" type="email" placeholder="you@email.com"></div>
       <button class="btn btn-gold" id="regBtn" onclick="doRegister()">CLAIM MY PRIZE</button>
       <div id="regStatus" class="status"></div>
     </div>
@@ -91,7 +92,7 @@
         <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em">Your code</div>
         <div class="code" id="doneRef"></div>
       </div>
-      <button class="btn btn-gold" onclick="waClaim()">SEND TO WHATSAPP TO BOOK</button>
+      <button class="btn btn-gold" onclick="waClaim()">BOOK APPOINTMENT FROM OUR GRANDLAB CUSTOMER SERVICE NOW</button>
       <div class="cool" id="nextNote"></div>
     </div>
 
@@ -99,7 +100,7 @@
     <div id="coolStep" class="card hidden">
       <div class="prize-won">Already spun</div>
       <div class="cool" id="coolMsg"></div>
-      <button class="btn btn-gold" onclick="waClaim()">MESSAGE US ON WHATSAPP</button>
+      <button class="btn btn-gold" onclick="waClaim()">BOOK APPOINTMENT FROM OUR GRANDLAB CUSTOMER SERVICE NOW</button>
     </div>
   </div>
 
@@ -112,7 +113,21 @@ const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON,{auth:{persistSession:
 const $=id=>document.getElementById(id);
 const esc=s=>(s||'').toString().replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const normPhone=p=>(p||'').replace(/[^0-9]/g,'');
-let PRIZES=[], WON=null, PENDING_REF=null, spinning=false;
+let PRIZES=[], WON=null, PENDING_REF=null, spinning=false, CLAIMED=null;
+const EVENT_NAME="Grandpride - Grandprix F1 Event";
+
+function shortLabel(lbl){
+  let s=(lbl||'').trim();
+  // strip "*except promo" and similar suffixes
+  s=s.replace(/\*.*$/,'').trim();
+  s=s.replace(/for any services?/i,'OFF').replace(/for any/i,'').trim();
+  // common shortenings
+  s=s.replace(/\bServices?\b/i,'').trim();
+  s=s.replace(/\s{2,}/g,' ');
+  // if still long, cap it
+  if(s.length>15) s=s.slice(0,15);
+  return s;
+}
 
 function drawWheel(){
   const c=$('wheel'), ctx=c.getContext('2d'), n=PRIZES.length||1, cx=146, cy=146, r=146;
@@ -197,10 +212,12 @@ async function doRegister(){
   const name=($('rName').value||'').trim();
   const phone=normPhone($('rPhone').value);
   const plate=($('rPlate').value||'').trim().toUpperCase();
+  const email=($('rEmail').value||'').trim();
   const st=$('regStatus');
   if(!name){ st.textContent='Please enter your name.'; st.className='status err'; return; }
   if(phone.length<9){ st.textContent='Please enter a valid phone number.'; st.className='status err'; return; }
   if(!plate){ st.textContent='Please enter your car plate.'; st.className='status err'; return; }
+  if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){ st.textContent='Please enter a valid email.'; st.className='status err'; return; }
   $('regBtn').disabled=true; st.textContent='Saving...'; st.className='status';
 
   // one spin per phone per COOLDOWN_DAYS - checked here because no phone was
@@ -225,7 +242,7 @@ async function doRegister(){
 
   const p=WON||{};
   const {error}=await sb.from('gl_spin_wins').insert({
-    ref_code:PENDING_REF, name:name, phone:'+'+phone, plate:plate,
+    ref_code:PENDING_REF, name:name, phone:'+'+phone, plate:plate, email:email,
     prize_id:p.id||null, prize_label:p.label||'', prize_kind:p.kind||null,
     prize_value:p.value||null, status:'won'
   });
@@ -234,6 +251,7 @@ async function doRegister(){
     st.textContent='Could not save. Please try again.'; st.className='status err';
     return;
   }
+  CLAIMED={name:name, phone:phone, plate:plate, email:email};
   clearPending();
   const next=new Date(Date.now()+COOLDOWN_DAYS*86400000);
   $('regStep').classList.add('hidden'); $('doneStep').classList.remove('hidden');
@@ -246,8 +264,17 @@ async function doRegister(){
 
 function waClaim(){
   const p=WON||{};
-  const msg='Hi GrandLab! I won "'+(p.label||'a prize')+'" on the Lucky Spin.'+
-            (PENDING_REF?(' My code is '+PENDING_REF+'.'):'')+' I would like to book an appointment.';
+  const c=CLAIMED||{};
+  const lines=[
+    'Hi GrandLab! I would like to book an appointment.',
+    '',
+    'Name: '+(c.name||'-'),
+    'Car Plate: '+(c.plate||'-'),
+    'Prize Won: '+(p.label||'-'),
+    'Code: '+(PENDING_REF||'-'),
+    'From: '+EVENT_NAME
+  ];
+  const msg=lines.join('\n');
   const isMobile=/Android|iPhone|iPad/i.test(navigator.userAgent);
   const url=isMobile?'https://wa.me/'+CS_WHATSAPP+'?text='+encodeURIComponent(msg)
                     :'https://web.whatsapp.com/send?phone='+CS_WHATSAPP+'&text='+encodeURIComponent(msg);
