@@ -1,0 +1,691 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#080808">
+<title>GL Deck — GrandLab</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
+<style>
+  :root{
+    --bg:#080808; --card:#141414; --gold:#F5C518; --border:#2a2a2a;
+    --txt:#ececec; --dim:#8f8f8f; --dim2:#6d6d6d;
+    --warn:#ff6b5e; --ok:#4ade80;
+    --r:16px;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent}
+  html,body{margin:0; padding:0}
+  body{
+    background:var(--bg); color:var(--txt);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,"Noto Sans SC","PingFang SC","Microsoft YaHei",sans-serif;
+    font-size:15px; line-height:1.55;
+    padding-bottom:48px;
+  }
+  a{color:var(--gold); text-decoration:none}
+  button{font:inherit; color:inherit}
+
+  .wrap{max-width:760px; margin:0 auto; padding:0 14px}
+
+  /* ---------- header ---------- */
+  header{
+    position:sticky; top:0; z-index:20; background:rgba(8,8,8,.94);
+    backdrop-filter:blur(10px); border-bottom:1px solid var(--border);
+    padding-top:env(safe-area-inset-top);
+  }
+  .hrow{display:flex; align-items:center; gap:10px; padding:12px 0 10px}
+  .hback{
+    display:inline-flex; align-items:center; justify-content:center;
+    width:36px; height:36px; border-radius:12px; border:1px solid var(--border);
+    background:var(--card); color:var(--dim); font-size:18px; flex:0 0 auto;
+  }
+  .htitle{font-size:17px; font-weight:700; letter-spacing:.2px; margin:0}
+  .htitle span{color:var(--gold)}
+  .hsub{font-size:12px; color:var(--dim2); margin:1px 0 0}
+  .hme{margin-left:auto; font-size:11px; color:var(--dim2); text-align:right; max-width:120px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+
+  .rule{
+    display:flex; align-items:center; gap:8px;
+    background:rgba(245,197,24,.07); border:1px solid rgba(245,197,24,.28);
+    color:var(--gold); border-radius:12px; padding:8px 11px; margin-bottom:10px;
+    font-size:12.5px; font-weight:600;
+  }
+  .rule i{font-size:15px}
+  .rule small{display:block; color:#c9a615; font-weight:500; font-size:11.5px}
+
+  .search{position:relative; margin-bottom:10px}
+  .search i{position:absolute; left:12px; top:50%; transform:translateY(-50%); color:var(--dim2); font-size:17px}
+  .search input{
+    width:100%; background:var(--card); border:1px solid var(--border); color:var(--txt);
+    border-radius:14px; padding:11px 36px 11px 38px; font-size:15px; outline:none;
+  }
+  .search input:focus{border-color:#3d3d3d}
+  .search .clr{
+    position:absolute; right:6px; top:50%; transform:translateY(-50%);
+    background:none; border:0; color:var(--dim2); font-size:18px; padding:6px; cursor:pointer; display:none;
+  }
+
+  .tabs{display:flex; gap:6px; padding-bottom:10px}
+  .tabs button{
+    flex:1; background:var(--card); border:1px solid var(--border); color:var(--dim);
+    border-radius:12px; padding:9px 6px; font-size:12.5px; font-weight:600; cursor:pointer;
+    display:flex; flex-direction:column; align-items:center; gap:3px; line-height:1.2;
+  }
+  .tabs button i{font-size:17px}
+  .tabs button[aria-selected="true"]{background:rgba(245,197,24,.1); border-color:var(--gold); color:var(--gold)}
+
+  /* ---------- chips ---------- */
+  .chips{display:flex; gap:7px; overflow-x:auto; padding:12px 0 4px; scrollbar-width:none}
+  .chips::-webkit-scrollbar{display:none}
+  .chips button{
+    flex:0 0 auto; background:var(--card); border:1px solid var(--border); color:var(--dim);
+    border-radius:999px; padding:7px 14px; font-size:13px; cursor:pointer;
+  }
+  .chips button[aria-pressed="true"]{background:var(--gold); border-color:var(--gold); color:#111; font-weight:700}
+
+  /* ---------- cards ---------- */
+  .card{
+    background:var(--card); border:1px solid var(--border); border-radius:var(--r);
+    margin:10px 0; overflow:hidden;
+  }
+  .card > summary{
+    list-style:none; cursor:pointer; padding:14px 15px;
+    display:flex; align-items:flex-start; gap:11px;
+  }
+  .card > summary::-webkit-details-marker{display:none}
+  .card[open] > summary{border-bottom:1px solid var(--border)}
+  .cstep{
+    flex:0 0 auto; width:26px; height:26px; border-radius:9px; background:rgba(245,197,24,.12);
+    color:var(--gold); font-size:12.5px; font-weight:700; display:flex; align-items:center; justify-content:center; margin-top:1px;
+  }
+  .ctxt{flex:1; min-width:0}
+  .ctitle{font-size:15px; font-weight:650; line-height:1.35}
+  .csub{font-size:12.5px; color:var(--dim2); margin-top:2px}
+  .cchev{color:var(--dim2); font-size:18px; margin-top:2px; transition:transform .18s ease}
+  .card[open] .cchev{transform:rotate(180deg)}
+  .body{padding:4px 15px 16px}
+
+  .blk{margin-top:14px}
+  .blk:first-child{margin-top:6px}
+  .blk h4{
+    margin:0 0 7px; font-size:11.5px; font-weight:700; color:var(--dim2);
+    letter-spacing:.3px;
+  }
+  .blk p{margin:0; color:#d6d6d6}
+  .lead{color:#d6d6d6; margin:6px 0 0}
+
+  ul.plain{margin:0; padding-left:18px}
+  ul.plain li{margin:4px 0; color:#d6d6d6}
+  ul.ask{margin:0; padding:0; list-style:none}
+  ul.ask li{
+    padding:9px 11px; border:1px solid var(--border); border-radius:11px;
+    margin:6px 0; background:#101010; color:#e2e2e2; font-size:14px;
+  }
+  ul.avoid li{color:#e0a49e}
+  ul.avoid li::marker{color:var(--warn)}
+
+  .map{display:flex; flex-direction:column; gap:6px}
+  .maprow{
+    display:flex; gap:9px; align-items:flex-start;
+    border:1px solid var(--border); border-radius:11px; padding:9px 11px; background:#101010;
+  }
+  .mapif{flex:1; font-size:13.5px; color:var(--dim)}
+  .mapthen{flex:1; font-size:13.5px; color:var(--gold); font-weight:600}
+  .maparrow{color:var(--dim2); font-size:15px; margin-top:1px}
+
+  /* say block */
+  .langbar{display:flex; gap:6px; margin-bottom:8px}
+  .langbar button{
+    background:#101010; border:1px solid var(--border); color:var(--dim);
+    border-radius:9px; padding:5px 12px; font-size:12.5px; cursor:pointer;
+  }
+  .langbar button[aria-pressed="true"]{background:rgba(245,197,24,.12); border-color:var(--gold); color:var(--gold); font-weight:650}
+  .say{
+    border:1px solid rgba(245,197,24,.3); background:rgba(245,197,24,.05);
+    border-radius:12px; padding:12px 13px; color:#efefef; white-space:pre-wrap;
+  }
+  .copy{
+    margin-top:8px; background:var(--card); border:1px solid var(--border); color:var(--dim);
+    border-radius:10px; padding:7px 13px; font-size:12.5px; cursor:pointer;
+    display:inline-flex; align-items:center; gap:6px;
+  }
+  .copy.done{color:var(--ok); border-color:rgba(74,222,128,.4)}
+
+  /* prices */
+  .ptable{border:1px solid var(--border); border-radius:12px; overflow:hidden}
+  .prow{display:flex; gap:10px; padding:9px 11px; border-top:1px solid var(--border); align-items:baseline}
+  .prow:first-child{border-top:0}
+  .pname{flex:1; font-size:13.5px; color:#dcdcdc; min-width:0}
+  .pname small{display:block; color:var(--dim2); font-size:11.5px}
+  .pvals{flex:0 0 auto; text-align:right; font-size:12px; color:var(--dim); font-variant-numeric:tabular-nums}
+  .pvals b{color:var(--gold); font-weight:650}
+  .psec{padding:8px 11px; background:#101010; font-size:11.5px; color:var(--dim2); border-top:1px solid var(--border)}
+  .psec:first-child{border-top:0}
+
+  details.kb{border:1px solid var(--border); border-radius:11px; margin:6px 0; background:#101010}
+  details.kb summary{cursor:pointer; padding:9px 12px; font-size:13px; color:var(--dim); list-style:none}
+  details.kb summary::-webkit-details-marker{display:none}
+  details.kb[open] summary{color:var(--gold); border-bottom:1px solid var(--border)}
+  details.kb pre{
+    margin:0; padding:12px; white-space:pre-wrap; word-break:break-word;
+    font:inherit; font-size:13.5px; color:#cfcfcf; line-height:1.6;
+  }
+
+  .empty{text-align:center; color:var(--dim2); padding:44px 20px; font-size:14px}
+  .empty i{display:block; font-size:30px; margin-bottom:10px; opacity:.5}
+  .rescount{font-size:12px; color:var(--dim2); padding:12px 0 0}
+  .restag{
+    display:inline-block; font-size:10.5px; font-weight:700; color:var(--dim2);
+    border:1px solid var(--border); border-radius:6px; padding:1px 6px; margin-left:7px; vertical-align:2px;
+  }
+
+  /* ---------- sign in ---------- */
+  #gate{display:none; padding:70px 0 40px}
+  #gate .card{padding:22px 18px}
+  #gate h2{margin:0 0 4px; font-size:19px}
+  #gate p{margin:0 0 18px; color:var(--dim2); font-size:13.5px}
+  #gate label{display:block; font-size:12px; color:var(--dim2); margin:0 0 5px}
+  #gate input{
+    width:100%; background:#101010; border:1px solid var(--border); color:var(--txt);
+    border-radius:11px; padding:11px 13px; font-size:15px; margin-bottom:13px; outline:none;
+  }
+  #gate input:focus{border-color:#3d3d3d}
+  #gate button{
+    width:100%; background:var(--gold); border:0; color:#111; font-weight:700;
+    border-radius:12px; padding:12px; font-size:15px; cursor:pointer;
+  }
+  #gate .err{color:var(--warn); font-size:13px; min-height:18px; margin-top:10px}
+
+  .loading{text-align:center; color:var(--dim2); padding:60px 0; font-size:14px}
+  .hide{display:none !important}
+  @media (prefers-reduced-motion:reduce){*{transition:none !important}}
+  :focus-visible{outline:2px solid var(--gold); outline-offset:2px}
+</style>
+</head>
+<body>
+
+<div id="gate" class="wrap">
+  <div class="card">
+    <h2>GL Deck</h2>
+    <p>Sign in with your GrandLab staff account.</p>
+    <label for="em">Email</label>
+    <input id="em" type="email" autocomplete="username" inputmode="email">
+    <label for="pw">Password</label>
+    <input id="pw" type="password" autocomplete="current-password">
+    <button id="signin" type="button">Sign in</button>
+    <div class="err" id="gerr"></div>
+  </div>
+</div>
+
+<div id="app" class="hide">
+  <header>
+    <div class="wrap">
+      <div class="hrow">
+        <a class="hback" href="gl-hub.html" aria-label="Back to hub"><i class="ti ti-arrow-left"></i></a>
+        <div>
+          <h1 class="htitle">GL <span>Deck</span></h1>
+          <p class="hsub">Sales advisor reference</p>
+        </div>
+        <div class="hme" id="me"></div>
+      </div>
+      <div class="rule">
+        <i class="ti ti-alert-circle"></i>
+        <div>
+          Price always comes last.
+          <small>Acknowledge, understand, propose, then price. Every message ends with a question.</small>
+        </div>
+      </div>
+      <div class="search">
+        <i class="ti ti-search"></i>
+        <input id="q" type="search" placeholder="Search everything — polish, discount, gone quiet…" autocomplete="off">
+        <button class="clr" id="qclr" type="button" aria-label="Clear search"><i class="ti ti-x"></i></button>
+      </div>
+      <div class="tabs" role="tablist">
+        <button role="tab" data-tab="knowledge" aria-selected="true"><i class="ti ti-book-2"></i>Knowledge</button>
+        <button role="tab" data-tab="replies" aria-selected="false"><i class="ti ti-message-2"></i>Sales Replies</button>
+        <button role="tab" data-tab="close" aria-selected="false"><i class="ti ti-route"></i>Step To Close</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <div id="chips" class="chips"></div>
+    <div id="list"><div class="loading">Loading…</div></div>
+  </main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  var SB_URL = 'https://eychljpzorzmaveixlnu.supabase.co';
+  var SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV5Y2hsanB6b3J6bWF2ZWl4bG51Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2NDk2NjQsImV4cCI6MjA5NzIyNTY2NH0.6dA1zhz5ZIwf8byFB8vhfOzPI-uPPdPihEr1b8GG_oA';
+
+  var sb = window.supabase.createClient(SB_URL, SB_KEY, {
+    auth: { storageKey: 'gl_auth', persistSession: true, autoRefreshToken: true }
+  });
+
+  var TYPES = ['Sedan', 'SUV', 'MPV', 'Supercar', 'Motorcycle'];
+  var LANGS = [['en', 'English'], ['bm', 'BM'], ['zh', '中文']];
+
+  var state = {
+    tab: 'knowledge',
+    grp: null,
+    q: '',
+    lang: 'en',
+    deck: [],
+    services: [],
+    kb: {}
+  };
+
+  try {
+    var saved = localStorage.getItem('gl_deck_lang');
+    if (saved && ['en', 'bm', 'zh'].indexOf(saved) > -1) state.lang = saved;
+  } catch (e) { /* UI state only */ }
+
+  var $ = function (id) { return document.getElementById(id); };
+
+  function esc(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+
+  function money(n) {
+    var v = Number(n);
+    if (!isFinite(v) || v <= 0) return null;
+    return 'RM' + (Math.round(v * 100) / 100).toLocaleString('en-MY');
+  }
+
+  /* ---------------- auth ---------------- */
+
+  function showGate(msg) {
+    $('gate').style.display = 'block';
+    $('app').classList.add('hide');
+    if (msg) $('gerr').textContent = msg;
+  }
+
+  function signIn() {
+    var email = $('em').value.trim();
+    var pass = $('pw').value;
+    $('gerr').textContent = '';
+    if (!email || !pass) { $('gerr').textContent = 'Enter your email and password.'; return; }
+    $('signin').disabled = true;
+    sb.auth.signInWithPassword({ email: email, password: pass }).then(function (r) {
+      $('signin').disabled = false;
+      if (r.error) { $('gerr').textContent = r.error.message; return; }
+      start(r.data.session);
+    }).catch(function (err) {
+      $('signin').disabled = false;
+      $('gerr').textContent = String(err && err.message ? err.message : err);
+    });
+  }
+
+  /* ---------------- data ---------------- */
+
+  function load() {
+    return Promise.all([
+      sb.from('gl_deck').select('*').eq('hidden', false).order('tab').order('sort'),
+      sb.from('gl_services').select('name,category,section,brand,subtitle,base_price,price_by_type,pkg_uses,hidden').or('hidden.is.null,hidden.eq.false'),
+      sb.from('gl_mia_kb').select('data').eq('id', 'kb').maybeSingle()
+    ]).then(function (res) {
+      if (res[0].error) throw res[0].error;
+      state.deck = res[0].data || [];
+      state.services = (res[1] && res[1].data) || [];
+      state.kb = (res[2] && res[2].data && res[2].data.data) || {};
+    });
+  }
+
+  /* ---------------- prices ---------------- */
+
+  function servicesFor(svc) {
+    if (!svc || !svc.category) return [];
+    var names = svc.names || null;
+    var out = state.services.filter(function (s) {
+      if (s.category !== svc.category) return false;
+      if (names) return names.indexOf(s.name) > -1;
+      if (svc.section && s.section !== svc.section) return false;
+      return true;
+    });
+    if (names) {
+      out.sort(function (a, b) { return names.indexOf(a.name) - names.indexOf(b.name); });
+    } else {
+      out.sort(function (a, b) {
+        var ka = (a.brand || '') + '|' + (a.section || '') + '|' + a.name;
+        var kb2 = (b.brand || '') + '|' + (b.section || '') + '|' + b.name;
+        return ka < kb2 ? -1 : ka > kb2 ? 1 : 0;
+      });
+    }
+    return out;
+  }
+
+  function priceCell(s) {
+    var parts = [];
+    var pbt = s.price_by_type || {};
+    TYPES.forEach(function (t) {
+      var m = money(pbt[t]);
+      if (m) parts.push(t.slice(0, 3) + ' <b>' + m + '</b>');
+    });
+    if (!parts.length) {
+      var b = money(s.base_price);
+      if (b) parts.push('<b>' + b + '</b>');
+    }
+    if (!parts.length) return '<span style="color:var(--dim2)">ask</span>';
+    return parts.join('<br>');
+  }
+
+  function pricesHtml(svc) {
+    var rows = servicesFor(svc);
+    if (!rows.length) return '';
+    var html = '<div class="ptable">';
+    var lastGroup = null;
+    rows.forEach(function (s) {
+      var g = s.brand || s.section || null;
+      if (g && g !== lastGroup) {
+        html += '<div class="psec">' + esc(g) + '</div>';
+        lastGroup = g;
+      }
+      html += '<div class="prow"><div class="pname">' + esc(s.name) +
+        (s.subtitle ? '<small>' + esc(s.subtitle) + '</small>' : '') +
+        (s.pkg_uses ? '<small>' + s.pkg_uses + ' uses</small>' : '') +
+        '</div><div class="pvals">' + priceCell(s) + '</div></div>';
+    });
+    return html + '</div>';
+  }
+
+  /* ---------------- blocks ---------------- */
+
+  function listBlock(label, arr, cls) {
+    if (!arr || !arr.length) return '';
+    var lis = arr.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('');
+    return '<div class="blk"><h4>' + esc(label) + '</h4><ul class="plain ' + (cls || '') + '">' + lis + '</ul></div>';
+  }
+
+  function askBlock(arr) {
+    if (!arr || !arr.length) return '';
+    var lis = arr.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('');
+    return '<div class="blk"><h4>Ask before you quote</h4><ul class="ask">' + lis + '</ul></div>';
+  }
+
+  function mapBlock(arr) {
+    if (!arr || !arr.length) return '';
+    var rows = arr.map(function (m) {
+      return '<div class="maprow"><div class="mapif">' + esc(m.if) +
+        '</div><i class="ti ti-arrow-right maparrow"></i><div class="mapthen">' + esc(m.then) + '</div></div>';
+    }).join('');
+    return '<div class="blk"><h4>Their answer points to</h4><div class="map">' + rows + '</div></div>';
+  }
+
+  function sayBlock(say, label) {
+    if (!say) return '';
+    var bar = LANGS.map(function (l) {
+      return '<button type="button" data-lang="' + l[0] + '" aria-pressed="' + (state.lang === l[0]) + '">' + esc(l[1]) + '</button>';
+    }).join('');
+    var text = say[state.lang] || say.en || '';
+    return '<div class="blk"><h4>' + esc(label || 'The line to say') + '</h4>' +
+      '<div class="langbar">' + bar + '</div>' +
+      '<div class="say">' + esc(text) + '</div>' +
+      '<button class="copy" type="button"><i class="ti ti-copy"></i>Copy</button></div>';
+  }
+
+  function kbBlock(keys) {
+    if (!keys || !keys.length) return '';
+    var inner = keys.map(function (k) {
+      var v = state.kb[k];
+      if (!v) return '';
+      var txt = typeof v === 'string' ? v : JSON.stringify(v, null, 2);
+      var name = k.replace(/_/g, ' ');
+      return '<details class="kb"><summary><i class="ti ti-chevron-right"></i> ' + esc(name) + '</summary><pre>' + esc(txt) + '</pre></details>';
+    }).join('');
+    if (!inner.replace(/\s/g, '')) return '';
+    return '<div class="blk"><h4>Go deeper</h4>' + inner + '</div>';
+  }
+
+  /* ---------------- card renderers ---------------- */
+
+  function cardShell(item, badge, inner) {
+    return '<details class="card" data-slug="' + esc(item.slug) + '">' +
+      '<summary>' +
+      (badge ? '<div class="cstep">' + esc(badge) + '</div>' : '') +
+      '<div class="ctxt"><div class="ctitle">' + esc(item.title) + '</div>' +
+      (item.subtitle ? '<div class="csub">' + esc(item.subtitle) + '</div>' : '') +
+      '</div><i class="ti ti-chevron-down cchev"></i></summary>' +
+      '<div class="body">' + inner + '</div></details>';
+  }
+
+  function renderKnowledge(item) {
+    var c = item.content || {};
+    var h = '';
+    if (c.what) h += '<p class="lead">' + esc(c.what) + '</p>';
+    var p = pricesHtml(item.svc);
+    if (p) h += '<div class="blk"><h4>What we sell</h4>' + p + '</div>';
+    h += askBlock(c.ask);
+    h += mapBlock(c.map);
+    h += sayBlock(c.say);
+    h += listBlock('Never do this', c.avoid, 'avoid');
+    h += listBlock('Worth knowing', c.notes);
+    h += kbBlock(item.kb_keys);
+    return cardShell(item, null, h);
+  }
+
+  function renderReply(item) {
+    var c = item.content || {};
+    var h = '';
+    if (c.why) h += '<div class="blk"><h4>Why they are asking</h4><p>' + esc(c.why) + '</p></div>';
+    h += sayBlock(c.say, 'What we say');
+    h += listBlock('Never do this', c.avoid, 'avoid');
+    h += kbBlock(item.kb_keys);
+    return cardShell(item, null, h);
+  }
+
+  function renderClose(item, idx) {
+    var c = item.content || {};
+    var h = '';
+    if (c.goal) h += '<div class="blk"><h4>Goal of this stage</h4><p>' + esc(c.goal) + '</p></div>';
+    h += sayBlock(c.send, 'What to send');
+    h += listBlock('What kills it here', c.kills, 'avoid');
+    if (c.next) h += '<div class="blk"><h4>Move on when</h4><p>' + esc(c.next) + '</p></div>';
+    h += kbBlock(item.kb_keys);
+    return cardShell(item, String(idx), h);
+  }
+
+  function renderItem(item, idx) {
+    if (item.tab === 'knowledge') return renderKnowledge(item);
+    if (item.tab === 'replies') return renderReply(item);
+    return renderClose(item, idx);
+  }
+
+  /* ---------------- search ---------------- */
+
+  function haystack(item) {
+    if (item._hay) return item._hay;
+    var bits = [item.title, item.subtitle, item.grp, (item.kb_keys || []).join(' ')];
+    (function walk(v) {
+      if (v == null) return;
+      if (typeof v === 'string') { bits.push(v); return; }
+      if (Array.isArray(v)) { v.forEach(walk); return; }
+      if (typeof v === 'object') { Object.keys(v).forEach(function (k) { walk(v[k]); }); }
+    })(item.content);
+    item._hay = bits.join(' \n ').toLowerCase();
+    return item._hay;
+  }
+
+  var TABNAME = { knowledge: 'Knowledge', replies: 'Sales Replies', close: 'Step To Close' };
+
+  /* ---------------- render ---------------- */
+
+  function groupsFor(tab) {
+    var seen = [];
+    state.deck.forEach(function (d) {
+      if (d.tab === tab && d.grp && seen.indexOf(d.grp) < 0) seen.push(d.grp);
+    });
+    return seen;
+  }
+
+  function label(g) { return g.charAt(0).toUpperCase() + g.slice(1); }
+
+  function renderChips() {
+    var box = $('chips');
+    if (state.q || state.tab === 'close') { box.innerHTML = ''; box.style.display = 'none'; return; }
+    var gs = groupsFor(state.tab);
+    if (gs.length < 2) { box.innerHTML = ''; box.style.display = 'none'; return; }
+    box.style.display = 'flex';
+    box.innerHTML = '<button type="button" data-grp="" aria-pressed="' + (!state.grp) + '">All</button>' +
+      gs.map(function (g) {
+        return '<button type="button" data-grp="' + esc(g) + '" aria-pressed="' + (state.grp === g) + '">' + esc(label(g)) + '</button>';
+      }).join('');
+  }
+
+  function renderList() {
+    var box = $('list');
+    var html = '';
+
+    if (state.q) {
+      var q = state.q.toLowerCase();
+      var hits = state.deck.filter(function (d) { return haystack(d).indexOf(q) > -1; });
+      if (!hits.length) {
+        box.innerHTML = '<div class="empty"><i class="ti ti-search-off"></i>Nothing found for “' + esc(state.q) + '”.<br>Try a shorter word.</div>';
+        return;
+      }
+      html += '<div class="rescount">' + hits.length + ' result' + (hits.length === 1 ? '' : 's') + '</div>';
+      hits.forEach(function (d, i) {
+        var card = renderItem(d, i + 1);
+        card = card.replace('</div><i class="ti ti-chevron-down cchev">',
+          '<div class="csub"><span class="restag">' + esc(TABNAME[d.tab]) + '</span></div></div><i class="ti ti-chevron-down cchev">');
+        html += card;
+      });
+      box.innerHTML = html;
+      return;
+    }
+
+    var items = state.deck.filter(function (d) {
+      if (d.tab !== state.tab) return false;
+      if (state.grp && d.grp !== state.grp) return false;
+      return true;
+    });
+
+    if (!items.length) {
+      box.innerHTML = '<div class="empty"><i class="ti ti-inbox"></i>Nothing here yet.</div>';
+      return;
+    }
+
+    items.forEach(function (d, i) { html += renderItem(d, i + 1); });
+    box.innerHTML = html;
+  }
+
+  function render() { renderChips(); renderList(); }
+
+  /* ---------------- events ---------------- */
+
+  function bind() {
+    Array.prototype.forEach.call(document.querySelectorAll('.tabs button'), function (b) {
+      b.addEventListener('click', function () {
+        Array.prototype.forEach.call(document.querySelectorAll('.tabs button'), function (x) {
+          x.setAttribute('aria-selected', String(x === b));
+        });
+        state.tab = b.getAttribute('data-tab');
+        state.grp = null;
+        render();
+        window.scrollTo({ top: 0, behavior: 'auto' });
+      });
+    });
+
+    $('chips').addEventListener('click', function (e) {
+      var b = e.target.closest('button[data-grp]');
+      if (!b) return;
+      var g = b.getAttribute('data-grp');
+      state.grp = g || null;
+      render();
+    });
+
+    var qEl = $('q');
+    var t = null;
+    qEl.addEventListener('input', function () {
+      $('qclr').style.display = qEl.value ? 'block' : 'none';
+      clearTimeout(t);
+      t = setTimeout(function () { state.q = qEl.value.trim(); render(); }, 140);
+    });
+    $('qclr').addEventListener('click', function () {
+      qEl.value = ''; state.q = ''; $('qclr').style.display = 'none'; render(); qEl.focus();
+    });
+
+    $('list').addEventListener('click', function (e) {
+      var lb = e.target.closest('.langbar button');
+      if (lb) {
+        state.lang = lb.getAttribute('data-lang');
+        try { localStorage.setItem('gl_deck_lang', state.lang); } catch (err) { /* UI state only */ }
+        var open = [];
+        Array.prototype.forEach.call(document.querySelectorAll('.card[open]'), function (d) {
+          open.push(d.getAttribute('data-slug'));
+        });
+        var y = window.scrollY;
+        renderList();
+        open.forEach(function (s) {
+          var d = document.querySelector('.card[data-slug="' + s + '"]');
+          if (d) d.setAttribute('open', '');
+        });
+        window.scrollTo(0, y);
+        return;
+      }
+
+      var cp = e.target.closest('.copy');
+      if (cp) {
+        var blk = cp.previousElementSibling;
+        var txt = blk ? blk.textContent : '';
+        var done = function () {
+          cp.classList.add('done');
+          cp.innerHTML = '<i class="ti ti-check"></i>Copied';
+          setTimeout(function () {
+            cp.classList.remove('done');
+            cp.innerHTML = '<i class="ti ti-copy"></i>Copy';
+          }, 1600);
+        };
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(txt).then(done, function () { fallbackCopy(txt, done); });
+        } else {
+          fallbackCopy(txt, done);
+        }
+      }
+    });
+  }
+
+  function fallbackCopy(txt, done) {
+    var ta = document.createElement('textarea');
+    ta.value = txt;
+    ta.setAttribute('readonly', '');
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand('copy'); done(); } catch (e) { /* clipboard blocked */ }
+    document.body.removeChild(ta);
+  }
+
+  /* ---------------- boot ---------------- */
+
+  function start(session) {
+    $('gate').style.display = 'none';
+    $('app').classList.remove('hide');
+    var em = session && session.user ? session.user.email : '';
+    $('me').textContent = em || '';
+    load().then(function () {
+      bind();
+      render();
+    }).catch(function (err) {
+      $('list').innerHTML = '<div class="empty"><i class="ti ti-alert-triangle"></i>Could not load the deck.<br>' +
+        esc(err && err.message ? err.message : String(err)) + '</div>';
+    });
+  }
+
+  $('signin').addEventListener('click', signIn);
+  $('pw').addEventListener('keydown', function (e) { if (e.key === 'Enter') signIn(); });
+
+  sb.auth.getSession().then(function (r) {
+    var s = r && r.data ? r.data.session : null;
+    if (s) start(s); else showGate('');
+  }).catch(function () { showGate(''); });
+
+})();
+</script>
+</body>
+</html>
