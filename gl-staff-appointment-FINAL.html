@@ -103,6 +103,12 @@
   <div class="bktabs">
     <button class="bktab on" id="tabNew" onclick="showBkTab('new')">＋ New Booking</button>
     <button class="bktab" id="tabPending" onclick="showBkTab('pending')">🧾 FOC Pending <span id="pendCount" class="pendbadge">0</span></button>
+    <button class="bktab" id="tabUpcoming" onclick="showBkTab('upcoming')">📅 Upcoming</button>
+  </div>
+
+  <div class="body hidden" id="bodyUpcoming">
+    <div class="hint" style="margin-bottom:10px">Bookings from today onward. Tap one to move it to another day or time.</div>
+    <div id="upList"><div class="hint">Loading…</div></div>
   </div>
 
   <div class="body" id="bodyNew">
@@ -277,9 +283,89 @@ let PENDING=[];
 function showBkTab(t){
   $('tabNew').classList.toggle('on',t==='new');
   $('tabPending').classList.toggle('on',t==='pending');
+  $('tabUpcoming').classList.toggle('on',t==='upcoming');
   $('bodyNew').classList.toggle('hidden',t!=='new');
   $('bodyPending').classList.toggle('hidden',t!=='pending');
+  $('bodyUpcoming').classList.toggle('hidden',t!=='upcoming');
   if(t==='pending') loadPending();
+  if(t==='upcoming') loadUpcoming();
+}
+
+/* ---------- upcoming bookings + reschedule ---------- */
+let UPCOMING=[];
+const nf=v=>String(v).padStart(2,'0');
+const isoDate=d=>d.getFullYear()+'-'+nf(d.getMonth()+1)+'-'+nf(d.getDate());
+function bkField(notes,key){
+  const m=String(notes||'').match(new RegExp(key+":\\s*([^|\\[]+)"));
+  return m?m[1].trim():'';
+}
+async function loadUpcoming(){
+  const box=$('upList');
+  if(!connected){ box.innerHTML='<div class="hint">Not connected.</div>'; return; }
+  box.innerHTML='<div class="hint">Loading…</div>';
+  const from=new Date(); from.setHours(0,0,0,0);
+  const {data,error}=await sb.from('gl_bookings').select('*')
+    .gte('scheduled_at',from.toISOString())
+    .order('scheduled_at',{ascending:true}).limit(120);
+  if(error){ box.innerHTML='<div class="hint">Error: '+error.message+'</div>'; return; }
+  UPCOMING=data||[];
+  if(!UPCOMING.length){ box.innerHTML='<div class="hint">No upcoming bookings.</div>'; return; }
+  box.innerHTML=UPCOMING.map((b,i)=>{
+    const d=new Date(b.scheduled_at);
+    const nm=bkField(b.notes,'Name')||'-';
+    const pl=bkField(b.notes,'Plate')||'';
+    const car=bkField(b.notes,'Car')||'';
+    return '<div class="card" style="margin-bottom:8px;padding:12px">'+
+      '<div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start">'+
+        '<div><div style="font-weight:800">'+esc(nm)+(pl?' · '+esc(pl):'')+'</div>'+
+        '<div class="hint" style="margin:2px 0">'+esc(car)+'</div>'+
+        '<div class="hint">'+esc(b.service_name||'')+'</div></div>'+
+        '<div style="text-align:right;white-space:nowrap">'+
+          '<div style="font-weight:800;color:var(--gold)">'+d.toLocaleDateString('en-GB',{day:'2-digit',month:'short'})+'</div>'+
+          '<div class="hint">'+d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',hour12:true})+'</div>'+
+        '</div></div>'+
+      '<button class="btn btn2" style="margin-top:10px;width:100%" onclick="openReschedule('+i+')">Reschedule</button>'+
+    '</div>';
+  }).join('');
+}
+
+function openReschedule(i){
+  const b=UPCOMING[i]; if(!b) return;
+  const d=new Date(b.scheduled_at);
+  const nm=bkField(b.notes,'Name')||'-';
+  const box=$('upList');
+  box.innerHTML='<button class="btn btn2" style="margin-bottom:12px" onclick="loadUpcoming()">&#8592; Back</button>'+
+    '<div class="card" style="padding:14px">'+
+      '<div style="font-weight:800;font-size:15px">'+esc(nm)+'</div>'+
+      '<div class="hint" style="margin-bottom:12px">Currently '+d.toLocaleDateString('en-GB',{weekday:'short',day:'2-digit',month:'short'})+
+        ' at '+d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',hour12:true})+'</div>'+
+      '<div class="field"><label>New date</label><input type="date" id="rsDate" value="'+isoDate(d)+'"></div>'+
+      '<div class="field"><label>New time</label><select id="rsTime">'+
+        SLOT_TIMES.map(t=>'<option'+(fmtSlot(d)===t?' selected':'')+'>'+t+'</option>').join('')+
+      '</select></div>'+
+      '<button class="btn" style="width:100%" onclick="saveReschedule(\''+b.id+'\')">SAVE NEW DATE</button>'+
+      '<div id="rsMsg" class="hint" style="margin-top:8px"></div>'+
+    '</div>';
+}
+function fmtSlot(d){
+  let h=d.getHours(), m=d.getMinutes(); const ap=h>=12?'PM':'AM'; h=h%12||12;
+  return h+':'+nf(m)+' '+ap;
+}
+async function saveReschedule(id){
+  const dv=$('rsDate').value, tv=$('rsTime').value;
+  const msg=$('rsMsg');
+  if(!dv){ msg.textContent='Pick a date.'; return; }
+  const m=tv.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+  if(!m){ msg.textContent='Pick a time.'; return; }
+  let hh=parseInt(m[1],10)%12; if(/PM/i.test(m[3])) hh+=12;
+  const parts=dv.split('-').map(Number);
+  const when=new Date(parts[0],parts[1]-1,parts[2],hh,parseInt(m[2],10),0);
+  msg.textContent='Saving…';
+  const {error}=await sb.from('gl_bookings')
+    .update({scheduled_at:when.toISOString()}).eq('id',id);
+  if(error){ msg.textContent='Error: '+error.message; return; }
+  msg.textContent='Moved. The sheet updates on the next sync.';
+  setTimeout(loadUpcoming,900);
 }
 async function loadPending(){
   if(!connected) return;
