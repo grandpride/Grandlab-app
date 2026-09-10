@@ -572,6 +572,7 @@
     if (c.why) h += '<div class="blk"><h4>Why they are asking</h4><p>' + esc(c.why) + '</p></div>';
     h += sayBlock(c.say, 'What we say');
     h += listBlock('Never do this', c.avoid, 'avoid');
+    h += listBlock('Worth knowing', c.notes);
     h += kbBlock(item.kb_keys);
     return cardShell(item, null, h);
   }
