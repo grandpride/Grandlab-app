@@ -795,7 +795,11 @@
 
   var MSG = {
     head:   { en: 'GrandLab Detailing', bm: 'GrandLab Detailing', zh: 'GrandLab Detailing' },
-    quote:  { en: 'Quote for your', bm: 'Sebut harga untuk', zh: '报价 —' },
+    quote:  {
+      en: 'Mix and match quote for your beloved car',
+      bm: 'Sebut harga mix and match untuk kereta kesayangan encik',
+      zh: '为老板爱车准备的 mix and match 报价'
+    },
     retail: { en: 'Retail total', bm: 'Jumlah retail', zh: '原价总额' },
     less:   { en: 'Less', bm: 'Tolak', zh: '折扣' },
     fin:    { en: 'Final price', bm: 'Harga akhir', zh: '最终价钱' },
@@ -892,7 +896,7 @@
   function buildMessage() {
     var m = state.mix, L = state.lang, t = mixTotals(), out = [];
     out.push('🚗 ' + MSG.head[L]);
-    out.push(MSG.quote[L] + ' ' + m.type);
+    out.push(MSG.quote[L]);
     out.push('');
     m.items.forEach(function (s, i) {
       var sp = (state.specs[s.brand] || {}).specs || {};
