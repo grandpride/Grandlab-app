@@ -301,6 +301,21 @@
   .mixtot .mt-final span{color:var(--txt); font-weight:600}
   .mixtot .mt-final b{color:var(--gold); font-size:17px; font-weight:750}
 
+  .modechips{padding:0 0 10px}
+  .part{margin:0 0 16px}
+  .part-h{
+    font-size:11px; font-weight:700; letter-spacing:.4px; color:var(--dim2);
+    text-transform:uppercase; margin-bottom:6px;
+  }
+  .partbtns{display:flex; gap:8px; margin-top:8px}
+  .partbtns .copy{margin-top:0}
+  .sendbtn{
+    background:var(--gold); border:0; color:#111; font-weight:700;
+    border-radius:10px; padding:7px 14px; font-size:12.5px; cursor:pointer;
+    display:inline-flex; align-items:center; gap:6px;
+  }
+  .sendbtn.sent{background:#2a2a2a; color:var(--ok)}
+
   .mixsend{display:flex; gap:8px; margin-top:10px}
   .mixsend input{
     flex:1; min-width:0; background:#101010; border:1px solid var(--border); color:var(--txt);
@@ -901,55 +916,73 @@
     return { retail: retail, discBase: discBase, cap: cap, pct: pct, off: off, final: retail - off };
   }
 
-  function buildMessage() {
-    var m = state.mix, L = state.lang, t = mixTotals(), out = [];
-    out.push('🚗 ' + MSG.head[L]);
-    out.push(fill(MSG.quote[L], L));
-    out.push('');
-    m.items.forEach(function (s, i) {
-      var sp = (state.specs[s.brand] || {}).specs || {};
-      out.push((CATEMOJI[s.category] || '🔹') + ' ' + (i + 1) + ') ' + s.name);
-      if (s._custom) {
-        customBullets(s, L).forEach(function (b) { out.push('• ' + b); });
-        out.push('💵 ' + (money(priceFor(s, m.type)) || '-'));
-        out.push('');
-        return;
-      }
-      var cov = coverageFor(s, L);
-      if (cov && cov.length) {
-        out.push('📋 ' + LBL.covered[L] + ':');
-        cov.forEach(function (x) {
-          if (x.charAt(0) === '*') out.push('   ✳️ ' + x.slice(1));
-          else out.push('   • ' + x);
-        });
-      }
-      if (sp.thickness) out.push('• ' + LBL.thickness[L] + ': ' + sp.thickness);
-      if (sp.finish) out.push('• ' + LBL.finish[L] + ': ' + tr(sp.finish, L));
-      if (sp.topcoat) out.push('• ' + LBL.topcoat[L] + ': ' + tr(sp.topcoat, L));
-      if (sp.hardness) out.push('• ' + LBL.hardness[L] + ': ' + sp.hardness);
-      if (sp.warranty) out.push('• ' + LBL.warranty[L] + ': ' + tr(sp.warranty, L));
-      if (sp.accident) out.push('• ' + LBL.accident[L] + ': ' + tr(sp.accident, L));
-      if (sp.wcover) out.push('• ' + LBL.wcover[L] + ': ' + tr(sp.wcover, L));
-      if (sp.maintenance) out.push('• ' + LBL.maint[L] + ': ' + tr(sp.maintenance, L));
-      var fv = focValue(s, L);
-      if (fv) out.push('🎁 ' + LBL.foc[L] + ': ' + fv);
-      (sp.extra || []).forEach(function (e) { out.push('• ' + tr(e, L)); });
-      out.push('💵 ' + (money(priceFor(s, m.type)) || '-'));
-      out.push('');
-    });
-    out.push('━━━━━━━━━━');
+  function itemBlock(s, i, L, m) {
+    var out = [];
+    var sp = (state.specs[s.brand] || {}).specs || {};
+    out.push((CATEMOJI[s.category] || '\u{1F539}') + ' ' + (i + 1) + ') ' + s.name);
+    if (s._custom) {
+      customBullets(s, L).forEach(function (b) { out.push('\u2022 ' + b); });
+      out.push('\u{1F4B5} ' + (money(priceFor(s, m.type)) || '-'));
+      return out;
+    }
+    var cov = coverageFor(s, L);
+    if (cov && cov.length) {
+      out.push('\u{1F4CB} ' + LBL.covered[L] + ':');
+      cov.forEach(function (x) {
+        if (x.charAt(0) === '*') out.push('   \u2733\uFE0F ' + x.slice(1));
+        else out.push('   \u2022 ' + x);
+      });
+    }
+    if (sp.thickness) out.push('\u2022 ' + LBL.thickness[L] + ': ' + sp.thickness);
+    if (sp.finish) out.push('\u2022 ' + LBL.finish[L] + ': ' + tr(sp.finish, L));
+    if (sp.topcoat) out.push('\u2022 ' + LBL.topcoat[L] + ': ' + tr(sp.topcoat, L));
+    if (sp.hardness) out.push('\u2022 ' + LBL.hardness[L] + ': ' + sp.hardness);
+    if (sp.warranty) out.push('\u2022 ' + LBL.warranty[L] + ': ' + tr(sp.warranty, L));
+    if (sp.accident) out.push('\u2022 ' + LBL.accident[L] + ': ' + tr(sp.accident, L));
+    if (sp.wcover) out.push('\u2022 ' + LBL.wcover[L] + ': ' + tr(sp.wcover, L));
+    if (sp.maintenance) out.push('\u2022 ' + LBL.maint[L] + ': ' + tr(sp.maintenance, L));
+    var fv = focValue(s, L);
+    if (fv) out.push('\u{1F381} ' + LBL.foc[L] + ': ' + fv);
+    (sp.extra || []).forEach(function (e) { out.push('\u2022 ' + tr(e, L)); });
+    out.push('\u{1F4B5} ' + (money(priceFor(s, m.type)) || '-'));
+    return out;
+  }
+
+  function priceBlock(L, t) {
+    var out = [];
     if (t.off > 0) {
-      out.push('💰 ' + MSG.retail[L] + ': ' + money(t.retail));
-      out.push('🏷️ ' + MSG.less[L] + ' ' + t.pct + '%: −' + money(t.off));
-      out.push('✅ ' + MSG.fin[L] + ': ' + money(t.final));
+      out.push('\u{1F4B0} ' + MSG.retail[L] + ': ' + money(t.retail));
+      out.push('\u{1F3F7}\uFE0F ' + MSG.less[L] + ' ' + t.pct + '%: \u2212' + money(t.off));
+      out.push('\u2705 ' + MSG.fin[L] + ': ' + money(t.final));
       out.push('');
       out.push(fill(MSG.terms[L], L));
     } else {
-      out.push('💰 ' + MSG.total[L] + ': ' + money(t.retail));
+      out.push('\u{1F4B0} ' + MSG.total[L] + ': ' + money(t.retail));
     }
     out.push('');
-    out.push('📅 ' + fill(MSG.ask[L], L));
-    return out.join('\n');
+    out.push('\u{1F4C5} ' + fill(MSG.ask[L], L));
+    return out;
+  }
+
+  function buildParts() {
+    var m = state.mix, L = state.lang, t = mixTotals(), parts = [];
+    if (!m.items.length) return parts;
+    m.items.forEach(function (s, i) {
+      var lines = [];
+      if (i === 0) {
+        lines.push('\u{1F697} ' + MSG.head[L]);
+        lines.push(fill(MSG.quote[L], L));
+        lines.push('');
+      }
+      lines = lines.concat(itemBlock(s, i, L, m));
+      parts.push(lines.join('\n'));
+    });
+    parts.push(priceBlock(L, t).join('\n'));
+    return parts;
+  }
+
+  function buildMessage() {
+    return buildParts().join('\n\n');
   }
 
   function mixPickResults() {
@@ -1055,13 +1088,35 @@
     var bar = LANGS.map(function (l) {
       return '<button type="button" data-mixlang="' + l[0] + '" aria-pressed="' + (state.lang === l[0]) + '">' + esc(l[1]) + '</button>';
     }).join('');
+    var modes = [['split', 'Split messages'], ['one', 'One message']].map(function (x) {
+      return '<button type="button" data-mixmode="' + x[0] + '" aria-pressed="' + ((m.mode || 'split') === x[0]) + '">' + esc(x[1]) + '</button>';
+    }).join('');
+
+    var body;
+    if ((m.mode || 'split') === 'one') {
+      body = '<div class="say">' + esc(buildMessage()) + '</div>' +
+        '<div class="partbtns">' +
+        '<button class="copy" type="button" data-pcopy="all"><i class="ti ti-copy"></i>Copy</button>' +
+        '<button class="sendbtn" type="button" data-psend="all"><i class="ti ti-brand-whatsapp"></i>Send</button>' +
+        '</div>';
+    } else {
+      var parts = buildParts();
+      body = parts.map(function (p, i) {
+        return '<div class="part"><div class="part-h">Message ' + (i + 1) + ' of ' + parts.length + '</div>' +
+          '<div class="say">' + esc(p) + '</div>' +
+          '<div class="partbtns">' +
+          '<button class="copy" type="button" data-pcopy="' + i + '"><i class="ti ti-copy"></i>Copy</button>' +
+          '<button class="sendbtn" type="button" data-psend="' + i + '"><i class="ti ti-brand-whatsapp"></i>Send</button>' +
+          '</div></div>';
+      }).join('');
+    }
+
     return '<div class="blk"><h4>WhatsApp message</h4>' +
       '<div class="langbar mixlangbar">' + bar + '</div>' +
-      '<div class="say" id="mixMsgText">' + esc(buildMessage()) + '</div>' +
-      '<button class="copy" type="button" id="mixCopy"><i class="ti ti-copy"></i>Copy</button>' +
-      '<div class="mixsend"><input id="mixPhone" type="tel" inputmode="tel" placeholder="Customer number e.g. 0123456789" value="' + esc(m.phone) + '">' +
-      '<button type="button" id="mixWa"><i class="ti ti-brand-whatsapp"></i>Open WhatsApp</button></div>' +
-      '<div class="mixhint">This opens WhatsApp with the message ready. You still press send.</div></div>';
+      '<div class="chips mixchips modechips">' + modes + '</div>' +
+      '<div class="mixsend"><input id="mixPhone" type="tel" inputmode="tel" placeholder="Customer number e.g. 0123456789" value="' + esc(m.phone) + '"></div>' +
+      body +
+      '<div class="mixhint">Send opens WhatsApp with that message ready \u2014 you still press send there. Send message 1, come back, then send the next.</div></div>';
   }
 
   function renderMix() {
@@ -1092,12 +1147,12 @@
     var o = $('mixOut'); if (o) o.innerHTML = mixOutHtml();
   }
 
-  function waHref() {
+  function waHref(text) {
     var digits = (state.mix.phone || '').replace(/[^0-9]/g, '');
     if (!digits) return null;
     if (digits.charAt(0) === '0') digits = '60' + digits.slice(1);
     else if (digits.slice(0, 2) !== '60') digits = '60' + digits;
-    return 'https://wa.me/' + digits + '?text=' + encodeURIComponent(buildMessage());
+    return 'https://wa.me/' + digits + '?text=' + encodeURIComponent(text || buildMessage());
   }
 
   function bindMix() {
@@ -1191,12 +1246,16 @@
         return;
       }
 
-      if (e.target.closest('#mixCopy')) {
-        var btn = e.target.closest('#mixCopy');
-        var txt = buildMessage();
+      var mo = e.target.closest('[data-mixmode]');
+      if (mo) { state.mix.mode = mo.getAttribute('data-mixmode'); refreshMix('out'); return; }
+
+      var pc = e.target.closest('[data-pcopy]');
+      if (pc) {
+        var which = pc.getAttribute('data-pcopy');
+        var txt = which === 'all' ? buildMessage() : buildParts()[Number(which)];
         var done = function () {
-          btn.classList.add('done'); btn.innerHTML = '<i class="ti ti-check"></i>Copied';
-          setTimeout(function () { btn.classList.remove('done'); btn.innerHTML = '<i class="ti ti-copy"></i>Copy'; }, 1600);
+          pc.classList.add('done'); pc.innerHTML = '<i class="ti ti-check"></i>Copied';
+          setTimeout(function () { pc.classList.remove('done'); pc.innerHTML = '<i class="ti ti-copy"></i>Copy'; }, 1600);
         };
         if (navigator.clipboard && navigator.clipboard.writeText) {
           navigator.clipboard.writeText(txt).then(done, function () { fallbackCopy(txt, done); });
@@ -1204,10 +1263,15 @@
         return;
       }
 
-      if (e.target.closest('#mixWa')) {
-        var href = waHref();
-        if (!href) { var pi = $('mixPhone'); if (pi) pi.focus(); return; }
+      var ps = e.target.closest('[data-psend]');
+      if (ps) {
+        var w = ps.getAttribute('data-psend');
+        var t2 = w === 'all' ? buildMessage() : buildParts()[Number(w)];
+        var href = waHref(t2);
+        if (!href) { var pi = $('mixPhone'); if (pi) { pi.focus(); } return; }
         window.open(href, '_blank');
+        ps.classList.add('sent');
+        return;
       }
     });
   }
@@ -1391,7 +1455,7 @@
       }
 
       var cp = e.target.closest('.copy');
-      if (cp && cp.id !== 'mixCopy') {
+      if (cp && !cp.hasAttribute('data-pcopy')) {
         var blk = cp.previousElementSibling;
         var txt = blk ? blk.textContent : '';
         var done = function () {
