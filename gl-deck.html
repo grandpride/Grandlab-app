@@ -738,34 +738,40 @@
 
   var COVERAGE = {
     front: {
-      en: 'Front bonnet, front bumper, headlamp, front fenders, side mirror and door cup',
-      bm: 'Bonnet depan, bumper depan, headlamp, fender depan, side mirror dan door cup',
-      zh: '前引擎盖、前保险杠、车头灯、前叶子板、后视镜和门把凹槽'
+      en: ['Front bonnet', 'Front bumper', 'Headlamp', 'Front fenders', 'Side mirror', 'Door cup'],
+      bm: ['Bonnet depan', 'Bumper depan', 'Headlamp', 'Fender depan', 'Side mirror', 'Door cup'],
+      zh: ['前引擎盖', '前保险杠', '车头灯', '前叶子板', '后视镜', '门把凹槽']
     },
     fullcar: {
-      en: 'Pillars, bonnet, bumper, fenders, doors, roof, headlights, side mirror and door handles',
-      bm: 'Pillar, bonnet, bumper, fender, pintu, bumbung, headlamp, side mirror dan door handle',
-      zh: '立柱、引擎盖、保险杠、叶子板、车门、车顶、车头灯、后视镜和门把'
+      en: ['Pillars', 'Bonnet', 'Bumper', 'Fenders', 'Doors', 'Roof', 'Headlights', 'Side mirror', 'Door handles'],
+      bm: ['Pillar', 'Bonnet', 'Bumper', 'Fender', 'Pintu', 'Bumbung', 'Headlamp', 'Side mirror', 'Door handle'],
+      zh: ['立柱', '引擎盖', '保险杠', '叶子板', '车门', '车顶', '车头灯', '后视镜', '门把']
     },
     colour: {
-      en: 'Bonnet, fenders, bumper, doors, roof, trunk lid, rocker panel, side mirror, door knob and headlamp',
-      bm: 'Bonnet, fender, bumper, pintu, bumbung, trunk lid, rocker panel, side mirror, door knob dan headlamp',
-      zh: '引擎盖、叶子板、保险杠、车门、车顶、行李箱盖、侧裙、后视镜、门把和车头灯'
+      en: ['Bonnet', 'Fenders', 'Bumper', 'Doors', 'Roof', 'Trunk lid', 'Rocker panel', 'Side mirror', 'Door knob', 'Headlamp'],
+      bm: ['Bonnet', 'Fender', 'Bumper', 'Pintu', 'Bumbung', 'Trunk lid', 'Rocker panel', 'Side mirror', 'Door knob', 'Headlamp'],
+      zh: ['引擎盖', '叶子板', '保险杠', '车门', '车顶', '行李箱盖', '侧裙', '后视镜', '门把', '车头灯']
     },
     tbc: {
-      en: 'Panel list to be confirmed — we will send you the exact panels covered',
-      bm: 'Senarai panel akan disahkan — kitorang akan hantar senarai tepat',
-      zh: '涵盖部位待确认 — 我们会把确切清单发给老板'
+      en: ['Panel list to be confirmed — we will send you the exact panels covered'],
+      bm: ['Senarai panel akan disahkan — kitorang akan hantar senarai tepat'],
+      zh: ['涵盖部位待确认 — 我们会把确切清单发给老板']
     },
     coating: {
-      en: 'Full exterior body paint, windscreen and glass, head and tail lamps, plastic trim, engine bay, rims and interior',
-      bm: 'Seluruh cat body luar, cermin depan dan kaca, lampu depan dan belakang, plastic trim, engine bay, rim dan interior',
-      zh: '全车外部车漆、挡风玻璃与车窗、前后车灯、塑料饰条、引擎室、轮圈和内装'
+      en: ['Body coat', 'Windscreen & windows coat', 'Headlamp & rear lamp coat',
+           '*3 Steps Polish For Exterior Car Body',
+           'Plastic trim coat', 'Engine bay coat', 'Rims coat', 'Interior coat', 'Car wash & vacuum'],
+      bm: ['Body coat', 'Coat cermin depan & tingkap', 'Coat headlamp & lampu belakang',
+           '*3 Steps Polish untuk body luar kereta',
+           'Coat plastic trim', 'Coat engine bay', 'Coat rim', 'Coat interior', 'Cuci kereta & vacuum'],
+      zh: ['车身镀膜', '挡风玻璃与车窗镀膜', '前后车灯镀膜',
+           '*车身外部 3 Steps Polish',
+           '塑料饰条镀膜', '引擎室镀膜', '轮圈镀膜', '内装镀膜', '洗车与吸尘']
     },
     tint: {
-      en: 'All windows',
-      bm: 'Semua cermin',
-      zh: '全车玻璃'
+      en: ['Windscreen', 'Front fender windows', 'Door windows', 'Rear fender windows', 'Rear windscreen'],
+      bm: ['Cermin depan', 'Front fender window', 'Cermin pintu', 'Rear fender window', 'Cermin belakang'],
+      zh: ['前挡风玻璃', '前三角窗', '车门玻璃', '后三角窗', '后挡风玻璃']
     }
   };
 
@@ -898,7 +904,13 @@
         return;
       }
       var cov = coverageFor(s, L);
-      if (cov) out.push('• ' + LBL.covered[L] + ': ' + cov);
+      if (cov && cov.length) {
+        out.push('📋 ' + LBL.covered[L] + ':');
+        cov.forEach(function (x) {
+          if (x.charAt(0) === '*') out.push('   ✳️ ' + x.slice(1));
+          else out.push('   • ' + x);
+        });
+      }
       if (sp.thickness) out.push('• ' + LBL.thickness[L] + ': ' + sp.thickness);
       if (sp.finish) out.push('• ' + LBL.finish[L] + ': ' + tr(sp.finish, L));
       if (sp.topcoat) out.push('• ' + LBL.topcoat[L] + ': ' + tr(sp.topcoat, L));
