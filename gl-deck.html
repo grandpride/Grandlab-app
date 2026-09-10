@@ -794,6 +794,9 @@
     covered:  { en: 'Covered',  bm: 'Cover',      zh: '涵盖' },
     thickness:{ en: 'Thickness',bm: 'Ketebalan',  zh: '厚度' },
     finish:   { en: 'Finish',   bm: 'Finish',     zh: '面漆效果' },
+    vlt:      { en: 'VLT',      bm: 'VLT',        zh: '透光率 VLT' },
+    uvr:      { en: 'UV rejection', bm: 'Penolakan UV', zh: '紫外线阻隔 UVR' },
+    irr:      { en: 'Infrared rejection', bm: 'Penolakan IR', zh: '红外线阻隔 IRR' },
     topcoat:  { en: 'Topcoat',  bm: 'Topcoat',    zh: '面涂层' },
     hardness: { en: 'Hardness', bm: 'Kekerasan',  zh: '硬度' },
     warranty: { en: 'Warranty', bm: 'Warranty',   zh: '保固' },
@@ -934,6 +937,9 @@
     }
     if (sp.thickness) out.push('\u2022 ' + LBL.thickness[L] + ': ' + sp.thickness);
     if (sp.finish) out.push('\u2022 ' + LBL.finish[L] + ': ' + tr(sp.finish, L));
+    if (sp.vlt) out.push('\u2022 ' + LBL.vlt[L] + ': ' + tr(sp.vlt, L));
+    if (sp.uvr) out.push('\u2022 ' + LBL.uvr[L] + ': ' + tr(sp.uvr, L));
+    if (sp.irr) out.push('\u2022 ' + LBL.irr[L] + ': ' + tr(sp.irr, L));
     if (sp.topcoat) out.push('\u2022 ' + LBL.topcoat[L] + ': ' + tr(sp.topcoat, L));
     if (sp.hardness) out.push('\u2022 ' + LBL.hardness[L] + ': ' + sp.hardness);
     if (sp.warranty) out.push('\u2022 ' + LBL.warranty[L] + ': ' + tr(sp.warranty, L));
