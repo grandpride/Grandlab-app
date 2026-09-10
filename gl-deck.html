@@ -224,8 +224,59 @@
   .pitem .pu b{color:var(--dim); font-weight:600}
   .pitem .pf{font-size:12.5px; color:#c9a86a; margin-top:5px}
 
-  .empty{text-align:center; color:var(--dim2); padding:44px 20px; font-size:14px}
-  .empty i{display:block; font-size:30px; margin-bottom:10px; opacity:.5}
+  /* mix & match */
+  .mixchips{padding:0 0 2px}
+  .mixsearch{margin-bottom:8px}
+  .mixhint{font-size:12.5px; color:var(--dim2); padding:6px 2px}
+  .mixadd{
+    width:100%; display:flex; align-items:center; gap:10px; text-align:left;
+    background:#101010; border:1px solid var(--border); border-radius:11px;
+    padding:9px 11px; margin:6px 0; cursor:pointer; font-size:13.5px;
+  }
+  .mixadd .ma-n{flex:1; color:#dcdcdc; min-width:0}
+  .mixadd .ma-p{color:var(--gold); font-weight:650; font-variant-numeric:tabular-nums}
+  .mixadd i{color:var(--dim2); font-size:16px}
+  .mixadd:hover{border-color:#3d3d3d}
+
+  .mixrow{display:flex; align-items:center; gap:10px; border:1px solid var(--border); border-radius:11px; padding:9px 11px; margin:6px 0; background:#101010}
+  .mixrow .mr-n{flex:1; font-size:13.5px; color:#dcdcdc; min-width:0}
+  .mixrow .mr-n small{display:block; color:var(--dim2); font-size:11px}
+  .mixrow .mr-p{color:var(--gold); font-weight:650; font-size:13.5px; font-variant-numeric:tabular-nums}
+  .mixrow .mr-x{background:none; border:0; color:var(--dim2); font-size:17px; padding:2px 0 2px 4px; cursor:pointer}
+
+  .mixdisc{display:flex; align-items:center; gap:10px; margin:12px 0 4px}
+  .mixdisc label{font-size:12px; color:var(--dim2); flex:0 0 auto}
+  .mixdisc input{
+    width:78px; background:#101010; border:1px solid var(--border); color:var(--txt);
+    border-radius:10px; padding:8px 10px; font-size:15px; outline:none; text-align:center;
+  }
+  .mixdisc input:focus{border-color:var(--gold)}
+  .mixcap{font-size:11.5px; color:var(--dim2)}
+  .mixwarn{
+    display:flex; gap:8px; align-items:flex-start; margin:8px 0 0;
+    border:1px solid rgba(232,185,58,.35); background:rgba(232,185,58,.06);
+    color:#e8b93a; border-radius:11px; padding:9px 11px; font-size:12.5px;
+  }
+  .mixtot{margin-top:12px; border-top:1px solid var(--border); padding-top:10px}
+  .mixtot div{display:flex; justify-content:space-between; padding:3px 0; font-size:13.5px; color:var(--dim)}
+  .mixtot b{font-variant-numeric:tabular-nums; color:#dcdcdc; font-weight:600}
+  .mixtot .mt-final{padding-top:7px; margin-top:5px; border-top:1px solid var(--border)}
+  .mixtot .mt-final span{color:var(--txt); font-weight:600}
+  .mixtot .mt-final b{color:var(--gold); font-size:17px; font-weight:750}
+
+  .mixsend{display:flex; gap:8px; margin-top:10px}
+  .mixsend input{
+    flex:1; min-width:0; background:#101010; border:1px solid var(--border); color:var(--txt);
+    border-radius:11px; padding:10px 12px; font-size:14px; outline:none;
+  }
+  .mixsend input:focus{border-color:#3d3d3d}
+  .mixsend button{
+    flex:0 0 auto; background:var(--gold); border:0; color:#111; font-weight:700;
+    border-radius:11px; padding:10px 14px; font-size:13.5px; cursor:pointer;
+    display:inline-flex; align-items:center; gap:6px;
+  }
+
+  .empty{text-align:center; color:var(--dim2); padding:44px 20px; font-size:14px}  .empty i{display:block; font-size:30px; margin-bottom:10px; opacity:.5}
   .rescount{font-size:12px; color:var(--dim2); padding:12px 0 0}
   .restag{
     display:inline-block; font-size:10.5px; font-weight:700; color:var(--dim2);
@@ -297,6 +348,7 @@
         <button role="tab" data-tab="knowledge" aria-selected="true"><i class="ti ti-book-2"></i>Knowledge</button>
         <button role="tab" data-tab="replies" aria-selected="false"><i class="ti ti-message-2"></i>Sales Replies</button>
         <button role="tab" data-tab="close" aria-selected="false"><i class="ti ti-route"></i>Step To Close</button>
+        <button role="tab" data-tab="mix" aria-selected="false"><i class="ti ti-calculator"></i>Mix &amp; Match</button>
       </div>
     </div>
   </header>
@@ -330,7 +382,9 @@
     deck: [],
     procs: [],
     services: [],
-    kb: {}
+    specs: {},
+    kb: {},
+    mix: { type: 'Sedan', items: [], disc: 0, phone: '', pickQ: '' }
   };
 
   try {
@@ -383,13 +437,15 @@
       sb.from('gl_deck').select('*').eq('hidden', false).order('tab').order('sort'),
       sb.from('gl_services').select('name,category,section,brand,subtitle,base_price,price_by_type,pkg_uses,hidden').or('hidden.is.null,hidden.eq.false'),
       sb.from('gl_mia_kb').select('data').eq('id', 'kb').maybeSingle(),
-      sb.from('gl_deck_proc').select('*').eq('hidden', false).order('grp').order('sort')
+      sb.from('gl_deck_proc').select('*').eq('hidden', false).order('grp').order('sort'),
+      sb.from('gl_deck_spec').select('*').order('sort')
     ]).then(function (res) {
       if (res[0].error) throw res[0].error;
       state.deck = res[0].data || [];
       state.services = (res[1] && res[1].data) || [];
       state.kb = (res[2] && res[2].data && res[2].data.data) || {};
       state.procs = (res[3] && res[3].data) || [];
+      ((res[4] && res[4].data) || []).forEach(function (s) { state.specs[s.brand] = s; });
     });
   }
 
@@ -616,6 +672,308 @@
     return renderClose(item, idx);
   }
 
+  /* ---------------- mix & match ---------------- */
+
+  var COVERAGE = {
+    front: {
+      en: 'Front bonnet, front bumper, headlamp, front fenders, side mirror and door cup',
+      bm: 'Bonnet depan, bumper depan, headlamp, fender depan, side mirror dan door cup',
+      zh: '前引擎盖、前保险杠、车头灯、前叶子板、后视镜和门把凹槽'
+    },
+    fullcar: {
+      en: 'Pillars, bonnet, bumper, fenders, doors, roof, headlights, side mirror and door handles',
+      bm: 'Pillar, bonnet, bumper, fender, pintu, bumbung, headlamp, side mirror dan door handle',
+      zh: '立柱、引擎盖、保险杠、叶子板、车门、车顶、车头灯、后视镜和门把'
+    },
+    colour: {
+      en: 'Bonnet, fenders, bumper, doors, roof, trunk lid, rocker panel, side mirror, door knob and headlamp',
+      bm: 'Bonnet, fender, bumper, pintu, bumbung, trunk lid, rocker panel, side mirror, door knob dan headlamp',
+      zh: '引擎盖、叶子板、保险杠、车门、车顶、行李箱盖、侧裙、后视镜、门把和车头灯'
+    },
+    tbc: {
+      en: 'Panel list to be confirmed — we will send you the exact panels covered',
+      bm: 'Senarai panel akan disahkan — kitorang akan hantar senarai tepat',
+      zh: '涵盖部位待确认 — 我们会把确切清单发给老板'
+    },
+    coating: {
+      en: 'Full body paint',
+      bm: 'Seluruh cat body',
+      zh: '全车车漆'
+    },
+    tint: {
+      en: 'All windows',
+      bm: 'Semua cermin',
+      zh: '全车玻璃'
+    }
+  };
+
+  var LBL = {
+    covered:  { en: 'Covered',  bm: 'Cover',      zh: '涵盖' },
+    thickness:{ en: 'Thickness',bm: 'Ketebalan',  zh: '厚度' },
+    finish:   { en: 'Finish',   bm: 'Finish',     zh: '面漆效果' },
+    topcoat:  { en: 'Topcoat',  bm: 'Topcoat',    zh: '面涂层' },
+    hardness: { en: 'Hardness', bm: 'Kekerasan',  zh: '硬度' },
+    warranty: { en: 'Warranty', bm: 'Warranty',   zh: '保固' },
+    accident: { en: 'Accident cover', bm: 'Accident cover', zh: '意外保障' },
+    wcover:   { en: 'Warranty covers', bm: 'Warranty cover', zh: '保固范围' },
+    maint:    { en: 'Maintenance', bm: 'Maintenance', zh: '定期保养' }
+  };
+
+  var MSG = {
+    head:   { en: 'GrandLab Detailing', bm: 'GrandLab Detailing', zh: 'GrandLab Detailing' },
+    quote:  { en: 'Quote for your', bm: 'Sebut harga untuk', zh: '报价 —' },
+    retail: { en: 'Retail total', bm: 'Jumlah retail', zh: '原价总额' },
+    yours:  { en: 'Your price', bm: 'Harga untuk encik', zh: '老板的价钱' },
+    total:  { en: 'Total', bm: 'Jumlah', zh: '总额' },
+    terms:  {
+      en: 'To lock in this price we just need a Google review and the deposit sir, then it is confirmed.',
+      bm: 'Untuk lock harga ni, kitorang cuma perlukan Google review dan deposit encik, lepas tu confirm.',
+      zh: '要锁定这个价钱，老板留个 Google review 加上订金就可以确认了。'
+    },
+    ask:    {
+      en: 'May I know when would suit you to bring the car in sir?',
+      bm: 'Boleh saya tahu bila sesuai untuk encik bawa kereta masuk?',
+      zh: '方便知道老板什么时候适合把车开过来吗？'
+    }
+  };
+
+  function tr(v, lang) {
+    if (v == null) return '';
+    if (typeof v === 'string') return v;
+    return v[lang] || v.en || '';
+  }
+
+  function priceFor(s, type) {
+    var pbt = s.price_by_type || {};
+    var v = pbt[type];
+    if (v === null || v === undefined || v === '') v = s.base_price;
+    var n = Number(v);
+    return (isFinite(n) && n > 0) ? n : 0;
+  }
+
+  function coverageFor(s, lang) {
+    var n = (s.name || '').toLowerCase();
+    var cat = s.category || '';
+    var full = n.indexOf('full car') > -1 || n.indexOf('full body') > -1;
+
+    if (cat === 'Coating') return full ? COVERAGE.coating[lang] : null;
+    if (cat === 'Tinted') return full ? COVERAGE.tint[lang] : null;
+
+    if (cat === 'PPF' || cat === 'Wrapping') {
+      if (n.indexOf('full front') > -1) return COVERAGE.front[lang];
+      if (full) {
+        var colour = cat === 'Wrapping' || n.indexOf('color ppf') > -1;
+        return colour ? COVERAGE.colour[lang] : COVERAGE.fullcar[lang];
+      }
+      if (n.indexOf('basic') > -1 || n.indexOf('entry') > -1) return COVERAGE.tbc[lang];
+    }
+    return null;
+  }
+
+  function itemCap(s) {
+    if (s.section !== 'Packages') return 0;
+    if ((s.name || '').toUpperCase().indexOf('PROMO') > -1) return 0;
+    var sp = state.specs[s.brand];
+    if (!sp || sp.max_disc === null || sp.max_disc === undefined) return 0;
+    return sp.max_disc;
+  }
+
+  function mixTotals() {
+    var m = state.mix, retail = 0, discBase = 0, cap = 100, anyCap = false;
+    m.items.forEach(function (s) {
+      var p = priceFor(s, m.type);
+      retail += p;
+      var c = itemCap(s);
+      if (c > 0) { discBase += p; anyCap = true; if (c < cap) cap = c; }
+    });
+    if (!anyCap) cap = 0;
+    var pct = Math.max(0, Math.min(Number(m.disc) || 0, cap));
+    var off = Math.round(discBase * pct / 100);
+    return { retail: retail, discBase: discBase, cap: cap, pct: pct, off: off, final: retail - off };
+  }
+
+  function buildMessage() {
+    var m = state.mix, L = state.lang, t = mixTotals(), out = [];
+    out.push(MSG.head[L]);
+    out.push(MSG.quote[L] + ' ' + m.type);
+    out.push('');
+    m.items.forEach(function (s, i) {
+      var sp = (state.specs[s.brand] || {}).specs || {};
+      out.push((i + 1) + ') ' + s.name);
+      var cov = coverageFor(s, L);
+      if (cov) out.push('• ' + LBL.covered[L] + ': ' + cov);
+      if (sp.thickness) out.push('• ' + LBL.thickness[L] + ': ' + sp.thickness);
+      if (sp.finish) out.push('• ' + LBL.finish[L] + ': ' + tr(sp.finish, L));
+      if (sp.topcoat) out.push('• ' + LBL.topcoat[L] + ': ' + tr(sp.topcoat, L));
+      if (sp.hardness) out.push('• ' + LBL.hardness[L] + ': ' + sp.hardness);
+      if (sp.warranty) out.push('• ' + LBL.warranty[L] + ': ' + tr(sp.warranty, L));
+      if (sp.accident) out.push('• ' + LBL.accident[L] + ': ' + tr(sp.accident, L));
+      if (sp.wcover) out.push('• ' + LBL.wcover[L] + ': ' + tr(sp.wcover, L));
+      if (sp.maintenance) out.push('• ' + LBL.maint[L] + ': ' + tr(sp.maintenance, L));
+      (sp.extra || []).forEach(function (e) { out.push('• ' + tr(e, L)); });
+      out.push('  ' + (money(priceFor(s, m.type)) || '-'));
+      out.push('');
+    });
+    if (t.off > 0) {
+      out.push(MSG.retail[L] + ': ' + money(t.retail));
+      out.push(MSG.yours[L] + ': ' + money(t.final));
+      out.push('');
+      out.push(MSG.terms[L]);
+    } else {
+      out.push(MSG.total[L] + ': ' + money(t.retail));
+    }
+    out.push('');
+    out.push(MSG.ask[L]);
+    return out.join('\n');
+  }
+
+  function mixPickResults() {
+    var q = (state.mix.pickQ || '').toLowerCase().trim();
+    if (q.length < 2) return '<div class="mixhint">Type at least 2 letters to find a service.</div>';
+    var hits = state.services.filter(function (s) {
+      if (priceFor(s, state.mix.type) <= 0) return false;
+      return (s.name + ' ' + (s.brand || '') + ' ' + (s.section || '')).toLowerCase().indexOf(q) > -1;
+    }).slice(0, 25);
+    if (!hits.length) return '<div class="mixhint">Nothing matches, or that service has no price for a ' + esc(state.mix.type) + '.</div>';
+    return hits.map(function (s) {
+      var i = state.services.indexOf(s);
+      return '<button class="mixadd" type="button" data-add="' + i + '">' +
+        '<span class="ma-n">' + esc(s.name) + '</span>' +
+        '<span class="ma-p">' + esc(money(priceFor(s, state.mix.type)) || '-') + '</span>' +
+        '<i class="ti ti-plus"></i></button>';
+    }).join('');
+  }
+
+  function mixCartHtml() {
+    var m = state.mix, t = mixTotals();
+    if (!m.items.length) return '<div class="mixhint">No services selected yet.</div>';
+    var rows = m.items.map(function (s, i) {
+      var cap = itemCap(s);
+      return '<div class="mixrow"><div class="mr-n">' + esc(s.name) +
+        (cap ? '' : '<small>fixed price — no discount</small>') +
+        '</div><div class="mr-p">' + esc(money(priceFor(s, m.type)) || '-') + '</div>' +
+        '<button class="mr-x" type="button" data-del="' + i + '" aria-label="Remove"><i class="ti ti-x"></i></button></div>';
+    }).join('');
+
+    var disc = '<div class="mixdisc"><label for="mixD">Discount %</label>' +
+      '<input id="mixD" type="number" inputmode="numeric" min="0" max="' + t.cap + '" value="' + t.pct + '">' +
+      '<span class="mixcap">' + (t.cap > 0 ? 'max ' + t.cap + '%' : 'not discountable') + '</span></div>';
+
+    var warn = '';
+    if (Number(m.disc) > t.cap) {
+      warn = '<div class="mixwarn"><i class="ti ti-alert-triangle"></i>Capped at ' + t.cap +
+        '%. Anything near the maximum is a manager decision — check with Jimmy first.</div>';
+    } else if (t.cap > 0 && t.pct >= t.cap) {
+      warn = '<div class="mixwarn"><i class="ti ti-alert-triangle"></i>That is the ceiling. Never open here — start around 10% and only move if they are walking away.</div>';
+    }
+
+    var tot = '<div class="mixtot">' +
+      '<div><span>Retail</span><b>' + esc(money(t.retail) || 'RM0') + '</b></div>' +
+      (t.off > 0 ? '<div><span>Less</span><b>−' + esc(money(t.off)) + '</b></div>' : '') +
+      '<div class="mt-final"><span>Final</span><b>' + esc(money(t.final) || 'RM0') + '</b></div></div>';
+
+    return rows + disc + warn + tot;
+  }
+
+  function mixOutHtml() {
+    var m = state.mix;
+    if (!m.items.length) return '';
+    var bar = LANGS.map(function (l) {
+      return '<button type="button" data-mixlang="' + l[0] + '" aria-pressed="' + (state.lang === l[0]) + '">' + esc(l[1]) + '</button>';
+    }).join('');
+    return '<div class="blk"><h4>WhatsApp message</h4>' +
+      '<div class="langbar mixlangbar">' + bar + '</div>' +
+      '<div class="say" id="mixMsgText">' + esc(buildMessage()) + '</div>' +
+      '<button class="copy" type="button" id="mixCopy"><i class="ti ti-copy"></i>Copy</button>' +
+      '<div class="mixsend"><input id="mixPhone" type="tel" inputmode="tel" placeholder="Customer number e.g. 0123456789" value="' + esc(m.phone) + '">' +
+      '<button type="button" id="mixWa"><i class="ti ti-brand-whatsapp"></i>Open WhatsApp</button></div>' +
+      '<div class="mixhint">This opens WhatsApp with the message ready. You still press send.</div></div>';
+  }
+
+  function renderMix() {
+    var types = TYPES.map(function (t) {
+      return '<button type="button" data-mtype="' + t + '" aria-pressed="' + (state.mix.type === t) + '">' + t + '</button>';
+    }).join('');
+    return '<div class="card" style="padding:14px 15px">' +
+      '<div class="blk"><h4>Car type</h4><div class="chips mixchips">' + types + '</div></div>' +
+      '<div class="blk"><h4>Add services</h4>' +
+      '<div class="search mixsearch"><i class="ti ti-search"></i>' +
+      '<input id="mixQ" type="search" placeholder="Search services…" autocomplete="off" value="' + esc(state.mix.pickQ) + '"></div>' +
+      '<div id="mixResults">' + mixPickResults() + '</div></div>' +
+      '<div class="blk"><h4>Selected</h4><div id="mixCart">' + mixCartHtml() + '</div></div>' +
+      '<div id="mixOut">' + mixOutHtml() + '</div>' +
+      '</div>';
+  }
+
+  function refreshMix(part) {
+    if (part !== 'out') {
+      var r = $('mixResults'); if (r) r.innerHTML = mixPickResults();
+      var c = $('mixCart'); if (c) c.innerHTML = mixCartHtml();
+    }
+    var o = $('mixOut'); if (o) o.innerHTML = mixOutHtml();
+  }
+
+  function waHref() {
+    var digits = (state.mix.phone || '').replace(/[^0-9]/g, '');
+    if (!digits) return null;
+    if (digits.charAt(0) === '0') digits = '60' + digits.slice(1);
+    else if (digits.slice(0, 2) !== '60') digits = '60' + digits;
+    return 'https://wa.me/' + digits + '?text=' + encodeURIComponent(buildMessage());
+  }
+
+  function bindMix() {
+    var box = $('list');
+
+    box.addEventListener('input', function (e) {
+      if (e.target.id === 'mixQ') { state.mix.pickQ = e.target.value; var r = $('mixResults'); if (r) r.innerHTML = mixPickResults(); }
+      if (e.target.id === 'mixD') { state.mix.disc = e.target.value; var c = $('mixCart'); if (c) c.innerHTML = mixCartHtml(); refreshMix('out'); }
+      if (e.target.id === 'mixPhone') { state.mix.phone = e.target.value; }
+    });
+
+    box.addEventListener('click', function (e) {
+      var t = e.target.closest('[data-mtype]');
+      if (t) { state.mix.type = t.getAttribute('data-mtype'); renderList(); return; }
+
+      var a = e.target.closest('[data-add]');
+      if (a) {
+        var s = state.services[Number(a.getAttribute('data-add'))];
+        if (s && state.mix.items.indexOf(s) < 0) state.mix.items.push(s);
+        refreshMix();
+        return;
+      }
+
+      var d = e.target.closest('[data-del]');
+      if (d) { state.mix.items.splice(Number(d.getAttribute('data-del')), 1); refreshMix(); return; }
+
+      var ml = e.target.closest('[data-mixlang]');
+      if (ml) {
+        state.lang = ml.getAttribute('data-mixlang');
+        try { localStorage.setItem('gl_deck_lang', state.lang); } catch (err) { /* UI state only */ }
+        refreshMix('out');
+        return;
+      }
+
+      if (e.target.closest('#mixCopy')) {
+        var btn = e.target.closest('#mixCopy');
+        var txt = buildMessage();
+        var done = function () {
+          btn.classList.add('done'); btn.innerHTML = '<i class="ti ti-check"></i>Copied';
+          setTimeout(function () { btn.classList.remove('done'); btn.innerHTML = '<i class="ti ti-copy"></i>Copy'; }, 1600);
+        };
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(txt).then(done, function () { fallbackCopy(txt, done); });
+        } else { fallbackCopy(txt, done); }
+        return;
+      }
+
+      if (e.target.closest('#mixWa')) {
+        var href = waHref();
+        if (!href) { var pi = $('mixPhone'); if (pi) pi.focus(); return; }
+        window.open(href, '_blank');
+      }
+    });
+  }
+
   /* ---------------- search ---------------- */
 
   function haystack(item) {
@@ -657,7 +1015,7 @@
 
   function renderChips() {
     var box = $('chips');
-    if (state.q || state.tab === 'close') { box.innerHTML = ''; box.style.display = 'none'; return; }
+    if (state.q || state.tab === 'close' || state.tab === 'mix') { box.innerHTML = ''; box.style.display = 'none'; return; }
     var gs = groupsFor(state.tab);
     if (gs.length < 2) { box.innerHTML = ''; box.style.display = 'none'; return; }
     box.style.display = 'flex';
@@ -670,6 +1028,8 @@
   function renderList() {
     var box = $('list');
     var html = '';
+
+    if (state.tab === 'mix') { box.innerHTML = renderMix(); return; }
 
     if (state.q) {
       var q = state.q.toLowerCase();
@@ -704,7 +1064,12 @@
     box.innerHTML = html;
   }
 
-  function render() { renderChips(); renderList(); }
+  function render() {
+    var hs = document.querySelector('header .search');
+    if (hs) hs.style.display = (state.tab === 'mix') ? 'none' : 'block';
+    renderChips();
+    renderList();
+  }
 
   /* ---------------- events ---------------- */
 
@@ -716,6 +1081,11 @@
         });
         state.tab = b.getAttribute('data-tab');
         state.grp = null;
+        if (state.tab === 'mix') {
+          state.q = '';
+          var qi = $('q'); if (qi) qi.value = '';
+          $('qclr').style.display = 'none';
+        }
         render();
         window.scrollTo({ top: 0, behavior: 'auto' });
       });
@@ -742,7 +1112,7 @@
 
     $('list').addEventListener('click', function (e) {
       var lb = e.target.closest('.langbar button');
-      if (lb) {
+      if (lb && !lb.hasAttribute('data-mixlang')) {
         state.lang = lb.getAttribute('data-lang');
         try { localStorage.setItem('gl_deck_lang', state.lang); } catch (err) { /* UI state only */ }
         var open = [];
@@ -776,7 +1146,7 @@
       }
 
       var cp = e.target.closest('.copy');
-      if (cp) {
+      if (cp && cp.id !== 'mixCopy') {
         var blk = cp.previousElementSibling;
         var txt = blk ? blk.textContent : '';
         var done = function () {
@@ -796,8 +1166,7 @@
     });
   }
 
-  function fallbackCopy(txt, done) {
-    var ta = document.createElement('textarea');
+  function fallbackCopy(txt, done) {    var ta = document.createElement('textarea');
     ta.value = txt;
     ta.setAttribute('readonly', '');
     ta.style.position = 'fixed';
@@ -817,6 +1186,7 @@
     $('me').textContent = em || '';
     load().then(function () {
       bind();
+      bindMix();
       render();
     }).catch(function (err) {
       $('list').innerHTML = '<div class="empty"><i class="ti ti-alert-triangle"></i>Could not load the deck.<br>' +
