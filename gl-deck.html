@@ -52,6 +52,14 @@
   .rule i{font-size:15px}
   .rule small{display:block; color:#c9a615; font-weight:500; font-size:11.5px}
 
+  .honbar{display:flex; align-items:center; gap:6px; margin-bottom:10px}
+  .honbar span{font-size:11px; color:var(--dim2); letter-spacing:.3px; margin-right:2px}
+  .honbar button{
+    background:var(--card); border:1px solid var(--border); color:var(--dim);
+    border-radius:9px; padding:4px 12px; font-size:12.5px; cursor:pointer;
+  }
+  .honbar button[aria-pressed="true"]{background:rgba(245,197,24,.12); border-color:var(--gold); color:var(--gold); font-weight:650}
+
   .search{position:relative; margin-bottom:10px}
   .search i{position:absolute; left:12px; top:50%; transform:translateY(-50%); color:var(--dim2); font-size:17px}
   .search input{
@@ -391,6 +399,11 @@
           <small>Acknowledge, understand, propose, then price. Every message ends with a question.</small>
         </div>
       </div>
+      <div class="honbar">
+        <span>Addressing</span>
+        <button type="button" data-htitle="sir" aria-pressed="true">Sir</button>
+        <button type="button" data-htitle="maam" aria-pressed="false">Ma'am</button>
+      </div>
       <div class="search">
         <i class="ti ti-search"></i>
         <input id="q" type="search" placeholder="Search everything — polish, discount, gone quiet…" autocomplete="off">
@@ -431,6 +444,7 @@
     grp: null,
     q: '',
     lang: 'en',
+    title: 'sir',
     deck: [],
     procs: [],
     services: [],
@@ -604,7 +618,7 @@
     var text = say[state.lang] || say.en || '';
     return '<div class="blk"><h4>' + esc(label || 'The line to say') + '</h4>' +
       '<div class="langbar">' + bar + '</div>' +
-      '<div class="say">' + esc(text) + '</div>' +
+      '<div class="say">' + esc(fill(text, state.lang)) + '</div>' +
       '<button class="copy" type="button"><i class="ti ti-copy"></i>Copy</button></div>';
   }
 
@@ -839,7 +853,7 @@
     maam: { en: "ma'am",  bm: 'puan',  zh: '老板娘' }
   };
 
-  function hon(L) { return (HON[state.mix.title] || HON.sir)[L]; }
+  function hon(L) { return (HON[state.title] || HON.sir)[L]; }
   function fill(s, L) { return String(s || '').replace(/\{H\}/g, hon(L)); }
 
   function tr(v, lang) {
@@ -1128,7 +1142,7 @@
       return '<button type="button" data-mtype="' + t + '" aria-pressed="' + (state.mix.type === t) + '">' + t + '</button>';
     }).join('');
     var hons = [['sir', 'Sir'], ['maam', "Ma'am"]].map(function (h) {
-      return '<button type="button" data-mtitle="' + h[0] + '" aria-pressed="' + (state.mix.title === h[0]) + '">' + esc(h[1]) + '</button>';
+      return '<button type="button" data-mtitle="' + h[0] + '" aria-pressed="' + (state.title === h[0]) + '">' + esc(h[1]) + '</button>';
     }).join('');
     return '<div class="card" style="padding:14px 15px">' +
       '<div class="blk"><h4>Addressing the customer</h4><div class="chips mixchips">' + hons + '</div></div>' +
@@ -1174,7 +1188,7 @@
 
     box.addEventListener('click', function (e) {
       var ht = e.target.closest('[data-mtitle]');
-      if (ht) { state.mix.title = ht.getAttribute('data-mtitle'); renderList(); return; }
+      if (ht) { state.title = ht.getAttribute('data-mtitle'); syncTitleUI(); renderList(); return; }
 
       var t = e.target.closest('[data-mtype]');
       if (t) { state.mix.type = t.getAttribute('data-mtype'); renderList(); return; }
@@ -1386,7 +1400,20 @@
 
   /* ---------------- events ---------------- */
 
+  function syncTitleUI() {
+    Array.prototype.forEach.call(document.querySelectorAll('[data-htitle]'), function (b) {
+      b.setAttribute('aria-pressed', String(b.getAttribute('data-htitle') === state.title));
+    });
+  }
+
   function bind() {
+    Array.prototype.forEach.call(document.querySelectorAll('[data-htitle]'), function (b) {
+      b.addEventListener('click', function () {
+        state.title = b.getAttribute('data-htitle');
+        syncTitleUI();
+        render();
+      });
+    });
     Array.prototype.forEach.call(document.querySelectorAll('.tabs button'), function (b) {
       b.addEventListener('click', function () {
         Array.prototype.forEach.call(document.querySelectorAll('.tabs button'), function (x) {
