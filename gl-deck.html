@@ -696,9 +696,9 @@
       zh: '涵盖部位待确认 — 我们会把确切清单发给老板'
     },
     coating: {
-      en: 'Full body paint',
-      bm: 'Seluruh cat body',
-      zh: '全车车漆'
+      en: 'Full exterior body paint, windscreen and glass, head and tail lamps, plastic trim, engine bay, rims and interior',
+      bm: 'Seluruh cat body luar, cermin depan dan kaca, lampu depan dan belakang, plastic trim, engine bay, rim dan interior',
+      zh: '全车外部车漆、挡风玻璃与车窗、前后车灯、塑料饰条、引擎室、轮圈和内装'
     },
     tint: {
       en: 'All windows',
@@ -716,14 +716,21 @@
     warranty: { en: 'Warranty', bm: 'Warranty',   zh: '保固' },
     accident: { en: 'Accident cover', bm: 'Accident cover', zh: '意外保障' },
     wcover:   { en: 'Warranty covers', bm: 'Warranty cover', zh: '保固范围' },
-    maint:    { en: 'Maintenance', bm: 'Maintenance', zh: '定期保养' }
+    maint:    { en: 'Maintenance', bm: 'Maintenance', zh: '定期保养' },
+    foc:      { en: 'FOC maintenance', bm: 'Maintenance percuma', zh: '免费保养次数' }
+  };
+
+  var CATEMOJI = {
+    'PPF': '🛡️', 'Coating': '✨', 'Tinted': '🪟', 'Wrapping': '🎨',
+    'Car Wash': '🚿', 'Detailing': '🧽', 'Motorbike': '🏍️'
   };
 
   var MSG = {
     head:   { en: 'GrandLab Detailing', bm: 'GrandLab Detailing', zh: 'GrandLab Detailing' },
     quote:  { en: 'Quote for your', bm: 'Sebut harga untuk', zh: '报价 —' },
     retail: { en: 'Retail total', bm: 'Jumlah retail', zh: '原价总额' },
-    yours:  { en: 'Your price', bm: 'Harga untuk encik', zh: '老板的价钱' },
+    less:   { en: 'Less', bm: 'Tolak', zh: '折扣' },
+    fin:    { en: 'Final price', bm: 'Harga akhir', zh: '最终价钱' },
     total:  { en: 'Total', bm: 'Jumlah', zh: '总额' },
     terms:  {
       en: 'To lock in this price we just need a Google review and the deposit sir, then it is confirmed.',
@@ -770,9 +777,16 @@
     return null;
   }
 
+  var FIXED_CATS = ['Car Wash', 'Detailing', 'Motorbike'];
+
   function itemCap(s) {
-    if (s.section !== 'Packages') return 0;
-    if ((s.name || '').toUpperCase().indexOf('PROMO') > -1) return 0;
+    var name = (s.name || '').toUpperCase();
+    var sec = (s.section || '').toLowerCase();
+    if (name.indexOf('PROMO') > -1) return 0;
+    if (sec.indexOf('ala-carte') > -1 || sec.indexOf('ala carte') > -1) return 0;
+    if (FIXED_CATS.indexOf(s.category) > -1) return 0;
+    if (name.indexOf('MAINTENANCE') > -1) return 0;
+    if (sec.indexOf('remove') > -1) return 0;
     var sp = state.specs[s.brand];
     if (!sp || sp.max_disc === null || sp.max_disc === undefined) return 0;
     return sp.max_disc;
@@ -794,12 +808,12 @@
 
   function buildMessage() {
     var m = state.mix, L = state.lang, t = mixTotals(), out = [];
-    out.push(MSG.head[L]);
+    out.push('🚗 ' + MSG.head[L]);
     out.push(MSG.quote[L] + ' ' + m.type);
     out.push('');
     m.items.forEach(function (s, i) {
       var sp = (state.specs[s.brand] || {}).specs || {};
-      out.push((i + 1) + ') ' + s.name);
+      out.push((CATEMOJI[s.category] || '🔹') + ' ' + (i + 1) + ') ' + s.name);
       var cov = coverageFor(s, L);
       if (cov) out.push('• ' + LBL.covered[L] + ': ' + cov);
       if (sp.thickness) out.push('• ' + LBL.thickness[L] + ': ' + sp.thickness);
@@ -810,20 +824,23 @@
       if (sp.accident) out.push('• ' + LBL.accident[L] + ': ' + tr(sp.accident, L));
       if (sp.wcover) out.push('• ' + LBL.wcover[L] + ': ' + tr(sp.wcover, L));
       if (sp.maintenance) out.push('• ' + LBL.maint[L] + ': ' + tr(sp.maintenance, L));
+      if (sp.foc) out.push('🎁 ' + LBL.foc[L] + ': ' + tr(sp.foc, L));
       (sp.extra || []).forEach(function (e) { out.push('• ' + tr(e, L)); });
-      out.push('  ' + (money(priceFor(s, m.type)) || '-'));
+      out.push('💵 ' + (money(priceFor(s, m.type)) || '-'));
       out.push('');
     });
+    out.push('━━━━━━━━━━');
     if (t.off > 0) {
-      out.push(MSG.retail[L] + ': ' + money(t.retail));
-      out.push(MSG.yours[L] + ': ' + money(t.final));
+      out.push('💰 ' + MSG.retail[L] + ': ' + money(t.retail));
+      out.push('🏷️ ' + MSG.less[L] + ' ' + t.pct + '%: −' + money(t.off));
+      out.push('✅ ' + MSG.fin[L] + ': ' + money(t.final));
       out.push('');
       out.push(MSG.terms[L]);
     } else {
-      out.push(MSG.total[L] + ': ' + money(t.retail));
+      out.push('💰 ' + MSG.total[L] + ': ' + money(t.retail));
     }
     out.push('');
-    out.push(MSG.ask[L]);
+    out.push('📅 ' + MSG.ask[L]);
     return out.join('\n');
   }
 
