@@ -1011,7 +1011,14 @@
     return seen;
   }
 
-  function label(g) { return g.charAt(0).toUpperCase() + g.slice(1); }
+  var GRPLBL = {
+    ppf: 'PPF', tint: 'Tint', wrap: 'Wrap', coating: 'Coating', wash: 'Wash',
+    polish: 'Polish', detailing: 'Detailing', bike: 'Bike', products: 'Products',
+    price: 'Price', compare: 'Compare', trust: 'Trust', logistics: 'Logistics',
+    stall: 'Objections', product: 'Product'
+  };
+
+  function label(g) { return GRPLBL[g] || (g.charAt(0).toUpperCase() + g.slice(1)); }
 
   function renderChips() {
     var box = $('chips');
