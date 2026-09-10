@@ -922,7 +922,6 @@
     out.push((CATEMOJI[s.category] || '\u{1F539}') + ' ' + (i + 1) + ') ' + s.name);
     if (s._custom) {
       customBullets(s, L).forEach(function (b) { out.push('\u2022 ' + b); });
-      out.push('\u{1F4B5} ' + (money(priceFor(s, m.type)) || '-'));
       return out;
     }
     var cov = coverageFor(s, L);
@@ -944,7 +943,6 @@
     var fv = focValue(s, L);
     if (fv) out.push('\u{1F381} ' + LBL.foc[L] + ': ' + fv);
     (sp.extra || []).forEach(function (e) { out.push('\u2022 ' + tr(e, L)); });
-    out.push('\u{1F4B5} ' + (money(priceFor(s, m.type)) || '-'));
     return out;
   }
 
