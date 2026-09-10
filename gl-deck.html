@@ -238,11 +238,48 @@
   .mixadd i{color:var(--dim2); font-size:16px}
   .mixadd:hover{border-color:#3d3d3d}
 
+  .mixadd .ma-n small{display:block; color:var(--dim2); font-size:10.5px; text-transform:uppercase; letter-spacing:.4px}
+  .mixaddbtn{
+    width:100%; display:flex; align-items:center; justify-content:center; gap:7px;
+    background:none; border:1px dashed var(--border); color:var(--dim);
+    border-radius:11px; padding:10px; margin:8px 0 0; cursor:pointer; font-size:13px;
+  }
+  .mixaddbtn:hover{border-color:var(--gold); color:var(--gold)}
+  .customform{border:1px solid var(--border); border-radius:13px; padding:13px; margin-top:10px; background:#101010}
+  .cf-head{display:flex; align-items:center; margin-bottom:10px}
+  .cf-head b{flex:1; font-size:14px}
+  .cf-head button{background:none; border:0; color:var(--dim2); font-size:18px; cursor:pointer}
+  .customform label{display:block; font-size:11.5px; color:var(--dim2); margin:10px 0 4px}
+  .customform input, .customform textarea{
+    width:100%; background:#0b0b0b; border:1px solid var(--border); color:var(--txt);
+    border-radius:10px; padding:9px 11px; font-size:14px; font-family:inherit; outline:none;
+  }
+  .customform textarea{resize:vertical; line-height:1.5}
+  .customform input:focus, .customform textarea:focus{border-color:#3d3d3d}
+  .cf-two{display:flex; gap:10px}
+  .cf-two > div{flex:1; min-width:0}
+  .cf-save{
+    width:100%; margin-top:12px; background:var(--gold); border:0; color:#111;
+    font-weight:700; border-radius:11px; padding:11px; font-size:14px; cursor:pointer;
+  }
+  .cf-saved{margin-top:14px; border-top:1px solid var(--border); padding-top:4px}
+
   .mixrow{display:flex; align-items:center; gap:10px; border:1px solid var(--border); border-radius:11px; padding:9px 11px; margin:6px 0; background:#101010}
   .mixrow .mr-n{flex:1; font-size:13.5px; color:#dcdcdc; min-width:0}
   .mixrow .mr-n small{display:block; color:var(--dim2); font-size:11px}
   .mixrow .mr-p{color:var(--gold); font-weight:650; font-size:13.5px; font-variant-numeric:tabular-nums}
   .mixrow .mr-x{background:none; border:0; color:var(--dim2); font-size:17px; padding:2px 0 2px 4px; cursor:pointer}
+
+  .focrow{
+    display:flex; align-items:center; gap:10px; margin:-2px 0 8px; padding:8px 11px;
+    border:1px solid var(--border); border-top:0; border-radius:0 0 11px 11px; background:#0d0d0d;
+  }
+  .focrow label{flex:1; font-size:12px; color:var(--dim2)}
+  .focrow input{
+    width:110px; background:#0b0b0b; border:1px solid var(--border); color:var(--txt);
+    border-radius:9px; padding:7px 10px; font-size:14px; outline:none; text-align:center;
+  }
+  .focrow input:focus{border-color:var(--gold)}
 
   .mixdisc{display:flex; align-items:center; gap:10px; margin:12px 0 4px}
   .mixdisc label{font-size:12px; color:var(--dim2); flex:0 0 auto}
@@ -383,8 +420,9 @@
     procs: [],
     services: [],
     specs: {},
+    custom: [],
     kb: {},
-    mix: { type: 'Sedan', items: [], disc: 0, phone: '', pickQ: '' }
+    mix: { type: 'Sedan', items: [], disc: 0, phone: '', pickQ: '', addOpen: false, foc: {} }
   };
 
   try {
@@ -438,7 +476,8 @@
       sb.from('gl_services').select('name,category,section,brand,subtitle,base_price,price_by_type,pkg_uses,hidden').or('hidden.is.null,hidden.eq.false'),
       sb.from('gl_mia_kb').select('data').eq('id', 'kb').maybeSingle(),
       sb.from('gl_deck_proc').select('*').eq('hidden', false).order('grp').order('sort'),
-      sb.from('gl_deck_spec').select('*').order('sort')
+      sb.from('gl_deck_spec').select('*').order('sort'),
+      sb.from('gl_deck_custom').select('*').order('created_at', { ascending: false })
     ]).then(function (res) {
       if (res[0].error) throw res[0].error;
       state.deck = res[0].data || [];
@@ -446,6 +485,7 @@
       state.kb = (res[2] && res[2].data && res[2].data.data) || {};
       state.procs = (res[3] && res[3].data) || [];
       ((res[4] && res[4].data) || []).forEach(function (s) { state.specs[s.brand] = s; });
+      state.custom = ((res[5] && res[5].data) || []).map(asCustom);
     });
   }
 
@@ -672,6 +712,28 @@
     return renderClose(item, idx);
   }
 
+  function asCustom(r) {
+    return {
+      _custom: true,
+      _id: r.id,
+      _maxdisc: r.max_disc,
+      bullets: r.bullets || {},
+      name: r.name,
+      category: r.category || '',
+      brand: null,
+      section: null,
+      base_price: Number(r.price) || 0,
+      price_by_type: {}
+    };
+  }
+
+  function customBullets(s, L) {
+    var b = s.bullets || {};
+    var arr = b[L];
+    if (!arr || !arr.length) arr = b.en || b.bm || b.zh || [];
+    return arr;
+  }
+
   /* ---------------- mix & match ---------------- */
 
   var COVERAGE = {
@@ -780,6 +842,10 @@
   var FIXED_CATS = ['Car Wash', 'Detailing', 'Motorbike'];
 
   function itemCap(s) {
+    if (s._custom) {
+      var d = Number(s._maxdisc);
+      return (isFinite(d) && d > 0) ? d : 0;
+    }
     var name = (s.name || '').toUpperCase();
     var sec = (s.section || '').toLowerCase();
     if (name.indexOf('PROMO') > -1) return 0;
@@ -790,6 +856,17 @@
     var sp = state.specs[s.brand];
     if (!sp || sp.max_disc === null || sp.max_disc === undefined) return 0;
     return sp.max_disc;
+  }
+
+  var FOCUNIT = { en: 'times', bm: 'kali', zh: '次' };
+
+  function focValue(s, L) {
+    var typed = (state.mix.foc[s.name] || '').trim();
+    var sp = (state.specs[s.brand] || {}).specs || {};
+    var v = typed || tr(sp.foc, L) || '';
+    if (!v) return '';
+    if (/^[0-9]+$/.test(v)) v = v + ' ' + FOCUNIT[L];
+    return v;
   }
 
   function mixTotals() {
@@ -814,6 +891,12 @@
     m.items.forEach(function (s, i) {
       var sp = (state.specs[s.brand] || {}).specs || {};
       out.push((CATEMOJI[s.category] || '🔹') + ' ' + (i + 1) + ') ' + s.name);
+      if (s._custom) {
+        customBullets(s, L).forEach(function (b) { out.push('• ' + b); });
+        out.push('💵 ' + (money(priceFor(s, m.type)) || '-'));
+        out.push('');
+        return;
+      }
       var cov = coverageFor(s, L);
       if (cov) out.push('• ' + LBL.covered[L] + ': ' + cov);
       if (sp.thickness) out.push('• ' + LBL.thickness[L] + ': ' + sp.thickness);
@@ -824,7 +907,8 @@
       if (sp.accident) out.push('• ' + LBL.accident[L] + ': ' + tr(sp.accident, L));
       if (sp.wcover) out.push('• ' + LBL.wcover[L] + ': ' + tr(sp.wcover, L));
       if (sp.maintenance) out.push('• ' + LBL.maint[L] + ': ' + tr(sp.maintenance, L));
-      if (sp.foc) out.push('🎁 ' + LBL.foc[L] + ': ' + tr(sp.foc, L));
+      var fv = focValue(s, L);
+      if (fv) out.push('🎁 ' + LBL.foc[L] + ': ' + fv);
       (sp.extra || []).forEach(function (e) { out.push('• ' + tr(e, L)); });
       out.push('💵 ' + (money(priceFor(s, m.type)) || '-'));
       out.push('');
@@ -847,18 +931,61 @@
   function mixPickResults() {
     var q = (state.mix.pickQ || '').toLowerCase().trim();
     if (q.length < 2) return '<div class="mixhint">Type at least 2 letters to find a service.</div>';
-    var hits = state.services.filter(function (s) {
-      if (priceFor(s, state.mix.type) <= 0) return false;
-      return (s.name + ' ' + (s.brand || '') + ' ' + (s.section || '')).toLowerCase().indexOf(q) > -1;
-    }).slice(0, 25);
-    if (!hits.length) return '<div class="mixhint">Nothing matches, or that service has no price for a ' + esc(state.mix.type) + '.</div>';
-    return hits.map(function (s) {
-      var i = state.services.indexOf(s);
-      return '<button class="mixadd" type="button" data-add="' + i + '">' +
-        '<span class="ma-n">' + esc(s.name) + '</span>' +
-        '<span class="ma-p">' + esc(money(priceFor(s, state.mix.type)) || '-') + '</span>' +
+
+    var out = [];
+    state.custom.forEach(function (s, i) {
+      if ((s.name + ' ' + (s.category || '')).toLowerCase().indexOf(q) > -1) out.push(['c', i, s]);
+    });
+    state.services.forEach(function (s, i) {
+      if (priceFor(s, state.mix.type) <= 0) return;
+      if ((s.name + ' ' + (s.brand || '') + ' ' + (s.section || '')).toLowerCase().indexOf(q) > -1) out.push(['s', i, s]);
+    });
+    out = out.slice(0, 25);
+
+    if (!out.length) {
+      return '<div class="mixhint">Nothing matches, or that service has no price for a ' + esc(state.mix.type) +
+        '. Use “Add a service manually” below.</div>';
+    }
+    return out.map(function (r) {
+      return '<button class="mixadd" type="button" data-add="' + r[0] + ':' + r[1] + '">' +
+        '<span class="ma-n">' + esc(r[2].name) + (r[0] === 'c' ? '<small>custom</small>' : '') + '</span>' +
+        '<span class="ma-p">' + esc(money(priceFor(r[2], state.mix.type)) || '-') + '</span>' +
         '<i class="ti ti-plus"></i></button>';
     }).join('');
+  }
+
+  function customFormHtml() {
+    if (!state.mix.addOpen) {
+      return '<button class="mixaddbtn" type="button" id="mixAddToggle">' +
+        '<i class="ti ti-plus"></i>Add a service manually</button>' +
+        (state.custom.length ? '<div class="mixhint">' + state.custom.length + ' saved custom service' +
+          (state.custom.length === 1 ? '' : 's') + ' — search for them above.</div>' : '');
+    }
+    var langs = LANGS.map(function (l) {
+      return '<button type="button" data-clang="' + l[0] + '" aria-pressed="' + (state.lang === l[0]) + '">' + esc(l[1]) + '</button>';
+    }).join('');
+    var saved = state.custom.map(function (s) {
+      return '<div class="mixrow"><div class="mr-n">' + esc(s.name) +
+        '<small>' + esc(money(s.base_price) || 'RM0') + (s._maxdisc ? ' · max ' + s._maxdisc + '%' : ' · no discount') + '</small></div>' +
+        '<button class="mr-x" type="button" data-cdel="' + esc(s._id) + '" aria-label="Delete"><i class="ti ti-trash"></i></button></div>';
+    }).join('');
+
+    return '<div class="customform">' +
+      '<div class="cf-head"><b>Add a service manually</b>' +
+      '<button type="button" id="mixAddClose" aria-label="Close"><i class="ti ti-x"></i></button></div>' +
+      '<label>Service name</label><input id="cfName" type="text" placeholder="e.g. Headlight Restoration">' +
+      '<div class="cf-two">' +
+      '<div><label>Price RM</label><input id="cfPrice" type="number" inputmode="decimal" placeholder="0"></div>' +
+      '<div><label>Max discount %</label><input id="cfDisc" type="number" inputmode="numeric" placeholder="none"></div>' +
+      '</div>' +
+      '<label>Category (optional)</label><input id="cfCat" type="text" placeholder="e.g. Detailing">' +
+      '<label>Details — one line per bullet</label>' +
+      '<div class="langbar cflangbar">' + langs + '</div>' +
+      '<textarea id="cfText" rows="6" placeholder="Covered: both headlights&#10;Warranty: 6 months&#10;Takes about 2 hours"></textarea>' +
+      '<button class="cf-save" type="button" id="cfSave">Save and add to quote</button>' +
+      '<div class="mixhint" id="cfMsg">Saved services stay in the app for next time. One price for all car types.</div>' +
+      (saved ? '<div class="cf-saved"><label>Saved custom services</label>' + saved + '</div>' : '') +
+      '</div>';
   }
 
   function mixCartHtml() {
@@ -866,10 +993,16 @@
     if (!m.items.length) return '<div class="mixhint">No services selected yet.</div>';
     var rows = m.items.map(function (s, i) {
       var cap = itemCap(s);
-      return '<div class="mixrow"><div class="mr-n">' + esc(s.name) +
+      var row = '<div class="mixrow"><div class="mr-n">' + esc(s.name) +
         (cap ? '' : '<small>fixed price — no discount</small>') +
         '</div><div class="mr-p">' + esc(money(priceFor(s, m.type)) || '-') + '</div>' +
         '<button class="mr-x" type="button" data-del="' + i + '" aria-label="Remove"><i class="ti ti-x"></i></button></div>';
+      if (s.category === 'Coating') {
+        row += '<div class="focrow"><label>🎁 FOC maintenance</label>' +
+          '<input class="focin" type="text" data-foc="' + esc(s.name) + '" value="' +
+          esc(state.mix.foc[s.name] || '') + '" placeholder="e.g. 6"></div>';
+      }
+      return row;
     }).join('');
 
     var disc = '<div class="mixdisc"><label for="mixD">Discount %</label>' +
@@ -916,7 +1049,8 @@
       '<div class="blk"><h4>Add services</h4>' +
       '<div class="search mixsearch"><i class="ti ti-search"></i>' +
       '<input id="mixQ" type="search" placeholder="Search services…" autocomplete="off" value="' + esc(state.mix.pickQ) + '"></div>' +
-      '<div id="mixResults">' + mixPickResults() + '</div></div>' +
+      '<div id="mixResults">' + mixPickResults() + '</div>' +
+      '<div id="mixCustom">' + customFormHtml() + '</div></div>' +
       '<div class="blk"><h4>Selected</h4><div id="mixCart">' + mixCartHtml() + '</div></div>' +
       '<div id="mixOut">' + mixOutHtml() + '</div>' +
       '</div>';
@@ -945,6 +1079,10 @@
       if (e.target.id === 'mixQ') { state.mix.pickQ = e.target.value; var r = $('mixResults'); if (r) r.innerHTML = mixPickResults(); }
       if (e.target.id === 'mixD') { state.mix.disc = e.target.value; var c = $('mixCart'); if (c) c.innerHTML = mixCartHtml(); refreshMix('out'); }
       if (e.target.id === 'mixPhone') { state.mix.phone = e.target.value; }
+      if (e.target.classList && e.target.classList.contains('focin')) {
+        state.mix.foc[e.target.getAttribute('data-foc')] = e.target.value;
+        refreshMix('out');
+      }
     });
 
     box.addEventListener('click', function (e) {
@@ -953,9 +1091,61 @@
 
       var a = e.target.closest('[data-add]');
       if (a) {
-        var s = state.services[Number(a.getAttribute('data-add'))];
+        var ref = a.getAttribute('data-add').split(':');
+        var s = (ref[0] === 'c' ? state.custom : state.services)[Number(ref[1])];
         if (s && state.mix.items.indexOf(s) < 0) state.mix.items.push(s);
         refreshMix();
+        return;
+      }
+
+      if (e.target.closest('#mixAddToggle')) { state.mix.addOpen = true; renderList(); return; }
+      if (e.target.closest('#mixAddClose')) { state.mix.addOpen = false; renderList(); return; }
+
+      var cl = e.target.closest('[data-clang]');
+      if (cl) {
+        state.lang = cl.getAttribute('data-clang');
+        Array.prototype.forEach.call(document.querySelectorAll('[data-clang]'), function (b) {
+          b.setAttribute('aria-pressed', String(b === cl));
+        });
+        return;
+      }
+
+      var cd = e.target.closest('[data-cdel]');
+      if (cd) {
+        var id = cd.getAttribute('data-cdel');
+        sb.from('gl_deck_custom').delete().eq('id', id).then(function (r) {
+          if (r.error) { var mm = $('cfMsg'); if (mm) mm.textContent = 'Could not delete: ' + r.error.message; return; }
+          state.custom = state.custom.filter(function (x) { return x._id !== id; });
+          state.mix.items = state.mix.items.filter(function (x) { return x._id !== id; });
+          renderList();
+        });
+        return;
+      }
+
+      if (e.target.closest('#cfSave')) {
+        var nm = ($('cfName').value || '').trim();
+        var pr = Number($('cfPrice').value);
+        var dc = $('cfDisc').value === '' ? null : Number($('cfDisc').value);
+        var ct = ($('cfCat').value || '').trim();
+        var tx = ($('cfText').value || '').split('\n').map(function (x) { return x.trim(); })
+                  .filter(function (x) { return x.length > 0; });
+        var msg = $('cfMsg');
+        if (!nm) { msg.textContent = 'Give the service a name first.'; return; }
+        if (!isFinite(pr) || pr <= 0) { msg.textContent = 'Enter a price.'; return; }
+        var bullets = {}; bullets[state.lang] = tx;
+        msg.textContent = 'Saving…';
+        sb.from('gl_deck_custom').insert({
+          name: nm, category: ct || null, price: pr,
+          max_disc: (dc !== null && isFinite(dc) && dc > 0) ? dc : null,
+          bullets: bullets
+        }).select().then(function (r) {
+          if (r.error) { msg.textContent = 'Could not save: ' + r.error.message; return; }
+          var row = asCustom(r.data[0]);
+          state.custom.unshift(row);
+          state.mix.items.push(row);
+          state.mix.addOpen = false;
+          renderList();
+        });
         return;
       }
 
