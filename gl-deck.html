@@ -422,7 +422,7 @@
     specs: {},
     custom: [],
     kb: {},
-    mix: { type: 'Sedan', items: [], disc: 0, phone: '', pickQ: '', addOpen: false, foc: {} }
+    mix: { type: 'Sedan', title: 'sir', items: [], disc: 0, phone: '', pickQ: '', addOpen: false, foc: {} }
   };
 
   try {
@@ -797,24 +797,32 @@
     head:   { en: 'GrandLab Detailing', bm: 'GrandLab Detailing', zh: 'GrandLab Detailing' },
     quote:  {
       en: 'Mix and match quote for your beloved car',
-      bm: 'Sebut harga mix and match untuk kereta kesayangan encik',
-      zh: '为老板爱车准备的 mix and match 报价'
+      bm: 'Sebut harga mix and match untuk kereta kesayangan {H}',
+      zh: '为{H}爱车准备的 mix and match 报价'
     },
     retail: { en: 'Retail total', bm: 'Jumlah retail', zh: '原价总额' },
     less:   { en: 'Less', bm: 'Tolak', zh: '折扣' },
     fin:    { en: 'Final price', bm: 'Harga akhir', zh: '最终价钱' },
     total:  { en: 'Total', bm: 'Jumlah', zh: '总额' },
     terms:  {
-      en: 'To lock in this price we just need a Google review and the deposit sir, then it is confirmed.',
-      bm: 'Untuk lock harga ni, kitorang cuma perlukan Google review dan deposit encik, lepas tu confirm.',
-      zh: '要锁定这个价钱，老板留个 Google review 加上订金就可以确认了。'
+      en: 'To lock in this price we just need a Google review and the deposit {H}, then it is confirmed.',
+      bm: 'Untuk lock harga ni, kitorang cuma perlukan Google review dan deposit {H}, lepas tu confirm.',
+      zh: '要锁定这个价钱，{H}留个 Google review 加上订金就可以确认了。'
     },
     ask:    {
-      en: 'May I know when would suit you to bring the car in sir?',
-      bm: 'Boleh saya tahu bila sesuai untuk encik bawa kereta masuk?',
-      zh: '方便知道老板什么时候适合把车开过来吗？'
+      en: 'May I know when would suit you to bring the car in {H}?',
+      bm: 'Boleh saya tahu bila sesuai untuk {H} bawa kereta masuk?',
+      zh: '方便知道{H}什么时候适合把车开过来吗？'
     }
   };
+
+  var HON = {
+    sir:  { en: 'sir',    bm: 'encik', zh: '老板' },
+    maam: { en: "ma'am",  bm: 'puan',  zh: '老板娘' }
+  };
+
+  function hon(L) { return (HON[state.mix.title] || HON.sir)[L]; }
+  function fill(s, L) { return String(s || '').replace(/\{H\}/g, hon(L)); }
 
   function tr(v, lang) {
     if (v == null) return '';
@@ -896,7 +904,7 @@
   function buildMessage() {
     var m = state.mix, L = state.lang, t = mixTotals(), out = [];
     out.push('🚗 ' + MSG.head[L]);
-    out.push(MSG.quote[L]);
+    out.push(fill(MSG.quote[L], L));
     out.push('');
     m.items.forEach(function (s, i) {
       var sp = (state.specs[s.brand] || {}).specs || {};
@@ -935,12 +943,12 @@
       out.push('🏷️ ' + MSG.less[L] + ' ' + t.pct + '%: −' + money(t.off));
       out.push('✅ ' + MSG.fin[L] + ': ' + money(t.final));
       out.push('');
-      out.push(MSG.terms[L]);
+      out.push(fill(MSG.terms[L], L));
     } else {
       out.push('💰 ' + MSG.total[L] + ': ' + money(t.retail));
     }
     out.push('');
-    out.push('📅 ' + MSG.ask[L]);
+    out.push('📅 ' + fill(MSG.ask[L], L));
     return out.join('\n');
   }
 
@@ -1060,7 +1068,11 @@
     var types = TYPES.map(function (t) {
       return '<button type="button" data-mtype="' + t + '" aria-pressed="' + (state.mix.type === t) + '">' + t + '</button>';
     }).join('');
+    var hons = [['sir', 'Sir'], ['maam', "Ma'am"]].map(function (h) {
+      return '<button type="button" data-mtitle="' + h[0] + '" aria-pressed="' + (state.mix.title === h[0]) + '">' + esc(h[1]) + '</button>';
+    }).join('');
     return '<div class="card" style="padding:14px 15px">' +
+      '<div class="blk"><h4>Addressing the customer</h4><div class="chips mixchips">' + hons + '</div></div>' +
       '<div class="blk"><h4>Car type</h4><div class="chips mixchips">' + types + '</div></div>' +
       '<div class="blk"><h4>Add services</h4>' +
       '<div class="search mixsearch"><i class="ti ti-search"></i>' +
@@ -1102,6 +1114,9 @@
     });
 
     box.addEventListener('click', function (e) {
+      var ht = e.target.closest('[data-mtitle]');
+      if (ht) { state.mix.title = ht.getAttribute('data-mtitle'); renderList(); return; }
+
       var t = e.target.closest('[data-mtype]');
       if (t) { state.mix.type = t.getAttribute('data-mtype'); renderList(); return; }
 
