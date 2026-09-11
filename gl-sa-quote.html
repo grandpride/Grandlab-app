@@ -236,11 +236,12 @@ input:focus,select:focus,textarea:focus{border-color:var(--gold)}
     <i class="ti ti-circle-check big"></i>
     <h3 id="doneRef">Quotation sent</h3>
     <p class="muted">Share into the partner's WhatsApp group.</p>
-    <p style="font-size:12px;color:var(--gold);background:rgba(245,197,24,.08);border:1px solid rgba(245,197,24,.28);border-radius:10px;padding:10px;margin:12px 0;line-height:1.5">Wait 2 seconds for the car photo to appear above the text, then send.</p>
+    <p style="font-size:12px;color:var(--gold);background:rgba(245,197,24,.08);border:1px solid rgba(245,197,24,.28);border-radius:10px;padding:10px;margin:12px 0;line-height:1.5">Copy, then paste in the group and wait 2 seconds before sending — that is what makes WhatsApp load the car photo.</p>
     <div class="lnk" id="doneLink"></div>
-    <button class="btn gold" id="waBtn"><i class="ti ti-brand-whatsapp"></i> Share to WhatsApp</button>
-    <button class="btn ghost" style="margin-top:8px" id="msgBtn"><i class="ti ti-message-2"></i> Copy full message</button>
-    <button class="btn ghost" style="margin-top:8px" id="copyBtn"><i class="ti ti-copy"></i> Copy link only</button>
+    <button class="btn gold" id="msgBtn"><i class="ti ti-copy"></i> Copy message &amp; paste in group</button>
+    <button class="btn ghost" style="margin-top:8px" id="waPhotoBtn"><i class="ti ti-photo-share"></i> Send photo + message</button>
+    <button class="btn ghost" style="margin-top:8px" id="waBtn"><i class="ti ti-brand-whatsapp"></i> Send text only</button>
+    <button class="btn ghost" style="margin-top:8px" id="copyBtn"><i class="ti ti-link"></i> Copy link only</button>
     <button class="btn ghost" style="margin-top:8px" id="newBtn">New quotation</button>
   </div>
 </div>
@@ -968,6 +969,12 @@ function send(){
   });
 }
 
+function photoUrlFor(saved){
+  if(saved && saved.front_photo) return saved.front_photo;
+  if(state.front && state.front.url) return state.front.url;
+  return '';
+}
+
 function showDone(ref, tk, saved, ver){
   var url = SHARE_BASE + '?t=' + tk + (Number(ver) > 1 ? '&v=' + Number(ver) : '');
   if(saved){
@@ -1008,6 +1015,33 @@ function showDone(ref, tk, saved, ver){
   $('doneLink').textContent = url;
   $('done').className = 'ov';
 
+  // Attach the front photo as a real file. WhatsApp shows it as a picture with
+  // the message as its caption - no link preview, no crawler, nothing to cache.
+  $('waPhotoBtn').onclick = function(){
+    var btn = $('waPhotoBtn');
+    var src = (state.front && state.front.blob) ? Promise.resolve(state.front.blob)
+            : fetch(photoUrlFor(saved)).then(function(r){ return r.blob(); });
+
+    btn.disabled = true;
+    btn.innerHTML = '<i class="ti ti-loader-2"></i> Preparing…';
+
+    src.then(function(blob){
+      var file = new File([blob], 'grandlab-' + ref + '.jpg', { type:'image/jpeg' });
+      if(navigator.canShare && navigator.canShare({ files:[file] })){
+        return navigator.share({ files:[file], text: msg });
+      }
+      throw new Error('no-file-share');
+    }).then(function(){
+      btn.disabled = false;
+      btn.innerHTML = '<i class="ti ti-photo-share"></i> Send photo + message';
+    }).catch(function(e){
+      btn.disabled = false;
+      btn.innerHTML = '<i class="ti ti-photo-share"></i> Send photo + message';
+      if(e && e.name === 'AbortError') return;          // user closed the sheet
+      toast('Photo share not available - use Send text only', true);
+    });
+  };
+
   $('waBtn').onclick = function(){
     window.open('https://wa.me/?text=' + encodeURIComponent(msg), '_blank');
   };
@@ -1016,8 +1050,52 @@ function showDone(ref, tk, saved, ver){
     toast('Link copied');
   };
   $('msgBtn').onclick = function(){
-    if(navigator.clipboard) navigator.clipboard.writeText(msg);
-    toast('Message copied');
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(msg);
+    } else {
+      var ta = document.createElement('textarea');
+      ta.value = msg; document.body.appendChild(ta);
+      ta.select(); document.execCommand('copy'); ta.remove();
+    }
+    toast('Copied \u2014 paste it in the group');
+  };
+
+  /* Attach the front photo as a real image file. This does not depend on
+     WhatsApp fetching a link preview, so it works even when the preview does
+     not. Needs the Web Share API with file support - not every browser has it. */
+  $('waPhotoBtn').onclick = function(){
+    var btn = this;
+    var photoUrl = (saved && saved.front_photo) || (state.front && state.front.url) || '';
+    var haveBlob = state.front && state.front.blob;
+
+    if(!navigator.share){
+      return toast('This browser cannot attach photos \u2014 use Copy instead', true);
+    }
+
+    btn.disabled = true;
+    var was = btn.innerHTML;
+    btn.innerHTML = '<i class="ti ti-loader-2"></i> Preparing…';
+
+    var getBlob = haveBlob
+      ? Promise.resolve(state.front.blob)
+      : fetch(photoUrl).then(function(r){
+          if(!r.ok) throw new Error('photo fetch failed');
+          return r.blob();
+        });
+
+    getBlob.then(function(b){
+      var file = new File([b], (ref || 'quotation') + '.jpg', { type:'image/jpeg' });
+      if(navigator.canShare && !navigator.canShare({ files:[file] })){
+        throw new Error('files not supported');
+      }
+      return navigator.share({ files:[file], text: msg });
+    }).then(function(){
+      btn.disabled = false; btn.innerHTML = was;
+    }).catch(function(e){
+      btn.disabled = false; btn.innerHTML = was;
+      if(e && e.name === 'AbortError') return;   // user closed the share sheet
+      toast('Could not attach photo \u2014 use Copy instead', true);
+    });
   };
   $('newBtn').onclick = function(){ location.reload(); };
 }
