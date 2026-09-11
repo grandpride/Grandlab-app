@@ -78,6 +78,19 @@ input:focus,select:focus,textarea:focus{border-color:var(--gold)}
 .cats{display:flex;gap:7px;overflow-x:auto;padding-bottom:8px;margin-bottom:6px;-webkit-overflow-scrolling:touch}
 .cats .chip{white-space:nowrap;flex-shrink:0}
 .load{text-align:center;padding:40px;color:var(--text2)}
+.qrow{background:var(--card);border:1px solid var(--border);border-radius:15px;padding:13px;margin-bottom:10px}
+.qrow .h{display:flex;align-items:center;gap:9px;margin-bottom:7px}
+.qrow .h b{flex:1;font-size:15px}
+.qrow .h .rf{font-size:11px;color:var(--text2);font-weight:700}
+.qrow .m{font-size:12px;color:var(--text2);line-height:1.6;margin-bottom:10px}
+.qrow .m b{color:var(--gold);font-weight:700}
+.pill{font-size:10px;font-weight:700;padding:4px 9px;border-radius:8px;text-transform:uppercase;letter-spacing:.4px}
+.pill.sent{background:rgba(77,159,255,.15);color:#4d9fff}
+.pill.accepted{background:rgba(245,197,24,.15);color:var(--gold)}
+.pill.confirmed{background:rgba(55,214,122,.15);color:var(--ok)}
+.pill.void{background:rgba(154,154,154,.15);color:var(--text2)}
+.qacts{display:flex;gap:7px}
+.qacts .btn{padding:10px;font-size:12px;flex:1}
 .sel{max-height:340px;overflow-y:auto}
 .foc{display:flex;align-items:center;gap:10px;padding:9px 12px;margin:0 0 4px 34px;background:rgba(245,197,24,.07);border:1px solid rgba(245,197,24,.28);border-radius:11px}
 .foc span{flex:1;font-size:12px;color:var(--gold);font-weight:600}
@@ -88,13 +101,18 @@ input:focus,select:focus,textarea:focus{border-color:var(--gold)}
 <body>
 
 <div class="top">
-  <h1><a href="gl-hub.html" class="back"><i class="ti ti-arrow-left"></i></a><i class="ti ti-file-dollar"></i> SA Quotation</h1>
+  <h1><a href="gl-hub.html" class="back"><i class="ti ti-arrow-left"></i></a><i class="ti ti-file-dollar"></i> <span style="flex:1">SA Quotation</span><span class="back" id="listBtn" style="cursor:pointer"><i class="ti ti-list"></i></span></h1>
   <div class="steps"><div id="s1" class="on"></div><div id="s2"></div><div id="s3"></div></div>
 </div>
 
 <div id="boot" class="load"><i class="ti ti-loader-2"></i> Loading…</div>
 
 <div id="app" class="wrap hide">
+
+  <!-- MY QUOTATIONS -->
+  <div id="pList" class="hide">
+    <div id="qlist" class="load">Loading…</div>
+  </div>
 
   <!-- STEP 1 -->
   <div id="p1">
@@ -213,7 +231,7 @@ var $ = function(id){ return document.getElementById(id); };
 
 var state = {
   step:1, user:null, partners:[], services:[], cats:[], cat:'All', q:'',
-  front:null, finds:[], picked:{}, sending:false
+  front:null, finds:[], picked:{}, sending:false, editId:null, editRef:null, viewing:false
 };
 
 function toast(msg, err){
@@ -385,11 +403,17 @@ function renderBar(){
   $('tot').textContent = state.step===3 ? money(total()) : (state.step===1 ? 'Car details' : state.finds.length + ' photo' + (state.finds.length===1?'':'s'));
   $('back').className = 'btn ghost' + (state.step===1 ? ' hide' : '');
   $('next').innerHTML = state.step===3
-    ? '<i class="ti ti-send"></i> Send'
+    ? '<i class="ti ti-send"></i> ' + (state.editId ? 'Update & resend' : 'Send')
     : 'Next <i class="ti ti-chevron-right"></i>';
+  $('totLbl').textContent = state.editId && state.step!==3
+    ? 'Editing ' + state.editRef
+    : $('totLbl').textContent;
 }
 
 function goStep(n){
+  state.viewing = false;
+  $('pList').className = 'hide';
+  $('bar').className = 'bar';
   state.step = n;
   $('p1').className = n===1 ? '' : 'hide';
   $('p2').className = n===2 ? '' : 'hide';
@@ -496,6 +520,111 @@ $('next').addEventListener('click', function(){
   send();
 });
 
+/* ---------- my quotations ---------- */
+function showList(){
+  state.viewing = true;
+  ['p1','p2','p3'].forEach(function(x){ $(x).className = 'hide'; });
+  $('pList').className = '';
+  $('bar').className = 'bar hide';
+  $('qlist').className = 'load';
+  $('qlist').textContent = 'Loading…';
+  window.scrollTo(0,0);
+
+  sb.from('gl_sa_quotes')
+    .select('id,ref,share_token,plate,model,car_type,total,status,created_at,partner_id,services,issues,front_photo,notes,colour,accepted_by_id')
+    .eq('created_by', state.user)
+    .order('created_at', { ascending:false })
+    .limit(30)
+    .then(function(r){
+      if(r.error){ $('qlist').textContent = r.error.message; return; }
+      var rows = r.data || [];
+      $('qlist').className = '';
+      if(!rows.length){
+        $('qlist').innerHTML = '<p class="muted" style="text-align:center;padding:36px 12px">Nothing sent yet.</p>';
+        return;
+      }
+      QCACHE = {};
+      $('qlist').innerHTML = rows.map(function(q){
+        QCACHE[q.id] = q;
+        var pname = '';
+        state.partners.forEach(function(p){ if(p.id === q.partner_id) pname = p.name; });
+        var d = new Date(q.created_at);
+        var when = d.toLocaleDateString('en-MY',{day:'2-digit',month:'short'}) + ' ' +
+                   d.toLocaleTimeString('en-MY',{hour:'2-digit',minute:'2-digit'});
+        var editable = (q.status === 'sent');
+        var acts = '<div class="qacts">' +
+          (editable ? '<button class="btn ghost" data-edit="'+q.id+'"><i class="ti ti-pencil"></i> Edit</button>' : '') +
+          (q.status !== 'void' ? '<button class="btn ghost" data-share="'+q.id+'"><i class="ti ti-brand-whatsapp"></i> Share</button>' : '') +
+          (editable ? '<button class="btn ghost" data-void="'+q.id+'" style="flex:0 0 44px;color:var(--red)"><i class="ti ti-trash"></i></button>' : '') +
+          '</div>';
+        return '<div class="qrow"><div class="h"><b>'+esc(q.plate||'—')+'</b>' +
+          '<span class="rf">'+esc(q.ref)+'</span>' +
+          '<span class="pill '+esc(q.status)+'">'+esc(q.status)+'</span></div>' +
+          '<div class="m">'+esc(pname)+' · '+esc(q.model||'')+'<br>' +
+          when + ' · <b>'+money(q.total)+'</b></div>' + acts + '</div>';
+      }).join('');
+    });
+}
+
+var QCACHE = {};
+
+$('listBtn').addEventListener('click', function(){
+  if(state.viewing) goStep(state.step); else showList();
+});
+
+$('qlist').addEventListener('click', function(e){
+  var b = e.target.closest ? e.target.closest('button') : null;
+  if(!b) return;
+  var id;
+  if((id = b.getAttribute('data-edit'))) return loadForEdit(QCACHE[id]);
+  if((id = b.getAttribute('data-share'))){
+    var q = QCACHE[id];
+    return showDone(q.ref, q.share_token, q);
+  }
+  if((id = b.getAttribute('data-void'))){
+    if(!confirm('Cancel this quotation? The link will stop working.')) return;
+    b.disabled = true;
+    sb.from('gl_sa_quotes').update({ status:'void', updated_at:new Date().toISOString() })
+      .eq('id', id).eq('status','sent').then(function(r){
+        if(r.error){ b.disabled = false; return toast(r.error.message, true); }
+        toast('Cancelled');
+        showList();
+      });
+  }
+});
+
+/* pull a sent quote back into the form. photos come back as URLs, not blobs -
+   anything already uploaded is kept as-is and only new pictures get uploaded. */
+function loadForEdit(q){
+  if(!q) return;
+  if(q.status !== 'sent') return toast('Already accepted - cannot edit', true);
+
+  state.editId = q.id;
+  state.editRef = q.ref;
+  $('partner').value = q.partner_id || '';
+  $('plate').value = q.plate || '';
+  $('model').value = q.model || '';
+  $('colour').value = q.colour || '';
+  $('ctype').value = q.car_type || 'Sedan';
+  $('notes').value = q.notes || '';
+
+  state.front = q.front_photo ? { url:q.front_photo, existing:true } : null;
+  $('frontBox').innerHTML = state.front
+    ? '<img src="'+esc(state.front.url)+'">'
+    : '<i class="ti ti-camera"></i><span>No photo yet</span>';
+
+  state.finds = (q.issues||[]).map(function(i){
+    return { url:i.photo || '', remark:i.remark || i.label || '', existing:true };
+  }).filter(function(f){ return f.url; });
+
+  state.picked = {};
+  (q.services||[]).forEach(function(s){ state.picked[s.id] = s; });
+
+  toast('Editing ' + q.ref);
+  render();
+  goStep(1);
+}
+
 /* ---------- add partner ---------- */
 $('addPartnerBtn').addEventListener('click', function(){
   $('npName').value = '';
@@ -543,16 +672,16 @@ function send(){
   if(state.sending) return;
   state.sending = true;
   $('next').disabled = true;
-  $('next').innerHTML = '<i class="ti ti-loader-2"></i> Sending…';
+  $('next').innerHTML = '<i class="ti ti-loader-2"></i> ' + (state.editId ? 'Updating…' : 'Sending…');
 
+  // a new token on every send: WhatsApp caches previews per URL, so an edited
+  // quote must go out on a fresh link or the old photo sticks
   var tk = token();
+  var stamp = Date.now();
   var svcs = [];
   for(var k in state.picked){ if(state.picked.hasOwnProperty(k)) svcs.push(state.picked[k]); }
 
-  var quoteId = null, ref = null;
-
-  sb.from('gl_sa_quotes').insert({
-    share_token: tk,
+  var base = {
     partner_id: $('partner').value,
     plate: $('plate').value.trim().toUpperCase(),
     model: $('model').value.trim(),
@@ -561,16 +690,30 @@ function send(){
     services: svcs,
     total: total(),
     notes: $('notes').value.trim(),
-    created_by: state.user,
-    status: 'draft'
-  }).select('id,ref').single().then(function(r){
+    created_by: state.user
+  };
+
+  var quoteId = state.editId, ref = state.editRef;
+
+  var first = state.editId
+    ? sb.from('gl_sa_quotes').update(base).eq('id', state.editId).eq('status','sent')
+        .select('id,ref').single()
+    : sb.from('gl_sa_quotes').insert(
+        Object.assign({}, base, { share_token: tk, status: 'draft' })
+      ).select('id,ref').single();
+
+  first.then(function(r){
     if(r.error) throw r.error;
+    if(!r.data) throw new Error('Already accepted - cannot edit');
     quoteId = r.data.id; ref = r.data.ref;
-    return upload(quoteId, 'front.jpg', state.front.blob);
+    // existing front photo stays put; a new one uploads under a fresh name
+    if(state.front && state.front.existing) return state.front.url;
+    return upload(quoteId, 'front_' + stamp + '.jpg', state.front.blob);
   }).then(function(frontUrl){
     var jobs = [], meta = [];
     state.finds.forEach(function(f, ix){
-      var name = 'find_' + (ix+1) + '.jpg';
+      if(f.existing){ meta.push({ remark:(f.remark||'').trim(), photo:f.url }); return; }
+      var name = 'find_' + stamp + '_' + (ix+1) + '.jpg';
       jobs.push(upload(quoteId, name, f.blob));
       meta.push({
         remark: (f.remark||'').trim(),
@@ -579,12 +722,15 @@ function send(){
     });
     return Promise.all(jobs).then(function(){
       return sb.from('gl_sa_quotes').update({
-        front_photo: frontUrl, issues: meta, status: 'sent', updated_at: new Date().toISOString()
+        front_photo: frontUrl, issues: meta, share_token: tk,
+        status: 'sent', updated_at: new Date().toISOString()
       }).eq('id', quoteId);
     });
   }).then(function(r){
     if(r && r.error) throw r.error;
-    return sb.from('gl_sa_quote_events').insert({ quote_id: quoteId, type:'sent', actor: state.user });
+    return sb.from('gl_sa_quote_events').insert({
+      quote_id: quoteId, type: state.editId ? 'edited' : 'sent', actor: state.user
+    });
   }).then(function(){
     showDone(ref, tk);
   }).catch(function(e){
@@ -595,8 +741,18 @@ function send(){
   });
 }
 
-function showDone(ref, tk){
+function showDone(ref, tk, saved){
   var url = SHARE_BASE + '?t=' + tk;
+  if(saved){
+    // re-sharing an existing quote from the list: rebuild from its stored data
+    state.finds = (saved.issues||[]).map(function(i){ return { remark:i.remark||i.label||'' }; });
+    state.picked = {};
+    (saved.services||[]).forEach(function(s){ state.picked[s.id] = s; });
+    $('plate').value = saved.plate || '';
+    $('model').value = saved.model || '';
+    $('colour').value = saved.colour || '';
+    $('partner').value = saved.partner_id || '';
+  }
   var pname = '';
   state.partners.forEach(function(p){ if(p.id === $('partner').value) pname = p.name; });
 
