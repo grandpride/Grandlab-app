@@ -12,6 +12,8 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,B
 .top{position:sticky;top:0;z-index:20;background:rgba(8,8,8,.96);backdrop-filter:blur(10px);border-bottom:1px solid var(--border);padding:12px 14px}
 .top h1{margin:0;font-size:17px;font-weight:700;display:flex;align-items:center;gap:8px}
 .top h1 i{color:var(--gold)}
+.top h1 .back{width:32px;height:32px;border-radius:10px;background:var(--card2);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;text-decoration:none;flex-shrink:0}
+.top h1 .back i{color:var(--text2);font-size:17px}
 .steps{display:flex;gap:6px;margin-top:10px}
 .steps div{flex:1;height:3px;border-radius:2px;background:var(--border)}
 .steps div.on{background:var(--gold)}
@@ -80,7 +82,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--gold)}
 <body>
 
 <div class="top">
-  <h1><i class="ti ti-file-dollar"></i> SA Quotation</h1>
+  <h1><a href="gl-hub.html" class="back"><i class="ti ti-arrow-left"></i></a><i class="ti ti-file-dollar"></i> SA Quotation</h1>
   <div class="steps"><div id="s1" class="on"></div><div id="s2"></div><div id="s3"></div></div>
 </div>
 
@@ -94,7 +96,10 @@ input:focus,select:focus,textarea:focus{border-color:var(--gold)}
       <h2>Partner &amp; Car</h2>
       <div class="fld">
         <label>Partner workshop / showroom</label>
-        <select id="partner"></select>
+        <div class="row" style="gap:8px">
+          <select id="partner" style="flex:1"></select>
+          <button class="btn ghost" style="flex:0 0 50px;padding:12px" id="addPartnerBtn"><i class="ti ti-plus"></i></button>
+        </div>
       </div>
       <div class="row fld">
         <div><label>Plate</label><input id="plate" placeholder="WXY 1234" autocapitalize="characters"></div>
@@ -110,7 +115,11 @@ input:focus,select:focus,textarea:focus{border-color:var(--gold)}
     <div class="card">
       <h2>Front photo</h2>
       <div class="front" id="frontBox">
-        <i class="ti ti-camera"></i><span>Tap to take front photo</span>
+        <i class="ti ti-camera"></i><span>No photo yet</span>
+      </div>
+      <div class="row" style="margin-top:10px">
+        <button class="btn ghost" id="frontCam"><i class="ti ti-camera"></i> Camera</button>
+        <button class="btn ghost" id="frontUp"><i class="ti ti-upload"></i> Upload</button>
       </div>
       <p class="muted" style="margin:10px 0 0">This is the photo the SA sees first in WhatsApp. Get the whole car in frame.</p>
     </div>
@@ -151,6 +160,20 @@ input:focus,select:focus,textarea:focus{border-color:var(--gold)}
 </div>
 
 <div class="toast" id="toast"></div>
+
+<div class="ov hide" id="newPartner">
+  <div class="box" style="text-align:left">
+    <h3 style="margin:0 0 4px;font-size:18px">Add workshop / showroom</h3>
+    <p class="muted" style="margin:0 0 14px">This also adds it to Job Card and Booking.</p>
+    <div class="fld"><label>Name</label><input id="npName" placeholder="e.g. Proton - Sentul"></div>
+    <div class="row fld">
+      <div><label>Type</label><select id="npKind"><option value="workshop">Workshop</option><option value="showroom">Showroom</option></select></div>
+      <div><label>Comm %</label><input id="npPct" type="number" value="30"></div>
+    </div>
+    <button class="btn gold" id="npSave"><i class="ti ti-check"></i> Add</button>
+    <button class="btn ghost" style="margin-top:8px" id="npCancel">Cancel</button>
+  </div>
+</div>
 
 <div class="ov hide" id="done">
   <div class="box">
@@ -204,9 +227,11 @@ function token(){
 }
 
 /* ---------- image compression ---------- */
-function pickImage(cb){
+function pickImage(cb, useCamera){
   var inp = document.createElement('input');
-  inp.type='file'; inp.accept='image/*'; inp.capture='environment';
+  inp.type='file'; inp.accept='image/*';
+  // only set capture for camera - leaving it off lets the OS show the gallery
+  if(useCamera) inp.setAttribute('capture','environment');
   inp.onchange = function(){
     var f = inp.files && inp.files[0];
     if(!f) return;
@@ -242,7 +267,7 @@ function boot(){
     if(!s){ location.href = 'gl-hub.html'; return; }
     state.user = s.user.email;
     return Promise.all([
-      sb.from('gl_partners').select('id,name').eq('active',true).order('name'),
+      sb.from('gl_partners').select('id,name,kind').eq('active',true).order('kind').order('name'),
       sb.from('gl_services').select('id,name,subtitle,category,brand,base_price,price_by_type,is_coating,maint_months')
         .or('hidden.is.null,hidden.eq.false').order('category').order('sort_order')
     ]);
@@ -266,10 +291,16 @@ function boot(){
 
 /* ---------- render ---------- */
 function render(){
-  var sel = $('partner');
-  sel.innerHTML = state.partners.map(function(p){
-    return '<option value="'+p.id+'">'+esc(p.name)+'</option>';
-  }).join('');
+  var sel = $('partner'), cur = sel.value;
+  var ws = state.partners.filter(function(p){ return p.kind !== 'showroom'; });
+  var sr = state.partners.filter(function(p){ return p.kind === 'showroom'; });
+  function opts(a){
+    return a.map(function(p){ return '<option value="'+p.id+'">'+esc(p.name)+'</option>'; }).join('');
+  }
+  sel.innerHTML =
+    (ws.length ? '<optgroup label="Workshop">'+opts(ws)+'</optgroup>' : '') +
+    (sr.length ? '<optgroup label="Showroom">'+opts(sr)+'</optgroup>' : '');
+  if(cur) sel.value = cur;
 
   $('issChips').innerHTML = COMMON.map(function(c){
     var on = state.issues.some(function(i){ return i.label===c; });
@@ -368,12 +399,15 @@ function goStep(n){
 }
 
 /* ---------- events ---------- */
-$('frontBox').addEventListener('click', function(){
+function grabFront(useCamera){
   pickImage(function(img){
     state.front = img;
     $('frontBox').innerHTML = '<img src="'+img.url+'">';
-  });
-});
+  }, useCamera);
+}
+$('frontCam').addEventListener('click', function(){ grabFront(true); });
+$('frontUp').addEventListener('click', function(){ grabFront(false); });
+$('frontBox').addEventListener('click', function(){ grabFront(false); });
 
 $('issChips').addEventListener('click', function(e){
   var c = e.target.getAttribute('data-c');
@@ -406,7 +440,7 @@ $('issList').addEventListener('click', function(e){
   var slot = e.target.closest ? e.target.closest('.slot') : null;
   if(slot){
     var ix = +slot.getAttribute('data-ix'), p = +slot.getAttribute('data-p');
-    pickImage(function(img){ state.issues[ix].photos[p] = img; renderIssues(); });
+    pickImage(function(img){ state.issues[ix].photos[p] = img; renderIssues(); }, false);
   }
 });
 
@@ -465,6 +499,39 @@ $('next').addEventListener('click', function(){
   }
   if(!Object.keys(state.picked).length) return toast('Pick at least one service', true);
   send();
+});
+
+/* ---------- add partner ---------- */
+$('addPartnerBtn').addEventListener('click', function(){
+  $('npName').value = '';
+  $('npPct').value = 30;
+  $('newPartner').className = 'ov';
+});
+$('npCancel').addEventListener('click', function(){ $('newPartner').className = 'ov hide'; });
+$('npSave').addEventListener('click', function(){
+  var nm = $('npName').value.trim();
+  if(!nm) return toast('Name required', true);
+  var btn = $('npSave');
+  btn.disabled = true;
+  sb.rpc('sa_add_partner', {
+    p_name: nm, p_kind: $('npKind').value, p_pct: Number($('npPct').value) || 30
+  }).then(function(r){
+    btn.disabled = false;
+    if(r.error) return toast(r.error.message, true);
+    var d = r.data;
+    if(!d || !d.ok) return toast('Could not add (' + ((d && d.reason) || 'error') + ')', true);
+    $('newPartner').className = 'ov hide';
+    toast('Added \u2014 also in Job Card now');
+    return sb.from('gl_partners').select('id,name,kind').eq('active', true).order('name')
+      .then(function(rr){
+        state.partners = rr.data || [];
+        render();
+        $('partner').value = d.id;
+      });
+  }).catch(function(e){
+    btn.disabled = false;
+    toast('Failed: ' + (e.message||e), true);
+  });
 });
 
 /* ---------- send ---------- */

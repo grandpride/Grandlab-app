@@ -12,6 +12,8 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,B
 .top{position:sticky;top:0;z-index:20;background:rgba(8,8,8,.97);backdrop-filter:blur(10px);border-bottom:1px solid var(--border);padding:12px 14px}
 .top h1{margin:0;font-size:17px;font-weight:700;display:flex;align-items:center;gap:8px}
 .top h1 i{color:var(--gold)}
+.top h1 .back{width:32px;height:32px;border-radius:10px;background:var(--card2);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;text-decoration:none;flex-shrink:0}
+.top h1 .back i{color:var(--text2);font-size:17px}
 .tabs{display:flex;gap:7px;margin-top:11px}
 .tabs div{flex:1;text-align:center;padding:9px;border-radius:11px;background:var(--card2);border:1px solid var(--border);font-size:13px;font-weight:600;cursor:pointer}
 .tabs div.on{background:var(--gold);color:#000;border-color:var(--gold)}
@@ -82,7 +84,7 @@ label{display:block;font-size:11px;color:var(--text2);margin:0 0 5px}
 <body>
 
 <div class="top">
-  <h1><i class="ti ti-briefcase"></i> SA Admin</h1>
+  <h1><a href="gl-hub.html" class="back"><i class="ti ti-arrow-left"></i></a><i class="ti ti-briefcase"></i> SA Admin</h1>
   <div class="tabs">
     <div id="tDeals" class="on">Deals</div>
     <div id="tPayout">Payout</div>
@@ -115,10 +117,12 @@ label{display:block;font-size:11px;color:var(--text2);margin:0 0 5px}
   <div id="vSetup" class="hide">
     <div class="card">
       <h2>Add partner</h2>
+      <div class="fld"><label>Name</label><input id="pName" placeholder="e.g. Proton - Sentul"></div>
       <div class="row fld">
-        <div style="flex:2"><label>Name</label><input id="pName" placeholder="Lemans - Workshop"></div>
+        <div><label>Type</label><select id="pKind"><option value="workshop">Workshop</option><option value="showroom">Showroom</option></select></div>
         <div><label>Comm %</label><input id="pPct" type="number" value="30"></div>
       </div>
+      <p style="font-size:11px;color:var(--text2);line-height:1.5;margin-bottom:10px">Also added to Job Card and Booking automatically.</p>
       <button class="btn gold w" id="addPartner"><i class="ti ti-plus"></i> Add partner</button>
     </div>
     <div id="partners"></div>
@@ -320,6 +324,7 @@ function renderSetup(){
     }).join('');
     return '<div class="pr">' +
       '<div class="ph"><b>'+esc(p.name)+'</b>' +
+      '<span style="font-size:10px;color:var(--text2);text-transform:uppercase;letter-spacing:.4px">'+esc(p.kind||'workshop')+'</span>' +
       '<span class="rate">'+(p.comm_pct||30)+'%</span>' +
       '<i class="ti ti-pencil" style="color:var(--text2);cursor:pointer" data-rate="'+p.id+'" data-cur="'+(p.comm_pct||30)+'"></i></div>' +
       rows +
@@ -334,10 +339,13 @@ function renderSetup(){
 $('addPartner').addEventListener('click', function(){
   var n = $('pName').value.trim();
   if(!n) return toast('Name required', true);
-  sb.from('gl_partners').insert({ name:n, comm_pct:Number($('pPct').value)||30 }).then(function(r){
+  sb.rpc('sa_add_partner', {
+    p_name:n, p_kind:$('pKind').value, p_pct:Number($('pPct').value)||30
+  }).then(function(r){
     if(r.error) return toast(r.error.message, true);
+    if(!r.data || !r.data.ok) return toast('Could not add (' + ((r.data&&r.data.reason)||'error') + ')', true);
     $('pName').value = '';
-    toast('Partner added');
+    toast('Added \u2014 also in Job Card now');
     reload();
   });
 });
