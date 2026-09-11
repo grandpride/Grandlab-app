@@ -172,7 +172,9 @@ input:focus,select:focus,textarea:focus{border-color:var(--gold)}
 
 var SB_URL = 'https://eychljpzorzmaveixlnu.supabase.co';
 var SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV5Y2hsanB6b3J6bWF2ZWl4bG51Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2NDk2NjQsImV4cCI6MjA5NzIyNTY2NH0.6dA1zhz5ZIwf8byFB8vhfOzPI-uPPdPihEr1b8GG_oA';
-var ACCEPT_BASE = 'https://app.grandlab.com.my/gl-sa-accept.html';
+// shared link goes through the Edge Function so WhatsApp shows the car photo.
+// it 302s real people straight to gl-sa-accept.html
+var SHARE_BASE = 'https://eychljpzorzmaveixlnu.supabase.co/functions/v1/sa-quote';
 
 var sb = window.supabase.createClient(SB_URL, SB_KEY, {
   auth:{ storageKey:'gl_auth', persistSession:true, autoRefreshToken:true }
@@ -534,7 +536,7 @@ function send(){
 }
 
 function showDone(ref, tk){
-  var url = ACCEPT_BASE + '?t=' + tk;
+  var url = SHARE_BASE + '?t=' + tk;
   var pname = '';
   state.partners.forEach(function(p){ if(p.id === $('partner').value) pname = p.name; });
 
