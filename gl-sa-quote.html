@@ -235,7 +235,8 @@ input:focus,select:focus,textarea:focus{border-color:var(--gold)}
   <div class="box">
     <i class="ti ti-circle-check big"></i>
     <h3 id="doneRef">Quotation sent</h3>
-    <p class="muted">Share this link into the partner's WhatsApp group. First SA to tap Accept owns the deal.</p>
+    <p class="muted">Share into the partner's WhatsApp group.</p>
+    <p style="font-size:12px;color:var(--gold);background:rgba(245,197,24,.08);border:1px solid rgba(245,197,24,.28);border-radius:10px;padding:10px;margin:12px 0;line-height:1.5">Wait 2 seconds for the car photo to appear above the text, then send.</p>
     <div class="lnk" id="doneLink"></div>
     <button class="btn gold" id="waBtn"><i class="ti ti-brand-whatsapp"></i> Share to WhatsApp</button>
     <button class="btn ghost" style="margin-top:8px" id="msgBtn"><i class="ti ti-message-2"></i> Copy full message</button>
@@ -282,7 +283,7 @@ function token(){
 }
 
 /* ---------- image compression ---------- */
-function pickImage(cb, useCamera, multiple){
+function pickImage(cb, useCamera, multiple, maxDim, quality){
   var inp = document.createElement('input');
   inp.type='file'; inp.accept='image/*';
   // only set capture for camera - leaving it off lets the OS show the gallery
@@ -294,17 +295,17 @@ function pickImage(cb, useCamera, multiple){
     // compress one after another so a batch of 8 doesn't stall the phone
     (function nxt(i){
       if(i >= fs.length) return;
-      compress(fs[i], function(img){ cb(img, i, fs.length); nxt(i+1); });
+      compress(fs[i], function(img){ cb(img, i, fs.length); nxt(i+1); }, maxDim, quality);
     })(0);
   };
   inp.click();
 }
-function compress(file, cb){
+function compress(file, cb, maxDim, quality){
   var r = new FileReader();
   r.onload = function(e){
     var img = new Image();
     img.onload = function(){
-      var max = 1400, w = img.width, h = img.height;
+      var max = maxDim || 1400, w = img.width, h = img.height;
       if(w > h && w > max){ h = Math.round(h*max/w); w = max; }
       else if(h >= w && h > max){ w = Math.round(w*max/h); h = max; }
       var c = document.createElement('canvas');
@@ -312,7 +313,7 @@ function compress(file, cb){
       c.getContext('2d').drawImage(img, 0, 0, w, h);
       c.toBlob(function(blob){
         cb({ blob: blob, url: c.toDataURL('image/jpeg', 0.6) });
-      }, 'image/jpeg', 0.8);
+      }, 'image/jpeg', quality || 0.8);
     };
     img.onerror = function(){ toast('Bad image', true); };
     img.src = e.target.result;
@@ -568,10 +569,12 @@ function goStep(n){
 
 /* ---------- events ---------- */
 function grabFront(useCamera){
+  // WhatsApp silently drops preview images over ~600KB, so the front photo is
+  // compressed harder than the rest. 1100px / q0.68 lands around 200-280KB.
   pickImage(function(img){
     state.front = img;
     $('frontBox').innerHTML = '<img src="'+img.url+'">';
-  }, useCamera);
+  }, useCamera, false, 1100, 0.68);
 }
 $('frontCam').addEventListener('click', function(){ grabFront(true); });
 $('frontUp').addEventListener('click', function(){ grabFront(false); });
@@ -983,6 +986,7 @@ function showDone(ref, tk, saved){
 
   var msg = '\ud83d\ude97 *GRANDLAB QUOTATION* \u2014 ' + ref + '\n' +
             '\ud83d\udccd ' + car + '\n\n' +
+            '\ud83d\udc47 *Photos + accept here*\n' + url + '\n\n' +
             '\u26a0\ufe0f *What we found (' + state.finds.length + ' photo' + (state.finds.length===1?'':'s') + ')*\n' +
             state.finds.map(function(f, i){
               return '\u2022 ' + ((f.remark||'').trim() || 'Photo ' + (i+1));
@@ -993,8 +997,7 @@ function showDone(ref, tk, saved){
               if(s.is_coating && s.foc_maint > 0) line += '\n   \ud83c\udf81 incl. ' + s.foc_maint + '\u00d7 FOC maintenance';
               return line;
             }).join('\n') + '\n\n' +
-            '\ud83d\udcb0 *Total: ' + money(total()) + '*\n\n' +
-            '\ud83d\udc47 Photos + accept here\n' + url;
+            '\ud83d\udcb0 *Total: ' + money(total()) + '*';
 
   $('doneRef').textContent = ref + ' sent';
   $('doneLink').textContent = url;
