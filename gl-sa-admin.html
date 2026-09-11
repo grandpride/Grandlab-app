@@ -45,6 +45,8 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,B
 .deal .amt b{font-size:15px}
 .deal .amt .c b{color:var(--gold)}
 .acts{display:flex;gap:8px}
+.jobline{margin-top:8px;padding:9px 11px;border-radius:10px;background:rgba(55,214,122,.08);border:1px solid rgba(55,214,122,.28);font-size:12px;color:var(--ok);display:flex;align-items:center;gap:7px}
+.jobline b{font-family:ui-monospace,Menlo,monospace;font-weight:700}
 .btn{border:none;border-radius:12px;padding:12px;font-size:13px;font-weight:700;font-family:inherit;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;flex:1}
 .btn.gold{background:var(--gold);color:#000}
 .btn.green{background:var(--ok);color:#04210f}
@@ -239,6 +241,16 @@ function renderDeals(){
       acts = '<div class="acts"><button class="btn ghost sm" data-uncomm="'+esc(d.ref)+'">Undo comm paid</button></div>';
     }
 
+    // job card row - only once the customer has actually confirmed
+    var jobRow = '';
+    if(!notConf){
+      jobRow = d.job_id
+        ? '<div class="jobline"><i class="ti ti-clipboard-check"></i> Job card created \u00b7 <b>'+esc(d.job_id)+'</b></div>'
+        : '<div class="acts" style="margin-top:8px"><button class="btn ghost sm" data-job="'+esc(d.ref)+'">' +
+          '<i class="ti ti-clipboard-plus"></i> Create job card</button></div>';
+    }
+    acts += jobRow;
+
     return '<div class="deal">' +
       '<div class="hd"><b>'+esc(d.plate||'—')+'</b><span class="ref">'+esc(d.ref)+'</span>'+pill+'</div>' +
       '<div class="meta">'+esc(d.model||'')+' · '+esc(d.car_type||'')+'<br>' +
@@ -274,6 +286,22 @@ $('deals').addEventListener('click', function(e){
   } else if((ref = b.getAttribute('data-uncomm'))){
     patch = { comm_status:'payable', comm_paid_at:null, comm_paid_ref:null };
     msg = 'Reverted';
+  } else if((ref = b.getAttribute('data-job'))){
+    b.disabled = true;
+    b.innerHTML = '<i class="ti ti-loader-2"></i> Creating…';
+    sb.rpc('sa_quote_make_job', { p_ref: ref }).then(function(r){
+      if(r.error){ b.disabled = false; return toast(r.error.message, true); }
+      var d = r.data;
+      if(!d || !d.ok){
+        b.disabled = false;
+        return toast(d && d.reason === 'already_created'
+          ? 'Job card already exists: ' + d.job_id
+          : 'Could not create (' + ((d && d.reason) || 'error') + ')', true);
+      }
+      toast('Job card ' + d.job_id + ' created');
+      reload();
+    });
+    return;
   } else return;
 
   b.disabled = true;
