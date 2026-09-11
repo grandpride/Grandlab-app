@@ -26,6 +26,11 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,B
 .fnd .no{position:absolute;top:9px;left:9px;background:rgba(0,0,0,.72);color:var(--gold);font-size:11px;font-weight:800;padding:4px 9px;border-radius:14px}
 .fnd .rk{padding:11px 12px;font-size:13.5px;line-height:1.45;display:flex;gap:8px;align-items:flex-start}
 .fnd .rk i{color:var(--gold);font-size:15px;margin-top:1px}
+.cats{display:flex;gap:7px;overflow-x:auto;padding-bottom:8px;margin-bottom:8px}
+.cats div{white-space:nowrap;flex-shrink:0;background:var(--card2);border:1px solid var(--border);border-radius:16px;padding:7px 13px;font-size:12px;cursor:pointer}
+.cats div.on{background:var(--gold);color:#000;border-color:var(--gold);font-weight:700}
+.extra{font-size:10px;color:var(--ok);text-transform:uppercase;letter-spacing:.4px;font-weight:700;margin-top:3px;display:block}
+#addOv input{width:100%;background:var(--card2);border:1px solid var(--border);border-radius:11px;color:var(--text);padding:11px;font-size:16px;font-family:inherit;outline:none}
 .iss{border-bottom:1px solid var(--border);padding:12px 0}
 .iss:first-of-type{padding-top:0}
 .iss:last-child{border-bottom:none;padding-bottom:0}
@@ -125,6 +130,17 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,B
   </div>
 </div>
 
+<div class="ov hide" id="addOv">
+  <div class="box" style="text-align:left;max-height:88vh;display:flex;flex-direction:column">
+    <h3 style="margin:0 0 4px;font-size:18px">Add a service</h3>
+    <p style="margin:0 0 12px;font-size:13px;color:var(--text2)">Customer wants something different? Add it here.</p>
+    <input id="addQ" placeholder="Search…" style="margin-bottom:10px">
+    <div class="cats" id="addCats"></div>
+    <div id="addList" style="flex:1;overflow-y:auto;margin-bottom:10px"></div>
+    <button class="btn ghost" id="addClose">Done</button>
+  </div>
+</div>
+
 <div class="lightbox hide" id="lb"><img id="lbImg" alt=""></div>
 <div class="toast" id="toast"></div>
 
@@ -142,7 +158,7 @@ var sb = window.supabase.createClient(SB_URL, SB_KEY, {
 
 var $ = function(id){ return document.getElementById(id); };
 var TOKEN = new URLSearchParams(location.search).get('t') || '';
-var Q = null, picked = {}, busy = false;
+var Q = null, picked = {}, busy = false, extras = [], CAT = '', CATS = [];
 
 function toast(m, err){
   var t = $('toast');
@@ -182,7 +198,8 @@ function load(){
 
 function svcList(){
   if(Q.status === 'confirmed') return Q.selected_services || [];
-  return Q.services || [];
+  if(Q.status === 'declined')  return Q.services || [];
+  return (Q.services || []).concat(extras);
 }
 
 function render(){
@@ -228,9 +245,10 @@ function svcRow(s, selectable){
   var on = !!picked[s.id];
   var foc = (s.is_coating && s.foc_maint > 0)
     ? '<span class="foc"><i class="ti ti-gift"></i> incl. '+s.foc_maint+'\u00d7 FOC maintenance</span>' : '';
+  var tag = s.added ? '<span class="extra">Added</span>' : '';
   return '<div class="svc'+(selectable?' pick':'')+(on?' on':'')+'" data-sid="'+esc(s.id)+'">' +
     (selectable ? '<div class="tick">'+(on?'<i class="ti ti-check"></i>':'')+'</div>' : '') +
-    '<div class="nm"><b>'+esc(s.name)+'</b>'+foc+'</div>' +
+    '<div class="nm"><b>'+esc(s.name)+'</b>'+foc+tag+'</div>' +
     '<div class="pr">'+money(s.price)+'</div></div>';
 }
 
@@ -277,6 +295,15 @@ function renderAccepted(){
     svcList().forEach(function(s){ picked[s.id] = s; });
   }
   $('svcTitle').textContent = 'Tick what customer wants';
+  if(!$('addBtn')){
+    var b = document.createElement('button');
+    b.id = 'addBtn';
+    b.className = 'btn ghost';
+    b.style.marginTop = '12px';
+    b.innerHTML = '<i class="ti ti-plus"></i> Customer wants something else';
+    b.onclick = openAdd;
+    $('services').parentNode.appendChild(b);
+  }
   drawPickable();
 }
 
@@ -373,6 +400,87 @@ function resend(){
             '\ud83d\udcde GrandLab will arrange the booking.';
   window.open('https://wa.me/?text=' + encodeURIComponent(msg), '_blank');
 }
+
+/* ---- add a service mid-conversation ---- */
+function openAdd(){
+  $('addOv').className = 'ov';
+  $('addQ').value = '';
+  CAT = '';
+  loadCat();
+}
+$('addClose').addEventListener('click', function(){
+  $('addOv').className = 'ov hide';
+  drawPickable();
+});
+
+var catTimer = null;
+$('addQ').addEventListener('input', function(){
+  clearTimeout(catTimer);
+  catTimer = setTimeout(loadCat, 280);
+});
+
+function loadCat(){
+  $('addList').innerHTML = '<p style="padding:20px;text-align:center;color:var(--text2)">Loading…</p>';
+  sb.rpc('sa_quote_catalogue', {
+    p_token: TOKEN,
+    p_search: $('addQ').value.trim() || null,
+    p_category: CAT || null
+  }).then(function(r){
+    if(r.error || !r.data || r.data.error){
+      $('addList').innerHTML = '<p style="padding:20px;text-align:center;color:var(--red)">Could not load price list</p>';
+      return;
+    }
+    if(!CATS.length){
+      CATS = r.data.categories || [];
+      $('addCats').innerHTML = ['<div class="'+(CAT===''?'on':'')+'" data-c="">All</div>']
+        .concat(CATS.map(function(c){
+          return '<div class="'+(CAT===c?'on':'')+'" data-c="'+esc(c)+'">'+esc(c)+'</div>';
+        })).join('');
+    }
+    var items = r.data.items || [];
+    if(!items.length){
+      $('addList').innerHTML = '<p style="padding:20px;text-align:center;color:var(--text2)">Nothing matches.</p>';
+      return;
+    }
+    $('addList').innerHTML = items.map(function(s){
+      var already = !!picked[s.id] || (Q.services||[]).some(function(x){ return String(x.id) === String(s.id); });
+      return '<div class="svc'+(already?'':' pick')+'" data-add="'+esc(s.id)+'" style="'+(already?'opacity:.45':'')+'">' +
+        '<div class="nm"><b>'+esc(s.name)+'</b><span style="font-size:11px;color:var(--text2)">'+esc(s.category||'')+'</span></div>' +
+        '<div class="pr">'+money(s.price)+'</div>' +
+        '<i class="ti ti-'+(already?'check':'plus')+'" style="color:'+(already?'var(--ok)':'var(--gold)')+';font-size:19px"></i>' +
+        '</div>';
+    }).join('');
+    ADDCACHE = {};
+    items.forEach(function(s){ ADDCACHE[s.id] = s; });
+  });
+}
+
+var ADDCACHE = {};
+
+$('addCats').addEventListener('click', function(e){
+  var c = e.target.getAttribute('data-c');
+  if(c === null) return;
+  CAT = c;
+  Array.prototype.forEach.call($('addCats').children, function(d){
+    d.className = (d.getAttribute('data-c') === c) ? 'on' : '';
+  });
+  loadCat();
+});
+
+$('addList').addEventListener('click', function(e){
+  var row = e.target.closest ? e.target.closest('[data-add]') : null;
+  if(!row) return;
+  var id = row.getAttribute('data-add');
+  if(picked[id]) return;
+  var s = ADDCACHE[id];
+  if(!s) return;
+  var item = { id:s.id, name:s.name, price:s.price, category:s.category,
+               is_coating:!!s.is_coating, foc_maint: s.is_coating ? 1 : 0, added:true };
+  extras.push(item);
+  picked[id] = item;
+  toast(s.name + ' added');
+  loadCat();
+});
 
 /* ---- who are you ---- */
 var whoMode = 'accept';
