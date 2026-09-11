@@ -97,6 +97,28 @@ label{display:block;font-size:11px;color:var(--text2);margin:0 0 5px}
 .rsum div{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:12px}
 .rsum small{display:block;font-size:10px;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px}
 .rsum b{font-size:17px;font-weight:800}
+#printArea{display:none}
+@media print{
+  body{background:#fff!important;color:#000!important;padding:0}
+  .top,#app,.toast{display:none!important}
+  #printArea{display:block!important;padding:0;font-family:Arial,Helvetica,sans-serif}
+  #printArea h1{font-size:19px;margin:0 0 2px}
+  #printArea .sub{font-size:11px;color:#555;margin-bottom:14px}
+  #printArea .kpi{display:flex;gap:10px;margin-bottom:16px}
+  #printArea .kpi div{flex:1;border:1px solid #ccc;border-radius:6px;padding:8px}
+  #printArea .kpi small{display:block;font-size:9px;color:#666;text-transform:uppercase;letter-spacing:.5px}
+  #printArea .kpi b{font-size:15px}
+  #printArea h2{font-size:12px;text-transform:uppercase;letter-spacing:.6px;color:#444;
+                border-bottom:1px solid #000;padding-bottom:4px;margin:16px 0 8px}
+  #printArea table{width:100%;border-collapse:collapse;font-size:10.5px}
+  #printArea th{text-align:left;border-bottom:1px solid #000;padding:5px 4px;font-size:9.5px;
+                text-transform:uppercase;letter-spacing:.4px}
+  #printArea td{border-bottom:1px solid #ddd;padding:5px 4px}
+  #printArea td.r,#printArea th.r{text-align:right}
+  #printArea tr.tot td{font-weight:bold;border-top:2px solid #000;border-bottom:none}
+  #printArea .foot{margin-top:22px;font-size:9px;color:#777;border-top:1px solid #ccc;padding-top:6px}
+  @page{margin:14mm}
+}
 </style>
 </head>
 <body>
@@ -160,6 +182,7 @@ label{display:block;font-size:11px;color:var(--text2);margin:0 0 5px}
 </div>
 
 <div class="toast" id="toast"></div>
+<div id="printArea"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script>
@@ -221,6 +244,7 @@ function render(){ renderDeals(); renderPayout(); renderSetup(); }
 function renderDeals(){
   var pend = 0, pay = 0, paid = 0;
   S.deals.forEach(function(d){
+    if(d.comm_status === 'void') return;
     var c = Number(d.comm_amount||0);
     if(d.comm_status === 'paid') paid += c;
     else if(d.comm_status === 'payable') pay += c;
@@ -231,17 +255,22 @@ function renderDeals(){
   $('sPaid').textContent = m0(paid);
 
   var counts = { all:S.deals.length, accepted:0, pending:0, payable:0, paid:0 };
+  var counts2 = { void:0 };
   S.deals.forEach(function(d){
+    if(d.status === 'void' || d.status === 'declined'){ counts.void = (counts.void||0)+1; return; }
     if(d.status === 'accepted') counts.accepted++;
     else counts[d.comm_status] = (counts[d.comm_status]||0) + 1;
   });
-  var fils = [['all','All'],['accepted','Not confirmed'],['pending','Awaiting payment'],['payable','To pay out'],['paid','Paid']];
+  var fils = [['all','All'],['accepted','Not confirmed'],['pending','Awaiting payment'],['payable','To pay out'],['paid','Paid'],['void','Cancelled']];
   $('fil').innerHTML = fils.map(function(f){
     return '<div class="'+(S.fil===f[0]?'on':'')+'" data-f="'+f[0]+'">'+f[1]+' ('+(counts[f[0]]||0)+')</div>';
   }).join('');
 
   var list = S.deals.filter(function(d){
+    var isDead = (d.status === 'void' || d.status === 'declined');
     if(S.fil === 'all') return true;
+    if(S.fil === 'void') return isDead;
+    if(isDead) return false;
     if(S.fil === 'accepted') return d.status === 'accepted';
     return d.status === 'confirmed' && d.comm_status === S.fil;
   });
@@ -253,10 +282,19 @@ function renderDeals(){
 
   $('deals').innerHTML = list.map(function(d){
     var notConf = d.status === 'accepted';
-    var pill = notConf ? '<span class="pill accepted">Not confirmed</span>'
-                       : '<span class="pill '+esc(d.comm_status)+'">'+esc(d.comm_status)+'</span>';
+    var dead = (d.status === 'void' || d.status === 'declined');
+    var pill;
+    if(d.status === 'void' || d.status === 'declined'){
+      pill = '<span class="pill void">Cancelled</span>';
+    } else if(notConf){
+      pill = '<span class="pill accepted">Not confirmed</span>';
+    } else {
+      pill = '<span class="pill '+esc(d.comm_status)+'">'+esc(d.comm_status)+'</span>';
+    }
     var acts = '';
-    if(notConf){
+    if(dead){
+      acts = '<div class="acts"><button class="btn ghost sm" disabled>Cancelled \u2014 no commission due</button></div>';
+    } else if(notConf){
       acts = '<div class="acts"><button class="btn ghost sm" disabled>Waiting for SA to confirm</button></div>';
     } else if(d.comm_status === 'pending'){
       acts = '<div class="acts"><button class="btn gold sm" data-paid="'+esc(d.ref)+'">' +
@@ -267,6 +305,13 @@ function renderDeals(){
              '<button class="btn green sm" data-comm="'+esc(d.ref)+'"><i class="ti ti-check"></i> Comm paid</button></div>';
     } else {
       acts = '<div class="acts"><button class="btn ghost sm" data-uncomm="'+esc(d.ref)+'">Undo comm paid</button></div>';
+    }
+
+    // customer backed out - void the deal so commission can never be paid
+    if(d.status !== 'void' && d.status !== 'declined' && !d.comm_paid_at){
+      acts += '<div class="acts" style="margin-top:8px">' +
+        '<button class="btn ghost sm" data-cancel="'+esc(d.ref)+'" style="color:var(--red)">' +
+        '<i class="ti ti-ban"></i> Cancel deal</button></div>';
     }
 
     // job card row - only once the customer has actually confirmed
@@ -314,6 +359,26 @@ $('deals').addEventListener('click', function(e){
   } else if((ref = b.getAttribute('data-uncomm'))){
     patch = { comm_status:'payable', comm_paid_at:null, comm_paid_ref:null };
     msg = 'Reverted';
+  } else if((ref = b.getAttribute('data-cancel'))){
+    var why = prompt('Cancel ' + ref + '?\n\nCommission will be voided and can never be paid.\nReason (optional):');
+    if(why === null) return;
+    b.disabled = true;
+    sb.rpc('sa_quote_cancel', { p_ref: ref, p_reason: why || null, p_actor: S.user })
+      .then(function(r){
+        if(r.error){ b.disabled = false; return toast(r.error.message, true); }
+        var d2 = r.data;
+        if(!d2 || !d2.ok){
+          b.disabled = false;
+          return toast(d2 && d2.reason === 'commission_already_paid'
+            ? 'Commission already paid \u2014 cannot cancel'
+            : 'Could not cancel (' + ((d2 && d2.reason) || 'error') + ')', true);
+        }
+        toast(d2.job_id
+          ? 'Cancelled \u2014 job card ' + d2.job_id + ' still open, close it in Job Card'
+          : 'Deal cancelled');
+        reload();
+      });
+    return;
   } else if((ref = b.getAttribute('data-job'))){
     b.disabled = true;
     b.innerHTML = '<i class="ti ti-loader-2"></i> Creating…';
@@ -488,6 +553,11 @@ function drawReport(rows, month){
 
   var sales = 0, comm = 0, paidComm = 0, owed = 0;
   var by = {};
+  rows = rows.filter(function(d){ return d.comm_status !== 'void' && d.status === 'confirmed'; });
+  if(!rows.length){
+    $('rBody').innerHTML = '<div class="empty"><i class="ti ti-mood-empty"></i>No confirmed deals this month.</div>';
+    return;
+  }
   rows.forEach(function(d){
     var s = Number(d.confirmed_total||0), c = Number(d.comm_amount||0);
     sales += s; comm += c;
@@ -536,11 +606,13 @@ function drawReport(rows, month){
     '</div>' +
     '<div class="acts" style="margin-bottom:14px">' +
       '<button class="btn gold sm" id="rCopy"><i class="ti ti-copy"></i> Copy report</button>' +
+      '<button class="btn ghost sm" id="rPdf"><i class="ti ti-file-type-pdf"></i> PDF</button>' +
       '<button class="btn ghost sm" id="rCsv"><i class="ti ti-download"></i> CSV</button>' +
     '</div>';
 
   $('rCopy').onclick = function(){ copyReport(by, names, sales, comm, month); };
   $('rCsv').onclick  = function(){ downloadCsv(rows, month); };
+  $('rPdf').onclick  = function(){ printReport(by, names, rows, sales, comm, paidComm, owed, month); };
 }
 
 function copyReport(by, names, sales, comm, month){
@@ -562,6 +634,64 @@ function copyReport(by, names, sales, comm, month){
     document.execCommand('copy'); ta.remove();
   }
   toast('Report copied');
+}
+
+/* Builds a clean A4 layout and opens the print dialog. On every phone and
+   desktop browser "Save as PDF" is one of the destinations, so this produces a
+   real PDF with no library to load. */
+function printReport(by, names, rows, sales, comm, paidComm, owed, month){
+  var mn = new Date(month + '-01T00:00:00Z')
+             .toLocaleDateString('en-MY', { month:'long', year:'numeric', timeZone:'UTC' });
+
+  var advRows = names.map(function(k){
+    var v = by[k];
+    return '<tr><td>'+esc(k)+'</td><td>'+esc(v.partner||'')+'</td>' +
+      '<td class="r">'+v.n+'</td>' +
+      '<td class="r">'+m0(v.s)+'</td>' +
+      '<td class="r">'+money(v.c)+'</td></tr>';
+  }).join('');
+
+  var dealRows = rows.slice().sort(function(a,b){
+    return String(a.confirmed_at||'').localeCompare(String(b.confirmed_at||''));
+  }).map(function(d){
+    return '<tr><td>'+esc(d.ref)+'</td><td>'+esc(d.plate||'')+'</td>' +
+      '<td>'+esc(d.advisor||'')+'</td><td>'+dt(d.confirmed_at)+'</td>' +
+      '<td class="r">'+m0(d.confirmed_total)+'</td>' +
+      '<td class="r">'+money(d.comm_amount)+'</td>' +
+      '<td>'+esc(d.comm_status||'')+'</td></tr>';
+  }).join('');
+
+  $('printArea').innerHTML =
+    '<h1>GRANDLAB \u2014 SA Commission Report</h1>' +
+    '<div class="sub">' + esc(mn) + ' &nbsp;|&nbsp; generated ' +
+      new Date().toLocaleDateString('en-MY') + ' by ' + esc(S.user || '') + '</div>' +
+    '<div class="kpi">' +
+      '<div><small>Confirmed sales</small><b>'+m0(sales)+'</b></div>' +
+      '<div><small>Total commission</small><b>'+m0(comm)+'</b></div>' +
+      '<div><small>Deals</small><b>'+rows.length+'</b></div>' +
+      '<div><small>Advisors</small><b>'+names.length+'</b></div>' +
+    '</div>' +
+    '<h2>By advisor</h2>' +
+    '<table><thead><tr><th>Advisor</th><th>Partner</th><th class="r">Deals</th>' +
+      '<th class="r">Sales</th><th class="r">Commission</th></tr></thead><tbody>' +
+      advRows +
+      '<tr class="tot"><td>Total</td><td></td><td class="r">'+rows.length+'</td>' +
+      '<td class="r">'+m0(sales)+'</td><td class="r">'+money(comm)+'</td></tr>' +
+    '</tbody></table>' +
+    '<h2>Commission status</h2>' +
+    '<table><tbody>' +
+      '<tr><td>Paid out</td><td class="r">'+money(paidComm)+'</td></tr>' +
+      '<tr><td>Owed now (customer has paid)</td><td class="r">'+money(owed)+'</td></tr>' +
+      '<tr><td>Awaiting customer payment</td><td class="r">'+money(comm-paidComm-owed)+'</td></tr>' +
+    '</tbody></table>' +
+    '<h2>Deals</h2>' +
+    '<table><thead><tr><th>Ref</th><th>Plate</th><th>Advisor</th><th>Confirmed</th>' +
+      '<th class="r">Sales</th><th class="r">Comm</th><th>Status</th></tr></thead><tbody>' +
+      dealRows + '</tbody></table>' +
+    '<div class="foot">Commission is payable only after GrandLab has received the customer\'s payment in full. ' +
+      'Cancelled deals are excluded. Grandpride Luxury Travel Sdn Bhd (1297143-K).</div>';
+
+  window.print();
 }
 
 function downloadCsv(rows, month){
