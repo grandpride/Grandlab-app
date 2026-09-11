@@ -125,15 +125,24 @@ input:focus,select:focus,textarea:focus{border-color:var(--gold)}
           <button class="btn ghost" style="flex:0 0 50px;padding:12px" id="addPartnerBtn"><i class="ti ti-plus"></i></button>
         </div>
       </div>
-      <div class="row fld">
-        <div><label>Plate</label><input id="plate" placeholder="WXY 1234" autocapitalize="characters"></div>
-        <div><label>Car type</label><select id="ctype">
-          <option>Sedan</option><option>SUV</option><option>MPV</option><option>Supercar</option><option>Motorcycle</option>
-        </select></div>
+      <div class="fld">
+        <label>Plate</label>
+        <input id="plate" class="up" placeholder="WXY 1234" autocapitalize="characters">
       </div>
       <div class="row fld">
-        <div><label>Model</label><input id="model" placeholder="Civic FE"></div>
-        <div><label>Colour</label><input id="colour" placeholder="White"></div>
+        <div><label>Brand</label><select id="brand"></select></div>
+        <div><label>Model</label><select id="modelSel"></select></div>
+      </div>
+      <div class="fld hide" id="modelManualWrap">
+        <label>Model name</label>
+        <input id="modelManual" class="up" placeholder="Type the model">
+      </div>
+      <div class="row fld">
+        <div><label>Car type <span id="ctypeAuto" class="auto hide">auto</span></label>
+          <select id="ctype">
+            <option>Sedan</option><option>SUV</option><option>MPV</option><option>Supercar</option><option>Motorcycle</option>
+          </select></div>
+        <div><label>Colour</label><input id="colour" class="up" placeholder="WHITE"></div>
       </div>
     </div>
     <div class="card">
@@ -231,7 +240,8 @@ var $ = function(id){ return document.getElementById(id); };
 
 var state = {
   step:1, user:null, partners:[], services:[], cats:[], cat:'All', q:'',
-  front:null, finds:[], picked:{}, sending:false, editId:null, editRef:null, viewing:false
+  front:null, finds:[], picked:{}, sending:false, editId:null, editRef:null, viewing:false,
+  models:[], brands:[]
 };
 
 function toast(msg, err){
@@ -296,12 +306,21 @@ function boot(){
     return Promise.all([
       sb.from('gl_partners').select('id,name,kind').eq('active',true).order('kind').order('name'),
       sb.from('gl_services').select('id,name,subtitle,category,brand,base_price,price_by_type,is_coating,maint_months')
-        .or('hidden.is.null,hidden.eq.false').order('category').order('sort_order')
+        .or('hidden.is.null,hidden.eq.false').order('category').order('sort_order'),
+      sb.from('gl_car_models').select('brand_name,name,type')
+        .or('active.is.null,active.eq.true').order('brand_name').order('name')
     ]);
   }).then(function(res){
     if(!res) return;
     state.partners = (res[0].data)||[];
     state.services = (res[1].data)||[];
+    state.models   = (res[2].data)||[];
+    var bseen = {};
+    state.brands = [];
+    state.models.forEach(function(m){
+      if(m.brand_name && !bseen[m.brand_name]){ bseen[m.brand_name]=1; state.brands.push(m.brand_name); }
+    });
+    fillBrands();
     var seen = {};
     state.cats = [];
     state.services.forEach(function(s){
@@ -315,6 +334,83 @@ function boot(){
     $('boot').innerHTML = 'Could not load: ' + esc(e.message||e);
   });
 }
+
+/* ---------- brand / model ---------- */
+function fillBrands(){
+  $('brand').innerHTML = '<option value="">— select brand —</option>' +
+    state.brands.map(function(b){ return '<option>'+esc(b)+'</option>'; }).join('') +
+    '<option value="__other__">Not listed…</option>';
+}
+
+function fillModels(keep){
+  var b = $('brand').value;
+  if(b === '__other__'){
+    $('modelSel').innerHTML = '<option value="__other__">Type it below</option>';
+    $('modelSel').value = '__other__';
+    return showManual(true);
+  }
+  var list = state.models.filter(function(m){ return m.brand_name === b; });
+  $('modelSel').innerHTML = '<option value="">— select model —</option>' +
+    list.map(function(m){ return '<option value="'+esc(m.name)+'">'+esc(m.name)+'</option>'; }).join('') +
+    '<option value="__other__">Not listed…</option>';
+  if(keep) $('modelSel').value = keep;
+  showManual($('modelSel').value === '__other__');
+}
+
+function showManual(on){
+  $('modelManualWrap').className = on ? 'fld' : 'fld hide';
+  $('ctypeAuto').className = on ? 'auto hide' : $('ctypeAuto').className;
+}
+
+function onModelPick(){
+  var v = $('modelSel').value;
+  if(v === '__other__'){ showManual(true); $('ctypeAuto').className = 'auto hide'; return; }
+  showManual(false);
+  if(!v) return;
+  var b = $('brand').value, hit = null;
+  state.models.forEach(function(m){ if(!hit && m.brand_name === b && m.name === v) hit = m; });
+  if(hit && hit.type) setCarType(hit.type, true);
+}
+
+// changing car type clears picked services because prices differ per type
+function setCarType(t, isAuto){
+  if($('ctype').value !== t){
+    $('ctype').value = t;
+    state.picked = {};
+    renderServices(); renderBar();
+  }
+  $('ctypeAuto').className = isAuto ? 'auto' : 'auto hide';
+}
+
+/* put a stored model name back into the dropdowns; falls back to the
+   manual box if the model isn't in the catalogue any more */
+function selectModel(name){
+  var n = (name||'').trim();
+  if(!n){ $('brand').value=''; fillModels(); return; }
+  var hit = null;
+  state.models.forEach(function(m){
+    if(!hit && String(m.name).toUpperCase() === n.toUpperCase()) hit = m;
+  });
+  if(hit){
+    $('brand').value = hit.brand_name;
+    fillModels(hit.name);
+    showManual(false);
+  } else {
+    $('brand').value = '__other__';
+    fillModels();
+    showManual(true);
+    $('modelManual').value = n;
+  }
+}
+
+function currentModel(){
+  var v = $('modelSel').value;
+  if(v && v !== '__other__') return v.toUpperCase();
+  return $('modelManual').value.trim().toUpperCase();
+}
+
+$('brand').addEventListener('change', function(){ fillModels(); onModelPick(); });
+$('modelSel').addEventListener('change', onModelPick);
 
 /* ---------- render ---------- */
 function render(){
@@ -473,6 +569,7 @@ $('cats').addEventListener('click', function(e){
 $('q').addEventListener('input', function(){ state.q = this.value; renderServices(); });
 $('ctype').addEventListener('change', function(){
   state.picked = {};
+  $('ctypeAuto').className = 'auto hide';
   renderServices(); renderBar();
 });
 
@@ -509,6 +606,7 @@ $('back').addEventListener('click', function(){ goStep(state.step - 1); });
 $('next').addEventListener('click', function(){
   if(state.step === 1){
     if(!$('plate').value.trim()) return toast('Plate is required', true);
+    if(!currentModel()) return toast('Pick or type a model', true);
     if(!state.front) return toast('Front photo is required', true);
     return goStep(2);
   }
@@ -603,9 +701,9 @@ function loadForEdit(q){
   state.editRef = q.ref;
   $('partner').value = q.partner_id || '';
   $('plate').value = q.plate || '';
-  $('model').value = q.model || '';
   $('colour').value = q.colour || '';
   $('ctype').value = q.car_type || 'Sedan';
+  selectModel(q.model || '');
   $('notes').value = q.notes || '';
 
   state.front = q.front_photo ? { url:q.front_photo, existing:true } : null;
@@ -684,8 +782,8 @@ function send(){
   var base = {
     partner_id: $('partner').value,
     plate: $('plate').value.trim().toUpperCase(),
-    model: $('model').value.trim(),
-    colour: $('colour').value.trim(),
+    model: currentModel(),
+    colour: $('colour').value.trim().toUpperCase(),
     car_type: $('ctype').value,
     services: svcs,
     total: total(),
@@ -749,14 +847,14 @@ function showDone(ref, tk, saved){
     state.picked = {};
     (saved.services||[]).forEach(function(s){ state.picked[s.id] = s; });
     $('plate').value = saved.plate || '';
-    $('model').value = saved.model || '';
     $('colour').value = saved.colour || '';
     $('partner').value = saved.partner_id || '';
+    selectModel(saved.model || '');
   }
   var pname = '';
   state.partners.forEach(function(p){ if(p.id === $('partner').value) pname = p.name; });
 
-  var car = [$('plate').value.trim().toUpperCase(), $('model').value.trim(), $('colour').value.trim()]
+  var car = [$('plate').value.trim().toUpperCase(), currentModel(), $('colour').value.trim().toUpperCase()]
               .filter(function(x){ return x; }).join(' \u00b7 ');
 
   var svcs = [];
