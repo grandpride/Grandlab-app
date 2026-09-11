@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>SA Admin | GrandLab</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.7.0/dist/tabler-icons.min.css">
+<style>
+:root{--bg:#080808;--card:#141414;--card2:#1c1c1c;--gold:#F5C518;--border:#2a2a2a;--text:#f2f2f2;--text2:#9a9a9a;--ok:#37d67a;--red:#ff5c5c;--blue:#4d9fff}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:15px;padding-bottom:40px}
+.top{position:sticky;top:0;z-index:20;background:rgba(8,8,8,.97);backdrop-filter:blur(10px);border-bottom:1px solid var(--border);padding:12px 14px}
+.top h1{margin:0;font-size:17px;font-weight:700;display:flex;align-items:center;gap:8px}
+.top h1 i{color:var(--gold)}
+.tabs{display:flex;gap:7px;margin-top:11px}
+.tabs div{flex:1;text-align:center;padding:9px;border-radius:11px;background:var(--card2);border:1px solid var(--border);font-size:13px;font-weight:600;cursor:pointer}
+.tabs div.on{background:var(--gold);color:#000;border-color:var(--gold)}
+.wrap{padding:14px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:14px;margin-bottom:12px}
+.card h2{margin:0 0 12px;font-size:13px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.6px}
+.sum{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-bottom:12px}
+.sum div{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:12px 10px;text-align:center}
+.sum small{display:block;font-size:10px;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px}
+.sum b{font-size:16px;font-weight:800}
+.sum .p b{color:var(--text2)}.sum .y b{color:var(--gold)}.sum .g b{color:var(--ok)}
+.fil{display:flex;gap:7px;overflow-x:auto;padding-bottom:9px;margin-bottom:4px}
+.fil div{white-space:nowrap;flex-shrink:0;background:var(--card2);border:1px solid var(--border);border-radius:18px;padding:8px 14px;font-size:13px;cursor:pointer}
+.fil div.on{background:var(--gold);color:#000;border-color:var(--gold);font-weight:600}
+.deal{background:var(--card);border:1px solid var(--border);border-radius:15px;padding:13px;margin-bottom:10px}
+.deal .hd{display:flex;align-items:center;gap:9px;margin-bottom:9px}
+.deal .hd b{font-size:15px;flex:1}
+.deal .hd .ref{font-size:11px;color:var(--text2);font-weight:600}
+.pill{font-size:10px;font-weight:700;padding:4px 9px;border-radius:8px;text-transform:uppercase;letter-spacing:.4px}
+.pill.pending{background:rgba(154,154,154,.15);color:var(--text2)}
+.pill.payable{background:rgba(245,197,24,.15);color:var(--gold)}
+.pill.paid{background:rgba(55,214,122,.15);color:var(--ok)}
+.pill.accepted{background:rgba(77,159,255,.15);color:var(--blue)}
+.deal .meta{font-size:12px;color:var(--text2);line-height:1.7}
+.deal .meta b{color:var(--text);font-weight:600}
+.deal .amt{display:flex;gap:14px;margin:10px 0;padding:10px 0;border-top:1px solid var(--border);border-bottom:1px solid var(--border)}
+.deal .amt div{flex:1}
+.deal .amt small{display:block;font-size:10px;color:var(--text2);text-transform:uppercase;margin-bottom:3px}
+.deal .amt b{font-size:15px}
+.deal .amt .c b{color:var(--gold)}
+.acts{display:flex;gap:8px}
+.btn{border:none;border-radius:12px;padding:12px;font-size:13px;font-weight:700;font-family:inherit;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;flex:1}
+.btn.gold{background:var(--gold);color:#000}
+.btn.green{background:var(--ok);color:#04210f}
+.btn.ghost{background:var(--card2);color:var(--text);border:1px solid var(--border)}
+.btn.sm{padding:9px;font-size:12px}
+.btn:disabled{opacity:.4}
+.btn.w{width:100%;flex:none}
+input,select{width:100%;background:var(--card2);border:1px solid var(--border);border-radius:11px;color:var(--text);padding:11px;font-size:16px;font-family:inherit;outline:none}
+input:focus,select:focus{border-color:var(--gold)}
+label{display:block;font-size:11px;color:var(--text2);margin:0 0 5px}
+.fld{margin-bottom:10px}
+.row{display:flex;gap:9px}.row>*{flex:1}
+.pr{border:1px solid var(--border);border-radius:14px;padding:12px;margin-bottom:10px;background:var(--card)}
+.pr .ph{display:flex;align-items:center;gap:9px;margin-bottom:9px}
+.pr .ph b{flex:1;font-size:15px}
+.pr .ph .rate{font-size:12px;color:var(--gold);font-weight:700}
+.sa{display:flex;align-items:center;gap:9px;padding:9px 0;border-top:1px solid var(--border);font-size:14px}
+.sa .n{flex:1}
+.sa .n small{display:block;font-size:11px;color:var(--text2)}
+.sa i{font-size:17px;cursor:pointer;color:var(--text2)}
+.sa i.del{color:var(--red)}
+.sa.off{opacity:.4}
+.empty{text-align:center;padding:42px 20px;color:var(--text2);font-size:14px}
+.empty i{font-size:40px;display:block;margin-bottom:10px}
+.hide{display:none!important}
+.toast{position:fixed;left:14px;right:14px;bottom:20px;background:var(--card2);border:1px solid var(--border);border-radius:12px;padding:13px;text-align:center;font-size:14px;z-index:70;opacity:0;transition:.25s;pointer-events:none}
+.toast.on{opacity:1}
+.toast.err{border-color:var(--red);color:var(--red)}
+.payout{display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid var(--border)}
+.payout:last-child{border-bottom:none}
+.payout .n{flex:1}
+.payout .n b{display:block;font-size:14px}
+.payout .n small{font-size:11px;color:var(--text2)}
+.payout .v{font-size:15px;font-weight:800;color:var(--gold)}
+</style>
+</head>
+<body>
+
+<div class="top">
+  <h1><i class="ti ti-briefcase"></i> SA Admin</h1>
+  <div class="tabs">
+    <div id="tDeals" class="on">Deals</div>
+    <div id="tPayout">Payout</div>
+    <div id="tSetup">Partners</div>
+  </div>
+</div>
+
+<div id="boot" class="empty"><i class="ti ti-loader-2"></i>Loading…</div>
+
+<div id="app" class="wrap hide">
+
+  <div id="vDeals">
+    <div class="sum">
+      <div class="p"><small>Pending</small><b id="sPend">—</b></div>
+      <div class="y"><small>Payable</small><b id="sPay">—</b></div>
+      <div class="g"><small>Paid</small><b id="sPaid">—</b></div>
+    </div>
+    <div class="fil" id="fil"></div>
+    <div id="deals"></div>
+  </div>
+
+  <div id="vPayout" class="hide">
+    <div class="card">
+      <h2>Owed by advisor</h2>
+      <div id="payout"></div>
+    </div>
+    <p style="font-size:12px;color:var(--text2);line-height:1.6">Only deals where the customer has already paid GrandLab appear here.</p>
+  </div>
+
+  <div id="vSetup" class="hide">
+    <div class="card">
+      <h2>Add partner</h2>
+      <div class="row fld">
+        <div style="flex:2"><label>Name</label><input id="pName" placeholder="Lemans - Workshop"></div>
+        <div><label>Comm %</label><input id="pPct" type="number" value="30"></div>
+      </div>
+      <button class="btn gold w" id="addPartner"><i class="ti ti-plus"></i> Add partner</button>
+    </div>
+    <div id="partners"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script>
+(function(){
+'use strict';
+
+var SB_URL = 'https://eychljpzorzmaveixlnu.supabase.co';
+var SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV5Y2hsanB6b3J6bWF2ZWl4bG51Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2NDk2NjQsImV4cCI6MjA5NzIyNTY2NH0.6dA1zhz5ZIwf8byFB8vhfOzPI-uPPdPihEr1b8GG_oA';
+
+var sb = window.supabase.createClient(SB_URL, SB_KEY, {
+  auth:{ storageKey:'gl_auth', persistSession:true, autoRefreshToken:true }
+});
+
+var $ = function(id){ return document.getElementById(id); };
+var S = { deals:[], partners:[], sas:[], fil:'all', tab:'deals', user:null };
+
+function toast(m, err){
+  var t = $('toast');
+  t.textContent = m;
+  t.className = 'toast on' + (err ? ' err' : '');
+  setTimeout(function(){ t.className = 'toast' + (err ? ' err' : ''); }, 2600);
+}
+function money(n){ return 'RM ' + Number(n||0).toLocaleString('en-MY',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function m0(n){ return 'RM ' + Number(n||0).toLocaleString('en-MY',{maximumFractionDigits:0}); }
+function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+function dt(s){ if(!s) return '—'; var d = new Date(s); return d.toLocaleDateString('en-MY',{day:'2-digit',month:'short'}); }
+
+function boot(){
+  sb.auth.getSession().then(function(r){
+    var s = r && r.data ? r.data.session : null;
+    if(!s){ location.href = 'gl-hub.html'; return; }
+    S.user = s.user.email;
+    return reload();
+  }).then(function(){
+    if(!S.user) return;
+    $('boot').className = 'hide';
+    $('app').className = 'wrap';
+  }).catch(function(e){
+    $('boot').innerHTML = 'Could not load: ' + esc(e.message||e);
+  });
+}
+
+function reload(){
+  return Promise.all([
+    sb.from('gl_sa_comm_ledger').select('*').order('created_at',{ascending:false}).limit(200),
+    sb.from('gl_partners').select('*').order('name'),
+    sb.from('gl_partner_sa').select('*').order('name')
+  ]).then(function(r){
+    S.deals = r[0].data || [];
+    S.partners = r[1].data || [];
+    S.sas = r[2].data || [];
+    render();
+  });
+}
+
+function render(){ renderDeals(); renderPayout(); renderSetup(); }
+
+/* ---------- deals ---------- */
+function renderDeals(){
+  var pend = 0, pay = 0, paid = 0;
+  S.deals.forEach(function(d){
+    var c = Number(d.comm_amount||0);
+    if(d.comm_status === 'paid') paid += c;
+    else if(d.comm_status === 'payable') pay += c;
+    else pend += c;
+  });
+  $('sPend').textContent = m0(pend);
+  $('sPay').textContent  = m0(pay);
+  $('sPaid').textContent = m0(paid);
+
+  var counts = { all:S.deals.length, accepted:0, pending:0, payable:0, paid:0 };
+  S.deals.forEach(function(d){
+    if(d.status === 'accepted') counts.accepted++;
+    else counts[d.comm_status] = (counts[d.comm_status]||0) + 1;
+  });
+  var fils = [['all','All'],['accepted','Not confirmed'],['pending','Awaiting payment'],['payable','To pay out'],['paid','Paid']];
+  $('fil').innerHTML = fils.map(function(f){
+    return '<div class="'+(S.fil===f[0]?'on':'')+'" data-f="'+f[0]+'">'+f[1]+' ('+(counts[f[0]]||0)+')</div>';
+  }).join('');
+
+  var list = S.deals.filter(function(d){
+    if(S.fil === 'all') return true;
+    if(S.fil === 'accepted') return d.status === 'accepted';
+    return d.status === 'confirmed' && d.comm_status === S.fil;
+  });
+
+  if(!list.length){
+    $('deals').innerHTML = '<div class="empty"><i class="ti ti-inbox"></i>Nothing here yet.</div>';
+    return;
+  }
+
+  $('deals').innerHTML = list.map(function(d){
+    var notConf = d.status === 'accepted';
+    var pill = notConf ? '<span class="pill accepted">Not confirmed</span>'
+                       : '<span class="pill '+esc(d.comm_status)+'">'+esc(d.comm_status)+'</span>';
+    var acts = '';
+    if(notConf){
+      acts = '<div class="acts"><button class="btn ghost sm" disabled>Waiting for SA to confirm</button></div>';
+    } else if(d.comm_status === 'pending'){
+      acts = '<div class="acts"><button class="btn gold sm" data-paid="'+esc(d.ref)+'">' +
+             '<i class="ti ti-cash"></i> Customer paid</button></div>';
+    } else if(d.comm_status === 'payable'){
+      acts = '<div class="acts">' +
+             '<button class="btn ghost sm" data-unpaid="'+esc(d.ref)+'">Undo</button>' +
+             '<button class="btn green sm" data-comm="'+esc(d.ref)+'"><i class="ti ti-check"></i> Comm paid</button></div>';
+    } else {
+      acts = '<div class="acts"><button class="btn ghost sm" data-uncomm="'+esc(d.ref)+'">Undo comm paid</button></div>';
+    }
+
+    return '<div class="deal">' +
+      '<div class="hd"><b>'+esc(d.plate||'—')+'</b><span class="ref">'+esc(d.ref)+'</span>'+pill+'</div>' +
+      '<div class="meta">'+esc(d.model||'')+' · '+esc(d.car_type||'')+'<br>' +
+      '<b>'+esc(d.advisor||'—')+'</b> · '+esc(d.partner||'—')+'<br>' +
+      'Accepted '+dt(d.accepted_at)+(d.confirmed_at?' · Confirmed '+dt(d.confirmed_at):'')+'</div>' +
+      '<div class="amt">' +
+        '<div><small>Quoted</small><b>'+m0(d.quoted_total)+'</b></div>' +
+        '<div><small>Confirmed</small><b>'+(notConf?'—':m0(d.confirmed_total))+'</b></div>' +
+        '<div class="c"><small>Comm '+(d.comm_pct||30)+'%</small><b>'+(notConf?'—':money(d.comm_amount))+'</b></div>' +
+      '</div>' + acts + '</div>';
+  }).join('');
+}
+
+$('fil').addEventListener('click', function(e){
+  var f = e.target.getAttribute('data-f');
+  if(!f) return;
+  S.fil = f; renderDeals();
+});
+
+$('deals').addEventListener('click', function(e){
+  var b = e.target.closest ? e.target.closest('button') : null;
+  if(!b) return;
+  var ref, patch, msg;
+  if((ref = b.getAttribute('data-paid'))){
+    patch = { customer_paid_at:new Date().toISOString(), comm_status:'payable' };
+    msg = 'Marked customer paid';
+  } else if((ref = b.getAttribute('data-unpaid'))){
+    patch = { customer_paid_at:null, comm_status:'pending' };
+    msg = 'Reverted';
+  } else if((ref = b.getAttribute('data-comm'))){
+    patch = { comm_status:'paid', comm_paid_at:new Date().toISOString(), comm_paid_ref:S.user };
+    msg = 'Commission marked paid';
+  } else if((ref = b.getAttribute('data-uncomm'))){
+    patch = { comm_status:'payable', comm_paid_at:null, comm_paid_ref:null };
+    msg = 'Reverted';
+  } else return;
+
+  b.disabled = true;
+  sb.from('gl_sa_quotes').update(patch).eq('ref', ref).then(function(r){
+    if(r.error){ b.disabled = false; return toast(r.error.message, true); }
+    toast(msg);
+    reload();
+  });
+});
+
+/* ---------- payout ---------- */
+function renderPayout(){
+  var by = {};
+  S.deals.forEach(function(d){
+    if(d.status !== 'confirmed' || d.comm_status !== 'payable') return;
+    var k = d.advisor || '—';
+    if(!by[k]) by[k] = { n:0, amt:0, partner:d.partner, phone:d.advisor_phone };
+    by[k].n++;
+    by[k].amt += Number(d.comm_amount||0);
+  });
+  var keys = Object.keys(by).sort(function(a,b){ return by[b].amt - by[a].amt; });
+  if(!keys.length){
+    $('payout').innerHTML = '<div class="empty" style="padding:26px"><i class="ti ti-wallet"></i>Nothing to pay out.</div>';
+    return;
+  }
+  $('payout').innerHTML = keys.map(function(k){
+    var v = by[k];
+    return '<div class="payout"><div class="n"><b>'+esc(k)+'</b>' +
+      '<small>'+esc(v.partner||'')+' · '+v.n+' deal'+(v.n===1?'':'s')+
+      (v.phone?' · '+esc(v.phone):'')+'</small></div>' +
+      '<div class="v">'+money(v.amt)+'</div></div>';
+  }).join('');
+}
+
+/* ---------- setup ---------- */
+function renderSetup(){
+  if(!S.partners.length){
+    $('partners').innerHTML = '<div class="empty"><i class="ti ti-building-store"></i>No partners yet.</div>';
+    return;
+  }
+  $('partners').innerHTML = S.partners.map(function(p){
+    var mine = S.sas.filter(function(s){ return s.partner_id === p.id; });
+    var rows = mine.map(function(s){
+      return '<div class="sa'+(s.active?'':' off')+'"><div class="n">'+esc(s.name) +
+        '<small>'+esc(s.phone||'no phone')+'</small></div>' +
+        '<i class="ti ti-'+(s.active?'eye':'eye-off')+'" data-tog="'+s.id+'" data-on="'+(s.active?1:0)+'"></i>' +
+        '<i class="ti ti-trash del" data-delsa="'+s.id+'" data-nm="'+esc(s.name)+'"></i></div>';
+    }).join('');
+    return '<div class="pr">' +
+      '<div class="ph"><b>'+esc(p.name)+'</b>' +
+      '<span class="rate">'+(p.comm_pct||30)+'%</span>' +
+      '<i class="ti ti-pencil" style="color:var(--text2);cursor:pointer" data-rate="'+p.id+'" data-cur="'+(p.comm_pct||30)+'"></i></div>' +
+      rows +
+      '<div class="row" style="margin-top:10px">' +
+      '<input placeholder="SA name" data-nm-in="'+p.id+'">' +
+      '<input placeholder="Phone" data-ph-in="'+p.id+'" style="flex:.8">' +
+      '<button class="btn ghost sm" style="flex:0 0 46px" data-addsa="'+p.id+'"><i class="ti ti-plus"></i></button>' +
+      '</div></div>';
+  }).join('');
+}
+
+$('addPartner').addEventListener('click', function(){
+  var n = $('pName').value.trim();
+  if(!n) return toast('Name required', true);
+  sb.from('gl_partners').insert({ name:n, comm_pct:Number($('pPct').value)||30 }).then(function(r){
+    if(r.error) return toast(r.error.message, true);
+    $('pName').value = '';
+    toast('Partner added');
+    reload();
+  });
+});
+
+$('partners').addEventListener('click', function(e){
+  var el = e.target, id;
+
+  if((id = el.getAttribute('data-addsa'))){
+    var nm = document.querySelector('[data-nm-in="'+id+'"]');
+    var ph = document.querySelector('[data-ph-in="'+id+'"]');
+    if(!nm || !nm.value.trim()) return toast('SA name required', true);
+    sb.from('gl_partner_sa').insert({
+      partner_id:id, name:nm.value.trim(), phone:(ph?ph.value.trim():'') || null
+    }).then(function(r){
+      if(r.error) return toast(r.error.message, true);
+      toast('Advisor added'); reload();
+    });
+    return;
+  }
+
+  if((id = el.getAttribute('data-tog'))){
+    var on = el.getAttribute('data-on') === '1';
+    sb.from('gl_partner_sa').update({ active: !on }).eq('id', id).then(function(r){
+      if(r.error) return toast(r.error.message, true);
+      reload();
+    });
+    return;
+  }
+
+  if((id = el.getAttribute('data-delsa'))){
+    if(!confirm('Remove ' + el.getAttribute('data-nm') + '? Past deals keep their record.')) return;
+    sb.from('gl_partner_sa').update({ active:false, status:'removed' }).eq('id', id).then(function(r){
+      if(r.error) return toast(r.error.message, true);
+      toast('Removed'); reload();
+    });
+    return;
+  }
+
+  if((id = el.getAttribute('data-rate'))){
+    var cur = el.getAttribute('data-cur');
+    var v = prompt('Commission % for this partner\n\nOnly affects NEW deals. Already-accepted deals keep their rate.', cur);
+    if(v === null) return;
+    v = Number(v);
+    if(!(v >= 0 && v <= 100)) return toast('Enter 0-100', true);
+    sb.from('gl_partners').update({ comm_pct:v }).eq('id', id).then(function(r){
+      if(r.error) return toast(r.error.message, true);
+      toast('Rate updated'); reload();
+    });
+  }
+});
+
+/* ---------- tabs ---------- */
+function tab(n){
+  S.tab = n;
+  $('tDeals').className  = n === 'deals'  ? 'on' : '';
+  $('tPayout').className = n === 'payout' ? 'on' : '';
+  $('tSetup').className  = n === 'setup'  ? 'on' : '';
+  $('vDeals').className  = n === 'deals'  ? '' : 'hide';
+  $('vPayout').className = n === 'payout' ? '' : 'hide';
+  $('vSetup').className  = n === 'setup'  ? '' : 'hide';
+  window.scrollTo(0,0);
+}
+$('tDeals').addEventListener('click', function(){ tab('deals'); });
+$('tPayout').addEventListener('click', function(){ tab('payout'); });
+$('tSetup').addEventListener('click', function(){ tab('setup'); });
+
+boot();
+})();
+</script>
+</body>
+</html>

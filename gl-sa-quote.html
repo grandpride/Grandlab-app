@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>SA Quotation | GrandLab</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.7.0/dist/tabler-icons.min.css">
+<style>
+:root{--bg:#080808;--card:#141414;--card2:#1c1c1c;--gold:#F5C518;--border:#2a2a2a;--text:#f2f2f2;--text2:#9a9a9a;--ok:#37d67a;--red:#ff5c5c}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:15px;padding-bottom:110px}
+.top{position:sticky;top:0;z-index:20;background:rgba(8,8,8,.96);backdrop-filter:blur(10px);border-bottom:1px solid var(--border);padding:12px 14px}
+.top h1{margin:0;font-size:17px;font-weight:700;display:flex;align-items:center;gap:8px}
+.top h1 i{color:var(--gold)}
+.steps{display:flex;gap:6px;margin-top:10px}
+.steps div{flex:1;height:3px;border-radius:2px;background:var(--border)}
+.steps div.on{background:var(--gold)}
+.wrap{padding:14px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:14px;margin-bottom:12px}
+.card h2{margin:0 0 12px;font-size:14px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.5px}
+label{display:block;font-size:12px;color:var(--text2);margin:0 0 5px}
+input,select,textarea{width:100%;background:var(--card2);border:1px solid var(--border);border-radius:12px;color:var(--text);padding:12px;font-size:16px;font-family:inherit;outline:none}
+input:focus,select:focus,textarea:focus{border-color:var(--gold)}
+.row{display:flex;gap:10px}.row>*{flex:1}
+.fld{margin-bottom:12px}
+.btn{border:none;border-radius:14px;padding:14px;font-size:15px;font-weight:700;font-family:inherit;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;width:100%}
+.btn.gold{background:var(--gold);color:#000}
+.btn.ghost{background:var(--card2);color:var(--text);border:1px solid var(--border)}
+.btn:disabled{opacity:.45}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{background:var(--card2);border:1px solid var(--border);border-radius:20px;padding:9px 14px;font-size:13px;cursor:pointer}
+.chip.on{background:var(--gold);color:#000;border-color:var(--gold);font-weight:600}
+.ph{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.ph .slot{aspect-ratio:4/3;border:1px dashed var(--border);border-radius:12px;display:flex;align-items:center;justify-content:center;color:var(--text2);font-size:22px;background:var(--card2);cursor:pointer;overflow:hidden;position:relative}
+.ph .slot img{width:100%;height:100%;object-fit:cover}
+.ph .slot .x{position:absolute;top:4px;right:4px;background:rgba(0,0,0,.7);border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:13px;color:#fff}
+.front{aspect-ratio:16/10;border:1px dashed var(--border);border-radius:14px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;color:var(--text2);background:var(--card2);cursor:pointer;overflow:hidden}
+.front img{width:100%;height:100%;object-fit:cover}
+.front i{font-size:30px}
+.svc{display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid var(--border)}
+.svc:last-child{border-bottom:none}
+.svc .nm{flex:1;min-width:0}
+.svc .nm b{display:block;font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.svc .nm span{font-size:11px;color:var(--text2)}
+.svc .pr{font-size:14px;font-weight:700;color:var(--gold);white-space:nowrap}
+.svc .tick{width:24px;height:24px;border-radius:7px;border:1.5px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
+.svc.on .tick{background:var(--gold);color:#000;border-color:var(--gold)}
+.bar{position:fixed;left:0;right:0;bottom:0;background:rgba(8,8,8,.97);backdrop-filter:blur(10px);border-top:1px solid var(--border);padding:12px 14px calc(12px + env(safe-area-inset-bottom));display:flex;gap:10px;align-items:center;z-index:30}
+.bar .tot{flex:1}
+.bar .tot small{display:block;font-size:11px;color:var(--text2)}
+.bar .tot b{font-size:19px;color:var(--gold)}
+.bar .btn{width:auto;flex:1.2}
+.iss{background:var(--card2);border:1px solid var(--border);border-radius:14px;padding:12px;margin-bottom:10px}
+.iss .hd{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.iss .hd b{flex:1;font-size:14px}
+.iss .hd .del{color:var(--red);font-size:18px;cursor:pointer}
+.muted{color:var(--text2);font-size:12px;line-height:1.5}
+.hide{display:none!important}
+.toast{position:fixed;left:14px;right:14px;bottom:96px;background:var(--card2);border:1px solid var(--border);border-radius:12px;padding:13px;text-align:center;font-size:14px;z-index:60;opacity:0;transition:.25s;pointer-events:none}
+.toast.on{opacity:1}
+.toast.err{border-color:var(--red);color:var(--red)}
+.ov{position:fixed;inset:0;background:rgba(0,0,0,.85);display:flex;align-items:center;justify-content:center;z-index:80;padding:20px}
+.ov .box{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:20px;max-width:400px;width:100%;text-align:center}
+.ov .box i.big{font-size:44px;color:var(--ok)}
+.ov .box h3{margin:10px 0 6px;font-size:18px}
+.lnk{background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:10px;font-size:11px;word-break:break-all;color:var(--text2);margin:12px 0}
+.srch{position:relative;margin-bottom:10px}
+.srch i{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--text2)}
+.srch input{padding-left:36px}
+.cats{display:flex;gap:7px;overflow-x:auto;padding-bottom:8px;margin-bottom:6px;-webkit-overflow-scrolling:touch}
+.cats .chip{white-space:nowrap;flex-shrink:0}
+.load{text-align:center;padding:40px;color:var(--text2)}
+.sel{max-height:340px;overflow-y:auto}
+.foc{display:flex;align-items:center;gap:10px;padding:9px 12px;margin:0 0 4px 34px;background:rgba(245,197,24,.07);border:1px solid rgba(245,197,24,.28);border-radius:11px}
+.foc span{flex:1;font-size:12px;color:var(--gold);font-weight:600}
+.foc .st{width:30px;height:30px;border-radius:9px;background:var(--card2);border:1px solid var(--border);color:var(--text);font-size:17px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0}
+.foc .n{min-width:26px;text-align:center;font-weight:700;font-size:15px}
+</style>
+</head>
+<body>
+
+<div class="top">
+  <h1><i class="ti ti-file-dollar"></i> SA Quotation</h1>
+  <div class="steps"><div id="s1" class="on"></div><div id="s2"></div><div id="s3"></div></div>
+</div>
+
+<div id="boot" class="load"><i class="ti ti-loader-2"></i> Loading…</div>
+
+<div id="app" class="wrap hide">
+
+  <!-- STEP 1 -->
+  <div id="p1">
+    <div class="card">
+      <h2>Partner &amp; Car</h2>
+      <div class="fld">
+        <label>Partner workshop / showroom</label>
+        <select id="partner"></select>
+      </div>
+      <div class="row fld">
+        <div><label>Plate</label><input id="plate" placeholder="WXY 1234" autocapitalize="characters"></div>
+        <div><label>Car type</label><select id="ctype">
+          <option>Sedan</option><option>SUV</option><option>MPV</option><option>Supercar</option><option>Motorcycle</option>
+        </select></div>
+      </div>
+      <div class="row fld">
+        <div><label>Model</label><input id="model" placeholder="Civic FE"></div>
+        <div><label>Colour</label><input id="colour" placeholder="White"></div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Front photo</h2>
+      <div class="front" id="frontBox">
+        <i class="ti ti-camera"></i><span>Tap to take front photo</span>
+      </div>
+      <p class="muted" style="margin:10px 0 0">This is the photo the SA sees first in WhatsApp. Get the whole car in frame.</p>
+    </div>
+  </div>
+
+  <!-- STEP 2 -->
+  <div id="p2" class="hide">
+    <div class="card">
+      <h2>What did you find?</h2>
+      <div class="chips" id="issChips"></div>
+      <div class="row" style="margin-top:12px">
+        <input id="customIss" placeholder="Other issue…">
+        <button class="btn ghost" style="flex:0 0 54px;padding:12px" id="addIss"><i class="ti ti-plus"></i></button>
+      </div>
+    </div>
+    <div id="issList"></div>
+    <div class="card">
+      <h2>Note for the SA</h2>
+      <textarea id="notes" rows="3" placeholder="Anything the SA should tell the customer…"></textarea>
+    </div>
+  </div>
+
+  <!-- STEP 3 -->
+  <div id="p3" class="hide">
+    <div class="card">
+      <h2>Recommend services</h2>
+      <div class="srch"><i class="ti ti-search"></i><input id="q" placeholder="Search service…"></div>
+      <div class="cats" id="cats"></div>
+      <div class="sel" id="svcList"></div>
+    </div>
+  </div>
+</div>
+
+<div class="bar hide" id="bar">
+  <button class="btn ghost hide" id="back" style="flex:0 0 54px;padding:14px"><i class="ti ti-chevron-left"></i></button>
+  <div class="tot"><small id="totLbl">Step 1 of 3</small><b id="tot">—</b></div>
+  <button class="btn gold" id="next">Next <i class="ti ti-chevron-right"></i></button>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<div class="ov hide" id="done">
+  <div class="box">
+    <i class="ti ti-circle-check big"></i>
+    <h3 id="doneRef">Quotation sent</h3>
+    <p class="muted">Share this link into the partner's WhatsApp group. First SA to tap Accept owns the deal.</p>
+    <div class="lnk" id="doneLink"></div>
+    <button class="btn gold" id="waBtn"><i class="ti ti-brand-whatsapp"></i> Share to WhatsApp</button>
+    <button class="btn ghost" style="margin-top:8px" id="msgBtn"><i class="ti ti-message-2"></i> Copy full message</button>
+    <button class="btn ghost" style="margin-top:8px" id="copyBtn"><i class="ti ti-copy"></i> Copy link only</button>
+    <button class="btn ghost" style="margin-top:8px" id="newBtn">New quotation</button>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script>
+(function(){
+'use strict';
+
+var SB_URL = 'https://eychljpzorzmaveixlnu.supabase.co';
+var SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV5Y2hsanB6b3J6bWF2ZWl4bG51Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2NDk2NjQsImV4cCI6MjA5NzIyNTY2NH0.6dA1zhz5ZIwf8byFB8vhfOzPI-uPPdPihEr1b8GG_oA';
+var ACCEPT_BASE = 'https://app.grandlab.com.my/gl-sa-accept.html';
+
+var sb = window.supabase.createClient(SB_URL, SB_KEY, {
+  auth:{ storageKey:'gl_auth', persistSession:true, autoRefreshToken:true }
+});
+
+var $ = function(id){ return document.getElementById(id); };
+
+var state = {
+  step:1, user:null, partners:[], services:[], cats:[], cat:'All', q:'',
+  front:null, issues:[], picked:{}, sending:false
+};
+
+var COMMON = ['Swirl marks','Scratches','Faded paint','Water spots','Tar / iron fallout','Dull headlights','Dirty interior','Stained seats','Kerbed rims','Peeling tint','Bird dropping etch','Windscreen chip'];
+
+function toast(msg, err){
+  var t = $('toast');
+  t.textContent = msg;
+  t.className = 'toast on' + (err ? ' err' : '');
+  setTimeout(function(){ t.className = 'toast' + (err ? ' err' : ''); }, 2600);
+}
+function money(n){ return 'RM ' + Number(n||0).toLocaleString('en-MY',{minimumFractionDigits:0,maximumFractionDigits:0}); }
+function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+function token(){
+  var a='abcdefghijkmnpqrstuvwxyz23456789', s='';
+  for(var i=0;i<12;i++) s += a.charAt(Math.floor(Math.random()*a.length));
+  return s;
+}
+
+/* ---------- image compression ---------- */
+function pickImage(cb){
+  var inp = document.createElement('input');
+  inp.type='file'; inp.accept='image/*'; inp.capture='environment';
+  inp.onchange = function(){
+    var f = inp.files && inp.files[0];
+    if(!f) return;
+    compress(f, cb);
+  };
+  inp.click();
+}
+function compress(file, cb){
+  var r = new FileReader();
+  r.onload = function(e){
+    var img = new Image();
+    img.onload = function(){
+      var max = 1400, w = img.width, h = img.height;
+      if(w > h && w > max){ h = Math.round(h*max/w); w = max; }
+      else if(h >= w && h > max){ w = Math.round(w*max/h); h = max; }
+      var c = document.createElement('canvas');
+      c.width = w; c.height = h;
+      c.getContext('2d').drawImage(img, 0, 0, w, h);
+      c.toBlob(function(blob){
+        cb({ blob: blob, url: c.toDataURL('image/jpeg', 0.6) });
+      }, 'image/jpeg', 0.8);
+    };
+    img.onerror = function(){ toast('Bad image', true); };
+    img.src = e.target.result;
+  };
+  r.readAsDataURL(file);
+}
+
+/* ---------- boot ---------- */
+function boot(){
+  sb.auth.getSession().then(function(res){
+    var s = res && res.data ? res.data.session : null;
+    if(!s){ location.href = 'gl-hub.html'; return; }
+    state.user = s.user.email;
+    return Promise.all([
+      sb.from('gl_partners').select('id,name').eq('active',true).order('name'),
+      sb.from('gl_services').select('id,name,subtitle,category,brand,base_price,price_by_type,is_coating,maint_months')
+        .or('hidden.is.null,hidden.eq.false').order('category').order('sort_order')
+    ]);
+  }).then(function(res){
+    if(!res) return;
+    state.partners = (res[0].data)||[];
+    state.services = (res[1].data)||[];
+    var seen = {};
+    state.cats = [];
+    state.services.forEach(function(s){
+      if(s.category && !seen[s.category]){ seen[s.category]=1; state.cats.push(s.category); }
+    });
+    render();
+    $('boot').className = 'hide';
+    $('app').className = 'wrap';
+    $('bar').className = 'bar';
+  }).catch(function(e){
+    $('boot').innerHTML = 'Could not load: ' + esc(e.message||e);
+  });
+}
+
+/* ---------- render ---------- */
+function render(){
+  var sel = $('partner');
+  sel.innerHTML = state.partners.map(function(p){
+    return '<option value="'+p.id+'">'+esc(p.name)+'</option>';
+  }).join('');
+
+  $('issChips').innerHTML = COMMON.map(function(c){
+    var on = state.issues.some(function(i){ return i.label===c; });
+    return '<div class="chip'+(on?' on':'')+'" data-c="'+esc(c)+'">'+esc(c)+'</div>';
+  }).join('');
+
+  $('cats').innerHTML = ['All'].concat(state.cats).map(function(c){
+    return '<div class="chip'+(state.cat===c?' on':'')+'" data-cat="'+esc(c)+'">'+esc(c)+'</div>';
+  }).join('');
+
+  renderIssues();
+  renderServices();
+  renderBar();
+}
+
+function priceOf(s){
+  var ct = $('ctype').value;
+  var p = null;
+  if(s.price_by_type && s.price_by_type[ct] != null) p = Number(s.price_by_type[ct]);
+  if(p == null && s.base_price != null) p = Number(s.base_price);
+  return p;
+}
+
+function renderIssues(){
+  $('issList').innerHTML = state.issues.map(function(is, ix){
+    var slots = '';
+    for(var i=0;i<3;i++){
+      var ph = is.photos[i];
+      slots += '<div class="slot" data-ix="'+ix+'" data-p="'+i+'">' +
+        (ph ? '<img src="'+ph.url+'"><div class="x" data-rm="'+ix+'-'+i+'">&times;</div>' : '<i class="ti ti-camera"></i>') +
+        '</div>';
+    }
+    return '<div class="iss"><div class="hd"><b>'+esc(is.label)+'</b>' +
+      '<i class="ti ti-trash del" data-del="'+ix+'"></i></div>' +
+      '<div class="ph">'+slots+'</div></div>';
+  }).join('');
+}
+
+function renderServices(){
+  var q = state.q.toLowerCase();
+  var list = state.services.filter(function(s){
+    if(state.cat !== 'All' && s.category !== state.cat) return false;
+    var p = priceOf(s);
+    if(p == null || p <= 0) return false;
+    if(q && (s.name||'').toLowerCase().indexOf(q) < 0 && (s.subtitle||'').toLowerCase().indexOf(q) < 0) return false;
+    return true;
+  }).slice(0, 120);
+
+  if(!list.length){ $('svcList').innerHTML = '<p class="muted" style="padding:16px 0">No service matches. Try another category.</p>'; return; }
+
+  $('svcList').innerHTML = list.map(function(s){
+    var p = priceOf(s), on = !!state.picked[s.id];
+    var row = '<div class="svc'+(on?' on':'')+'" data-sid="'+s.id+'">' +
+      '<div class="tick">'+(on?'<i class="ti ti-check"></i>':'')+'</div>' +
+      '<div class="nm"><b>'+esc(s.name)+'</b><span>'+esc(s.brand||s.category||'')+'</span></div>' +
+      '<div class="pr">'+money(p)+'</div></div>';
+    if(on && s.is_coating){
+      var n = state.picked[s.id].foc_maint || 0;
+      row += '<div class="foc" data-foc="'+s.id+'">' +
+        '<span>FOC maintenance</span>' +
+        '<div class="st" data-step="-1">\u2212</div>' +
+        '<div class="n">'+n+'\u00d7</div>' +
+        '<div class="st" data-step="1">+</div></div>';
+    }
+    return row;
+  }).join('');
+}
+
+function total(){
+  var t = 0;
+  for(var k in state.picked){ if(state.picked.hasOwnProperty(k)) t += Number(state.picked[k].price||0); }
+  return t;
+}
+
+function renderBar(){
+  var n = Object.keys(state.picked).length;
+  $('totLbl').textContent = state.step===3 ? (n + ' service' + (n===1?'':'s') + ' selected') : ('Step ' + state.step + ' of 3');
+  $('tot').textContent = state.step===3 ? money(total()) : (state.step===1 ? 'Car details' : state.issues.length + ' issue' + (state.issues.length===1?'':'s'));
+  $('back').className = 'btn ghost' + (state.step===1 ? ' hide' : '');
+  $('next').innerHTML = state.step===3
+    ? '<i class="ti ti-send"></i> Send'
+    : 'Next <i class="ti ti-chevron-right"></i>';
+}
+
+function goStep(n){
+  state.step = n;
+  $('p1').className = n===1 ? '' : 'hide';
+  $('p2').className = n===2 ? '' : 'hide';
+  $('p3').className = n===3 ? '' : 'hide';
+  $('s1').className = n>=1 ? 'on' : '';
+  $('s2').className = n>=2 ? 'on' : '';
+  $('s3').className = n>=3 ? 'on' : '';
+  if(n===3) renderServices();
+  renderBar();
+  window.scrollTo(0,0);
+}
+
+/* ---------- events ---------- */
+$('frontBox').addEventListener('click', function(){
+  pickImage(function(img){
+    state.front = img;
+    $('frontBox').innerHTML = '<img src="'+img.url+'">';
+  });
+});
+
+$('issChips').addEventListener('click', function(e){
+  var c = e.target.getAttribute('data-c');
+  if(!c) return;
+  var ix = -1;
+  state.issues.forEach(function(i,k){ if(i.label===c) ix=k; });
+  if(ix >= 0) state.issues.splice(ix,1);
+  else state.issues.push({ label:c, photos:[] });
+  render();
+});
+
+$('addIss').addEventListener('click', function(){
+  var v = $('customIss').value.trim();
+  if(!v) return;
+  state.issues.push({ label:v, photos:[] });
+  $('customIss').value = '';
+  render();
+});
+
+$('issList').addEventListener('click', function(e){
+  var rm = e.target.getAttribute('data-rm');
+  if(rm){
+    var a = rm.split('-');
+    state.issues[+a[0]].photos[+a[1]] = null;
+    renderIssues();
+    return;
+  }
+  var del = e.target.getAttribute('data-del');
+  if(del != null){ state.issues.splice(+del,1); render(); return; }
+  var slot = e.target.closest ? e.target.closest('.slot') : null;
+  if(slot){
+    var ix = +slot.getAttribute('data-ix'), p = +slot.getAttribute('data-p');
+    pickImage(function(img){ state.issues[ix].photos[p] = img; renderIssues(); });
+  }
+});
+
+$('cats').addEventListener('click', function(e){
+  var c = e.target.getAttribute('data-cat');
+  if(!c) return;
+  state.cat = c;
+  render();
+});
+
+$('q').addEventListener('input', function(){ state.q = this.value; renderServices(); });
+$('ctype').addEventListener('change', function(){
+  state.picked = {};
+  renderServices(); renderBar();
+});
+
+$('svcList').addEventListener('click', function(e){
+  var focBox = e.target.closest ? e.target.closest('.foc') : null;
+  if(focBox){
+    var step = e.target.getAttribute('data-step');
+    if(step){
+      var fid = focBox.getAttribute('data-foc');
+      var cur = state.picked[fid] ? (state.picked[fid].foc_maint||0) : 0;
+      cur += Number(step);
+      if(cur < 0) cur = 0;
+      if(cur > 12) cur = 12;
+      if(state.picked[fid]) state.picked[fid].foc_maint = cur;
+      renderServices();
+    }
+    return;
+  }
+  var row = e.target.closest ? e.target.closest('.svc') : null;
+  if(!row) return;
+  var id = row.getAttribute('data-sid');
+  if(state.picked[id]) delete state.picked[id];
+  else {
+    var s = null;
+    state.services.forEach(function(x){ if(x.id===id) s=x; });
+    if(s) state.picked[id] = { id:s.id, name:s.name, category:s.category, price:priceOf(s),
+                              is_coating: !!s.is_coating, foc_maint: s.is_coating ? 1 : 0 };
+  }
+  renderServices(); renderBar();
+});
+
+$('back').addEventListener('click', function(){ goStep(state.step - 1); });
+
+$('next').addEventListener('click', function(){
+  if(state.step === 1){
+    if(!$('plate').value.trim()) return toast('Plate is required', true);
+    if(!state.front) return toast('Front photo is required', true);
+    return goStep(2);
+  }
+  if(state.step === 2){
+    if(!state.issues.length) return toast('Add at least one issue', true);
+    return goStep(3);
+  }
+  if(!Object.keys(state.picked).length) return toast('Pick at least one service', true);
+  send();
+});
+
+/* ---------- send ---------- */
+function upload(qid, path, blob){
+  return sb.storage.from('sa-quotes').upload(qid + '/' + path, blob, {
+    contentType:'image/jpeg', upsert:true
+  }).then(function(r){
+    if(r.error) throw r.error;
+    return SB_URL + '/storage/v1/object/public/sa-quotes/' + qid + '/' + path;
+  });
+}
+
+function send(){
+  if(state.sending) return;
+  state.sending = true;
+  $('next').disabled = true;
+  $('next').innerHTML = '<i class="ti ti-loader-2"></i> Sending…';
+
+  var tk = token();
+  var svcs = [];
+  for(var k in state.picked){ if(state.picked.hasOwnProperty(k)) svcs.push(state.picked[k]); }
+
+  var quoteId = null, ref = null;
+
+  sb.from('gl_sa_quotes').insert({
+    share_token: tk,
+    partner_id: $('partner').value,
+    plate: $('plate').value.trim().toUpperCase(),
+    model: $('model').value.trim(),
+    colour: $('colour').value.trim(),
+    car_type: $('ctype').value,
+    services: svcs,
+    total: total(),
+    notes: $('notes').value.trim(),
+    created_by: state.user,
+    status: 'draft'
+  }).select('id,ref').single().then(function(r){
+    if(r.error) throw r.error;
+    quoteId = r.data.id; ref = r.data.ref;
+    return upload(quoteId, 'front.jpg', state.front.blob);
+  }).then(function(frontUrl){
+    var jobs = [], meta = [];
+    state.issues.forEach(function(is, ix){
+      var urls = [];
+      is.photos.forEach(function(ph, pi){
+        if(!ph) return;
+        var name = 'issue_' + (ix+1) + '_' + (pi+1) + '.jpg';
+        urls.push(SB_URL + '/storage/v1/object/public/sa-quotes/' + quoteId + '/' + name);
+        jobs.push(upload(quoteId, name, ph.blob));
+      });
+      meta.push({ label: is.label, photos: urls });
+    });
+    return Promise.all(jobs).then(function(){
+      return sb.from('gl_sa_quotes').update({
+        front_photo: frontUrl, issues: meta, status: 'sent', updated_at: new Date().toISOString()
+      }).eq('id', quoteId);
+    });
+  }).then(function(r){
+    if(r && r.error) throw r.error;
+    return sb.from('gl_sa_quote_events').insert({ quote_id: quoteId, type:'sent', actor: state.user });
+  }).then(function(){
+    showDone(ref, tk);
+  }).catch(function(e){
+    toast('Failed: ' + (e.message||e), true);
+    state.sending = false;
+    $('next').disabled = false;
+    renderBar();
+  });
+}
+
+function showDone(ref, tk){
+  var url = ACCEPT_BASE + '?t=' + tk;
+  var pname = '';
+  state.partners.forEach(function(p){ if(p.id === $('partner').value) pname = p.name; });
+
+  var car = [$('plate').value.trim().toUpperCase(), $('model').value.trim(), $('colour').value.trim()]
+              .filter(function(x){ return x; }).join(' \u00b7 ');
+
+  var svcs = [];
+  for(var k in state.picked){ if(state.picked.hasOwnProperty(k)) svcs.push(state.picked[k]); }
+
+  var msg = '\ud83d\ude97 *GRANDLAB QUOTATION* \u2014 ' + ref + '\n' +
+            '\ud83d\udccd ' + car + '\n\n' +
+            '\u26a0\ufe0f *What we found (' + state.issues.length + ')*\n' +
+            state.issues.map(function(i){ return '\u2022 ' + i.label; }).join('\n') + '\n\n' +
+            '\u2728 *Recommended*\n' +
+            svcs.map(function(s){
+              var line = '\u2022 ' + s.name + ' \u2014 ' + money(s.price);
+              if(s.is_coating && s.foc_maint > 0) line += '\n   \ud83c\udf81 incl. ' + s.foc_maint + '\u00d7 FOC maintenance';
+              return line;
+            }).join('\n') + '\n\n' +
+            '\ud83d\udcb0 *Total: ' + money(total()) + '*\n\n' +
+            '\ud83d\udc47 Photos + accept here\n' + url;
+
+  $('doneRef').textContent = ref + ' sent';
+  $('doneLink').textContent = url;
+  $('done').className = 'ov';
+
+  $('waBtn').onclick = function(){
+    window.open('https://wa.me/?text=' + encodeURIComponent(msg), '_blank');
+  };
+  $('copyBtn').onclick = function(){
+    if(navigator.clipboard) navigator.clipboard.writeText(url);
+    toast('Link copied');
+  };
+  $('msgBtn').onclick = function(){
+    if(navigator.clipboard) navigator.clipboard.writeText(msg);
+    toast('Message copied');
+  };
+  $('newBtn').onclick = function(){ location.reload(); };
+}
+
+boot();
+})();
+</script>
+</body>
+</html>

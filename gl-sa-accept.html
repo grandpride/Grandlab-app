@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Quotation | GrandLab</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.7.0/dist/tabler-icons.min.css">
+<style>
+:root{--bg:#080808;--card:#141414;--card2:#1c1c1c;--gold:#F5C518;--border:#2a2a2a;--text:#f2f2f2;--text2:#9a9a9a;--ok:#37d67a;--red:#ff5c5c}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:15px;padding-bottom:120px}
+.hero{position:relative;aspect-ratio:16/10;background:var(--card2);overflow:hidden}
+.hero img{width:100%;height:100%;object-fit:cover}
+.hero .grad{position:absolute;inset:0;background:linear-gradient(to top,rgba(8,8,8,.96) 0%,rgba(8,8,8,0) 55%)}
+.hero .cap{position:absolute;left:16px;right:16px;bottom:12px}
+.hero .cap b{display:block;font-size:22px;font-weight:800;letter-spacing:.5px}
+.hero .cap span{font-size:13px;color:var(--text2)}
+.brand{position:absolute;top:12px;left:16px;background:rgba(0,0,0,.6);backdrop-filter:blur(6px);border-radius:20px;padding:6px 13px;font-size:11px;font-weight:700;letter-spacing:1.5px;color:var(--gold)}
+.ref{position:absolute;top:12px;right:16px;background:rgba(0,0,0,.6);backdrop-filter:blur(6px);border-radius:20px;padding:6px 13px;font-size:11px;font-weight:700}
+.wrap{padding:14px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:14px;margin-bottom:12px}
+.card h2{margin:0 0 12px;font-size:13px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.6px;display:flex;align-items:center;gap:7px}
+.card h2 i{color:var(--gold);font-size:15px}
+.iss{border-bottom:1px solid var(--border);padding:12px 0}
+.iss:first-of-type{padding-top:0}
+.iss:last-child{border-bottom:none;padding-bottom:0}
+.iss b{display:block;font-size:14px;margin-bottom:8px}
+.iss b i{color:var(--red);margin-right:6px}
+.gal{display:flex;gap:8px;overflow-x:auto;-webkit-overflow-scrolling:touch}
+.gal img{width:112px;height:84px;object-fit:cover;border-radius:10px;flex-shrink:0;cursor:pointer;border:1px solid var(--border)}
+.svc{display:flex;align-items:flex-start;gap:11px;padding:12px 0;border-bottom:1px solid var(--border)}
+.svc:last-child{border-bottom:none}
+.svc .tick{width:25px;height:25px;border-radius:8px;border:1.5px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;margin-top:1px}
+.svc.on .tick{background:var(--gold);color:#000;border-color:var(--gold)}
+.svc .nm{flex:1;min-width:0}
+.svc .nm b{display:block;font-size:14px;font-weight:600;line-height:1.35}
+.svc .nm .foc{display:inline-block;margin-top:5px;font-size:11px;color:var(--gold);background:rgba(245,197,24,.1);border:1px solid rgba(245,197,24,.3);border-radius:6px;padding:3px 8px}
+.svc .pr{font-size:14px;font-weight:700;color:var(--gold);white-space:nowrap;margin-top:1px}
+.svc.pick{cursor:pointer}
+.bar{position:fixed;left:0;right:0;bottom:0;background:rgba(8,8,8,.97);backdrop-filter:blur(12px);border-top:1px solid var(--border);padding:12px 14px calc(12px + env(safe-area-inset-bottom));z-index:30}
+.bar .tot{display:flex;align-items:baseline;gap:8px;margin-bottom:10px}
+.bar .tot small{flex:1;font-size:12px;color:var(--text2)}
+.bar .tot b{font-size:23px;color:var(--gold);font-weight:800}
+.btn{border:none;border-radius:14px;padding:15px;font-size:15px;font-weight:700;font-family:inherit;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;width:100%}
+.btn.gold{background:var(--gold);color:#000}
+.btn.green{background:var(--ok);color:#04210f}
+.btn.ghost{background:var(--card2);color:var(--text);border:1px solid var(--border)}
+.btn:disabled{opacity:.45}
+.note{background:rgba(245,197,24,.07);border:1px solid rgba(245,197,24,.25);border-radius:12px;padding:12px;font-size:13px;line-height:1.5}
+.terms{font-size:11px;color:var(--text2);line-height:1.6;padding:4px 2px 0}
+.state{text-align:center;padding:60px 24px;color:var(--text2)}
+.state i{font-size:46px;display:block;margin-bottom:12px}
+.taken{background:var(--card2);border:1px solid var(--border);border-radius:14px;padding:16px;text-align:center}
+.taken i{font-size:30px;color:var(--gold)}
+.taken b{display:block;margin:8px 0 3px;font-size:16px}
+.ov{position:fixed;inset:0;background:rgba(0,0,0,.88);display:flex;align-items:flex-end;justify-content:center;z-index:80}
+.ov .box{background:var(--card);border:1px solid var(--border);border-radius:20px 20px 0 0;padding:20px 18px calc(20px + env(safe-area-inset-bottom));width:100%;max-width:520px}
+.ov h3{margin:0 0 4px;font-size:18px}
+.ov p{margin:0 0 16px;font-size:13px;color:var(--text2)}
+.who{background:var(--card2);border:1px solid var(--border);border-radius:13px;padding:15px;margin-bottom:9px;font-size:16px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:11px}
+.who i{color:var(--gold)}
+.lightbox{position:fixed;inset:0;background:rgba(0,0,0,.95);display:flex;align-items:center;justify-content:center;z-index:90;padding:16px}
+.lightbox img{max-width:100%;max-height:100%;border-radius:12px}
+.toast{position:fixed;left:14px;right:14px;bottom:130px;background:var(--card2);border:1px solid var(--border);border-radius:12px;padding:13px;text-align:center;font-size:14px;z-index:70;opacity:0;transition:.25s;pointer-events:none}
+.toast.on{opacity:1}
+.toast.err{border-color:var(--red);color:var(--red)}
+.hide{display:none!important}
+.ok-hero{text-align:center;padding:26px 0 6px}
+.ok-hero i{font-size:52px;color:var(--ok)}
+.ok-hero b{display:block;font-size:19px;margin-top:10px}
+</style>
+</head>
+<body>
+
+<div id="boot" class="state"><i class="ti ti-loader-2"></i>Loading quotation…</div>
+
+<div id="app" class="hide">
+  <div class="hero">
+    <img id="heroImg" alt="">
+    <div class="grad"></div>
+    <div class="brand">GRANDLAB</div>
+    <div class="ref" id="refTag"></div>
+    <div class="cap"><b id="plate"></b><span id="carline"></span></div>
+  </div>
+
+  <div class="wrap">
+    <div id="statusBox"></div>
+
+    <div class="card" id="issCard">
+      <h2><i class="ti ti-alert-triangle"></i> What we found</h2>
+      <div id="issues"></div>
+    </div>
+
+    <div class="card">
+      <h2><i class="ti ti-sparkles"></i> <span id="svcTitle">Recommended</span></h2>
+      <div id="services"></div>
+    </div>
+
+    <div class="card hide" id="noteCard">
+      <h2><i class="ti ti-message-2"></i> Note from GrandLab</h2>
+      <div class="note" id="noteTxt"></div>
+    </div>
+
+    <p class="terms" id="terms"></p>
+  </div>
+</div>
+
+<div class="bar hide" id="bar">
+  <div class="tot"><small id="totLbl">Total</small><b id="tot">—</b></div>
+  <button class="btn gold" id="mainBtn"></button>
+  <button class="btn ghost hide" style="margin-top:8px" id="subBtn"></button>
+</div>
+
+<div class="ov hide" id="whoOv">
+  <div class="box">
+    <h3 id="whoTitle">Who are you?</h3>
+    <p id="whoSub">Tap your name. This records the deal under you.</p>
+    <div id="whoList"></div>
+    <button class="btn ghost" style="margin-top:6px" id="whoCancel">Cancel</button>
+  </div>
+</div>
+
+<div class="lightbox hide" id="lb"><img id="lbImg" alt=""></div>
+<div class="toast" id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script>
+(function(){
+'use strict';
+
+var SB_URL = 'https://eychljpzorzmaveixlnu.supabase.co';
+var SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV5Y2hsanB6b3J6bWF2ZWl4bG51Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2NDk2NjQsImV4cCI6MjA5NzIyNTY2NH0.6dA1zhz5ZIwf8byFB8vhfOzPI-uPPdPihEr1b8GG_oA';
+
+var sb = window.supabase.createClient(SB_URL, SB_KEY, {
+  auth:{ storageKey:'gl_sa_pub', persistSession:false, autoRefreshToken:false }
+});
+
+var $ = function(id){ return document.getElementById(id); };
+var TOKEN = new URLSearchParams(location.search).get('t') || '';
+var Q = null, picked = {}, busy = false;
+
+function toast(m, err){
+  var t = $('toast');
+  t.textContent = m;
+  t.className = 'toast on' + (err ? ' err' : '');
+  setTimeout(function(){ t.className = 'toast' + (err ? ' err' : ''); }, 2800);
+}
+function money(n){ return 'RM ' + Number(n||0).toLocaleString('en-MY',{maximumFractionDigits:0}); }
+function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+function fail(msg, icon){
+  $('boot').className = 'state';
+  $('boot').innerHTML = '<i class="ti ti-'+(icon||'alert-circle')+'"></i>'+esc(msg);
+  $('app').className = 'hide';
+  $('bar').className = 'bar hide';
+}
+
+/* remembers which SA accepted, on this phone only.
+   convenience only - sa_quote_confirm re-checks against the DB. */
+function meId(v){
+  try{
+    if(v === undefined) return sessionStorage.getItem('sa_' + TOKEN);
+    sessionStorage.setItem('sa_' + TOKEN, v);
+  }catch(e){}
+  return v;
+}
+
+function load(){
+  if(!TOKEN){ return fail('No quotation link.','link-off'); }
+  sb.rpc('sa_quote_public', { p_token: TOKEN }).then(function(r){
+    if(r.error) throw r.error;
+    if(!r.data || r.data.error){ return fail('This quotation was not found or is no longer active.','file-off'); }
+    Q = r.data;
+    sb.rpc('sa_quote_view', { p_token: TOKEN });
+    render();
+  }).catch(function(e){ fail('Could not load: ' + (e.message||e)); });
+}
+
+function svcList(){
+  if(Q.status === 'confirmed') return Q.selected_services || [];
+  return Q.services || [];
+}
+
+function render(){
+  $('boot').className = 'hide';
+  $('app').className = '';
+  $('bar').className = 'bar';
+
+  $('heroImg').src = Q.front_photo || '';
+  $('refTag').textContent = Q.ref || '';
+  $('plate').textContent = Q.plate || '';
+  $('carline').textContent = [Q.model, Q.colour, Q.car_type].filter(Boolean).join(' \u00b7 ');
+
+  var iss = Q.issues || [];
+  if(!iss.length){ $('issCard').className = 'card hide'; }
+  else {
+    $('issues').innerHTML = iss.map(function(i){
+      var g = (i.photos||[]).map(function(u){
+        return '<img src="'+esc(u)+'" data-full="'+esc(u)+'">';
+      }).join('');
+      return '<div class="iss"><b><i class="ti ti-point-filled"></i>'+esc(i.label)+'</b>' +
+             (g ? '<div class="gal">'+g+'</div>' : '') + '</div>';
+    }).join('');
+  }
+
+  if(Q.notes){ $('noteTxt').textContent = Q.notes; $('noteCard').className = 'card'; }
+
+  if(Q.status === 'sent')      renderSent();
+  else if(Q.status === 'accepted') renderAccepted();
+  else if(Q.status === 'confirmed') renderConfirmed();
+  else fail('This quotation is closed.','file-off');
+}
+
+function svcRow(s, selectable){
+  var on = !!picked[s.id];
+  var foc = (s.is_coating && s.foc_maint > 0)
+    ? '<span class="foc"><i class="ti ti-gift"></i> incl. '+s.foc_maint+'\u00d7 FOC maintenance</span>' : '';
+  return '<div class="svc'+(selectable?' pick':'')+(on?' on':'')+'" data-sid="'+esc(s.id)+'">' +
+    (selectable ? '<div class="tick">'+(on?'<i class="ti ti-check"></i>':'')+'</div>' : '') +
+    '<div class="nm"><b>'+esc(s.name)+'</b>'+foc+'</div>' +
+    '<div class="pr">'+money(s.price)+'</div></div>';
+}
+
+/* ---- STAGE 1: not yet accepted ---- */
+function renderSent(){
+  $('statusBox').innerHTML = '';
+  $('svcTitle').textContent = 'Recommended';
+  $('services').innerHTML = svcList().map(function(s){ return svcRow(s,false); }).join('');
+  $('totLbl').textContent = 'Total if all done';
+  $('tot').textContent = money(Q.total);
+  $('terms').innerHTML = 'Customer pays GrandLab directly. Work begins only after you confirm the customer has agreed.';
+  $('mainBtn').className = 'btn gold';
+  $('mainBtn').innerHTML = '<i class="ti ti-hand-click"></i> I accept to deal with customer';
+  $('mainBtn').onclick = askWho;
+  $('subBtn').className = 'btn ghost hide';
+}
+
+/* ---- STAGE 2: accepted, pick what customer wants ---- */
+function renderAccepted(){
+  var mine = meId() && meId() === Q.accepted_by_id;
+  $('statusBox').innerHTML = '<div class="taken" style="margin-bottom:12px">' +
+    '<i class="ti ti-user-check"></i><b>Accepted by ' + esc(Q.accepted_by || '\u2014') + '</b>' +
+    '<span style="font-size:12px;color:var(--text2)">' +
+    (mine ? 'Tick what the customer agreed to, then confirm.' : 'This deal is already taken.') +
+    '</span></div>';
+
+  if(!mine){
+    $('svcTitle').textContent = 'Recommended';
+    $('services').innerHTML = svcList().map(function(s){ return svcRow(s,false); }).join('');
+    $('totLbl').textContent = 'Total if all done';
+    $('tot').textContent = money(Q.total);
+    $('terms').textContent = '';
+    $('mainBtn').className = 'btn ghost';
+    $('mainBtn').innerHTML = '<i class="ti ti-lock"></i> Already accepted';
+    $('mainBtn').disabled = true;
+    $('subBtn').className = 'btn ghost';
+    $('subBtn').innerHTML = '<i class="ti ti-user"></i> This is me \u2014 continue';
+    $('subBtn').onclick = askWhoResume;
+    return;
+  }
+
+  if(!Object.keys(picked).length){
+    svcList().forEach(function(s){ picked[s.id] = s; });
+  }
+  $('svcTitle').textContent = 'Tick what customer wants';
+  drawPickable();
+}
+
+function drawPickable(){
+  $('services').innerHTML = svcList().map(function(s){ return svcRow(s,true); }).join('');
+  var arr = sel(), t = 0;
+  arr.forEach(function(s){ t += Number(s.price||0); });
+  $('totLbl').textContent = arr.length + ' of ' + svcList().length + ' selected';
+  $('tot').textContent = money(t);
+  $('terms').innerHTML = 'Customer pays GrandLab directly. Confirm only after the customer has agreed.';
+  $('mainBtn').className = 'btn green';
+  $('mainBtn').disabled = !arr.length;
+  $('mainBtn').innerHTML = '<i class="ti ti-circle-check"></i> Confirm customer order';
+  $('mainBtn').onclick = confirmOrder;
+  $('subBtn').className = 'btn ghost hide';
+}
+
+function sel(){
+  var a = [];
+  svcList().forEach(function(s){ if(picked[s.id]) a.push(s); });
+  return a;
+}
+
+/* ---- STAGE 3: confirmed ---- */
+function renderConfirmed(){
+  $('statusBox').innerHTML = '<div class="ok-hero"><i class="ti ti-circle-check"></i>' +
+    '<b>Order confirmed</b></div>' +
+    '<div class="taken" style="margin-bottom:12px"><b>' + esc(Q.accepted_by || '\u2014') + '</b>' +
+    '<span style="font-size:12px;color:var(--text2)">GrandLab has been notified and will arrange the job.</span></div>';
+  $('svcTitle').textContent = 'Customer confirmed';
+  $('services').innerHTML = svcList().map(function(s){ return svcRow(s,false); }).join('');
+  $('totLbl').textContent = 'Confirmed total';
+  $('tot').textContent = money(Q.selected_total);
+  $('terms').innerHTML = 'Customer pays GrandLab directly.';
+  $('mainBtn').className = 'btn gold';
+  $('mainBtn').disabled = false;
+  $('mainBtn').innerHTML = '<i class="ti ti-brand-whatsapp"></i> Send confirmation to group';
+  $('mainBtn').onclick = resend;
+  $('subBtn').className = 'btn ghost hide';
+}
+
+function resend(){
+  var lines = svcList().map(function(s){
+    var l = '\u2022 ' + s.name + ' \u2014 ' + money(s.price);
+    if(s.is_coating && s.foc_maint > 0) l += '\n   \ud83c\udf81 incl. ' + s.foc_maint + '\u00d7 FOC maintenance';
+    return l;
+  }).join('\n');
+  var msg = '\u2705 *ORDER CONFIRMED* \u2014 ' + Q.ref + '\n' +
+            '\ud83d\udccd ' + [Q.plate, Q.model, Q.colour].filter(Boolean).join(' \u00b7 ') + '\n' +
+            '\ud83d\udc64 Confirmed by: ' + (Q.accepted_by || '\u2014') + '\n\n' +
+            '\ud83d\udd27 *Customer taking*\n' + lines + '\n\n' +
+            '\ud83d\udcb0 *Total: ' + money(Q.selected_total) + '*\n\n' +
+            '\ud83d\udcde GrandLab will arrange the booking.';
+  window.open('https://wa.me/?text=' + encodeURIComponent(msg), '_blank');
+}
+
+/* ---- who are you ---- */
+var whoMode = 'accept';
+function askWho(){ whoMode = 'accept'; openWho('Who are you?','Tap your name. This records the deal under you.'); }
+function askWhoResume(){ whoMode = 'resume'; openWho('Confirm your name','Only the advisor who accepted can continue.'); }
+
+function openWho(title, sub){
+  var adv = Q.advisors || [];
+  if(!adv.length){
+    return toast('No advisors set up for this partner yet. Contact GrandLab.', true);
+  }
+  $('whoTitle').textContent = title;
+  $('whoSub').textContent = sub;
+  $('whoList').innerHTML = adv.map(function(a){
+    return '<div class="who" data-aid="'+esc(a.id)+'"><i class="ti ti-user"></i>'+esc(a.name)+'</div>';
+  }).join('');
+  $('whoOv').className = 'ov';
+}
+function closeWho(){ $('whoOv').className = 'ov hide'; }
+
+$('whoCancel').addEventListener('click', closeWho);
+$('whoList').addEventListener('click', function(e){
+  var row = e.target.closest ? e.target.closest('.who') : null;
+  if(!row) return;
+  var id = row.getAttribute('data-aid');
+  closeWho();
+  if(whoMode === 'resume'){
+    if(id !== Q.accepted_by_id) return toast('That is not the advisor who accepted this.', true);
+    meId(id); picked = {}; render(); return;
+  }
+  doAccept(id);
+});
+
+function doAccept(saId){
+  if(busy) return;
+  busy = true;
+  $('mainBtn').disabled = true;
+  $('mainBtn').innerHTML = '<i class="ti ti-loader-2"></i> Accepting…';
+  sb.rpc('sa_quote_accept', { p_token: TOKEN, p_sa_id: saId }).then(function(r){
+    busy = false;
+    if(r.error) throw r.error;
+    var d = r.data;
+    if(d && d.ok){
+      meId(saId);
+      toast('Accepted \u2014 this deal is yours');
+      picked = {};
+      return refresh();
+    }
+    toast('Already accepted by ' + (d && d.accepted_by ? d.accepted_by : 'another advisor'), true);
+    return refresh();
+  }).catch(function(e){
+    busy = false;
+    $('mainBtn').disabled = false;
+    toast('Failed: ' + (e.message||e), true);
+    render();
+  });
+}
+
+function confirmOrder(){
+  var arr = sel();
+  if(!arr.length) return toast('Select at least one service', true);
+  if(busy) return;
+  busy = true;
+  $('mainBtn').disabled = true;
+  $('mainBtn').innerHTML = '<i class="ti ti-loader-2"></i> Confirming…';
+  sb.rpc('sa_quote_confirm', {
+    p_token: TOKEN, p_sa_id: meId(), p_selected: arr
+  }).then(function(r){
+    busy = false;
+    if(r.error) throw r.error;
+    var d = r.data;
+    if(d && d.ok){ toast('Order confirmed'); return refresh(); }
+    toast('Could not confirm \u2014 please reopen the link', true);
+    return refresh();
+  }).catch(function(e){
+    busy = false;
+    $('mainBtn').disabled = false;
+    toast('Failed: ' + (e.message||e), true);
+    drawPickable();
+  });
+}
+
+function refresh(){
+  return sb.rpc('sa_quote_public', { p_token: TOKEN }).then(function(r){
+    if(r.data && !r.data.error){ Q = r.data; render(); }
+  });
+}
+
+/* ---- interactions ---- */
+$('services').addEventListener('click', function(e){
+  var row = e.target.closest ? e.target.closest('.svc.pick') : null;
+  if(!row) return;
+  var id = row.getAttribute('data-sid');
+  var s = null;
+  svcList().forEach(function(x){ if(String(x.id) === id) s = x; });
+  if(!s) return;
+  if(picked[s.id]) delete picked[s.id]; else picked[s.id] = s;
+  drawPickable();
+});
+
+$('issues').addEventListener('click', function(e){
+  var u = e.target.getAttribute('data-full');
+  if(!u) return;
+  $('lbImg').src = u;
+  $('lb').className = 'lightbox';
+});
+$('lb').addEventListener('click', function(){ $('lb').className = 'lightbox hide'; });
+
+load();
+})();
+</script>
+</body>
+</html>
