@@ -81,6 +81,22 @@ label{display:block;font-size:11px;color:var(--text2);margin:0 0 5px}
 .payout .n b{display:block;font-size:14px}
 .payout .n small{font-size:11px;color:var(--text2)}
 .payout .v{font-size:15px;font-weight:800;color:var(--gold)}
+.bar2{margin-bottom:14px}
+.bar2 .lb{display:flex;align-items:baseline;gap:8px;margin-bottom:6px}
+.bar2 .lb b{flex:1;font-size:14px}
+.bar2 .lb .v{font-size:14px;font-weight:800}
+.bar2 .lb small{font-size:11px;color:var(--text2)}
+.trk{height:9px;border-radius:6px;background:var(--card2);overflow:hidden;margin-bottom:4px;position:relative}
+.trk i{display:block;height:100%;border-radius:6px}
+.trk i.s{background:linear-gradient(90deg,#F5C518,#c9a10f)}
+.trk i.c{background:var(--ok)}
+.lgd{display:flex;gap:14px;font-size:11px;color:var(--text2);margin-bottom:14px}
+.lgd span{display:flex;align-items:center;gap:5px}
+.lgd em{width:10px;height:10px;border-radius:3px;display:inline-block;font-style:normal}
+.rsum{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:12px}
+.rsum div{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:12px}
+.rsum small{display:block;font-size:10px;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px}
+.rsum b{font-size:17px;font-weight:800}
 </style>
 </head>
 <body>
@@ -90,6 +106,7 @@ label{display:block;font-size:11px;color:var(--text2);margin:0 0 5px}
   <div class="tabs">
     <div id="tDeals" class="on">Deals</div>
     <div id="tPayout">Payout</div>
+    <div id="tReport">Report</div>
     <div id="tSetup">Partners</div>
   </div>
 </div>
@@ -114,6 +131,17 @@ label{display:block;font-size:11px;color:var(--text2);margin:0 0 5px}
       <div id="payout"></div>
     </div>
     <p style="font-size:12px;color:var(--text2);line-height:1.6">Only deals where the customer has already paid GrandLab appear here.</p>
+  </div>
+
+  <div id="vReport" class="hide">
+    <div class="card">
+      <h2>Monthly report</h2>
+      <div class="row">
+        <input type="month" id="rMonth">
+        <button class="btn ghost" id="rGo" style="flex:0 0 54px;padding:11px"><i class="ti ti-refresh"></i></button>
+      </div>
+    </div>
+    <div id="rBody"><div class="empty"><i class="ti ti-chart-bar"></i>Pick a month.</div></div>
   </div>
 
   <div id="vSetup" class="hide">
@@ -425,19 +453,160 @@ $('partners').addEventListener('click', function(e){
   }
 });
 
+/* ---------- monthly report ---------- */
+function monthRange(v){
+  // v is "2026-09"; returns [start, nextMonthStart] as ISO strings
+  var a = v.split('-'), y = +a[0], m = +a[1];
+  var s = new Date(Date.UTC(y, m-1, 1));
+  var e = new Date(Date.UTC(m === 12 ? y+1 : y, m === 12 ? 0 : m, 1));
+  return [s.toISOString(), e.toISOString()];
+}
+
+function loadReport(){
+  var v = $('rMonth').value;
+  if(!v) return;
+  var r = monthRange(v);
+  $('rBody').innerHTML = '<div class="empty"><i class="ti ti-loader-2"></i>Loading…</div>';
+
+  sb.from('gl_sa_comm_ledger').select('*')
+    .gte('confirmed_at', r[0]).lt('confirmed_at', r[1])
+    .then(function(res){
+      if(res.error){ $('rBody').innerHTML = '<div class="empty">'+esc(res.error.message)+'</div>'; return; }
+      drawReport(res.data || [], v);
+    });
+}
+
+var RCACHE = { rows:[], month:'' };
+
+function drawReport(rows, month){
+  RCACHE = { rows: rows, month: month };
+
+  if(!rows.length){
+    $('rBody').innerHTML = '<div class="empty"><i class="ti ti-mood-empty"></i>No confirmed deals this month.</div>';
+    return;
+  }
+
+  var sales = 0, comm = 0, paidComm = 0, owed = 0;
+  var by = {};
+  rows.forEach(function(d){
+    var s = Number(d.confirmed_total||0), c = Number(d.comm_amount||0);
+    sales += s; comm += c;
+    if(d.comm_status === 'paid') paidComm += c;
+    if(d.comm_status === 'payable') owed += c;
+    var k = d.advisor || '(unknown)';
+    if(!by[k]) by[k] = { n:0, s:0, c:0, partner:d.partner };
+    by[k].n++; by[k].s += s; by[k].c += c;
+  });
+
+  var names = Object.keys(by).sort(function(a,b){ return by[b].s - by[a].s; });
+  var maxS = 0;
+  names.forEach(function(k){ if(by[k].s > maxS) maxS = by[k].s; });
+
+  var bars = names.map(function(k){
+    var v = by[k];
+    var ws = maxS ? Math.max(2, Math.round(v.s / maxS * 100)) : 0;
+    var wc = maxS ? Math.max(1, Math.round(v.c / maxS * 100)) : 0;
+    return '<div class="bar2">' +
+      '<div class="lb"><b>'+esc(k)+'</b>' +
+      '<small>'+v.n+' deal'+(v.n===1?'':'s')+'</small>' +
+      '<span class="v" style="color:var(--gold)">'+m0(v.s)+'</span></div>' +
+      '<div class="trk"><i class="s" style="width:'+ws+'%"></i></div>' +
+      '<div class="trk"><i class="c" style="width:'+wc+'%"></i></div>' +
+      '<div class="lb"><small style="flex:1">Commission</small>' +
+      '<small style="color:var(--ok);font-weight:700">'+money(v.c)+'</small></div>' +
+      '</div>';
+  }).join('');
+
+  $('rBody').innerHTML =
+    '<div class="rsum">' +
+      '<div><small>Confirmed sales</small><b style="color:var(--gold)">'+m0(sales)+'</b></div>' +
+      '<div><small>Total commission</small><b style="color:var(--ok)">'+m0(comm)+'</b></div>' +
+      '<div><small>Deals</small><b>'+rows.length+'</b></div>' +
+      '<div><small>Advisors</small><b>'+names.length+'</b></div>' +
+    '</div>' +
+    '<div class="card"><h2>Sales by advisor</h2>' +
+      '<div class="lgd">' +
+        '<span><em style="background:var(--gold)"></em>Sales</span>' +
+        '<span><em style="background:var(--ok)"></em>Commission</span>' +
+      '</div>' + bars + '</div>' +
+    '<div class="card"><h2>Commission status</h2>' +
+      '<div class="payout"><div class="n"><b>Paid out</b></div><div class="v" style="color:var(--ok)">'+money(paidComm)+'</div></div>' +
+      '<div class="payout"><div class="n"><b>Owed now</b></div><div class="v">'+money(owed)+'</div></div>' +
+      '<div class="payout"><div class="n"><b>Awaiting customer payment</b></div><div class="v" style="color:var(--text2)">'+money(comm - paidComm - owed)+'</div></div>' +
+    '</div>' +
+    '<div class="acts" style="margin-bottom:14px">' +
+      '<button class="btn gold sm" id="rCopy"><i class="ti ti-copy"></i> Copy report</button>' +
+      '<button class="btn ghost sm" id="rCsv"><i class="ti ti-download"></i> CSV</button>' +
+    '</div>';
+
+  $('rCopy').onclick = function(){ copyReport(by, names, sales, comm, month); };
+  $('rCsv').onclick  = function(){ downloadCsv(rows, month); };
+}
+
+function copyReport(by, names, sales, comm, month){
+  var lines = names.map(function(k){
+    var v = by[k];
+    return '\u2022 ' + k + ' \u2014 ' + m0(v.s) + ' (' + v.n + ' deal' + (v.n===1?'':'s') + ')' +
+           '\n   comm ' + money(v.c);
+  }).join('\n');
+
+  var txt = '\ud83d\udcca *GRANDLAB \u2014 SA REPORT*\n' + month + '\n\n' +
+            '\ud83d\udcb0 Confirmed sales: *' + m0(sales) + '*\n' +
+            '\ud83e\udd1d Total commission: *' + m0(comm) + '*\n\n' +
+            '\ud83d\udc64 *By advisor*\n' + lines;
+
+  if(navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(txt);
+  else {
+    var ta = document.createElement('textarea');
+    ta.value = txt; document.body.appendChild(ta); ta.select();
+    document.execCommand('copy'); ta.remove();
+  }
+  toast('Report copied');
+}
+
+function downloadCsv(rows, month){
+  var cols = ['ref','plate','model','partner','advisor','confirmed_at',
+              'quoted_total','confirmed_total','comm_pct','comm_amount','comm_status','job_id'];
+  var esq = function(x){
+    var s = (x === null || x === undefined) ? '' : String(x);
+    return /[",\n]/.test(s) ? '"' + s.replace(/"/g,'""') + '"' : s;
+  };
+  var csv = cols.join(',') + '\n' +
+    rows.map(function(r){ return cols.map(function(c){ return esq(r[c]); }).join(','); }).join('\n');
+
+  var blob = new Blob([csv], { type:'text/csv;charset=utf-8' });
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'grandlab-sa-' + month + '.csv';
+  document.body.appendChild(a); a.click();
+  setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); }, 500);
+  toast('CSV downloaded');
+}
+
+$('rGo').addEventListener('click', loadReport);
+$('rMonth').addEventListener('change', loadReport);
+
 /* ---------- tabs ---------- */
 function tab(n){
   S.tab = n;
   $('tDeals').className  = n === 'deals'  ? 'on' : '';
   $('tPayout').className = n === 'payout' ? 'on' : '';
+  $('tReport').className = n === 'report' ? 'on' : '';
   $('tSetup').className  = n === 'setup'  ? 'on' : '';
   $('vDeals').className  = n === 'deals'  ? '' : 'hide';
   $('vPayout').className = n === 'payout' ? '' : 'hide';
+  $('vReport').className = n === 'report' ? '' : 'hide';
   $('vSetup').className  = n === 'setup'  ? '' : 'hide';
+  if(n === 'report' && !$('rMonth').value){
+    var d = new Date();
+    $('rMonth').value = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
+    loadReport();
+  }
   window.scrollTo(0,0);
 }
 $('tDeals').addEventListener('click', function(){ tab('deals'); });
 $('tPayout').addEventListener('click', function(){ tab('payout'); });
+$('tReport').addEventListener('click', function(){ tab('report'); });
 $('tSetup').addEventListener('click', function(){ tab('setup'); });
 
 boot();
