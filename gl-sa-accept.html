@@ -21,6 +21,11 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,B
 .card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:14px;margin-bottom:12px}
 .card h2{margin:0 0 12px;font-size:13px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.6px;display:flex;align-items:center;gap:7px}
 .card h2 i{color:var(--gold);font-size:15px}
+.fnd{border-radius:13px;overflow:hidden;border:1px solid var(--border);margin-bottom:11px;background:var(--card2);position:relative}
+.fnd img{width:100%;aspect-ratio:4/3;object-fit:cover;display:block;cursor:pointer}
+.fnd .no{position:absolute;top:9px;left:9px;background:rgba(0,0,0,.72);color:var(--gold);font-size:11px;font-weight:800;padding:4px 9px;border-radius:14px}
+.fnd .rk{padding:11px 12px;font-size:13.5px;line-height:1.45;display:flex;gap:8px;align-items:flex-start}
+.fnd .rk i{color:var(--red);font-size:15px;margin-top:1px}
 .iss{border-bottom:1px solid var(--border);padding:12px 0}
 .iss:first-of-type{padding-top:0}
 .iss:last-child{border-bottom:none;padding-bottom:0}
@@ -193,7 +198,15 @@ function render(){
   var iss = Q.issues || [];
   if(!iss.length){ $('issCard').className = 'card hide'; }
   else {
-    $('issues').innerHTML = iss.map(function(i){
+    $('issues').innerHTML = iss.map(function(i, ix){
+      // new shape: one photo + one remark. old shape kept working: label + photos[]
+      if(i.photo || i.remark !== undefined){
+        var rk = (i.remark||'').trim();
+        return '<div class="fnd"><div class="no">'+(ix+1)+'</div>' +
+          (i.photo ? '<img src="'+esc(i.photo)+'" data-full="'+esc(i.photo)+'">' : '') +
+          (rk ? '<div class="rk"><i class="ti ti-alert-triangle-filled"></i><span>'+esc(rk)+'</span></div>' : '') +
+          '</div>';
+      }
       var g = (i.photos||[]).map(function(u){
         return '<img src="'+esc(u)+'" data-full="'+esc(u)+'">';
       }).join('');

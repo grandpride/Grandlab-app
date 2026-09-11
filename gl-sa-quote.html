@@ -52,6 +52,12 @@ input:focus,select:focus,textarea:focus{border-color:var(--gold)}
 .bar .tot small{display:block;font-size:11px;color:var(--text2)}
 .bar .tot b{font-size:19px;color:var(--gold)}
 .bar .btn{width:auto;flex:1.2}
+.fcard{background:var(--card);border:1px solid var(--border);border-radius:15px;overflow:hidden;margin-bottom:11px;position:relative}
+.fcard img{width:100%;aspect-ratio:4/3;object-fit:cover;display:block}
+.fcard .no{position:absolute;top:9px;left:9px;background:rgba(0,0,0,.72);backdrop-filter:blur(4px);color:var(--gold);font-size:11px;font-weight:800;padding:4px 9px;border-radius:14px}
+.fcard .del{position:absolute;top:9px;right:9px;background:rgba(0,0,0,.72);backdrop-filter:blur(4px);width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:var(--red);font-size:16px;cursor:pointer}
+.fcard .rw{padding:11px}
+.fcard input{border-radius:10px;padding:11px;font-size:15px}
 .iss{background:var(--card2);border:1px solid var(--border);border-radius:14px;padding:12px;margin-bottom:10px}
 .iss .hd{display:flex;align-items:center;gap:8px;margin-bottom:10px}
 .iss .hd b{flex:1;font-size:14px}
@@ -128,14 +134,14 @@ input:focus,select:focus,textarea:focus{border-color:var(--gold)}
   <!-- STEP 2 -->
   <div id="p2" class="hide">
     <div class="card">
-      <h2>What did you find?</h2>
-      <div class="chips" id="issChips"></div>
-      <div class="row" style="margin-top:12px">
-        <input id="customIss" placeholder="Other issue…">
-        <button class="btn ghost" style="flex:0 0 54px;padding:12px" id="addIss"><i class="ti ti-plus"></i></button>
+      <h2>Photos &amp; remarks</h2>
+      <div class="row">
+        <button class="btn ghost" id="findCam"><i class="ti ti-camera"></i> Camera</button>
+        <button class="btn ghost" id="findUp"><i class="ti ti-upload"></i> Upload</button>
       </div>
+      <p class="muted" style="margin:10px 0 0">Upload can take several photos at once. Write what you found under each one.</p>
     </div>
-    <div id="issList"></div>
+    <div id="findList"></div>
     <div class="card">
       <h2>Note for the SA</h2>
       <textarea id="notes" rows="3" placeholder="Anything the SA should tell the customer…"></textarea>
@@ -207,10 +213,8 @@ var $ = function(id){ return document.getElementById(id); };
 
 var state = {
   step:1, user:null, partners:[], services:[], cats:[], cat:'All', q:'',
-  front:null, issues:[], picked:{}, sending:false
+  front:null, finds:[], picked:{}, sending:false
 };
-
-var COMMON = ['Swirl marks','Scratches','Faded paint','Water spots','Tar / iron fallout','Dull headlights','Dirty interior','Stained seats','Kerbed rims','Peeling tint','Bird dropping etch','Windscreen chip'];
 
 function toast(msg, err){
   var t = $('toast');
@@ -227,15 +231,20 @@ function token(){
 }
 
 /* ---------- image compression ---------- */
-function pickImage(cb, useCamera){
+function pickImage(cb, useCamera, multiple){
   var inp = document.createElement('input');
   inp.type='file'; inp.accept='image/*';
   // only set capture for camera - leaving it off lets the OS show the gallery
   if(useCamera) inp.setAttribute('capture','environment');
+  if(multiple) inp.setAttribute('multiple','multiple');
   inp.onchange = function(){
-    var f = inp.files && inp.files[0];
-    if(!f) return;
-    compress(f, cb);
+    var fs = inp.files ? Array.prototype.slice.call(inp.files) : [];
+    if(!fs.length) return;
+    // compress one after another so a batch of 8 doesn't stall the phone
+    (function nxt(i){
+      if(i >= fs.length) return;
+      compress(fs[i], function(img){ cb(img, i, fs.length); nxt(i+1); });
+    })(0);
   };
   inp.click();
 }
@@ -302,16 +311,11 @@ function render(){
     (sr.length ? '<optgroup label="Showroom">'+opts(sr)+'</optgroup>' : '');
   if(cur) sel.value = cur;
 
-  $('issChips').innerHTML = COMMON.map(function(c){
-    var on = state.issues.some(function(i){ return i.label===c; });
-    return '<div class="chip'+(on?' on':'')+'" data-c="'+esc(c)+'">'+esc(c)+'</div>';
-  }).join('');
-
   $('cats').innerHTML = ['All'].concat(state.cats).map(function(c){
     return '<div class="chip'+(state.cat===c?' on':'')+'" data-cat="'+esc(c)+'">'+esc(c)+'</div>';
   }).join('');
 
-  renderIssues();
+  renderFinds();
   renderServices();
   renderBar();
 }
@@ -324,18 +328,18 @@ function priceOf(s){
   return p;
 }
 
-function renderIssues(){
-  $('issList').innerHTML = state.issues.map(function(is, ix){
-    var slots = '';
-    for(var i=0;i<3;i++){
-      var ph = is.photos[i];
-      slots += '<div class="slot" data-ix="'+ix+'" data-p="'+i+'">' +
-        (ph ? '<img src="'+ph.url+'"><div class="x" data-rm="'+ix+'-'+i+'">&times;</div>' : '<i class="ti ti-camera"></i>') +
-        '</div>';
-    }
-    return '<div class="iss"><div class="hd"><b>'+esc(is.label)+'</b>' +
-      '<i class="ti ti-trash del" data-del="'+ix+'"></i></div>' +
-      '<div class="ph">'+slots+'</div></div>';
+function renderFinds(){
+  if(!state.finds.length){
+    $('findList').innerHTML = '<p class="muted" style="text-align:center;padding:22px 10px">No photos yet. Add at least one.</p>';
+    return;
+  }
+  $('findList').innerHTML = state.finds.map(function(f, ix){
+    return '<div class="fcard">' +
+      '<div class="no">'+(ix+1)+'</div>' +
+      '<div class="del" data-del="'+ix+'"><i class="ti ti-trash"></i></div>' +
+      '<img src="'+f.url+'">' +
+      '<div class="rw"><input class="rmk" data-ix="'+ix+'" placeholder="What did you find here?" value="'+esc(f.remark||'')+'"></div>' +
+      '</div>';
   }).join('');
 }
 
@@ -378,7 +382,7 @@ function total(){
 function renderBar(){
   var n = Object.keys(state.picked).length;
   $('totLbl').textContent = state.step===3 ? (n + ' service' + (n===1?'':'s') + ' selected') : ('Step ' + state.step + ' of 3');
-  $('tot').textContent = state.step===3 ? money(total()) : (state.step===1 ? 'Car details' : state.issues.length + ' issue' + (state.issues.length===1?'':'s'));
+  $('tot').textContent = state.step===3 ? money(total()) : (state.step===1 ? 'Car details' : state.finds.length + ' photo' + (state.finds.length===1?'':'s'));
   $('back').className = 'btn ghost' + (state.step===1 ? ' hide' : '');
   $('next').innerHTML = state.step===3
     ? '<i class="ti ti-send"></i> Send'
@@ -409,39 +413,30 @@ $('frontCam').addEventListener('click', function(){ grabFront(true); });
 $('frontUp').addEventListener('click', function(){ grabFront(false); });
 $('frontBox').addEventListener('click', function(){ grabFront(false); });
 
-$('issChips').addEventListener('click', function(e){
-  var c = e.target.getAttribute('data-c');
-  if(!c) return;
-  var ix = -1;
-  state.issues.forEach(function(i,k){ if(i.label===c) ix=k; });
-  if(ix >= 0) state.issues.splice(ix,1);
-  else state.issues.push({ label:c, photos:[] });
-  render();
+function addFinds(useCamera){
+  pickImage(function(img){
+    state.finds.push({ blob:img.blob, url:img.url, remark:'' });
+    renderFinds();
+    renderBar();
+  }, useCamera, !useCamera);
+}
+$('findCam').addEventListener('click', function(){ addFinds(true); });
+$('findUp').addEventListener('click', function(){ addFinds(false); });
+
+$('findList').addEventListener('click', function(e){
+  var d = e.target.closest ? e.target.closest('.del') : null;
+  if(!d) return;
+  var ix = +d.getAttribute('data-del');
+  state.finds.splice(ix, 1);
+  renderFinds();
+  renderBar();
 });
 
-$('addIss').addEventListener('click', function(){
-  var v = $('customIss').value.trim();
-  if(!v) return;
-  state.issues.push({ label:v, photos:[] });
-  $('customIss').value = '';
-  render();
-});
-
-$('issList').addEventListener('click', function(e){
-  var rm = e.target.getAttribute('data-rm');
-  if(rm){
-    var a = rm.split('-');
-    state.issues[+a[0]].photos[+a[1]] = null;
-    renderIssues();
-    return;
-  }
-  var del = e.target.getAttribute('data-del');
-  if(del != null){ state.issues.splice(+del,1); render(); return; }
-  var slot = e.target.closest ? e.target.closest('.slot') : null;
-  if(slot){
-    var ix = +slot.getAttribute('data-ix'), p = +slot.getAttribute('data-p');
-    pickImage(function(img){ state.issues[ix].photos[p] = img; renderIssues(); }, false);
-  }
+// remarks write straight into state - no re-render, so typing never loses focus
+$('findList').addEventListener('input', function(e){
+  if(!e.target.classList || !e.target.classList.contains('rmk')) return;
+  var ix = +e.target.getAttribute('data-ix');
+  if(state.finds[ix]) state.finds[ix].remark = e.target.value;
 });
 
 $('cats').addEventListener('click', function(e){
@@ -494,7 +489,7 @@ $('next').addEventListener('click', function(){
     return goStep(2);
   }
   if(state.step === 2){
-    if(!state.issues.length) return toast('Add at least one issue', true);
+    if(!state.finds.length) return toast('Add at least one photo', true);
     return goStep(3);
   }
   if(!Object.keys(state.picked).length) return toast('Pick at least one service', true);
@@ -574,15 +569,13 @@ function send(){
     return upload(quoteId, 'front.jpg', state.front.blob);
   }).then(function(frontUrl){
     var jobs = [], meta = [];
-    state.issues.forEach(function(is, ix){
-      var urls = [];
-      is.photos.forEach(function(ph, pi){
-        if(!ph) return;
-        var name = 'issue_' + (ix+1) + '_' + (pi+1) + '.jpg';
-        urls.push(SB_URL + '/storage/v1/object/public/sa-quotes/' + quoteId + '/' + name);
-        jobs.push(upload(quoteId, name, ph.blob));
+    state.finds.forEach(function(f, ix){
+      var name = 'find_' + (ix+1) + '.jpg';
+      jobs.push(upload(quoteId, name, f.blob));
+      meta.push({
+        remark: (f.remark||'').trim(),
+        photo: SB_URL + '/storage/v1/object/public/sa-quotes/' + quoteId + '/' + name
       });
-      meta.push({ label: is.label, photos: urls });
     });
     return Promise.all(jobs).then(function(){
       return sb.from('gl_sa_quotes').update({
@@ -615,8 +608,10 @@ function showDone(ref, tk){
 
   var msg = '\ud83d\ude97 *GRANDLAB QUOTATION* \u2014 ' + ref + '\n' +
             '\ud83d\udccd ' + car + '\n\n' +
-            '\u26a0\ufe0f *What we found (' + state.issues.length + ')*\n' +
-            state.issues.map(function(i){ return '\u2022 ' + i.label; }).join('\n') + '\n\n' +
+            '\u26a0\ufe0f *What we found (' + state.finds.length + ' photo' + (state.finds.length===1?'':'s') + ')*\n' +
+            state.finds.map(function(f, i){
+              return '\u2022 ' + ((f.remark||'').trim() || 'Photo ' + (i+1));
+            }).join('\n') + '\n\n' +
             '\u2728 *Recommended*\n' +
             svcs.map(function(s){
               var line = '\u2022 ' + s.name + ' \u2014 ' + money(s.price);
