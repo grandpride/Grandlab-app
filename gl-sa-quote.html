@@ -92,6 +92,12 @@ input:focus,select:focus,textarea:focus{border-color:var(--gold)}
 .qacts{display:flex;gap:7px}
 .qacts .btn{padding:10px;font-size:12px;flex:1}
 .sel{max-height:340px;overflow-y:auto}
+.cus{display:flex;align-items:center;gap:10px;padding:11px 12px;margin-bottom:8px;background:rgba(245,197,24,.07);border:1px solid rgba(245,197,24,.28);border-radius:12px}
+.cus .nm{flex:1;min-width:0}
+.cus .nm b{display:block;font-size:14px;font-weight:600}
+.cus .nm span{font-size:10px;color:var(--gold);text-transform:uppercase;letter-spacing:.4px;font-weight:700}
+.cus .pr{font-size:14px;font-weight:700;color:var(--gold);cursor:pointer}
+.cus .x{color:var(--red);font-size:17px;cursor:pointer}
 .foc{display:flex;align-items:center;gap:10px;padding:9px 12px;margin:0 0 4px 34px;background:rgba(245,197,24,.07);border:1px solid rgba(245,197,24,.28);border-radius:11px}
 .foc span{flex:1;font-size:12px;color:var(--gold);font-weight:600}
 .foc .st{width:30px;height:30px;border-radius:9px;background:var(--card2);border:1px solid var(--border);color:var(--text);font-size:17px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0}
@@ -179,6 +185,8 @@ input:focus,select:focus,textarea:focus{border-color:var(--gold)}
   <div id="p3" class="hide">
     <div class="card">
       <h2>Recommend services</h2>
+      <div id="customList"></div>
+      <button class="btn ghost" id="addCustom" style="margin-bottom:12px"><i class="ti ti-plus"></i> Add custom service</button>
       <div class="srch"><i class="ti ti-search"></i><input id="q" placeholder="Search service…"></div>
       <div class="cats" id="cats"></div>
       <div class="sel" id="svcList"></div>
@@ -193,6 +201,21 @@ input:focus,select:focus,textarea:focus{border-color:var(--gold)}
 </div>
 
 <div class="toast" id="toast"></div>
+
+<div class="ov hide" id="customOv">
+  <div class="box" style="text-align:left">
+    <h3 style="margin:0 0 4px;font-size:18px" id="csTitle">Custom service</h3>
+    <p class="muted" style="margin:0 0 14px">For this quotation only. The price list is not changed.</p>
+    <div class="fld"><label>Service name</label><input id="csName" class="up" placeholder="e.g. HEADLIGHT RESTORATION"></div>
+    <div class="fld"><label>Price (RM)</label><input id="csPrice" type="number" inputmode="decimal" placeholder="0"></div>
+    <label style="display:flex;align-items:center;gap:9px;margin-bottom:14px;font-size:14px;color:var(--text)">
+      <input type="checkbox" id="csCoat" style="width:20px;height:20px;flex:0 0 20px">
+      Coating (allow FOC maintenance)
+    </label>
+    <button class="btn gold" id="csSave"><i class="ti ti-check"></i> Add</button>
+    <button class="btn ghost" style="margin-top:8px" id="csCancel">Cancel</button>
+  </div>
+</div>
 
 <div class="ov hide" id="newPartner">
   <div class="box" style="text-align:left">
@@ -241,7 +264,7 @@ var $ = function(id){ return document.getElementById(id); };
 var state = {
   step:1, user:null, partners:[], services:[], cats:[], cat:'All', q:'',
   front:null, finds:[], picked:{}, sending:false, editId:null, editRef:null, viewing:false,
-  models:[], brands:[]
+  models:[], brands:[], customs:[]
 };
 
 function toast(msg, err){
@@ -376,7 +399,7 @@ function onModelPick(){
 function setCarType(t, isAuto){
   if($('ctype').value !== t){
     $('ctype').value = t;
-    state.picked = {};
+    keepOnlyCustoms();
     renderServices(); renderBar();
   }
   $('ctypeAuto').className = isAuto ? 'auto' : 'auto hide';
@@ -430,6 +453,7 @@ function render(){
   }).join('');
 
   renderFinds();
+  renderCustoms();
   renderServices();
   renderBar();
 }
@@ -454,6 +478,26 @@ function renderFinds(){
       '<img src="'+f.url+'">' +
       '<div class="rw"><input class="rmk" data-ix="'+ix+'" placeholder="What did you find here?" value="'+esc(f.remark||'')+'"></div>' +
       '</div>';
+  }).join('');
+}
+
+function renderCustoms(){
+  var el = $('customList');
+  if(!el) return;
+  if(!state.customs.length){ el.innerHTML = ''; return; }
+  el.innerHTML = state.customs.map(function(c){
+    var foc = '';
+    if(c.is_coating){
+      var n = c.foc_maint || 0;
+      foc = '<div class="foc" data-foc="'+esc(c.id)+'">' +
+            '<span>FOC maintenance</span>' +
+            '<div class="st" data-step="-1">\u2212</div>' +
+            '<div class="n">'+n+'\u00d7</div>' +
+            '<div class="st" data-step="1">+</div></div>';
+    }
+    return '<div class="cus"><div class="nm"><b>'+esc(c.name)+'</b><span>Custom</span></div>' +
+      '<div class="pr" data-price="'+esc(c.id)+'">'+money(c.price)+'</div>' +
+      '<i class="ti ti-x x" data-rmc="'+esc(c.id)+'"></i></div>' + foc;
   }).join('');
 }
 
@@ -568,10 +612,18 @@ $('cats').addEventListener('click', function(e){
 
 $('q').addEventListener('input', function(){ state.q = this.value; renderServices(); });
 $('ctype').addEventListener('change', function(){
-  state.picked = {};
+  keepOnlyCustoms();
   $('ctypeAuto').className = 'auto hide';
   renderServices(); renderBar();
 });
+
+// catalogue prices change with car type, so those selections reset.
+// custom lines are priced by hand, so they survive.
+function keepOnlyCustoms(){
+  var keep = {};
+  state.customs.forEach(function(c){ keep[c.id] = c; });
+  state.picked = keep;
+}
 
 $('svcList').addEventListener('click', function(e){
   var focBox = e.target.closest ? e.target.closest('.foc') : null;
@@ -616,6 +668,71 @@ $('next').addEventListener('click', function(){
   }
   if(!Object.keys(state.picked).length) return toast('Pick at least one service', true);
   send();
+});
+
+/* ---------- custom services ---------- */
+$('addCustom').addEventListener('click', function(){
+  $('csName').value = ''; $('csPrice').value = ''; $('csCoat').checked = false;
+  $('customOv').className = 'ov';
+});
+$('csCancel').addEventListener('click', function(){ $('customOv').className = 'ov hide'; });
+
+$('csSave').addEventListener('click', function(){
+  var nm = $('csName').value.trim().toUpperCase();
+  var pr = Number($('csPrice').value);
+  if(!nm) return toast('Service name required', true);
+  if(!(pr > 0)) return toast('Enter a price', true);
+  var coat = $('csCoat').checked;
+  var id = 'custom_' + Date.now() + '_' + Math.floor(Math.random()*1000);
+  var item = { id:id, name:nm, category:'Custom', price:pr, custom:true,
+               is_coating:coat, foc_maint: coat ? 1 : 0 };
+  state.customs.push(item);
+  state.picked[id] = item;
+  $('customOv').className = 'ov hide';
+  renderCustoms(); renderBar();
+  toast('Added');
+});
+
+$('customList').addEventListener('click', function(e){
+  var id;
+
+  // FOC stepper on a custom coating
+  var fb = e.target.closest ? e.target.closest('.foc') : null;
+  if(fb){
+    var step = e.target.getAttribute('data-step');
+    if(step){
+      var fid = fb.getAttribute('data-foc');
+      state.customs.forEach(function(c){
+        if(c.id !== fid) return;
+        var v = (c.foc_maint||0) + Number(step);
+        if(v < 0) v = 0; if(v > 12) v = 12;
+        c.foc_maint = v;
+        if(state.picked[fid]) state.picked[fid].foc_maint = v;
+      });
+      renderCustoms();
+    }
+    return;
+  }
+
+  if((id = e.target.getAttribute('data-rmc'))){
+    state.customs = state.customs.filter(function(c){ return c.id !== id; });
+    delete state.picked[id];
+    renderCustoms(); renderBar();
+    return;
+  }
+
+  if((id = e.target.getAttribute('data-price'))){
+    var cur = null;
+    state.customs.forEach(function(c){ if(c.id === id) cur = c; });
+    if(!cur) return;
+    var v = prompt('Price for ' + cur.name, cur.price);
+    if(v === null) return;
+    v = Number(v);
+    if(!(v > 0)) return toast('Enter a valid price', true);
+    cur.price = v;
+    if(state.picked[id]) state.picked[id].price = v;
+    renderCustoms(); renderBar();
+  }
 });
 
 /* ---------- my quotations ---------- */
@@ -716,7 +833,11 @@ function loadForEdit(q){
   }).filter(function(f){ return f.url; });
 
   state.picked = {};
-  (q.services||[]).forEach(function(s){ state.picked[s.id] = s; });
+  state.customs = [];
+  (q.services||[]).forEach(function(s){
+    state.picked[s.id] = s;
+    if(s.custom || String(s.id).indexOf('custom_') === 0) state.customs.push(s);
+  });
 
   toast('Editing ' + q.ref);
   render();
