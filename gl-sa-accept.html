@@ -25,7 +25,7 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,B
 .fnd img{width:100%;aspect-ratio:4/3;object-fit:cover;display:block;cursor:pointer}
 .fnd .no{position:absolute;top:9px;left:9px;background:rgba(0,0,0,.72);color:var(--gold);font-size:11px;font-weight:800;padding:4px 9px;border-radius:14px}
 .fnd .rk{padding:11px 12px;font-size:13.5px;line-height:1.45;display:flex;gap:8px;align-items:flex-start}
-.fnd .rk i{color:var(--red);font-size:15px;margin-top:1px}
+.fnd .rk i{color:var(--gold);font-size:15px;margin-top:1px}
 .iss{border-bottom:1px solid var(--border);padding:12px 0}
 .iss:first-of-type{padding-top:0}
 .iss:last-child{border-bottom:none;padding-bottom:0}
@@ -92,7 +92,7 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,B
     <div id="statusBox"></div>
 
     <div class="card" id="issCard">
-      <h2><i class="ti ti-alert-triangle"></i> What we found</h2>
+      <h2><i class="ti ti-tool"></i> What we can do</h2>
       <div id="issues"></div>
     </div>
 
@@ -204,7 +204,7 @@ function render(){
         var rk = (i.remark||'').trim();
         return '<div class="fnd"><div class="no">'+(ix+1)+'</div>' +
           (i.photo ? '<img src="'+esc(i.photo)+'" data-full="'+esc(i.photo)+'">' : '') +
-          (rk ? '<div class="rk"><i class="ti ti-alert-triangle-filled"></i><span>'+esc(rk)+'</span></div>' : '') +
+          (rk ? '<div class="rk"><i class="ti ti-circle-check-filled"></i><span>'+esc(rk)+'</span></div>' : '') +
           '</div>';
       }
       var g = (i.photos||[]).map(function(u){
@@ -220,6 +220,7 @@ function render(){
   if(Q.status === 'sent')      renderSent();
   else if(Q.status === 'accepted') renderAccepted();
   else if(Q.status === 'confirmed') renderConfirmed();
+  else if(Q.status === 'declined') renderDeclined();
   else fail('This quotation is closed.','file-off');
 }
 
@@ -236,11 +237,11 @@ function svcRow(s, selectable){
 /* ---- STAGE 1: not yet accepted ---- */
 function renderSent(){
   $('statusBox').innerHTML = '';
-  $('svcTitle').textContent = 'Recommended';
+  $('svcTitle').textContent = 'Services list (optional)';
   $('services').innerHTML = svcList().map(function(s){ return svcRow(s,false); }).join('');
   $('totLbl').textContent = 'Total if all done';
   $('tot').textContent = money(Q.total);
-  $('terms').innerHTML = 'Customer pays GrandLab directly. Work begins only after you confirm the customer has agreed.';
+  $('terms').innerHTML = 'Customer picks only what they want. Customer pays GrandLab directly, and work begins only after you confirm.';
   $('mainBtn').className = 'btn gold';
   $('mainBtn').innerHTML = '<i class="ti ti-hand-click"></i> I accept to deal with customer';
   $('mainBtn').onclick = askWho;
@@ -257,7 +258,7 @@ function renderAccepted(){
     '</span></div>';
 
   if(!mine){
-    $('svcTitle').textContent = 'Recommended';
+    $('svcTitle').textContent = 'Services list (optional)';
     $('services').innerHTML = svcList().map(function(s){ return svcRow(s,false); }).join('');
     $('totLbl').textContent = 'Total if all done';
     $('tot').textContent = money(Q.total);
@@ -266,6 +267,7 @@ function renderAccepted(){
     $('mainBtn').innerHTML = '<i class="ti ti-lock"></i> Already accepted';
     $('mainBtn').disabled = true;
     $('subBtn').className = 'btn ghost';
+    $('subBtn').style.color = '';
     $('subBtn').innerHTML = '<i class="ti ti-user"></i> This is me \u2014 continue';
     $('subBtn').onclick = askWhoResume;
     return;
@@ -289,7 +291,32 @@ function drawPickable(){
   $('mainBtn').disabled = !arr.length;
   $('mainBtn').innerHTML = '<i class="ti ti-circle-check"></i> Confirm customer order';
   $('mainBtn').onclick = confirmOrder;
-  $('subBtn').className = 'btn ghost hide';
+  $('subBtn').className = 'btn ghost';
+  $('subBtn').style.color = 'var(--red)';
+  $('subBtn').innerHTML = '<i class="ti ti-x"></i> Customer not interested';
+  $('subBtn').onclick = declineOrder;
+}
+
+function declineOrder(){
+  if(busy) return;
+  if(!confirm('Close this quotation? The customer has decided not to proceed.')) return;
+  busy = true;
+  $('subBtn').disabled = true;
+  $('subBtn').innerHTML = '<i class="ti ti-loader-2"></i> Closing…';
+  sb.rpc('sa_quote_decline', { p_token: TOKEN, p_sa_id: meId(), p_reason: null })
+    .then(function(r){
+      busy = false;
+      $('subBtn').disabled = false;
+      if(r.error) throw r.error;
+      if(r.data && r.data.ok){ toast('Closed \u2014 thanks for letting us know'); return refresh(); }
+      toast('Could not close \u2014 please reopen the link', true);
+      return refresh();
+    }).catch(function(e){
+      busy = false;
+      $('subBtn').disabled = false;
+      toast('Failed: ' + (e.message||e), true);
+      drawPickable();
+    });
 }
 
 function sel(){
@@ -313,6 +340,22 @@ function renderConfirmed(){
   $('mainBtn').disabled = false;
   $('mainBtn').innerHTML = '<i class="ti ti-brand-whatsapp"></i> Send confirmation to group';
   $('mainBtn').onclick = resend;
+  $('subBtn').className = 'btn ghost hide';
+}
+
+function renderDeclined(){
+  $('statusBox').innerHTML = '<div class="taken" style="margin-bottom:12px">' +
+    '<i class="ti ti-circle-x" style="color:var(--text2)"></i>' +
+    '<b>Quotation closed</b><span style="font-size:12px;color:var(--text2)">' +
+    'The customer decided not to proceed.</span></div>';
+  $('svcTitle').textContent = 'Services list (optional)';
+  $('services').innerHTML = svcList().map(function(s){ return svcRow(s,false); }).join('');
+  $('totLbl').textContent = 'Was quoted';
+  $('tot').textContent = money(Q.total);
+  $('terms').textContent = '';
+  $('mainBtn').className = 'btn ghost';
+  $('mainBtn').disabled = true;
+  $('mainBtn').innerHTML = '<i class="ti ti-lock"></i> Closed';
   $('subBtn').className = 'btn ghost hide';
 }
 

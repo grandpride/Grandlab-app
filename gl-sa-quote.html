@@ -167,12 +167,12 @@ input:focus,select:focus,textarea:focus{border-color:var(--gold)}
   <!-- STEP 2 -->
   <div id="p2" class="hide">
     <div class="card">
-      <h2>Photos &amp; remarks</h2>
+      <h2>What we can do</h2>
       <div class="row">
         <button class="btn ghost" id="findCam"><i class="ti ti-camera"></i> Camera</button>
         <button class="btn ghost" id="findUp"><i class="ti ti-upload"></i> Upload</button>
       </div>
-      <p class="muted" style="margin:10px 0 0">Upload can take several photos at once. Write what you found under each one.</p>
+      <p class="muted" style="margin:10px 0 0">Upload can take several photos at once. Write what we can do under each one.</p>
     </div>
     <div id="findList"></div>
     <div class="card">
@@ -184,7 +184,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--gold)}
   <!-- STEP 3 -->
   <div id="p3" class="hide">
     <div class="card">
-      <h2>Recommend services</h2>
+      <h2>Services list</h2>
       <div id="customList"></div>
       <button class="btn ghost" id="addCustom" style="margin-bottom:12px"><i class="ti ti-plus"></i> Add custom service</button>
       <div class="srch"><i class="ti ti-search"></i><input id="q" placeholder="Search service…"></div>
@@ -1000,11 +1000,11 @@ function showDone(ref, tk, saved, ver){
   var msg = '\ud83d\ude97 *GRANDLAB QUOTATION* \u2014 ' + ref + '\n' +
             '\ud83d\udccd ' + car + '\n\n' +
             '\ud83d\udc47 *Photos + accept here*\n' + url + '\n\n' +
-            '\u26a0\ufe0f *What we found (' + state.finds.length + ' photo' + (state.finds.length===1?'':'s') + ')*\n' +
+            '\ud83d\udd27 *What we can do (' + state.finds.length + ' photo' + (state.finds.length===1?'':'s') + ')*\n' +
             state.finds.map(function(f, i){
               return '\u2022 ' + ((f.remark||'').trim() || 'Photo ' + (i+1));
             }).join('\n') + '\n\n' +
-            '\u2728 *Recommended*\n' +
+            '\u2728 *Services List (optional)*\n' +
             svcs.map(function(s){
               var line = '\u2022 ' + s.name + ' \u2014 ' + money(s.price);
               if(s.is_coating && s.foc_maint > 0) line += '\n   \ud83c\udf81 incl. ' + s.foc_maint + '\u00d7 FOC maintenance';
