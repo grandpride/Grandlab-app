@@ -264,7 +264,8 @@ var $ = function(id){ return document.getElementById(id); };
 
 var state = {
   step:1, user:null, partners:[], services:[], cats:[], cat:'All', q:'',
-  front:null, finds:[], picked:{}, sending:false, editId:null, editRef:null, viewing:false,
+  front:null, finds:[], picked:{}, sending:false, editId:null, editRef:null,
+  editToken:null, editCount:1, viewing:false,
   models:[], brands:[], customs:[]
 };
 
@@ -749,7 +750,7 @@ function showList(){
   window.scrollTo(0,0);
 
   sb.from('gl_sa_quotes')
-    .select('id,ref,share_token,plate,model,car_type,total,status,created_at,partner_id,services,issues,front_photo,notes,colour,accepted_by_id')
+    .select('id,ref,share_token,send_count,plate,model,car_type,total,status,created_at,partner_id,services,issues,front_photo,notes,colour,accepted_by_id')
     .eq('created_by', state.user)
     .order('created_at', { ascending:false })
     .limit(30)
@@ -797,7 +798,7 @@ $('qlist').addEventListener('click', function(e){
   if((id = b.getAttribute('data-edit'))) return loadForEdit(QCACHE[id]);
   if((id = b.getAttribute('data-share'))){
     var q = QCACHE[id];
-    return showDone(q.ref, q.share_token, q);
+    return showDone(q.ref, q.share_token, q, Number(q.send_count || 1));
   }
   if((id = b.getAttribute('data-void'))){
     if(!confirm('Cancel this quotation? The link will stop working.')) return;
@@ -819,6 +820,8 @@ function loadForEdit(q){
 
   state.editId = q.id;
   state.editRef = q.ref;
+  state.editToken = q.share_token;
+  state.editCount = Number(q.send_count || 1);
   $('partner').value = q.partner_id || '';
   $('plate').value = q.plate || '';
   $('colour').value = q.colour || '';
@@ -896,9 +899,11 @@ function send(){
   $('next').disabled = true;
   $('next').innerHTML = '<i class="ti ti-loader-2"></i> ' + (state.editId ? 'Updating…' : 'Sending…');
 
-  // a new token on every send: WhatsApp caches previews per URL, so an edited
-  // quote must go out on a fresh link or the old photo sticks
-  var tk = token();
+  // NEVER re-mint the token on an edit - links already in a WhatsApp group
+  // would go dead. Bump send_count instead and put it in the URL as &v=N,
+  // which is enough to make WhatsApp fetch a fresh preview.
+  var tk = state.editId ? state.editToken : token();
+  var ver = state.editId ? (Number(state.editCount || 1) + 1) : 1;
   var stamp = Date.now();
   var svcs = [];
   for(var k in state.picked){ if(state.picked.hasOwnProperty(k)) svcs.push(state.picked[k]); }
@@ -945,7 +950,7 @@ function send(){
     return Promise.all(jobs).then(function(){
       return sb.from('gl_sa_quotes').update({
         front_photo: frontUrl, issues: meta, share_token: tk,
-        status: 'sent', updated_at: new Date().toISOString()
+        send_count: ver, status: 'sent', updated_at: new Date().toISOString()
       }).eq('id', quoteId);
     });
   }).then(function(r){
@@ -954,7 +959,7 @@ function send(){
       quote_id: quoteId, type: state.editId ? 'edited' : 'sent', actor: state.user
     });
   }).then(function(){
-    showDone(ref, tk);
+    showDone(ref, tk, null, ver);
   }).catch(function(e){
     toast('Failed: ' + (e.message||e), true);
     state.sending = false;
@@ -963,8 +968,8 @@ function send(){
   });
 }
 
-function showDone(ref, tk, saved){
-  var url = SHARE_BASE + '?t=' + tk;
+function showDone(ref, tk, saved, ver){
+  var url = SHARE_BASE + '?t=' + tk + (Number(ver) > 1 ? '&v=' + Number(ver) : '');
   if(saved){
     // re-sharing an existing quote from the list: rebuild from its stored data
     state.finds = (saved.issues||[]).map(function(i){ return { remark:i.remark||i.label||'' }; });
