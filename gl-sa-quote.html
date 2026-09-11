@@ -236,11 +236,11 @@ input:focus,select:focus,textarea:focus{border-color:var(--gold)}
     <i class="ti ti-circle-check big"></i>
     <h3 id="doneRef">Quotation sent</h3>
     <p class="muted">Share into the partner's WhatsApp group.</p>
-    <p style="font-size:12px;color:var(--gold);background:rgba(245,197,24,.08);border:1px solid rgba(245,197,24,.28);border-radius:10px;padding:10px;margin:12px 0;line-height:1.5">Copy, then paste in the group and wait 2 seconds before sending — that is what makes WhatsApp load the car photo.</p>
+    <p style="font-size:12px;color:var(--gold);background:rgba(245,197,24,.08);border:1px solid rgba(245,197,24,.28);border-radius:10px;padding:10px;margin:12px 0;line-height:1.5">Send photo + message attaches the car photo to the WhatsApp message, so the group sees it straight away.</p>
     <div class="lnk" id="doneLink"></div>
-    <button class="btn gold" id="msgBtn"><i class="ti ti-copy"></i> Copy message &amp; paste in group</button>
-    <button class="btn ghost" style="margin-top:8px" id="waPhotoBtn"><i class="ti ti-photo-share"></i> Send photo + message</button>
+    <button class="btn gold" id="waPhotoBtn"><i class="ti ti-photo-share"></i> Send photo + message</button>
     <button class="btn ghost" style="margin-top:8px" id="waBtn"><i class="ti ti-brand-whatsapp"></i> Send text only</button>
+    <button class="btn ghost" style="margin-top:8px" id="msgBtn"><i class="ti ti-copy"></i> Copy full message</button>
     <button class="btn ghost" style="margin-top:8px" id="copyBtn"><i class="ti ti-link"></i> Copy link only</button>
     <button class="btn ghost" style="margin-top:8px" id="newBtn">New quotation</button>
   </div>
@@ -253,9 +253,10 @@ input:focus,select:focus,textarea:focus{border-color:var(--gold)}
 
 var SB_URL = 'https://eychljpzorzmaveixlnu.supabase.co';
 var SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV5Y2hsanB6b3J6bWF2ZWl4bG51Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2NDk2NjQsImV4cCI6MjA5NzIyNTY2NH0.6dA1zhz5ZIwf8byFB8vhfOzPI-uPPdPihEr1b8GG_oA';
-// shared link goes through the Edge Function so WhatsApp shows the car photo.
-// it 302s real people straight to gl-sa-accept.html
-var SHARE_BASE = 'https://eychljpzorzmaveixlnu.supabase.co/functions/v1/sa-quote';
+// Link points straight at the accept page on GitHub Pages. The Edge Function
+// is deliberately out of the path: the car photo is attached to the WhatsApp
+// message as a real image instead of relying on a link preview.
+var SHARE_BASE = 'https://app.grandlab.com.my/gl-sa-accept.html';
 
 var sb = window.supabase.createClient(SB_URL, SB_KEY, {
   auth:{ storageKey:'gl_auth', persistSession:true, autoRefreshToken:true }
