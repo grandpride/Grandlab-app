@@ -172,11 +172,13 @@
           <p>Snap the physical receipt, or upload screenshots and PDF invoices — pick as many as you like at once.</p>
           <div class="row">
             <button class="primary" onclick="document.getElementById('fileCam').click()">Take photo</button>
-            <button onclick="document.getElementById('filePick').click()">Upload file</button>
+            <button onclick="document.getElementById('filePick').click()">Upload photos</button>
           </div>
+          <button class="ghost full small" style="margin-top:10px" onclick="document.getElementById('filePdf').click()">Upload PDF invoices</button>
         </div>
         <input id="fileCam" type="file" accept="image/*" capture="environment" class="hide" onchange="onFile(this)">
-        <input id="filePick" type="file" accept="image/*,application/pdf" multiple class="hide" onchange="onFile(this)">
+        <input id="filePick" type="file" accept="image/*" multiple class="hide" onchange="onFile(this)">
+        <input id="filePdf" type="file" accept="application/pdf" multiple class="hide" onchange="onFile(this)">
       </div>
 
       <div id="formCard" class="hide">
@@ -255,6 +257,7 @@
       <div class="card">
         <div class="kv"><span>Signed in as</span><b id="setWho"></b></div>
         <div class="kv"><span>Role</span><span id="setRole"></span></div>
+        <div class="kv"><span>App version</span><span id="setVer"></span></div>
       </div>
 
       <div id="adminBox" class="hide">
@@ -305,6 +308,7 @@
 var SB_URL = "";            // optional hard-code
 var SB_KEY = "";            // optional hard-code
 var BUCKET = "gl-claims";
+var APP_VERSION = "1.2 (bulk upload)";
 
 var sb = null;
 var ME = null;
@@ -454,6 +458,7 @@ async function enterApp(){
   $("whoAmI").textContent = ME.full_name || ME.username;
   $("setWho").textContent = ME.full_name || ME.username;
   $("setRole").textContent = ME.role === "admin" ? "Admin" : "Staff";
+  $("setVer").textContent = APP_VERSION;
   if(ME.role === "admin"){ show("adminBox"); }
   $("fDate").value = todayISO();
   $("repMonth").value = todayISO().slice(0,7);
