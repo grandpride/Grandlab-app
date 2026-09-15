@@ -99,6 +99,10 @@
   nav.tabs button.on .ic{filter:none}
 
   .empty{text-align:center;color:var(--muted);padding:40px 20px;font-size:14px}
+  .qth{width:72px;height:96px;object-fit:cover;border-radius:8px;background:#000;flex:none;border:1px solid var(--line)}
+  .qhead{display:flex;gap:12px;margin-bottom:10px}
+  .qhead .qmid{flex:1;min-width:0}
+  .qnum{font-size:12px;color:var(--gold);font-weight:700;margin-bottom:6px}
   .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:140px;background:#2a2a30;border:1px solid var(--line);color:var(--text);padding:11px 16px;border-radius:99px;font-size:14px;z-index:60;box-shadow:0 8px 24px rgba(0,0,0,.5)}
   .toast.err{border-color:#5a2f28;color:#ffb4a8}
   .load{position:fixed;inset:0;background:rgba(8,8,10,.75);display:flex;align-items:center;justify-content:center;z-index:80;font-size:14px;color:var(--muted)}
@@ -165,14 +169,14 @@
       <div class="card" id="captureCard">
         <div class="drop">
           <div class="big">🧾</div>
-          <p>Snap the physical receipt, or upload a screenshot / PDF invoice.</p>
+          <p>Snap the physical receipt, or upload screenshots and PDF invoices — pick as many as you like at once.</p>
           <div class="row">
             <button class="primary" onclick="document.getElementById('fileCam').click()">Take photo</button>
             <button onclick="document.getElementById('filePick').click()">Upload file</button>
           </div>
         </div>
         <input id="fileCam" type="file" accept="image/*" capture="environment" class="hide" onchange="onFile(this)">
-        <input id="filePick" type="file" accept="image/*,application/pdf" class="hide" onchange="onFile(this)">
+        <input id="filePick" type="file" accept="image/*,application/pdf" multiple class="hide" onchange="onFile(this)">
       </div>
 
       <div id="formCard" class="hide">
@@ -199,6 +203,23 @@
           </div>
           <button class="primary full" id="saveBtn" onclick="saveItem()">Save to current claim</button>
         </div>
+      </div>
+
+      <div id="queueCard" class="hide">
+        <div class="card">
+          <label>Fill every receipt at once, then fix the odd one below</label>
+          <div class="row">
+            <select id="bulkPurpose"></select>
+            <select id="bulkType"></select>
+          </div>
+          <div class="row" style="margin-top:10px">
+            <input id="bulkDate" type="date">
+            <button class="small" onclick="applyAll()">Apply to all</button>
+          </div>
+        </div>
+        <div id="queueList"></div>
+        <button class="primary full" id="saveAllBtn" onclick="saveAll()">Save all to current claim</button>
+        <button class="ghost full small" style="margin-top:10px" onclick="clearQueue()">Cancel these uploads</button>
       </div>
     </section>
 
@@ -288,7 +309,8 @@ var BUCKET = "gl-claims";
 var sb = null;
 var ME = null;
 var CATS = { purpose: [], type: [] };
-var PENDING = null;         // { blob, thumbBlob, dataUrl, kind, name }
+var PENDING = null;         // single receipt being filled in
+var QUEUE = [];             // bulk upload queue
 var DRAFTS = [];
 var TAB = "add";
 
@@ -497,12 +519,41 @@ async function delCat(id){
 }
 
 /* ---------- file handling ---------- */
-function onFile(input){
-  var f = input.files && input.files[0];
+async function onFile(input){
+  var files = Array.prototype.slice.call(input.files || []);
   input.value = "";
-  if(!f) return;
-  if(f.type === "application/pdf" || /\.pdf$/i.test(f.name)) handlePdf(f);
-  else handleImage(f);
+  if(!files.length) return;
+  if(files.length > 20){
+    if(!confirm(files.length + " files is a lot for one go. Continue anyway?")) return;
+  }
+
+  var prepared = [], failed = 0;
+  for(var i = 0; i < files.length; i++){
+    var f = files[i];
+    busy("Preparing " + (i + 1) + " of " + files.length + "\u2026");
+    try {
+      var isPdf = f.type === "application/pdf" || /\.pdf$/i.test(f.name);
+      prepared.push(isPdf ? await prepPdf(f) : await prepImage(f));
+    } catch(e){ failed++; }
+  }
+  done();
+  if(failed) toast(failed + " file" + (failed > 1 ? "s" : "") + " couldn't be read and " + (failed > 1 ? "were" : "was") + " skipped.", true);
+  if(!prepared.length) return;
+
+  if(prepared.length === 1){
+    PENDING = prepared[0];
+    showForm(PENDING.kind === "pdf" ? "PDF invoice" : "Photo");
+  } else {
+    QUEUE = prepared.map(function(p){
+      return {
+        src: p, amount: "", desc: "",
+        date: todayISO(),
+        purpose: (CATS.purpose[0] || {}).name || "",
+        type: (CATS.type[0] || {}).name || ""
+      };
+    });
+    openQueue();
+  }
 }
 
 function readAsDataURL(blob){
@@ -514,10 +565,9 @@ function readAsDataURL(blob){
   });
 }
 
-async function handleImage(file){
-  busy("Preparing photo…");
+async function prepImage(file){
+  var url = URL.createObjectURL(file);
   try {
-    var url = URL.createObjectURL(file);
     var img = await loadImg(url);
     var max = 1400;
     var w = img.naturalWidth, h = img.naturalHeight;
@@ -525,15 +575,12 @@ async function handleImage(file){
     var c = document.createElement("canvas");
     c.width = Math.round(w * s); c.height = Math.round(h * s);
     c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
-    URL.revokeObjectURL(url);
     var dataUrl = c.toDataURL("image/jpeg", 0.72);
     var blob = await (await fetch(dataUrl)).blob();
-    PENDING = { blob:blob, thumbBlob:blob, dataUrl:dataUrl, kind:"image", name:file.name };
-    showForm("Photo");
-  } catch(e){
-    toast(e.message || "Could not read that image.", true);
+    return { blob: blob, thumbBlob: blob, dataUrl: dataUrl, kind: "image", name: file.name };
+  } finally {
+    URL.revokeObjectURL(url);
   }
-  done();
 }
 
 function loadImg(src){
@@ -546,33 +593,27 @@ function loadImg(src){
   });
 }
 
-async function handlePdf(file){
-  if(!window.pdfjsLib) return toast("PDF reader didn't load. Check your connection.", true);
-  busy("Reading PDF…");
-  try {
-    var buf = await file.arrayBuffer();
-    var pdf = await pdfjsLib.getDocument({ data:buf }).promise;
-    var page = await pdf.getPage(1);
-    var vp = page.getViewport({ scale:1 });
-    var scale = Math.min(1400 / vp.width, 1900 / vp.height);
-    var v2 = page.getViewport({ scale:scale });
-    var c = document.createElement("canvas");
-    c.width = Math.round(v2.width); c.height = Math.round(v2.height);
-    await page.render({ canvasContext:c.getContext("2d"), viewport:v2 }).promise;
-    var dataUrl = c.toDataURL("image/jpeg", 0.78);
-    var thumbBlob = await (await fetch(dataUrl)).blob();
-    PENDING = { blob:file, thumbBlob:thumbBlob, dataUrl:dataUrl, kind:"pdf", name:file.name };
-    showForm("PDF invoice");
-  } catch(e){
-    toast("Couldn't open that PDF.", true);
-  }
-  done();
+async function prepPdf(file){
+  if(!window.pdfjsLib) throw new Error("PDF reader didn't load.");
+  var buf = await file.arrayBuffer();
+  var pdf = await pdfjsLib.getDocument({ data: buf }).promise;
+  var page = await pdf.getPage(1);
+  var vp = page.getViewport({ scale: 1 });
+  var scale = Math.min(1400 / vp.width, 1900 / vp.height);
+  var v2 = page.getViewport({ scale: scale });
+  var c = document.createElement("canvas");
+  c.width = Math.round(v2.width); c.height = Math.round(v2.height);
+  await page.render({ canvasContext: c.getContext("2d"), viewport: v2 }).promise;
+  var dataUrl = c.toDataURL("image/jpeg", 0.78);
+  var thumbBlob = await (await fetch(dataUrl)).blob();
+  return { blob: file, thumbBlob: thumbBlob, dataUrl: dataUrl, kind: "pdf", name: file.name };
 }
 
 function showForm(tag){
   $("prevImg").src = PENDING.dataUrl;
   $("prevTag").textContent = tag;
   hide("captureCard");
+  hide("queueCard");
   show("formCard");
   $("fAmount").focus();
 }
@@ -583,7 +624,148 @@ function clearFile(){
   hide("formCard");
 }
 
+/* ---------- bulk queue ---------- */
+function catOptions(kind, selected){
+  return CATS[kind].map(function(c){
+    return '<option value="' + esc(c.name) + '"' + (c.name === selected ? " selected" : "") + ">" + esc(c.name) + "</option>";
+  }).join("") + '<option value="__new">+ Add new\u2026</option>';
+}
+function openQueue(){
+  hide("captureCard");
+  hide("formCard");
+  show("queueCard");
+  $("bulkDate").value = todayISO();
+  $("bulkPurpose").innerHTML = catOptions("purpose", (CATS.purpose[0] || {}).name);
+  $("bulkType").innerHTML = catOptions("type", (CATS.type[0] || {}).name);
+  renderQueue();
+}
+function renderQueue(){
+  $("queueList").innerHTML = QUEUE.map(function(q, i){
+    return '<div class="card">' +
+      '<div class="qhead">' +
+        '<img class="qth" src="' + q.src.dataUrl + '" alt="">' +
+        '<div class="qmid">' +
+          '<div class="qnum">Receipt ' + (i + 1) + " of " + QUEUE.length + (q.src.kind === "pdf" ? " \u00b7 PDF" : "") + "</div>" +
+          '<div class="field" style="margin-bottom:8px"><input class="num" type="text" inputmode="decimal" placeholder="Amount RM" value="' + esc(q.amount) + '" oninput="qset(' + i + ',\'amount\',this.value)"></div>' +
+          '<input type="date" value="' + esc(q.date) + '" onchange="qset(' + i + ',\'date\',this.value)">' +
+        "</div>" +
+      "</div>" +
+      '<div class="field"><input placeholder="Description" value="' + esc(q.desc) + '" oninput="qset(' + i + ',\'desc\',this.value)"></div>' +
+      '<div class="row">' +
+        '<select onchange="qcat(' + i + ',\'purpose\',this)">' + catOptions("purpose", q.purpose) + "</select>" +
+        '<select onchange="qcat(' + i + ',\'type\',this)">' + catOptions("type", q.type) + "</select>" +
+      "</div>" +
+      '<button class="danger full small" style="margin-top:10px" onclick="qdel(' + i + ')">Remove this receipt</button>' +
+    "</div>";
+  }).join("");
+}
+function qset(i, key, val){ if(QUEUE[i]) QUEUE[i][key] = val; }
+async function qcat(i, kind, el){
+  if(el.value !== "__new"){ QUEUE[i][kind === "purpose" ? "purpose" : "type"] = el.value; return; }
+  var name = prompt(kind === "purpose" ? "New category (what is it for?)" : "New expense type");
+  if(!name || !name.trim()){ renderQueue(); return; }
+  var r = await sb.from("gl_claim_categories").insert({ kind: kind, name: name.trim(), sort_order: 90 });
+  if(r.error){ toast(r.error.message, true); renderQueue(); return; }
+  await loadCats();
+  QUEUE[i][kind === "purpose" ? "purpose" : "type"] = name.trim();
+  renderQueue();
+  toast("Added " + name.trim());
+}
+function qdel(i){
+  QUEUE.splice(i, 1);
+  if(!QUEUE.length){ clearQueue(); return; }
+  renderQueue();
+}
+function applyAll(){
+  var p = $("bulkPurpose").value, t = $("bulkType").value, d = $("bulkDate").value;
+  QUEUE.forEach(function(q){
+    if(p && p !== "__new") q.purpose = p;
+    if(t && t !== "__new") q.type = t;
+    if(d) q.date = d;
+  });
+  renderQueue();
+  toast("Applied to all " + QUEUE.length);
+}
+function clearQueue(){
+  QUEUE = [];
+  $("queueList").innerHTML = "";
+  hide("queueCard");
+  show("captureCard");
+}
+
+async function saveAll(){
+  if(!QUEUE.length) return;
+  for(var i = 0; i < QUEUE.length; i++){
+    var amt = parseFloat(String(QUEUE[i].amount).replace(/[^0-9.]/g, ""));
+    if(!(amt > 0)) return toast("Receipt " + (i + 1) + " needs an amount.", true);
+    if(!String(QUEUE[i].desc).trim()) return toast("Receipt " + (i + 1) + " needs a description.", true);
+  }
+  $("saveAllBtn").disabled = true;
+  var okCount = 0;
+  try {
+    for(var n = 0; n < QUEUE.length; n++){
+      busy("Uploading " + (n + 1) + " of " + QUEUE.length + "\u2026");
+      var q = QUEUE[n];
+      await pushItem(q.src, {
+        amount: parseFloat(String(q.amount).replace(/[^0-9.]/g, "")),
+        date: q.date || todayISO(),
+        purpose: q.purpose,
+        type: q.type,
+        desc: String(q.desc).trim()
+      });
+      okCount++;
+    }
+    done();
+    clearQueue();
+    await loadDrafts();
+    toast(okCount + " receipts saved");
+    go("draft");
+  } catch(e){
+    done();
+    toast("Stopped after " + okCount + " saved \u2014 " + (e.message || "upload failed"), true);
+    QUEUE = QUEUE.slice(okCount);
+    if(QUEUE.length) renderQueue(); else clearQueue();
+    await loadDrafts();
+  }
+  $("saveAllBtn").disabled = false;
+}
 /* ---------- save an item ---------- */
+async function pushItem(src, f){
+  var stamp = Date.now() + "_" + Math.random().toString(36).slice(2,7);
+  var base = ME.id + "/" + stamp;
+  var mainExt = src.kind === "pdf" ? "pdf" : "jpg";
+  var mainPath = base + "." + mainExt;
+
+  var up = await sb.storage.from(BUCKET).upload(mainPath, src.blob, {
+    contentType: src.kind === "pdf" ? "application/pdf" : "image/jpeg", upsert:false
+  });
+  if(up.error) throw up.error;
+
+  var thumbPath = mainPath;
+  if(src.kind === "pdf"){
+    thumbPath = base + "_p1.jpg";
+    var up2 = await sb.storage.from(BUCKET).upload(thumbPath, src.thumbBlob, { contentType:"image/jpeg", upsert:false });
+    if(up2.error) throw up2.error;
+  }
+
+  var fileUrl  = sb.storage.from(BUCKET).getPublicUrl(mainPath).data.publicUrl;
+  var thumbUrl = sb.storage.from(BUCKET).getPublicUrl(thumbPath).data.publicUrl;
+
+  var r = await sb.from("gl_claim_items").insert({
+    user_id: ME.id,
+    user_name: ME.full_name || ME.username,
+    status: "draft",
+    spent_on: f.date || todayISO(),
+    amount: f.amount,
+    purpose: (f.purpose && f.purpose !== "__new") ? f.purpose : null,
+    expense_type: (f.type && f.type !== "__new") ? f.type : null,
+    description: f.desc,
+    file_url: fileUrl, file_path: mainPath, file_kind: src.kind,
+    thumb_url: thumbUrl, thumb_path: thumbPath
+  });
+  if(r.error) throw r.error;
+}
+
 async function saveItem(){
   if(!PENDING) return toast("Add the receipt photo first.", true);
   var amt = parseFloat(String($("fAmount").value).replace(/[^0-9.]/g, ""));
@@ -592,42 +774,12 @@ async function saveItem(){
   if(!desc) return toast("Add a short description.", true);
 
   $("saveBtn").disabled = true;
-  busy("Uploading…");
+  busy("Uploading\u2026");
   try {
-    var stamp = Date.now() + "_" + Math.random().toString(36).slice(2,7);
-    var base = ME.id + "/" + stamp;
-    var mainExt = PENDING.kind === "pdf" ? "pdf" : "jpg";
-    var mainPath = base + "." + mainExt;
-
-    var up = await sb.storage.from(BUCKET).upload(mainPath, PENDING.blob, {
-      contentType: PENDING.kind === "pdf" ? "application/pdf" : "image/jpeg", upsert:false
+    await pushItem(PENDING, {
+      amount: amt, date: $("fDate").value, desc: desc,
+      purpose: $("fPurpose").value, type: $("fType").value
     });
-    if(up.error) throw up.error;
-
-    var thumbPath = mainPath;
-    if(PENDING.kind === "pdf"){
-      thumbPath = base + "_p1.jpg";
-      var up2 = await sb.storage.from(BUCKET).upload(thumbPath, PENDING.thumbBlob, { contentType:"image/jpeg", upsert:false });
-      if(up2.error) throw up2.error;
-    }
-
-    var fileUrl  = sb.storage.from(BUCKET).getPublicUrl(mainPath).data.publicUrl;
-    var thumbUrl = sb.storage.from(BUCKET).getPublicUrl(thumbPath).data.publicUrl;
-
-    var r = await sb.from("gl_claim_items").insert({
-      user_id: ME.id,
-      user_name: ME.full_name || ME.username,
-      status: "draft",
-      spent_on: $("fDate").value || todayISO(),
-      amount: amt,
-      purpose: $("fPurpose").value === "__new" ? null : $("fPurpose").value,
-      expense_type: $("fType").value === "__new" ? null : $("fType").value,
-      description: desc,
-      file_url: fileUrl, file_path: mainPath, file_kind: PENDING.kind,
-      thumb_url: thumbUrl, thumb_path: thumbPath
-    });
-    if(r.error) throw r.error;
-
     $("fAmount").value = ""; $("fDesc").value = "";
     clearFile();
     await loadDrafts();
