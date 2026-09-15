@@ -1,0 +1,1093 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>GL Claim</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='26'>🧾</text></svg>">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<style>
+  :root{
+    --ink:#0d0d0f; --panel:#16161a; --panel2:#1d1d22; --line:#2c2c33;
+    --gold:#d9a441; --gold-dim:#7d5f26; --text:#ececed; --muted:#8b8b95;
+    --good:#3fa46a; --bad:#c7503f; --radius:14px;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    background:var(--ink); color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+    font-size:16px; line-height:1.45; -webkit-text-size-adjust:100%;
+    padding-bottom:calc(76px + env(safe-area-inset-bottom));
+  }
+  .num{font-variant-numeric:tabular-nums}
+  .wrap{max-width:720px;margin:0 auto;padding:16px}
+  .hide{display:none !important}
+
+  header.top{
+    position:sticky;top:0;z-index:20;background:rgba(13,13,15,.92);
+    backdrop-filter:blur(10px);border-bottom:1px solid var(--line);
+    padding:12px 16px calc(12px);display:flex;align-items:center;gap:10px;
+    padding-top:calc(12px + env(safe-area-inset-top));
+  }
+  .brand{font-weight:700;letter-spacing:.02em}
+  .brand span{color:var(--gold)}
+  .who{margin-left:auto;font-size:13px;color:var(--muted)}
+
+  h2{font-size:19px;margin:4px 0 14px;font-weight:650}
+  .sub{color:var(--muted);font-size:13px;margin:-8px 0 16px}
+
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:14px;margin-bottom:12px}
+  label{display:block;font-size:13px;color:var(--muted);margin:0 0 6px}
+  input,select,textarea,button{font:inherit;color:var(--text)}
+  input,select,textarea{
+    width:100%;background:var(--panel2);border:1px solid var(--line);
+    border-radius:10px;padding:12px;outline:none;
+  }
+  input:focus,select,textarea:focus{border-color:var(--gold-dim)}
+  input:focus-visible,button:focus-visible,select:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+  select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,var(--muted) 50%),linear-gradient(135deg,var(--muted) 50%,transparent 50%);background-position:calc(100% - 18px) 20px,calc(100% - 12px) 20px;background-size:6px 6px;background-repeat:no-repeat}
+  .field{margin-bottom:12px}
+  .row{display:flex;gap:10px}
+  .row>*{flex:1}
+
+  button{border:none;border-radius:10px;padding:13px 16px;font-weight:600;cursor:pointer;background:var(--panel2);border:1px solid var(--line)}
+  button:active{transform:translateY(1px)}
+  .primary{background:var(--gold);color:#1a1204;border-color:var(--gold)}
+  .ghost{background:transparent}
+  .danger{color:var(--bad);border-color:#432723;background:transparent}
+  .full{width:100%}
+  .small{padding:8px 12px;font-size:13px;border-radius:8px}
+
+  .drop{
+    border:1px dashed #3a3a43;border-radius:var(--radius);padding:22px 14px;text-align:center;
+    background:linear-gradient(180deg,#18181c,#141418);
+  }
+  .drop .big{font-size:30px;line-height:1}
+  .drop p{margin:8px 0 14px;color:var(--muted);font-size:13px}
+  .preview{position:relative;border-radius:12px;overflow:hidden;background:#000;border:1px solid var(--line)}
+  .preview img{display:block;width:100%;max-height:46vh;object-fit:contain}
+  .preview .tag{position:absolute;left:8px;top:8px;background:rgba(0,0,0,.7);border:1px solid var(--line);border-radius:99px;padding:3px 10px;font-size:11px;color:var(--gold)}
+
+  .item{display:flex;gap:12px;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px;margin-bottom:10px}
+  .item .th{width:52px;height:68px;border-radius:8px;object-fit:cover;background:#000;flex:none}
+  .item .mid{flex:1;min-width:0}
+  .item .t1{font-weight:600;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .item .t2{font-size:12px;color:var(--muted);margin-top:2px}
+  .item .amt{font-weight:700;color:var(--gold);white-space:nowrap}
+  .pill{display:inline-block;font-size:11px;border:1px solid var(--line);border-radius:99px;padding:2px 8px;color:var(--muted);margin-right:4px}
+
+  .totbar{
+    position:fixed;left:0;right:0;bottom:calc(64px + env(safe-area-inset-bottom));z-index:15;
+    background:rgba(22,22,26,.96);border-top:1px solid var(--line);padding:10px 16px;
+    display:flex;align-items:center;gap:12px;backdrop-filter:blur(8px);
+  }
+  .totbar .lab{font-size:12px;color:var(--muted)}
+  .totbar .val{font-size:20px;font-weight:700;color:var(--gold)}
+  .totbar button{margin-left:auto}
+
+  nav.tabs{
+    position:fixed;left:0;right:0;bottom:0;z-index:18;display:flex;
+    background:rgba(13,13,15,.96);border-top:1px solid var(--line);
+    padding-bottom:env(safe-area-inset-bottom);backdrop-filter:blur(10px);
+  }
+  nav.tabs button{flex:1;background:none;border:none;border-radius:0;padding:10px 4px 12px;color:var(--muted);font-size:11px;font-weight:500}
+  nav.tabs button .ic{display:block;font-size:19px;margin-bottom:2px;filter:grayscale(1) opacity(.7)}
+  nav.tabs button.on{color:var(--gold)}
+  nav.tabs button.on .ic{filter:none}
+
+  .empty{text-align:center;color:var(--muted);padding:40px 20px;font-size:14px}
+  .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:140px;background:#2a2a30;border:1px solid var(--line);color:var(--text);padding:11px 16px;border-radius:99px;font-size:14px;z-index:60;box-shadow:0 8px 24px rgba(0,0,0,.5)}
+  .toast.err{border-color:#5a2f28;color:#ffb4a8}
+  .load{position:fixed;inset:0;background:rgba(8,8,10,.75);display:flex;align-items:center;justify-content:center;z-index:80;font-size:14px;color:var(--muted)}
+
+  .kv{display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--line);font-size:14px}
+  .kv:last-child{border-bottom:none}
+  .kv b{color:var(--gold);font-weight:700}
+  .center{max-width:400px;margin:12vh auto;padding:20px}
+  .logo{font-size:26px;font-weight:750;letter-spacing:.02em;margin-bottom:4px}
+  .logo span{color:var(--gold)}
+  @media (prefers-reduced-motion:reduce){*{transition:none !important;animation:none !important}}
+</style>
+</head>
+<body>
+
+<!-- ================= SETUP ================= -->
+<div id="v-setup" class="center hide">
+  <div class="logo">GL <span>Claim</span></div>
+  <div class="sub">Connect this app to your Supabase project once. It stays on this device.</div>
+  <div class="card">
+    <div class="field"><label for="cfgUrl">Supabase URL</label><input id="cfgUrl" placeholder="https://xxxx.supabase.co" autocapitalize="off" autocorrect="off"></div>
+    <div class="field"><label for="cfgKey">Anon key</label><textarea id="cfgKey" rows="4" placeholder="eyJhbGciOi..." autocapitalize="off" autocorrect="off"></textarea></div>
+    <button class="primary full" onclick="saveConfig()">Connect</button>
+  </div>
+</div>
+
+<!-- ================= FIRST RUN ================= -->
+<div id="v-first" class="center hide">
+  <div class="logo">GL <span>Claim</span></div>
+  <div class="sub">No accounts yet. Create the admin account — that's you.</div>
+  <div class="card">
+    <div class="field"><label for="fuName">Full name</label><input id="fuName" placeholder="Jimmy Kuek"></div>
+    <div class="field"><label for="fuUser">Username</label><input id="fuUser" placeholder="jimmy" autocapitalize="off" autocorrect="off"></div>
+    <div class="field"><label for="fuPass">Password</label><input id="fuPass" type="password" placeholder="At least 6 characters"></div>
+    <button class="primary full" onclick="createAdmin()">Create admin account</button>
+  </div>
+  <button class="ghost full small" onclick="resetConfig()">Change Supabase connection</button>
+</div>
+
+<!-- ================= LOGIN ================= -->
+<div id="v-login" class="center hide">
+  <div class="logo">GL <span>Claim</span></div>
+  <div class="sub">Expense claims for Grandlab &amp; Grandpride.</div>
+  <div class="card">
+    <div class="field"><label for="lgUser">Username</label><input id="lgUser" autocapitalize="off" autocorrect="off"></div>
+    <div class="field"><label for="lgPass">Password</label><input id="lgPass" type="password"></div>
+    <button class="primary full" onclick="doLogin()">Sign in</button>
+  </div>
+  <button class="ghost full small" onclick="resetConfig()">Change Supabase connection</button>
+</div>
+
+<!-- ================= APP ================= -->
+<div id="v-app" class="hide">
+  <header class="top">
+    <div class="brand">GL <span>Claim</span></div>
+    <div class="who" id="whoAmI"></div>
+  </header>
+
+  <div class="wrap">
+
+    <!-- ---- ADD ---- -->
+    <section id="t-add" class="tab">
+      <h2>Add a receipt</h2>
+      <div class="card" id="captureCard">
+        <div class="drop">
+          <div class="big">🧾</div>
+          <p>Snap the physical receipt, or upload a screenshot / PDF invoice.</p>
+          <div class="row">
+            <button class="primary" onclick="document.getElementById('fileCam').click()">Take photo</button>
+            <button onclick="document.getElementById('filePick').click()">Upload file</button>
+          </div>
+        </div>
+        <input id="fileCam" type="file" accept="image/*" capture="environment" class="hide" onchange="onFile(this)">
+        <input id="filePick" type="file" accept="image/*,application/pdf" class="hide" onchange="onFile(this)">
+      </div>
+
+      <div id="formCard" class="hide">
+        <div class="card">
+          <div class="preview" id="prevBox"><img id="prevImg" alt="Receipt preview"><div class="tag" id="prevTag">Photo</div></div>
+          <button class="ghost full small" style="margin-top:10px" onclick="clearFile()">Choose a different file</button>
+        </div>
+        <div class="card">
+          <div class="row">
+            <div class="field"><label for="fAmount">Amount (RM)</label><input id="fAmount" class="num" type="text" inputmode="decimal" placeholder="0.00"></div>
+            <div class="field"><label for="fDate">Date</label><input id="fDate" type="date"></div>
+          </div>
+          <div class="field">
+            <label for="fPurpose">What is it for?</label>
+            <select id="fPurpose" onchange="maybeAddCat('purpose')"></select>
+          </div>
+          <div class="field">
+            <label for="fType">Expense type</label>
+            <select id="fType" onchange="maybeAddCat('type')"></select>
+          </div>
+          <div class="field">
+            <label for="fDesc">Description</label>
+            <input id="fDesc" placeholder="e.g. Grab to Sg Buloh supplier">
+          </div>
+          <button class="primary full" id="saveBtn" onclick="saveItem()">Save to current claim</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ---- DRAFT ---- -->
+    <section id="t-draft" class="tab hide">
+      <h2>Current claim</h2>
+      <div class="sub">Keep adding receipts. Submit when you're ready to send finance the PDF.</div>
+      <div id="draftList"></div>
+    </section>
+
+    <!-- ---- HISTORY ---- -->
+    <section id="t-hist" class="tab hide">
+      <h2>Submitted claims</h2>
+      <div class="sub">Tap any claim to download its PDF again.</div>
+      <div id="histList"></div>
+    </section>
+
+    <!-- ---- REPORT ---- -->
+    <section id="t-rep" class="tab hide">
+      <h2>Monthly report</h2>
+      <div class="card">
+        <div class="row">
+          <div class="field" style="margin-bottom:0"><label for="repMonth">Month</label><input id="repMonth" type="month" onchange="loadReport()"></div>
+          <div class="field" style="margin-bottom:0"><label for="repWho">Person</label><select id="repWho" onchange="loadReport()"></select></div>
+        </div>
+      </div>
+      <div id="repBody"></div>
+    </section>
+
+    <!-- ---- SETTINGS ---- -->
+    <section id="t-set" class="tab hide">
+      <h2>Settings</h2>
+      <div class="card">
+        <div class="kv"><span>Signed in as</span><b id="setWho"></b></div>
+        <div class="kv"><span>Role</span><span id="setRole"></span></div>
+      </div>
+
+      <div id="adminBox" class="hide">
+        <h2 style="margin-top:22px">Staff accounts</h2>
+        <div class="card">
+          <div class="field"><label for="nuName">Full name</label><input id="nuName" placeholder="Alex"></div>
+          <div class="row">
+            <div class="field"><label for="nuUser">Username</label><input id="nuUser" autocapitalize="off" autocorrect="off"></div>
+            <div class="field"><label for="nuPass">Password</label><input id="nuPass" type="text"></div>
+          </div>
+          <div class="field"><label for="nuRole">Role</label><select id="nuRole"><option value="staff">Staff</option><option value="admin">Admin</option></select></div>
+          <button class="primary full" onclick="addUser()">Create account</button>
+        </div>
+        <div id="userList"></div>
+
+        <h2 style="margin-top:22px">Categories</h2>
+        <div id="catList"></div>
+      </div>
+
+      <button class="danger full" style="margin-top:22px" onclick="logout()">Sign out</button>
+    </section>
+
+  </div>
+
+  <div class="totbar hide" id="totBar">
+    <div>
+      <div class="lab" id="totLab">Current claim</div>
+      <div class="val num" id="totVal">RM 0.00</div>
+    </div>
+    <button class="primary" id="totBtn" onclick="submitClaim()">Submit &amp; make PDF</button>
+  </div>
+
+  <nav class="tabs">
+    <button data-t="add"   class="on" onclick="go('add')"><span class="ic">➕</span>Add</button>
+    <button data-t="draft"           onclick="go('draft')"><span class="ic">📋</span>Claim</button>
+    <button data-t="hist"            onclick="go('hist')"><span class="ic">📑</span>History</button>
+    <button data-t="rep"             onclick="go('rep')"><span class="ic">📊</span>Report</button>
+    <button data-t="set"             onclick="go('set')"><span class="ic">⚙️</span>Settings</button>
+  </nav>
+</div>
+
+<script>
+/* ============================================================
+   GL CLAIM
+   single-file app: Supabase (data + storage) + jsPDF (report)
+   ============================================================ */
+
+var SB_URL = "";            // optional hard-code
+var SB_KEY = "";            // optional hard-code
+var BUCKET = "gl-claims";
+
+var sb = null;
+var ME = null;
+var CATS = { purpose: [], type: [] };
+var PENDING = null;         // { blob, thumbBlob, dataUrl, kind, name }
+var DRAFTS = [];
+var TAB = "add";
+
+/* ---------- tiny helpers ---------- */
+function $(id){ return document.getElementById(id); }
+function show(id){ $(id).classList.remove("hide"); }
+function hide(id){ $(id).classList.add("hide"); }
+function money(n){
+  n = Number(n || 0);
+  return "RM " + n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+}
+function esc(s){
+  return String(s == null ? "" : s).replace(/[&<>"']/g, function(c){
+    return { "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c];
+  });
+}
+function todayISO(){
+  var d = new Date(), p = function(x){ return String(x).padStart(2,"0"); };
+  return d.getFullYear() + "-" + p(d.getMonth()+1) + "-" + p(d.getDate());
+}
+function dmy(iso){
+  if(!iso) return "";
+  var p = String(iso).slice(0,10).split("-");
+  return p[2] + "/" + p[1] + "/" + p[0];
+}
+var toastT = null;
+function toast(msg, isErr){
+  var el = document.createElement("div");
+  el.className = "toast" + (isErr ? " err" : "");
+  el.textContent = msg;
+  document.body.appendChild(el);
+  clearTimeout(toastT);
+  toastT = setTimeout(function(){ el.remove(); }, isErr ? 4200 : 2200);
+}
+var loadEl = null;
+function busy(msg){
+  if(loadEl) loadEl.remove();
+  loadEl = document.createElement("div");
+  loadEl.className = "load";
+  loadEl.textContent = msg || "Working…";
+  document.body.appendChild(loadEl);
+}
+function done(){ if(loadEl){ loadEl.remove(); loadEl = null; } }
+
+async function sha256hex(str){
+  var buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(str));
+  return Array.from(new Uint8Array(buf)).map(function(b){ return b.toString(16).padStart(2,"0"); }).join("");
+}
+
+/* ---------- boot ---------- */
+function boot(){
+  var url = SB_URL || localStorage.getItem("glc_url") || "";
+  var key = SB_KEY || localStorage.getItem("glc_key") || "";
+  if(!url || !key){ show("v-setup"); return; }
+  try {
+    sb = supabase.createClient(url, key);
+  } catch(e){
+    show("v-setup"); toast("Connection failed. Check the URL and key.", true); return;
+  }
+  if(window.pdfjsLib){
+    pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+  }
+  startSession();
+}
+
+async function startSession(){
+  busy("Connecting…");
+  var r = await sb.from("gl_claim_users").select("id", { count:"exact", head:true });
+  done();
+  if(r.error){ show("v-setup"); toast("Can't reach the tables. Run the SQL first.", true); return; }
+  if(!r.count){ show("v-first"); return; }
+  var saved = localStorage.getItem("glc_me");
+  if(saved){
+    try { ME = JSON.parse(saved); } catch(e){ ME = null; }
+  }
+  if(ME && ME.id){ enterApp(); } else { show("v-login"); }
+}
+
+function saveConfig(){
+  var url = $("cfgUrl").value.trim().replace(/\/+$/,"");
+  var key = $("cfgKey").value.trim();
+  if(!/^https:\/\/.+/.test(url)) return toast("URL must start with https://", true);
+  if(key.length < 40) return toast("That anon key looks too short.", true);
+  for(var i = 0; i < key.length; i++){
+    if(key.charCodeAt(i) > 127) return toast("The key has a stray character — copy it again from Supabase.", true);
+  }
+  localStorage.setItem("glc_url", url);
+  localStorage.setItem("glc_key", key);
+  hide("v-setup");
+  boot();
+}
+function resetConfig(){
+  localStorage.removeItem("glc_url");
+  localStorage.removeItem("glc_key");
+  location.reload();
+}
+
+async function createAdmin(){
+  var name = $("fuName").value.trim();
+  var user = $("fuUser").value.trim().toLowerCase();
+  var pass = $("fuPass").value;
+  if(!name || !user) return toast("Fill in the name and username.", true);
+  if(pass.length < 6) return toast("Password needs at least 6 characters.", true);
+  busy("Creating account…");
+  var hash = await sha256hex(pass);
+  var r = await sb.from("gl_claim_users")
+    .insert({ username:user, pass_hash:hash, full_name:name, role:"admin" })
+    .select().single();
+  done();
+  if(r.error) return toast(r.error.message, true);
+  ME = r.data;
+  localStorage.setItem("glc_me", JSON.stringify(ME));
+  hide("v-first");
+  enterApp();
+}
+
+async function doLogin(){
+  var user = $("lgUser").value.trim().toLowerCase();
+  var pass = $("lgPass").value;
+  if(!user || !pass) return toast("Enter your username and password.", true);
+  busy("Signing in…");
+  var hash = await sha256hex(pass);
+  var r = await sb.from("gl_claim_users").select("*").eq("username", user).eq("active", true).limit(1);
+  done();
+  if(r.error) return toast(r.error.message, true);
+  if(!r.data || !r.data.length) return toast("No active account with that username.", true);
+  if(r.data[0].pass_hash !== hash) return toast("Wrong password.", true);
+  ME = r.data[0];
+  localStorage.setItem("glc_me", JSON.stringify(ME));
+  hide("v-login");
+  enterApp();
+}
+
+function logout(){
+  localStorage.removeItem("glc_me");
+  location.reload();
+}
+
+async function enterApp(){
+  show("v-app");
+  $("whoAmI").textContent = ME.full_name || ME.username;
+  $("setWho").textContent = ME.full_name || ME.username;
+  $("setRole").textContent = ME.role === "admin" ? "Admin" : "Staff";
+  if(ME.role === "admin"){ show("adminBox"); }
+  $("fDate").value = todayISO();
+  $("repMonth").value = todayISO().slice(0,7);
+  await loadCats();
+  await loadDrafts();
+  go("add");
+}
+
+/* ---------- categories ---------- */
+async function loadCats(){
+  var r = await sb.from("gl_claim_categories").select("*").eq("active", true).order("sort_order");
+  if(r.error){ toast(r.error.message, true); return; }
+  CATS.purpose = r.data.filter(function(c){ return c.kind === "purpose"; });
+  CATS.type    = r.data.filter(function(c){ return c.kind === "type"; });
+  fillSelect("fPurpose", CATS.purpose);
+  fillSelect("fType", CATS.type);
+  if(ME && ME.role === "admin") renderCats();
+}
+function fillSelect(id, list){
+  var el = $(id), keep = el.value;
+  el.innerHTML = list.map(function(c){ return '<option value="'+esc(c.name)+'">'+esc(c.name)+"</option>"; }).join("")
+    + '<option value="__new">+ Add new…</option>';
+  if(keep && keep !== "__new") el.value = keep;
+}
+async function maybeAddCat(kind){
+  var el = $(kind === "purpose" ? "fPurpose" : "fType");
+  if(el.value !== "__new") return;
+  var name = prompt(kind === "purpose" ? "New category (what is it for?)" : "New expense type");
+  el.value = (CATS[kind][0] && CATS[kind][0].name) || "";
+  if(!name || !name.trim()) return;
+  name = name.trim();
+  var r = await sb.from("gl_claim_categories").insert({ kind:kind, name:name, sort_order:90 });
+  if(r.error) return toast(r.error.message, true);
+  await loadCats();
+  el.value = name;
+  toast("Added " + name);
+}
+function renderCats(){
+  var box = $("catList");
+  var block = function(title, list, kind){
+    return '<div class="card"><label>' + title + "</label>" +
+      list.map(function(c){
+        return '<div class="kv"><span>' + esc(c.name) + '</span>' +
+          '<button class="danger small" onclick="delCat(\'' + c.id + '\')">Remove</button></div>';
+      }).join("") +
+      '<button class="ghost full small" style="margin-top:10px" onclick="addCatFrom(\'' + kind + '\')">Add ' + title.toLowerCase() + "</button></div>";
+  };
+  box.innerHTML = block("Purposes", CATS.purpose, "purpose") + block("Expense types", CATS.type, "type");
+}
+async function addCatFrom(kind){
+  var name = prompt("New " + (kind === "purpose" ? "purpose" : "expense type"));
+  if(!name || !name.trim()) return;
+  var r = await sb.from("gl_claim_categories").insert({ kind:kind, name:name.trim(), sort_order:90 });
+  if(r.error) return toast(r.error.message, true);
+  await loadCats();
+  toast("Added");
+}
+async function delCat(id){
+  if(!confirm("Remove this category? Past claims keep the name they were saved with.")) return;
+  var r = await sb.from("gl_claim_categories").update({ active:false }).eq("id", id);
+  if(r.error) return toast(r.error.message, true);
+  await loadCats();
+}
+
+/* ---------- file handling ---------- */
+function onFile(input){
+  var f = input.files && input.files[0];
+  input.value = "";
+  if(!f) return;
+  if(f.type === "application/pdf" || /\.pdf$/i.test(f.name)) handlePdf(f);
+  else handleImage(f);
+}
+
+function readAsDataURL(blob){
+  return new Promise(function(res, rej){
+    var fr = new FileReader();
+    fr.onload = function(){ res(fr.result); };
+    fr.onerror = function(){ rej(new Error("Could not read the file.")); };
+    fr.readAsDataURL(blob);
+  });
+}
+
+async function handleImage(file){
+  busy("Preparing photo…");
+  try {
+    var url = URL.createObjectURL(file);
+    var img = await loadImg(url);
+    var max = 1400;
+    var w = img.naturalWidth, h = img.naturalHeight;
+    var s = Math.min(1, max / Math.max(w, h));
+    var c = document.createElement("canvas");
+    c.width = Math.round(w * s); c.height = Math.round(h * s);
+    c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+    URL.revokeObjectURL(url);
+    var dataUrl = c.toDataURL("image/jpeg", 0.72);
+    var blob = await (await fetch(dataUrl)).blob();
+    PENDING = { blob:blob, thumbBlob:blob, dataUrl:dataUrl, kind:"image", name:file.name };
+    showForm("Photo");
+  } catch(e){
+    toast(e.message || "Could not read that image.", true);
+  }
+  done();
+}
+
+function loadImg(src){
+  return new Promise(function(res, rej){
+    var i = new Image();
+    i.onload = function(){ res(i); };
+    i.onerror = function(){ rej(new Error("Image failed to load.")); };
+    i.crossOrigin = "anonymous";
+    i.src = src;
+  });
+}
+
+async function handlePdf(file){
+  if(!window.pdfjsLib) return toast("PDF reader didn't load. Check your connection.", true);
+  busy("Reading PDF…");
+  try {
+    var buf = await file.arrayBuffer();
+    var pdf = await pdfjsLib.getDocument({ data:buf }).promise;
+    var page = await pdf.getPage(1);
+    var vp = page.getViewport({ scale:1 });
+    var scale = Math.min(1400 / vp.width, 1900 / vp.height);
+    var v2 = page.getViewport({ scale:scale });
+    var c = document.createElement("canvas");
+    c.width = Math.round(v2.width); c.height = Math.round(v2.height);
+    await page.render({ canvasContext:c.getContext("2d"), viewport:v2 }).promise;
+    var dataUrl = c.toDataURL("image/jpeg", 0.78);
+    var thumbBlob = await (await fetch(dataUrl)).blob();
+    PENDING = { blob:file, thumbBlob:thumbBlob, dataUrl:dataUrl, kind:"pdf", name:file.name };
+    showForm("PDF invoice");
+  } catch(e){
+    toast("Couldn't open that PDF.", true);
+  }
+  done();
+}
+
+function showForm(tag){
+  $("prevImg").src = PENDING.dataUrl;
+  $("prevTag").textContent = tag;
+  hide("captureCard");
+  show("formCard");
+  $("fAmount").focus();
+}
+function clearFile(){
+  PENDING = null;
+  $("prevImg").removeAttribute("src");
+  show("captureCard");
+  hide("formCard");
+}
+
+/* ---------- save an item ---------- */
+async function saveItem(){
+  if(!PENDING) return toast("Add the receipt photo first.", true);
+  var amt = parseFloat(String($("fAmount").value).replace(/[^0-9.]/g, ""));
+  if(!(amt > 0)) return toast("Enter the amount.", true);
+  var desc = $("fDesc").value.trim();
+  if(!desc) return toast("Add a short description.", true);
+
+  $("saveBtn").disabled = true;
+  busy("Uploading…");
+  try {
+    var stamp = Date.now() + "_" + Math.random().toString(36).slice(2,7);
+    var base = ME.id + "/" + stamp;
+    var mainExt = PENDING.kind === "pdf" ? "pdf" : "jpg";
+    var mainPath = base + "." + mainExt;
+
+    var up = await sb.storage.from(BUCKET).upload(mainPath, PENDING.blob, {
+      contentType: PENDING.kind === "pdf" ? "application/pdf" : "image/jpeg", upsert:false
+    });
+    if(up.error) throw up.error;
+
+    var thumbPath = mainPath;
+    if(PENDING.kind === "pdf"){
+      thumbPath = base + "_p1.jpg";
+      var up2 = await sb.storage.from(BUCKET).upload(thumbPath, PENDING.thumbBlob, { contentType:"image/jpeg", upsert:false });
+      if(up2.error) throw up2.error;
+    }
+
+    var fileUrl  = sb.storage.from(BUCKET).getPublicUrl(mainPath).data.publicUrl;
+    var thumbUrl = sb.storage.from(BUCKET).getPublicUrl(thumbPath).data.publicUrl;
+
+    var r = await sb.from("gl_claim_items").insert({
+      user_id: ME.id,
+      user_name: ME.full_name || ME.username,
+      status: "draft",
+      spent_on: $("fDate").value || todayISO(),
+      amount: amt,
+      purpose: $("fPurpose").value === "__new" ? null : $("fPurpose").value,
+      expense_type: $("fType").value === "__new" ? null : $("fType").value,
+      description: desc,
+      file_url: fileUrl, file_path: mainPath, file_kind: PENDING.kind,
+      thumb_url: thumbUrl, thumb_path: thumbPath
+    });
+    if(r.error) throw r.error;
+
+    $("fAmount").value = ""; $("fDesc").value = "";
+    clearFile();
+    await loadDrafts();
+    toast("Saved to your current claim");
+    go("draft");
+  } catch(e){
+    toast(e.message || "Upload failed.", true);
+  }
+  done();
+  $("saveBtn").disabled = false;
+}
+
+/* ---------- drafts ---------- */
+async function loadDrafts(){
+  var r = await sb.from("gl_claim_items").select("*")
+    .eq("user_id", ME.id).eq("status", "draft").order("spent_on", { ascending:true });
+  if(r.error){ toast(r.error.message, true); return; }
+  DRAFTS = r.data || [];
+  renderDrafts();
+}
+function draftTotal(){
+  return DRAFTS.reduce(function(s, i){ return s + Number(i.amount || 0); }, 0);
+}
+function renderDrafts(){
+  var box = $("draftList");
+  if(!DRAFTS.length){
+    box.innerHTML = '<div class="empty">Nothing in this claim yet.<br>Add a receipt to start.</div>';
+  } else {
+    box.innerHTML = DRAFTS.map(function(i, n){
+      return '<div class="item">' +
+        '<img class="th" src="' + esc(i.thumb_url) + '" alt="" loading="lazy">' +
+        '<div class="mid">' +
+          '<div class="t1">' + esc(i.description) + "</div>" +
+          '<div class="t2"><span class="pill">' + esc(i.expense_type || "—") + '</span><span class="pill">' + esc(i.purpose || "—") + "</span></div>" +
+          '<div class="t2">' + dmy(i.spent_on) + "</div>" +
+        "</div>" +
+        '<div style="text-align:right">' +
+          '<div class="amt num">' + money(i.amount) + "</div>" +
+          '<button class="danger small" style="margin-top:6px" onclick="delItem(\'' + i.id + '\')">Delete</button>' +
+        "</div></div>";
+    }).join("");
+  }
+  syncTotBar();
+}
+function syncTotBar(){
+  if(TAB === "draft" && DRAFTS.length){
+    $("totLab").textContent = DRAFTS.length + (DRAFTS.length === 1 ? " receipt" : " receipts");
+    $("totVal").textContent = money(draftTotal());
+    show("totBar");
+  } else {
+    hide("totBar");
+  }
+}
+async function delItem(id){
+  if(!confirm("Delete this receipt from the claim?")) return;
+  var it = DRAFTS.filter(function(x){ return x.id === id; })[0];
+  var r = await sb.from("gl_claim_items").delete().eq("id", id);
+  if(r.error) return toast(r.error.message, true);
+  if(it){
+    var paths = [it.file_path];
+    if(it.thumb_path && it.thumb_path !== it.file_path) paths.push(it.thumb_path);
+    await sb.storage.from(BUCKET).remove(paths);
+  }
+  await loadDrafts();
+  toast("Deleted");
+}
+
+/* ---------- submit ---------- */
+async function submitClaim(){
+  if(!DRAFTS.length) return toast("Nothing to submit.", true);
+  if(!confirm("Submit " + DRAFTS.length + " receipts totalling " + money(draftTotal()) + "?")) return;
+  busy("Submitting…");
+  try {
+    var now = new Date();
+    var ym = String(now.getFullYear()).slice(2) + String(now.getMonth()+1).padStart(2,"0");
+    var c = await sb.from("gl_claim_batches").select("id", { count:"exact", head:true })
+      .like("batch_no", "CLM-" + ym + "-%");
+    var seq = String((c.count || 0) + 1).padStart(3, "0");
+    var batchNo = "CLM-" + ym + "-" + seq;
+
+    var b = await sb.from("gl_claim_batches").insert({
+      batch_no: batchNo,
+      user_id: ME.id,
+      user_name: ME.full_name || ME.username,
+      status: "submitted",
+      total: draftTotal(),
+      item_count: DRAFTS.length
+    }).select().single();
+    if(b.error) throw b.error;
+
+    var ids = DRAFTS.map(function(i){ return i.id; });
+    var u = await sb.from("gl_claim_items").update({ status:"submitted", batch_id:b.data.id }).in("id", ids);
+    if(u.error) throw u.error;
+
+    var items = DRAFTS.slice();
+    DRAFTS = [];
+    renderDrafts();
+    done();
+    await makePDF(b.data, items);
+    await loadDrafts();
+    await loadHistory();
+    go("hist");
+    toast("Submitted as " + batchNo);
+  } catch(e){
+    done();
+    toast(e.message || "Submit failed.", true);
+  }
+}
+
+/* ---------- history ---------- */
+async function loadHistory(){
+  var q = sb.from("gl_claim_batches").select("*").order("submitted_at", { ascending:false }).limit(60);
+  if(ME.role !== "admin") q = q.eq("user_id", ME.id);
+  var r = await q;
+  if(r.error){ toast(r.error.message, true); return; }
+  var box = $("histList");
+  if(!r.data.length){ box.innerHTML = '<div class="empty">No submitted claims yet.</div>'; return; }
+  box.innerHTML = r.data.map(function(b){
+    return '<div class="item">' +
+      '<div class="mid">' +
+        '<div class="t1">' + esc(b.batch_no) + "</div>" +
+        '<div class="t2">' + esc(b.user_name) + " · " + b.item_count + " receipts · " + dmy(b.submitted_at) + "</div>" +
+        '<div class="t2"><span class="pill">' + (b.status === "paid" ? "Paid" : "Sent to finance") + "</span></div>" +
+      "</div>" +
+      '<div style="text-align:right">' +
+        '<div class="amt num">' + money(b.total) + "</div>" +
+        '<button class="small" style="margin-top:6px" onclick="rebuildPDF(\'' + b.id + '\')">PDF</button>' +
+      "</div></div>";
+  }).join("");
+}
+async function rebuildPDF(batchId){
+  busy("Loading claim…");
+  var b = await sb.from("gl_claim_batches").select("*").eq("id", batchId).single();
+  var it = await sb.from("gl_claim_items").select("*").eq("batch_id", batchId).order("spent_on");
+  done();
+  if(b.error || it.error) return toast("Could not load that claim.", true);
+  await makePDF(b.data, it.data);
+}
+
+/* ---------- report ---------- */
+async function loadReport(){
+  var m = $("repMonth").value || todayISO().slice(0,7);
+  var from = m + "-01";
+  var parts = m.split("-");
+  var nextM = new Date(Number(parts[0]), Number(parts[1]), 1);
+  var to = nextM.getFullYear() + "-" + String(nextM.getMonth()+1).padStart(2,"0") + "-01";
+
+  var q = sb.from("gl_claim_items").select("*")
+    .eq("status", "submitted").gte("spent_on", from).lt("spent_on", to);
+  var who = $("repWho").value;
+  if(ME.role !== "admin") q = q.eq("user_id", ME.id);
+  else if(who && who !== "all") q = q.eq("user_id", who);
+
+  var r = await q;
+  if(r.error){ toast(r.error.message, true); return; }
+  var rows = r.data || [];
+  var total = rows.reduce(function(s,i){ return s + Number(i.amount||0); }, 0);
+
+  var group = function(key){
+    var m2 = {};
+    rows.forEach(function(i){
+      var k = i[key] || "Uncategorised";
+      m2[k] = (m2[k] || 0) + Number(i.amount || 0);
+    });
+    return Object.keys(m2).sort(function(a,b){ return m2[b] - m2[a]; })
+      .map(function(k){ return '<div class="kv"><span>' + esc(k) + '</span><b class="num">' + money(m2[k]) + "</b></div>"; }).join("");
+  };
+
+  if(!rows.length){
+    $("repBody").innerHTML = '<div class="empty">No submitted claims in this month.</div>';
+    return;
+  }
+  $("repBody").innerHTML =
+    '<div class="card"><div class="kv"><span>Total claimed</span><b class="num" style="font-size:20px">' + money(total) + "</b></div>" +
+    '<div class="kv"><span>Receipts</span><span class="num">' + rows.length + "</span></div></div>" +
+    '<div class="card"><label>By purpose</label>' + group("purpose") + "</div>" +
+    '<div class="card"><label>By expense type</label>' + group("expense_type") + "</div>" +
+    '<button class="primary full" onclick="monthlyPDF()">Download monthly summary PDF</button>';
+}
+async function loadPeople(){
+  if(ME.role !== "admin"){ $("repWho").innerHTML = '<option value="me">Me</option>'; return; }
+  var r = await sb.from("gl_claim_users").select("id,full_name,username").order("full_name");
+  if(r.error) return;
+  $("repWho").innerHTML = '<option value="all">Everyone</option>' +
+    r.data.map(function(u){ return '<option value="' + u.id + '">' + esc(u.full_name || u.username) + "</option>"; }).join("");
+  renderUsers(r.data);
+}
+
+/* ---------- admin: users ---------- */
+function renderUsers(list){
+  $("userList").innerHTML = list.map(function(u){
+    return '<div class="item"><div class="mid"><div class="t1">' + esc(u.full_name || u.username) + "</div>" +
+      '<div class="t2">' + esc(u.username) + "</div></div>" +
+      '<button class="small" onclick="resetPass(\'' + u.id + '\')">Reset password</button></div>';
+  }).join("");
+}
+async function addUser(){
+  var name = $("nuName").value.trim(), user = $("nuUser").value.trim().toLowerCase(), pass = $("nuPass").value;
+  if(!name || !user) return toast("Fill in the name and username.", true);
+  if(pass.length < 6) return toast("Password needs at least 6 characters.", true);
+  busy("Creating account…");
+  var hash = await sha256hex(pass);
+  var r = await sb.from("gl_claim_users").insert({ username:user, pass_hash:hash, full_name:name, role:$("nuRole").value });
+  done();
+  if(r.error) return toast(r.error.message, true);
+  $("nuName").value = ""; $("nuUser").value = ""; $("nuPass").value = "";
+  await loadPeople();
+  toast("Account created");
+}
+async function resetPass(id){
+  var pass = prompt("New password (at least 6 characters)");
+  if(!pass) return;
+  if(pass.length < 6) return toast("Too short.", true);
+  var hash = await sha256hex(pass);
+  var r = await sb.from("gl_claim_users").update({ pass_hash:hash }).eq("id", id);
+  if(r.error) return toast(r.error.message, true);
+  toast("Password updated");
+}
+
+/* ============================================================
+   PDF
+   Page 1  = summary table for finance
+   Page 2+ = receipt grid, 9 per page, numbered to match page 1
+   ============================================================ */
+var GOLD = [176, 132, 42];
+var INK  = [26, 26, 30];
+
+async function urlToDataUrl(url){
+  var res = await fetch(url, { mode:"cors" });
+  var blob = await res.blob();
+  return await readAsDataURL(blob);
+}
+
+function pdfHeader(doc, title, sub){
+  doc.setFillColor(INK[0], INK[1], INK[2]);
+  doc.rect(0, 0, 210, 26, "F");
+  doc.setTextColor(GOLD[0], GOLD[1], GOLD[2]);
+  doc.setFont("helvetica", "bold"); doc.setFontSize(15);
+  doc.text(title, 12, 13);
+  doc.setTextColor(210, 210, 214);
+  doc.setFont("helvetica", "normal"); doc.setFontSize(9);
+  doc.text(sub, 12, 20);
+}
+
+async function makePDF(batch, items){
+  items = items.slice().sort(function(a,b){ return String(a.spent_on).localeCompare(String(b.spent_on)); });
+  busy("Building PDF… 0/" + items.length);
+
+  var jsPDF = window.jspdf.jsPDF;
+  var doc = new jsPDF({ unit:"mm", format:"a4" });
+  var total = items.reduce(function(s,i){ return s + Number(i.amount||0); }, 0);
+
+  /* ---- page 1: summary ---- */
+  pdfHeader(doc, "EXPENSE CLAIM  " + batch.batch_no,
+    (batch.user_name || "") + "   ·   submitted " + dmy(batch.submitted_at || todayISO()) + "   ·   " + items.length + " receipts");
+
+  var y = 38;
+  doc.setTextColor(40, 40, 45);
+  doc.setFont("helvetica", "bold"); doc.setFontSize(8.5);
+  var X = { n:12, date:22, type:44, purp:72, desc:98, amt:174 };
+  doc.text("#", X.n, y); doc.text("DATE", X.date, y); doc.text("TYPE", X.type, y);
+  doc.text("FOR", X.purp, y); doc.text("DESCRIPTION", X.desc, y);
+  doc.text("AMOUNT (RM)", 198, y, { align:"right" });
+  y += 2;
+  doc.setDrawColor(190, 190, 195); doc.setLineWidth(0.3);
+  doc.line(12, y, 198, y);
+  y += 6;
+
+  doc.setFont("helvetica", "normal"); doc.setFontSize(9);
+  items.forEach(function(it, n){
+    if(y > 262){
+      doc.addPage();
+      pdfHeader(doc, "EXPENSE CLAIM  " + batch.batch_no, "continued");
+      y = 38;
+    }
+    if(n % 2 === 1){
+      doc.setFillColor(244, 244, 246);
+      doc.rect(11, y - 4.6, 187, 7, "F");
+    }
+    doc.setTextColor(60, 60, 66);
+    doc.text(String(n + 1), X.n, y);
+    doc.text(dmy(it.spent_on), X.date, y);
+    doc.text(clip(doc, it.expense_type || "-", 26), X.type, y);
+    doc.text(clip(doc, it.purpose || "-", 24), X.purp, y);
+    doc.setTextColor(25, 25, 30);
+    doc.text(clip(doc, it.description || "-", 70), X.desc, y);
+    doc.setFont("helvetica", "bold");
+    doc.text(Number(it.amount).toFixed(2), 198, y, { align:"right" });
+    doc.setFont("helvetica", "normal");
+    y += 7;
+  });
+
+  y += 2;
+  doc.setDrawColor(120, 120, 126); doc.line(120, y, 198, y);
+  y += 8;
+  doc.setFillColor(INK[0], INK[1], INK[2]);
+  doc.rect(120, y - 6.5, 78, 11, "F");
+  doc.setTextColor(235, 235, 238); doc.setFont("helvetica", "bold"); doc.setFontSize(10);
+  doc.text("TOTAL CLAIM", 124, y);
+  doc.setTextColor(GOLD[0], GOLD[1], GOLD[2]); doc.setFontSize(12);
+  doc.text("RM " + total.toFixed(2), 194, y, { align:"right" });
+
+  y += 22;
+  doc.setTextColor(120, 120, 126); doc.setFont("helvetica", "normal"); doc.setFontSize(8.5);
+  doc.text("Claimed by: ______________________", 12, y);
+  doc.text("Approved by: ______________________", 110, y);
+
+  /* ---- receipt pages: 3 x 3 ---- */
+  var perPage = 9, cols = 3;
+  var boxW = 58, boxH = 72, gapX = 65, gapY = 86;
+  var startX = 12, startY = 33;
+
+  for(var n2 = 0; n2 < items.length; n2++){
+    var it2 = items[n2];
+    var slot = n2 % perPage;
+    if(slot === 0){
+      doc.addPage();
+      pdfHeader(doc, "RECEIPTS  " + batch.batch_no,
+        "Page " + (Math.floor(n2 / perPage) + 1) + " of " + Math.ceil(items.length / perPage) + "   ·   numbers match the summary");
+    }
+    var col = slot % cols, row = Math.floor(slot / cols);
+    var bx = startX + col * gapX, by = startY + row * gapY;
+
+    busy("Building PDF… " + (n2 + 1) + "/" + items.length);
+    try {
+      var dataUrl = await urlToDataUrl(it2.thumb_url);
+      var img = await loadImg(dataUrl);
+      var s = Math.min(boxW / img.naturalWidth, boxH / img.naturalHeight);
+      var w = img.naturalWidth * s, h = img.naturalHeight * s;
+      var ix = bx + (boxW - w) / 2, iy = by + (boxH - h) / 2;
+      doc.setFillColor(245, 245, 247);
+      doc.rect(bx, by, boxW, boxH, "F");
+      doc.addImage(dataUrl, "JPEG", ix, iy, w, h);
+    } catch(e){
+      doc.setFillColor(238, 238, 240);
+      doc.rect(bx, by, boxW, boxH, "F");
+      doc.setTextColor(150, 150, 156); doc.setFontSize(8);
+      doc.text("image unavailable", bx + boxW / 2, by + boxH / 2, { align:"center" });
+    }
+    doc.setDrawColor(205, 205, 210); doc.setLineWidth(0.2);
+    doc.rect(bx, by, boxW, boxH);
+
+    var ty = by + boxH + 4.5;
+    doc.setFont("helvetica", "bold"); doc.setFontSize(8.5);
+    doc.setTextColor(GOLD[0], GOLD[1], GOLD[2]);
+    doc.text("#" + (n2 + 1), bx, ty);
+    doc.setTextColor(25, 25, 30);
+    doc.text("RM " + Number(it2.amount).toFixed(2), bx + boxW, ty, { align:"right" });
+    doc.setFont("helvetica", "normal"); doc.setFontSize(7.2);
+    doc.setTextColor(95, 95, 102);
+    doc.text(clip(doc, (it2.description || ""), boxW), bx, ty + 3.6);
+    doc.text(clip(doc, dmy(it2.spent_on) + "  ·  " + (it2.expense_type || "-") + "  ·  " + (it2.purpose || "-"), boxW), bx, ty + 7.0);
+  }
+
+  done();
+  doc.save(batch.batch_no + ".pdf");
+}
+
+function clip(doc, text, maxW){
+  text = String(text || "");
+  if(doc.getTextWidth(text) <= maxW) return text;
+  while(text.length > 1 && doc.getTextWidth(text + "…") > maxW) text = text.slice(0, -1);
+  return text + "…";
+}
+
+async function monthlyPDF(){
+  var m = $("repMonth").value || todayISO().slice(0,7);
+  var from = m + "-01";
+  var parts = m.split("-");
+  var nextM = new Date(Number(parts[0]), Number(parts[1]), 1);
+  var to = nextM.getFullYear() + "-" + String(nextM.getMonth()+1).padStart(2,"0") + "-01";
+
+  busy("Building report…");
+  var q = sb.from("gl_claim_items").select("*").eq("status","submitted")
+    .gte("spent_on", from).lt("spent_on", to).order("spent_on");
+  if(ME.role !== "admin") q = q.eq("user_id", ME.id);
+  else if($("repWho").value && $("repWho").value !== "all") q = q.eq("user_id", $("repWho").value);
+  var r = await q;
+  done();
+  if(r.error) return toast(r.error.message, true);
+  var rows = r.data || [];
+  if(!rows.length) return toast("Nothing to report for that month.", true);
+
+  var jsPDF = window.jspdf.jsPDF;
+  var doc = new jsPDF({ unit:"mm", format:"a4" });
+  var label = new Date(from + "T00:00:00").toLocaleDateString("en-GB", { month:"long", year:"numeric" });
+  var whoTxt = ME.role === "admin" && $("repWho").value === "all" ? "All staff" : (ME.role === "admin" ? ($("repWho").selectedOptions[0] || {}).text || "" : (ME.full_name || ME.username));
+  pdfHeader(doc, "MONTHLY CLAIM SUMMARY", label + "   ·   " + whoTxt + "   ·   " + rows.length + " receipts");
+
+  var total = rows.reduce(function(s,i){ return s + Number(i.amount||0); }, 0);
+  var y = 40;
+
+  var section = function(title, key){
+    var map = {};
+    rows.forEach(function(i){
+      var k = i[key] || "Uncategorised";
+      map[k] = (map[k] || 0) + Number(i.amount || 0);
+    });
+    doc.setFont("helvetica","bold"); doc.setFontSize(10); doc.setTextColor(30,30,35);
+    doc.text(title, 12, y); y += 3;
+    doc.setDrawColor(200,200,205); doc.line(12, y, 198, y); y += 6;
+    doc.setFont("helvetica","normal"); doc.setFontSize(9.5);
+    Object.keys(map).sort(function(a,b){ return map[b]-map[a]; }).forEach(function(k){
+      doc.setTextColor(60,60,66);
+      doc.text(k, 14, y);
+      doc.setFont("helvetica","bold"); doc.setTextColor(25,25,30);
+      doc.text("RM " + map[k].toFixed(2), 198, y, { align:"right" });
+      doc.setFont("helvetica","normal");
+      y += 6.5;
+    });
+    y += 8;
+  };
+
+  section("By purpose", "purpose");
+  section("By expense type", "expense_type");
+  if(ME.role === "admin") section("By person", "user_name");
+
+  doc.setFillColor(INK[0],INK[1],INK[2]);
+  doc.rect(12, y - 6.5, 186, 12, "F");
+  doc.setTextColor(235,235,238); doc.setFont("helvetica","bold"); doc.setFontSize(11);
+  doc.text("TOTAL FOR " + label.toUpperCase(), 16, y + 1);
+  doc.setTextColor(GOLD[0],GOLD[1],GOLD[2]); doc.setFontSize(13);
+  doc.text("RM " + total.toFixed(2), 194, y + 1, { align:"right" });
+
+  y += 18;
+  doc.setFont("helvetica","bold"); doc.setFontSize(9); doc.setTextColor(30,30,35);
+  doc.text("All receipts", 12, y); y += 6;
+  doc.setFont("helvetica","normal"); doc.setFontSize(8.5);
+  rows.forEach(function(it, n){
+    if(y > 280){ doc.addPage(); pdfHeader(doc, "MONTHLY CLAIM SUMMARY", label + " · continued"); y = 40; }
+    doc.setTextColor(70,70,76);
+    doc.text(dmy(it.spent_on), 12, y);
+    doc.text(clip(doc, it.expense_type || "-", 24), 34, y);
+    doc.text(clip(doc, it.purpose || "-", 24), 60, y);
+    doc.setTextColor(25,25,30);
+    doc.text(clip(doc, it.description || "-", 92), 86, y);
+    doc.text(Number(it.amount).toFixed(2), 198, y, { align:"right" });
+    y += 5.6;
+  });
+
+  doc.save("Claim-Summary-" + m + ".pdf");
+}
+
+/* ---------- nav ---------- */
+function go(t){
+  TAB = t;
+  ["add","draft","hist","rep","set"].forEach(function(k){
+    $("t-" + k).classList.toggle("hide", k !== t);
+  });
+  Array.prototype.forEach.call(document.querySelectorAll("nav.tabs button"), function(b){
+    b.classList.toggle("on", b.dataset.t === t);
+  });
+  if(t === "hist") loadHistory();
+  if(t === "rep"){ loadPeople().then(loadReport); }
+  if(t === "set" && ME.role === "admin") loadPeople();
+  syncTotBar();
+  window.scrollTo(0, 0);
+}
+
+boot();
+</script>
+</body>
+</html>
