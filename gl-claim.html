@@ -99,7 +99,13 @@
   nav.tabs button.on .ic{filter:none}
 
   .empty{text-align:center;color:var(--muted);padding:40px 20px;font-size:14px}
-  .qth{width:72px;height:96px;object-fit:cover;border-radius:8px;background:#000;flex:none;border:1px solid var(--line)}
+  .qth{width:72px;height:96px;object-fit:cover;border-radius:8px;background:#000;flex:none;border:1px solid var(--line);cursor:zoom-in}
+  .lb{position:fixed;inset:0;z-index:90;background:rgba(0,0,0,.94);display:flex;flex-direction:column}
+  .lb .lbbar{display:flex;align-items:center;gap:12px;padding:calc(10px + env(safe-area-inset-top)) 14px 10px;color:var(--muted);font-size:13px;border-bottom:1px solid #222}
+  .lb .lbbar button{margin-left:auto;padding:7px 14px;font-size:13px}
+  .lb .lbscroll{flex:1;overflow:auto;-webkit-overflow-scrolling:touch;padding:10px 0 calc(20px + env(safe-area-inset-bottom))}
+  .lb img{display:block;width:100%;height:auto;margin:0 auto;cursor:zoom-in}
+  .lb img.zoomed{width:260%;max-width:none;cursor:zoom-out}
   .qhead{display:flex;gap:12px;margin-bottom:10px}
   .qhead .qmid{flex:1;min-width:0}
   .qnum{font-size:12px;color:var(--gold);font-weight:700;margin-bottom:6px}
@@ -299,6 +305,16 @@
   </nav>
 </div>
 
+<div id="lightbox" class="lb hide">
+  <div class="lbbar">
+    <span id="lbLabel"></span>
+    <button onclick="closeLB()">Close</button>
+  </div>
+  <div class="lbscroll" id="lbScroll">
+    <img id="lbImg" alt="Receipt" onclick="toggleZoom()">
+  </div>
+</div>
+
 <script>
 /* ============================================================
    GL CLAIM
@@ -308,7 +324,7 @@
 var SB_URL = "";            // optional hard-code
 var SB_KEY = "";            // optional hard-code
 var BUCKET = "gl-claims";
-var APP_VERSION = "1.2 (bulk upload)";
+var APP_VERSION = "1.3 (tap to preview)";
 
 var sb = null;
 var ME = null;
@@ -629,6 +645,39 @@ function clearFile(){
   hide("formCard");
 }
 
+/* ---------- receipt preview ---------- */
+function openLB(src, label){
+  $("lbImg").classList.remove("zoomed");
+  $("lbImg").src = src;
+  $("lbLabel").textContent = label || "";
+  $("lbScroll").scrollTop = 0;
+  show("lightbox");
+  document.body.style.overflow = "hidden";
+}
+function closeLB(){
+  hide("lightbox");
+  $("lbImg").removeAttribute("src");
+  document.body.style.overflow = "";
+}
+function toggleZoom(){
+  var img = $("lbImg");
+  var z = img.classList.toggle("zoomed");
+  if(z){
+    var box = $("lbScroll");
+    box.scrollLeft = (box.scrollWidth - box.clientWidth) / 2;
+  } else {
+    $("lbScroll").scrollLeft = 0;
+  }
+}
+function lbQueue(i){
+  var q = QUEUE[i];
+  if(q) openLB(q.src.dataUrl, "Receipt " + (i + 1) + " of " + QUEUE.length);
+}
+function lbDraft(id){
+  var it = DRAFTS.filter(function(x){ return x.id === id; })[0];
+  if(it) openLB(it.file_kind === "pdf" ? it.thumb_url : it.file_url, it.description || "");
+}
+
 /* ---------- bulk queue ---------- */
 function catOptions(kind, selected){
   return CATS[kind].map(function(c){
@@ -648,7 +697,7 @@ function renderQueue(){
   $("queueList").innerHTML = QUEUE.map(function(q, i){
     return '<div class="card">' +
       '<div class="qhead">' +
-        '<img class="qth" src="' + q.src.dataUrl + '" alt="">' +
+        '<img class="qth" src="' + q.src.dataUrl + '" alt="" onclick="lbQueue(' + i + ')">' +
         '<div class="qmid">' +
           '<div class="qnum">Receipt ' + (i + 1) + " of " + QUEUE.length + (q.src.kind === "pdf" ? " \u00b7 PDF" : "") + "</div>" +
           '<div class="field" style="margin-bottom:8px"><input class="num" type="text" inputmode="decimal" placeholder="Amount RM" value="' + esc(q.amount) + '" oninput="qset(' + i + ',\'amount\',this.value)"></div>' +
@@ -815,7 +864,7 @@ function renderDrafts(){
   } else {
     box.innerHTML = DRAFTS.map(function(i, n){
       return '<div class="item">' +
-        '<img class="th" src="' + esc(i.thumb_url) + '" alt="" loading="lazy">' +
+        '<img class="th" src="' + esc(i.thumb_url) + '" alt="" loading="lazy" style="cursor:zoom-in" onclick="lbDraft(\'' + i.id + '\')">' +
         '<div class="mid">' +
           '<div class="t1">' + esc(i.description) + "</div>" +
           '<div class="t2"><span class="pill">' + esc(i.expense_type || "—") + '</span><span class="pill">' + esc(i.purpose || "—") + "</span></div>" +
