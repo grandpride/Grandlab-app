@@ -278,6 +278,21 @@
   .mixrow .mr-p{color:var(--gold); font-weight:650; font-size:13.5px; font-variant-numeric:tabular-nums}
   .mixrow .mr-x{background:none; border:0; color:var(--dim2); font-size:17px; padding:2px 0 2px 4px; cursor:pointer}
 
+  .itemdisc{
+    display:flex; align-items:center; gap:9px; margin:-2px 0 0; padding:8px 11px;
+    border:1px solid var(--border); border-top:0; background:#0d0d0d;
+  }
+  .itemdisc label{font-size:12px; color:var(--dim2); flex:0 0 auto}
+  .itemdisc input{
+    width:66px; background:#0b0b0b; border:1px solid var(--border); color:var(--txt);
+    border-radius:9px; padding:6px 8px; font-size:14px; outline:none; text-align:center;
+  }
+  .itemdisc input:focus{border-color:var(--gold)}
+  .itemdisc .mixcap{font-size:11px}
+  .itemdisc .ioff{margin-left:auto; font-size:12.5px; color:var(--gold); font-weight:650; font-variant-numeric:tabular-nums}
+  .mixrow + .itemdisc{border-radius:0}
+  .itemdisc:last-child{border-radius:0 0 11px 11px}
+
   .focrow{
     display:flex; align-items:center; gap:10px; margin:-2px 0 8px; padding:8px 11px;
     border:1px solid var(--border); border-top:0; border-radius:0 0 11px 11px; background:#0d0d0d;
@@ -451,7 +466,7 @@
     specs: {},
     custom: [],
     kb: {},
-    mix: { type: 'Sedan', title: 'sir', items: [], disc: 0, phone: '', pickQ: '', addOpen: false, foc: {} }
+    mix: { type: 'Sedan', items: [], idisc: {}, phone: '', pickQ: '', addOpen: false, foc: {} }
   };
 
   try {
@@ -919,19 +934,34 @@
     return v;
   }
 
+  function itemDisc(s) {
+    var v = Number(state.mix.idisc[s.name]);
+    return (isFinite(v) && v > 0) ? Math.min(v, 100) : 0;
+  }
+
+  function itemOff(s) {
+    return Math.round(priceFor(s, state.mix.type) * itemDisc(s) / 100);
+  }
+
   function mixTotals() {
-    var m = state.mix, retail = 0, cap = 100, anyCap = false, fixed = 0;
+    var m = state.mix, retail = 0, off = 0, rates = [], over = [], fixed = 0;
     m.items.forEach(function (s) {
       var p = priceFor(s, m.type);
+      var d = itemDisc(s);
       retail += p;
-      var c = itemCap(s);
-      if (c > 0) { anyCap = true; if (c < cap) cap = c; }
-      else { fixed += p; }
+      off += itemOff(s);
+      if (d > 0) {
+        rates.push(d);
+        var cap = itemCap(s);
+        if (cap === 0) fixed += p;
+        else if (d > cap) over.push({ name: s.name, cap: cap, pct: d });
+      }
     });
-    if (!anyCap) cap = 0;
-    var pct = Math.max(0, Math.min(Number(m.disc) || 0, 100));
-    var off = Math.round(retail * pct / 100);
-    return { retail: retail, cap: cap, fixed: fixed, pct: pct, off: off, final: retail - off };
+    var uniform = null;
+    if (rates.length && rates.length === m.items.filter(function (s) { return priceFor(s, m.type) > 0; }).length) {
+      uniform = rates.every(function (r) { return r === rates[0]; }) ? rates[0] : null;
+    }
+    return { retail: retail, off: off, final: retail - off, uniform: uniform, over: over, fixed: fixed };
   }
 
   function itemBlock(s, i, L, m) {
@@ -971,7 +1001,7 @@
     var out = [];
     if (t.off > 0) {
       out.push('\u{1F4B0} ' + MSG.retail[L] + ': ' + money(t.retail));
-      out.push('\u{1F3F7}\uFE0F ' + MSG.less[L] + ' ' + t.pct + '%: \u2212' + money(t.off));
+      out.push('\u{1F3F7}\uFE0F ' + MSG.less[L] + (t.uniform ? ' ' + t.uniform + '%' : '') + ': \u2212' + money(t.off));
       out.push('\u2705 ' + MSG.fin[L] + ': ' + money(t.final));
       out.push('');
       out.push(fill(MSG.terms[L], L));
@@ -1065,16 +1095,14 @@
   }
 
   function warnHtml() {
-    var m = state.mix, t = mixTotals(), out = '';
-    if (t.cap > 0 && t.pct > t.cap) {
-      out += '<div class="mixwarn"><i class="ti ti-alert-triangle"></i>Above the ' + t.cap +
-        '% ceiling in our discount policy. Check with Jimmy before you send this.</div>';
-    } else if (t.cap > 0 && t.pct === t.cap) {
-      out += '<div class="mixwarn"><i class="ti ti-alert-triangle"></i>That is the policy ceiling. Never open here \u2014 start around 10% and only move if they are walking away.</div>';
-    }
-    if (t.fixed > 0 && t.pct > 0) {
+    var t = mixTotals(), out = '';
+    t.over.forEach(function (o) {
+      out += '<div class="mixwarn"><i class="ti ti-alert-triangle"></i>' + esc(o.name) +
+        ' at ' + o.pct + '% is above our ' + o.cap + '% policy ceiling. Check with Jimmy before sending.</div>';
+    });
+    if (t.fixed > 0) {
       out += '<div class="mixwarn"><i class="ti ti-info-circle"></i>' + (money(t.fixed) || '') +
-        ' of this quote is normally fixed price \u2014 promos, a la carte panels and maintenance. It is being discounted anyway.</div>';
+        ' of this quote is normally fixed price \u2014 promos, a la carte panels and maintenance.</div>';
     }
     return out;
   }
@@ -1083,32 +1111,42 @@
     var t = mixTotals();
     return '<div class="mixtot">' +
       '<div><span>Retail</span><b>' + esc(money(t.retail) || 'RM0') + '</b></div>' +
-      (t.off > 0 ? '<div><span>Less ' + t.pct + '%</span><b>\u2212' + esc(money(t.off)) + '</b></div>' : '') +
+      (t.off > 0 ? '<div><span>Less' + (t.uniform ? ' ' + t.uniform + '%' : '') + '</span><b>\u2212' +
+        esc(money(t.off)) + '</b></div>' : '') +
       '<div class="mt-final"><span>Final</span><b>' + esc(money(t.final) || 'RM0') + '</b></div></div>';
   }
 
   function mixCartHtml() {
-    var m = state.mix, t = mixTotals();
+    var m = state.mix;
     if (!m.items.length) return '<div class="mixhint">No services selected yet.</div>';
+
     var rows = m.items.map(function (s, i) {
       var cap = itemCap(s);
+      var off = itemOff(s);
       var row = '<div class="mixrow"><div class="mr-n">' + esc(s.name) +
         (cap ? '' : '<small>normally fixed price</small>') +
         '</div><div class="mr-p">' + esc(money(priceFor(s, m.type)) || '-') + '</div>' +
         '<button class="mr-x" type="button" data-del="' + i + '" aria-label="Remove"><i class="ti ti-x"></i></button></div>';
+
+      row += '<div class="itemdisc"><label>Discount %</label>' +
+        '<input class="idisc" type="number" inputmode="numeric" min="0" max="100" data-idisc="' + esc(s.name) + '" value="' +
+        esc(m.idisc[s.name] || '') + '" placeholder="0">' +
+        '<span class="mixcap">' + (cap ? 'policy ' + cap + '%' : 'no ceiling') + '</span>' +
+        '<span class="ioff" data-ioff="' + esc(s.name) + '">' + (off > 0 ? '\u2212' + esc(money(off)) : '') + '</span></div>';
+
       if (s.category === 'Coating') {
         row += '<div class="focrow"><label>\u{1F381} FOC maintenance</label>' +
           '<input class="focin" type="text" data-foc="' + esc(s.name) + '" value="' +
-          esc(state.mix.foc[s.name] || '') + '" placeholder="e.g. 6"></div>';
+          esc(m.foc[s.name] || '') + '" placeholder="e.g. 6"></div>';
       }
       return row;
     }).join('');
 
-    var disc = '<div class="mixdisc"><label for="mixD">Discount %</label>' +
-      '<input id="mixD" type="number" inputmode="numeric" min="0" max="100" value="' + esc(m.disc || 0) + '">' +
-      '<span class="mixcap">' + (t.cap > 0 ? 'policy ' + t.cap + '%' : 'no policy ceiling') + '</span></div>';
+    var setall = '<div class="mixdisc"><label for="mixD">Set all %</label>' +
+      '<input id="mixD" type="number" inputmode="numeric" min="0" max="100" placeholder="\u2014">' +
+      '<span class="mixcap">fills every row above</span></div>';
 
-    return rows + disc + '<div id="mixWarn">' + warnHtml() + '</div>' +
+    return rows + setall + '<div id="mixWarn">' + warnHtml() + '</div>' +
       '<div id="mixTot">' + totHtml() + '</div>';
   }
 
@@ -1185,16 +1223,41 @@
     return 'https://wa.me/' + digits + '?text=' + encodeURIComponent(text || buildMessage());
   }
 
+  function liveTotals() {
+    var w = $('mixWarn'); if (w) w.innerHTML = warnHtml();
+    var tt = $('mixTot'); if (tt) tt.innerHTML = totHtml();
+    refreshMix('out');
+  }
+
   function bindMix() {
     var box = $('list');
 
     box.addEventListener('input', function (e) {
       if (e.target.id === 'mixQ') { state.mix.pickQ = e.target.value; var r = $('mixResults'); if (r) r.innerHTML = mixPickResults(); }
+      if (e.target.classList && e.target.classList.contains('idisc')) {
+        var nm = e.target.getAttribute('data-idisc');
+        state.mix.idisc[nm] = e.target.value;
+        var item = null;
+        state.mix.items.forEach(function (x) { if (x.name === nm) item = x; });
+        var cell = document.querySelector('[data-ioff="' + nm.replace(/"/g, '\\"') + '"]');
+        if (cell && item) { var o = itemOff(item); cell.textContent = o > 0 ? '\u2212' + money(o) : ''; }
+        liveTotals();
+        return;
+      }
+
       if (e.target.id === 'mixD') {
-        state.mix.disc = e.target.value;
-        var w = $('mixWarn'); if (w) w.innerHTML = warnHtml();
-        var tt = $('mixTot'); if (tt) tt.innerHTML = totHtml();
-        refreshMix('out');
+        var v = e.target.value;
+        state.mix.items.forEach(function (s) { state.mix.idisc[s.name] = v; });
+        Array.prototype.forEach.call(document.querySelectorAll('.idisc'), function (inp) {
+          inp.value = v;
+          var n2 = inp.getAttribute('data-idisc');
+          var it = null;
+          state.mix.items.forEach(function (x) { if (x.name === n2) it = x; });
+          var c2 = document.querySelector('[data-ioff="' + n2.replace(/"/g, '\\"') + '"]');
+          if (c2 && it) { var o2 = itemOff(it); c2.textContent = o2 > 0 ? '\u2212' + money(o2) : ''; }
+        });
+        liveTotals();
+        return;
       }
       if (e.target.id === 'mixPhone') { state.mix.phone = e.target.value; }
       if (e.target.classList && e.target.classList.contains('focin')) {
