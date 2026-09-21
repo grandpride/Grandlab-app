@@ -852,14 +852,14 @@
     fin:    { en: 'Final price', bm: 'Harga akhir', zh: '最终价钱' },
     total:  { en: 'Total', bm: 'Jumlah', zh: '总额' },
     terms:  {
-      en: 'To lock in this price we just need a Google review and the deposit {H}, then it is confirmed.',
-      bm: 'Untuk lock harga ni, kitorang cuma perlukan Google review dan deposit {H}, lepas tu confirm.',
-      zh: '要锁定这个价钱，{H}留个 Google review 加上订金就可以确认了。'
+      en: 'To lock this price, we just need a Google review and the deposit {H}.',
+      bm: 'Untuk lock harga ni, cuma perlukan Google review dan deposit {H}.',
+      zh: '要锁定这个价钱，{H}只需要留个 Google review 加订金。'
     },
     ask:    {
-      en: 'May I know when would suit you to bring the car in {H}?',
-      bm: 'Boleh saya tahu bila sesuai untuk {H} bawa kereta masuk?',
-      zh: '方便知道{H}什么时候适合把车开过来吗？'
+      en: "When's a good time for you to bring the car in?",
+      bm: 'Bila sesuai nak hantar kereta?',
+      zh: '什么时候方便把车开过来？'
     }
   };
 
@@ -967,16 +967,16 @@
   function itemBlock(s, i, L, m) {
     var out = [];
     var sp = (state.specs[s.brand] || {}).specs || {};
-    out.push((CATEMOJI[s.category] || '\u{1F539}') + ' ' + (i + 1) + ') ' + s.name);
+    out.push((i + 1) + ') ' + s.name);
     if (s._custom) {
       customBullets(s, L).forEach(function (b) { out.push('\u2022 ' + b); });
       return out;
     }
     var cov = coverageFor(s, L);
     if (cov && cov.length) {
-      out.push('\u{1F4CB} ' + LBL.covered[L] + ':');
+      out.push(LBL.covered[L] + ':');
       cov.forEach(function (x) {
-        if (x.charAt(0) === '*') out.push('   \u2733\uFE0F ' + x.slice(1));
+        if (x.charAt(0) === '*') out.push('   \u2022 ' + x.slice(1));
         else out.push('   \u2022 ' + x);
       });
     }
@@ -992,7 +992,7 @@
     if (sp.wcover) out.push('\u2022 ' + LBL.wcover[L] + ': ' + tr(sp.wcover, L));
     if (sp.maintenance) out.push('\u2022 ' + LBL.maint[L] + ': ' + tr(sp.maintenance, L));
     var fv = focValue(s, L);
-    if (fv) out.push('\u{1F381} ' + LBL.foc[L] + ': ' + fv);
+    if (fv) out.push('\u2022 ' + LBL.foc[L] + ': ' + fv);
     (sp.extra || []).forEach(function (e) { out.push('\u2022 ' + tr(e, L)); });
     return out;
   }
@@ -1000,16 +1000,16 @@
   function priceBlock(L, t) {
     var out = [];
     if (t.off > 0) {
-      out.push('\u{1F4B0} ' + MSG.retail[L] + ': ' + money(t.retail));
-      out.push('\u{1F3F7}\uFE0F ' + MSG.less[L] + (t.uniform ? ' ' + t.uniform + '%' : '') + ': \u2212' + money(t.off));
+      out.push(MSG.retail[L] + ': ' + money(t.retail));
+      out.push(MSG.less[L] + (t.uniform ? ' ' + t.uniform + '%' : '') + ': \u2212' + money(t.off));
       out.push('\u2705 ' + MSG.fin[L] + ': ' + money(t.final));
       out.push('');
       out.push(fill(MSG.terms[L], L));
     } else {
-      out.push('\u{1F4B0} ' + MSG.total[L] + ': ' + money(t.retail));
+      out.push(MSG.total[L] + ': ' + money(t.retail));
     }
     out.push('');
-    out.push('\u{1F4C5} ' + fill(MSG.ask[L], L));
+    out.push(fill(MSG.ask[L], L));
     return out;
   }
 
