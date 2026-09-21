@@ -466,7 +466,7 @@
     specs: {},
     custom: [],
     kb: {},
-    mix: { type: 'Sedan', items: [], idisc: {}, phone: '', pickQ: '', addOpen: false, foc: {} }
+    mix: { type: 'Sedan', len: 'short', mode: 'one', items: [], idisc: {}, phone: '', pickQ: '', addOpen: false, foc: {} }
   };
 
   try {
@@ -797,9 +797,9 @@
       zh: ['引擎盖', '叶子板', '保险杠', '车门', '车顶', '行李箱盖', '侧裙', '后视镜', '门把', '车头灯']
     },
     tbc: {
-      en: ['Panel list to be confirmed — we will send you the exact panels covered'],
-      bm: ['Senarai panel akan disahkan — kitorang akan hantar senarai tepat'],
-      zh: ['涵盖部位待确认 — 我们会把确切清单发给老板']
+      en: ['Panel list to be confirmed, we will send you the exact panels covered'],
+      bm: ['Senarai panel akan disahkan, kami akan hantar senarai tepat'],
+      zh: ['涵盖部位待确认，我们会把确切清单发给你']
     },
     coating: {
       en: ['Body coat', 'Windscreen & windows coat', 'Headlamp & rear lamp coat',
@@ -1013,6 +1013,38 @@
     return out;
   }
 
+  var SHORTLBL = {
+    covers:  { en: 'Covers', bm: 'Cover', zh: '\u6db5\u76d6' },
+    polish:  { en: 'Wash and 3 Steps Polish included.', bm: 'Termasuk cuci dan 3 Steps Polish.', zh: '\u5305\u62ec\u6d17\u8f66\u548c 3 Steps Polish\u3002' }
+  };
+
+  function joinCov(list, L) {
+    var clean = list.map(function (x) { return String(x).replace(/^\*/, ''); });
+    if (L === 'zh') return clean.join('\u3001');
+    return clean.map(function (x) { return x.charAt(0).toLowerCase() + x.slice(1); }).join(', ');
+  }
+
+  function itemBlockShort(s, i, L, m) {
+    var out = [(i + 1) + ') ' + s.name];
+    if (s._custom) {
+      customBullets(s, L).slice(0, 2).forEach(function (b) { out.push(b); });
+      return out;
+    }
+    var sp = (state.specs[s.brand] || {}).specs || {};
+    var nm = (s.name || '').toLowerCase();
+    var cov = coverageFor(s, L);
+    if (cov && cov.length && (s.category === 'PPF' || s.category === 'Wrapping')) {
+      out.push(SHORTLBL.covers[L] + ': ' + joinCov(cov, L));
+    }
+    if (sp.short) out.push(tr(sp.short, L));
+    if (s.category === 'Coating' && nm.indexOf('full car') > -1 && nm.indexOf('maintenance') < 0) {
+      out.push(SHORTLBL.polish[L]);
+    }
+    var fv = focValue(s, L);
+    if (fv) out.push(LBL.foc[L] + ': ' + fv);
+    return out;
+  }
+
   function buildParts() {
     var m = state.mix, L = state.lang, t = mixTotals(), parts = [];
     if (!m.items.length) return parts;
@@ -1023,7 +1055,7 @@
         lines.push(fill(MSG.quote[L], L));
         lines.push('');
       }
-      lines = lines.concat(itemBlock(s, i, L, m));
+      lines = lines.concat((m.len === 'full' ? itemBlock : itemBlockShort)(s, i, L, m));
       parts.push(lines.join('\n'));
     });
     parts.push(priceBlock(L, t).join('\n'));
@@ -1157,11 +1189,14 @@
       return '<button type="button" data-mixlang="' + l[0] + '" aria-pressed="' + (state.lang === l[0]) + '">' + esc(l[1]) + '</button>';
     }).join('');
     var modes = [['split', 'Split messages'], ['one', 'One message']].map(function (x) {
-      return '<button type="button" data-mixmode="' + x[0] + '" aria-pressed="' + ((m.mode || 'split') === x[0]) + '">' + esc(x[1]) + '</button>';
+      return '<button type="button" data-mixmode="' + x[0] + '" aria-pressed="' + ((m.mode || 'one') === x[0]) + '">' + esc(x[1]) + '</button>';
+    }).join('');
+    var lens = [['short', 'Short'], ['full', 'Full details']].map(function (x) {
+      return '<button type="button" data-mixlen="' + x[0] + '" aria-pressed="' + ((m.len || 'short') === x[0]) + '">' + esc(x[1]) + '</button>';
     }).join('');
 
     var body;
-    if ((m.mode || 'split') === 'one') {
+    if ((m.mode || 'one') === 'one') {
       body = '<div class="say">' + esc(buildMessage()) + '</div>' +
         '<div class="partbtns">' +
         '<button class="copy" type="button" data-pcopy="all"><i class="ti ti-copy"></i>Copy</button>' +
@@ -1181,6 +1216,7 @@
 
     return '<div class="blk"><h4>WhatsApp message</h4>' +
       '<div class="langbar mixlangbar">' + bar + '</div>' +
+      '<div class="chips mixchips modechips">' + lens + '</div>' +
       '<div class="chips mixchips modechips">' + modes + '</div>' +
       '<div class="mixsend"><input id="mixPhone" type="tel" inputmode="tel" placeholder="Customer number e.g. 0123456789" value="' + esc(m.phone) + '"></div>' +
       body +
@@ -1343,6 +1379,9 @@
         refreshMix('out');
         return;
       }
+
+      var ml2 = e.target.closest('[data-mixlen]');
+      if (ml2) { state.mix.len = ml2.getAttribute('data-mixlen'); refreshMix('out'); return; }
 
       var mo = e.target.closest('[data-mixmode]');
       if (mo) { state.mix.mode = mo.getAttribute('data-mixmode'); refreshMix('out'); return; }
