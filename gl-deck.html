@@ -1454,18 +1454,20 @@
     ppf: 'PPF', tint: 'Tint', wrap: 'Wrap', coating: 'Coating', wash: 'Wash',
     polish: 'Polish', detailing: 'Detailing', bike: 'Bike', products: 'Products',
     price: 'Price', compare: 'Compare', trust: 'Trust', logistics: 'Logistics',
-    stall: 'Objections', product: 'Product'
+    stall: 'Objections', product: 'Product', flow: 'General'
   };
 
   function label(g) { return GRPLBL[g] || (g.charAt(0).toUpperCase() + g.slice(1)); }
 
   function renderChips() {
     var box = $('chips');
-    if (state.q || state.tab === 'close' || state.tab === 'mix') { box.innerHTML = ''; box.style.display = 'none'; return; }
+    if (state.q || state.tab === 'mix') { box.innerHTML = ''; box.style.display = 'none'; return; }
     var gs = groupsFor(state.tab);
     if (gs.length < 2) { box.innerHTML = ''; box.style.display = 'none'; return; }
     box.style.display = 'flex';
-    box.innerHTML = '<button type="button" data-grp="" aria-pressed="' + (!state.grp) + '">All</button>' +
+    var isFlow = state.tab === 'close';
+    if (isFlow && (!state.grp || gs.indexOf(state.grp) < 0)) state.grp = gs[0];
+    box.innerHTML = (isFlow ? '' : '<button type="button" data-grp="" aria-pressed="' + (!state.grp) + '">All</button>') +
       gs.map(function (g) {
         return '<button type="button" data-grp="' + esc(g) + '" aria-pressed="' + (state.grp === g) + '">' + esc(label(g)) + '</button>';
       }).join('');
