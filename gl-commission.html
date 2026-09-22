@@ -434,6 +434,31 @@ function manualSvcNames(job){
   });
   return out;
 }
+/* The first page only holds the most recent 300 jobs, which covers roughly
+   two weeks - older jobs were unreachable even though the picker promised 90
+   days. Typing 3+ characters now queries gl_jobs directly across 6 months. */
+var _msT=null;
+function manualSearch_(q){
+  clearTimeout(_msT);
+  const v=String(q||'').trim();
+  if(v.length<3){ renderManualPick(v); return; }
+  _msT=setTimeout(async function(){
+    const since=Date.now()-183*86400000;
+    const like='%'+v.replace(/[%,()]/g,'')+'%';
+    const r=await sb.from('gl_jobs')
+      .select('id,plate,model,car_type,services,created_at,name,workshop_name')
+      .gte('created_at',since)
+      .or('plate.ilike.'+like+',name.ilike.'+like+',model.ilike.'+like+',workshop_name.ilike.'+like)
+      .order('created_at',{ascending:false}).limit(80);
+    if(!r.error && r.data){
+      // merge DB hits in front of what is already loaded, no duplicates
+      const seen={}; const merged=[];
+      r.data.concat(MANUAL_JOBS).forEach(function(x){ if(!seen[x.id]){ seen[x.id]=1; merged.push(x); } });
+      MANUAL_JOBS=merged;
+    }
+    renderManualPick(v);
+  }, 350);
+}
 function renderManualPick(q){
   const box=el('v_new');
   const needle=String(q||'').trim().toUpperCase();
@@ -446,7 +471,7 @@ function renderManualPick(q){
   box.innerHTML=
    '<button class="btn btn2" style="margin-bottom:12px" onclick="loadNew()">&#8592; BACK TO LIST</button>'+
    '<div class="card"><div class="sec">PICK A JOB</div>'+
-     '<div class="hint">Any job from the last 90 days &mdash; including ones NEW JOBS skipped.</div>'+
+     '<div class="hint">Recent jobs below. Type 3+ letters of a plate, name or car to search the last 6 months.</div>'+
      '<input id="mq" placeholder="Search plate, model or customer" '+
        'style="width:100%;margin:10px 0;padding:10px;border-radius:10px;border:1px solid #333;background:#111;color:#eee;font-family:inherit">'+
      (rows.length?rows.map(function(x,i){
@@ -454,12 +479,13 @@ function renderManualPick(q){
          '<div class="pl">'+esc(x.plate||'-')+'</div>'+
          '<div class="mid"><div>'+esc(x.model||'')+'</div>'+
            ((x.name||x.workshop_name)?'<div class="sub2" style="color:#F5C518">'+esc(x.name||x.workshop_name)+'</div>':'')+
-           '<div class="sub2">'+esc(manualSvcNames(x).map(function(s){return s.name}).join(', ').slice(0,90))+'</div>'+
+           '<div class="sub2">'+new Date(Number(x.created_at)).toLocaleDateString('en-GB',{day:'2-digit',month:'short'})+
+             ' &middot; '+esc(manualSvcNames(x).map(function(s){return s.name}).join(', ').slice(0,80))+'</div>'+
          '</div></div>';
      }).join(''):'<div class="empty">No match</div>')+
    '</div>';
   const inp=el('mq');
-  if(inp){ inp.value=q||''; inp.oninput=function(){ renderManualPick(this.value); };
+  if(inp){ inp.value=q||''; inp.oninput=function(){ manualSearch_(this.value); };
            if(q) { inp.focus(); inp.setSelectionRange(inp.value.length,inp.value.length); } }
   Array.from(box.querySelectorAll('.jrow')).forEach(function(d){
     d.onclick=function(){ openManualService(rows[Number(d.getAttribute('data-mi'))]); };
