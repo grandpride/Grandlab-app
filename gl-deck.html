@@ -141,6 +141,12 @@
   .maparrow{color:var(--dim2); font-size:15px; margin-top:1px}
 
   /* say block */
+  .optbar{display:flex; gap:6px; margin-bottom:8px}
+  .optbar button{
+    flex:1; background:#101010; border:1px solid var(--border); color:var(--dim);
+    border-radius:9px; padding:7px 6px; font-size:12.5px; font-weight:600; cursor:pointer;
+  }
+  .optbar button[aria-pressed="true"]{background:var(--gold); border-color:var(--gold); color:#111}
   .langbar{display:flex; gap:6px; margin-bottom:8px}
   .langbar button{
     background:#101010; border:1px solid var(--border); color:var(--dim);
@@ -418,6 +424,7 @@
         <span>Addressing</span>
         <button type="button" data-htitle="sir" aria-pressed="true">Sir</button>
         <button type="button" data-htitle="maam" aria-pressed="false">Ma'am</button>
+        <button type="button" data-htitle="bos" aria-pressed="false">Bos</button>
       </div>
       <div class="search">
         <i class="ti ti-search"></i>
@@ -460,6 +467,7 @@
     q: '',
     lang: 'en',
     title: 'sir',
+    optSel: {},
     deck: [],
     procs: [],
     services: [],
@@ -625,13 +633,29 @@
     return '<div class="blk"><h4>Their answer points to</h4><div class="map">' + rows + '</div></div>';
   }
 
-  function sayBlock(say, label) {
+  var OPTLBL = { short: 'Short', explain: 'Explain', push: 'Recommend' };
+
+  function sayBlock(say, label, alts, key) {
     if (!say) return '';
+    var opts = [];
+    if (alts && alts.short) opts.push(['short', alts.short]);
+    opts.push(['explain', say]);
+    if (alts && alts.push) opts.push(['push', alts.push]);
+    var sel = (key && state.optSel[key]) || (alts && alts.short ? 'short' : 'explain');
+    var cur = null;
+    opts.forEach(function (o) { if (o[0] === sel) cur = o[1]; });
+    if (!cur) { sel = 'explain'; cur = say; }
+
+    var optbar = opts.length > 1 ? '<div class="optbar">' + opts.map(function (o) {
+      return '<button type="button" data-opt="' + o[0] + '" data-optkey="' + esc(key || '') + '" aria-pressed="' + (o[0] === sel) + '">' + OPTLBL[o[0]] + '</button>';
+    }).join('') + '</div>' : '';
+
     var bar = LANGS.map(function (l) {
       return '<button type="button" data-lang="' + l[0] + '" aria-pressed="' + (state.lang === l[0]) + '">' + esc(l[1]) + '</button>';
     }).join('');
-    var text = say[state.lang] || say.en || '';
+    var text = cur[state.lang] || cur.en || '';
     return '<div class="blk"><h4>' + esc(label || 'The line to say') + '</h4>' +
+      optbar +
       '<div class="langbar">' + bar + '</div>' +
       '<div class="say">' + esc(fill(text, state.lang)) + '</div>' +
       '<button class="copy" type="button"><i class="ti ti-copy"></i>Copy</button></div>';
@@ -688,7 +712,7 @@
         b += '<h5>Worth knowing</h5>' +
           c.notes.map(function (x) { return '<div class="pnote">' + esc(x) + '</div>'; }).join('');
       }
-      if (c.tell) b += sayBlock(c.tell, 'What to tell the customer');
+      if (c.tell) b += sayBlock(c.tell, 'What to tell the customer', c.alts, 'p:' + p.slug);
       return '<details class="proc" data-proc="' + esc(p.slug) + '"><summary>' +
         '<div class="ptitle">' + esc(p.title) +
         (covers ? '<div class="pcovers">' + esc(covers) + esc(more) + '</div>' : '') +
@@ -721,7 +745,7 @@
     h += procsHtml(item.grp);
     h += askBlock(c.ask);
     h += mapBlock(c.map);
-    h += sayBlock(c.say);
+    h += sayBlock(c.say, null, c.alts, 'k:' + item.slug);
     h += listBlock('Never do this', c.avoid, 'avoid');
     h += listBlock('Worth knowing', c.notes);
     h += kbBlock(item.kb_keys);
@@ -732,7 +756,7 @@
     var c = item.content || {};
     var h = '';
     if (c.why) h += '<div class="blk"><h4>Why they are asking</h4><p>' + esc(c.why) + '</p></div>';
-    h += sayBlock(c.say, 'What we say');
+    h += sayBlock(c.say, 'What we say', c.alts, 'r:' + item.slug);
     h += listBlock('Never do this', c.avoid, 'avoid');
     h += listBlock('Worth knowing', c.notes);
     h += kbBlock(item.kb_keys);
@@ -743,7 +767,7 @@
     var c = item.content || {};
     var h = '';
     if (c.goal) h += '<div class="blk"><h4>Goal of this stage</h4><p>' + esc(c.goal) + '</p></div>';
-    h += sayBlock(c.send, 'What to send');
+    h += sayBlock(c.send, 'What to send', c.alts, 'c:' + item.slug);
     h += listBlock('What kills it here', c.kills, 'avoid');
     if (c.next) h += '<div class="blk"><h4>Move on when</h4><p>' + esc(c.next) + '</p></div>';
     h += kbBlock(item.kb_keys);
@@ -865,7 +889,8 @@
 
   var HON = {
     sir:  { en: 'sir',    bm: 'encik', zh: '老板' },
-    maam: { en: "ma'am",  bm: 'puan',  zh: '老板娘' }
+    maam: { en: "ma'am",  bm: 'puan',  zh: '老板娘' },
+    bos:  { en: 'boss',   bm: 'bos',   zh: '老板' }
   };
 
   function hon(L) { return (HON[state.title] || HON.sir)[L]; }
@@ -1227,7 +1252,7 @@
     var types = TYPES.map(function (t) {
       return '<button type="button" data-mtype="' + t + '" aria-pressed="' + (state.mix.type === t) + '">' + t + '</button>';
     }).join('');
-    var hons = [['sir', 'Sir'], ['maam', "Ma'am"]].map(function (h) {
+    var hons = [['sir', 'Sir'], ['maam', "Ma'am"], ['bos', 'Bos']].map(function (h) {
       return '<button type="button" data-mtitle="' + h[0] + '" aria-pressed="' + (state.title === h[0]) + '">' + esc(h[1]) + '</button>';
     }).join('');
     return '<div class="card" style="padding:14px 15px">' +
@@ -1521,6 +1546,29 @@
 
   /* ---------------- events ---------------- */
 
+  function rerenderKeepOpen() {
+    var sel = function (q, attr) {
+      var out = [];
+      Array.prototype.forEach.call(document.querySelectorAll(q), function (d) { out.push(d.getAttribute(attr)); });
+      return out;
+    };
+    var open = sel('.card[open]', 'data-slug');
+    var openProcs = sel('.proc[open]', 'data-proc');
+    var openPrices = sel('.prices[open]', 'data-prices');
+    var y = window.scrollY;
+    renderList();
+    var reopen = function (list, q) {
+      list.forEach(function (v) {
+        var d = document.querySelector(q.replace('%', String(v).replace(/"/g, '\\"')));
+        if (d) d.setAttribute('open', '');
+      });
+    };
+    reopen(open, '.card[data-slug="%"]');
+    reopen(openProcs, '.proc[data-proc="%"]');
+    reopen(openPrices, '.prices[data-prices="%"]');
+    window.scrollTo(0, y);
+  }
+
   function syncTitleUI() {
     Array.prototype.forEach.call(document.querySelectorAll('[data-htitle]'), function (b) {
       b.setAttribute('aria-pressed', String(b.getAttribute('data-htitle') === state.title));
@@ -1572,37 +1620,19 @@
     });
 
     $('list').addEventListener('click', function (e) {
+      var ob = e.target.closest('[data-opt]');
+      if (ob) {
+        var ok = ob.getAttribute('data-optkey');
+        if (ok) state.optSel[ok] = ob.getAttribute('data-opt');
+        rerenderKeepOpen();
+        return;
+      }
+
       var lb = e.target.closest('.langbar button');
       if (lb && !lb.hasAttribute('data-mixlang')) {
         state.lang = lb.getAttribute('data-lang');
         try { localStorage.setItem('gl_deck_lang', state.lang); } catch (err) { /* UI state only */ }
-        var open = [];
-        Array.prototype.forEach.call(document.querySelectorAll('.card[open]'), function (d) {
-          open.push(d.getAttribute('data-slug'));
-        });
-        var openProcs = [];
-        Array.prototype.forEach.call(document.querySelectorAll('.proc[open]'), function (d) {
-          openProcs.push(d.getAttribute('data-proc'));
-        });
-        var openPrices = [];
-        Array.prototype.forEach.call(document.querySelectorAll('.prices[open]'), function (d) {
-          openPrices.push(d.getAttribute('data-prices'));
-        });
-        var y = window.scrollY;
-        renderList();
-        open.forEach(function (s) {
-          var d = document.querySelector('.card[data-slug="' + s + '"]');
-          if (d) d.setAttribute('open', '');
-        });
-        openProcs.forEach(function (s) {
-          var d = document.querySelector('.proc[data-proc="' + s + '"]');
-          if (d) d.setAttribute('open', '');
-        });
-        openPrices.forEach(function (s) {
-          var d = document.querySelector('.prices[data-prices="' + s + '"]');
-          if (d) d.setAttribute('open', '');
-        });
-        window.scrollTo(0, y);
+        rerenderKeepOpen();
         return;
       }
 
