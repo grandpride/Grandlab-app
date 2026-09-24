@@ -266,6 +266,22 @@ textarea{min-height:120px}
         <button class="chip" data-f="ghost" onclick="pickCaseFilter(this)">Ghost</button>
       </div>
     </div>
+    <div class="card" id="caseForm" style="display:none">
+      <div class="card-t"><i class="ti ti-edit"></i> <span id="caseFormTitle">Customer details</span></div>
+      <label>Customer name</label>
+      <input type="text" id="c_title" placeholder="e.g. Encik Rahman">
+      <label style="margin-top:11px">Phone number</label>
+      <input type="text" id="c_phone" inputmode="tel" placeholder="e.g. 0123456789">
+      <label style="margin-top:11px">Car model</label>
+      <input type="text" id="c_car" placeholder="e.g. Perodua Alza, black">
+      <div class="err" id="caseErr"></div>
+      <div class="row" style="margin-top:12px">
+        <button class="btn btn-pri btn-sm" onclick="caseSave()"><i class="ti ti-device-floppy"></i> Save</button>
+        <button class="btn btn-ghost btn-sm" onclick="caseCancel()">Cancel</button>
+        <button class="btn btn-ghost btn-sm" onclick="caseDelete()" style="margin-left:auto;color:#ff6b6b"><i class="ti ti-trash"></i></button>
+      </div>
+    </div>
+
     <div id="caseOut"></div>
   </div>
 
@@ -1022,18 +1038,20 @@ async function loadCases(){
   box.innerHTML = CASES.map(c => {
     const when = new Date(c.updated_at).toLocaleString();
     const mine = CASE && CASE.id === c.id;
+    const bits = [c.phone, c.car_model, c.created_by, when].filter(Boolean).map(esc).join(" · ");
     return `<div class="caserow ${mine ? "on" : ""}" onclick="openCase('${c.id}')">
       <div class="ct">
         <div class="cn">${esc(c.title)}</div>
-        <div class="cm">${esc(c.car_model || "")}${c.car_model ? " · " : ""}${esc(c.created_by || "")} · ${esc(when)}</div>
+        <div class="cm">${bits}</div>
       </div>
+      ${c.phone ? `<a class="btn btn-ghost btn-sm" href="https://wa.me/${esc(waNum(c.phone))}" target="_blank" rel="noopener" onclick="event.stopPropagation()"><i class="ti ti-brand-whatsapp"></i></a>` : ""}
+      <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();editCase('${c.id}')"><i class="ti ti-pencil"></i></button>
       <span class="pill ${c.status}">${c.status}</span>
     </div>`;
   }).join("") + `
     <div class="card" style="margin-top:12px">
       <div class="card-t"><i class="ti ti-settings"></i> Current case</div>
       <div class="row">
-        <button class="btn btn-ghost btn-sm" onclick="renameCase()"><i class="ti ti-pencil"></i> Rename</button>
         <button class="btn btn-ghost btn-sm" onclick="setCaseStatus('booked')"><i class="ti ti-check"></i> Booked</button>
         <button class="btn btn-ghost btn-sm" onclick="setCaseStatus('ghost')"><i class="ti ti-ghost"></i> Ghost</button>
         <button class="btn btn-ghost btn-sm" onclick="setCaseStatus('open')"><i class="ti ti-rotate"></i> Reopen</button>
@@ -1086,14 +1104,49 @@ async function saveMsg(role, content, cards){
   } catch (e) { /* never break the reply */ }
 }
 
-async function renameCase(){
-  if (!CASE) { alert("Open a case first."); return; }
-  const t = prompt("Name this customer", CASE.title);
-  if (!t) return;
-  const { error } = await sb.from("gl_mia_case").update({ title: t.trim() }).eq("id", CASE.id);
-  if (error) { alert(error.message); return; }
-  CASE.title = t.trim();
-  caseChip(); loadCases();
+function waNum(p){
+  let d = String(p || "").replace(/[^0-9]/g, "");
+  if (d.startsWith("0")) d = "6" + d;          // 012... -> 6012...
+  if (!d.startsWith("6")) d = "6" + d;
+  return d;
+}
+
+let CASE_EDIT = null;
+
+function editCase(id){
+  const c = CASES.find(x => x.id === id);
+  if (!c) return;
+  CASE_EDIT = c;
+  $("caseForm").style.display = "block";
+  $("caseFormTitle").textContent = "Customer details";
+  $("c_title").value = c.title || "";
+  $("c_phone").value = c.phone || "";
+  $("c_car").value   = c.car_model || "";
+  $("caseErr").textContent = "";
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function caseCancel(){ CASE_EDIT = null; $("caseForm").style.display = "none"; }
+
+async function caseSave(){
+  if (!CASE_EDIT) return;
+  const err = $("caseErr"); err.textContent = "";
+  const title = $("c_title").value.trim();
+  if (!title) { err.textContent = "Give the customer a name."; return; }
+  const patch = { title: title, phone: $("c_phone").value.trim() || null, car_model: $("c_car").value.trim() || null };
+  const { error } = await sb.from("gl_mia_case").update(patch).eq("id", CASE_EDIT.id);
+  if (error) { err.textContent = error.message; return; }
+  if (CASE && CASE.id === CASE_EDIT.id) Object.assign(CASE, patch);
+  caseCancel(); caseChip(); loadCases();
+}
+
+async function caseDelete(){
+  if (!CASE_EDIT) return;
+  if (!confirm("Delete " + CASE_EDIT.title + " and the whole chat?")) return;
+  const { error } = await sb.from("gl_mia_case").delete().eq("id", CASE_EDIT.id);
+  if (error) { $("caseErr").textContent = error.message; return; }
+  if (CASE && CASE.id === CASE_EDIT.id) { CASE = null; PENDING = []; $("coachOut").innerHTML = ""; }
+  caseCancel(); caseChip(); loadCases();
 }
 
 async function setCaseStatus(st){
