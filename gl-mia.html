@@ -131,6 +131,29 @@ textarea{min-height:120px}
 .err{color:var(--red);font-size:13px;margin-top:10px;line-height:1.5}
 .ok{color:var(--green);font-size:13px;margin-top:10px}
 
+/* ---------- cases, clarify, admin ---------- */
+.casebar{display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+.casebar .who{font-size:12px;color:var(--text2)}
+.caserow{display:flex;align-items:center;gap:10px;padding:11px 12px;border:1px solid var(--border);border-radius:12px;background:#101010;margin-bottom:8px;cursor:pointer}
+.caserow.on{border-color:var(--gold);background:#161206}
+.caserow .ct{flex:1;min-width:0}
+.caserow .cn{font-weight:700;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.caserow .cm{font-size:11px;color:var(--text2);margin-top:2px}
+.pill{font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;padding:3px 8px;border-radius:999px;border:1px solid var(--border);color:var(--text2)}
+.pill.open{color:#f0c000;border-color:#5a4a00}
+.pill.booked{color:#41d18a;border-color:#1d5236}
+.pill.ghost{color:#9a9a9a}
+.pill.closed{color:#9a9a9a}
+.clarify{border:1px solid var(--gold);border-radius:14px;padding:15px;background:#161206;margin-bottom:12px}
+.clarify .q{font-weight:800;font-size:15px;margin-bottom:12px}
+.opts{display:flex;flex-direction:column;gap:8px}
+.opts button{background:#101010;border:1px solid var(--border);color:var(--text);border-radius:11px;padding:12px;font-size:14px;font-weight:600;cursor:pointer;text-align:left;font-family:inherit}
+.opts button:hover{border-color:var(--gold)}
+.note{font-size:12.5px;color:var(--text2);border-left:2px solid var(--gold);padding-left:10px;margin-bottom:12px}
+.langsec{font-size:11px;font-weight:800;letter-spacing:.18em;text-transform:uppercase;color:var(--text2);margin:16px 0 8px}
+.urow{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--border);border-radius:11px;background:#101010;margin-bottom:8px}
+.urow .un{flex:1;font-weight:700;font-size:14px}
+
 /* ---------- login gate ---------- */
 .gate{position:fixed;inset:0;background:var(--bg);z-index:50;display:flex;align-items:center;justify-content:center;padding:24px}
 .gate.hidden{display:none}
@@ -144,6 +167,18 @@ textarea{min-height:120px}
 <body>
 
 <a class="back" href="https://grandpride.github.io/Grandlab-app/gl-hub.html"><i class="ti ti-arrow-left"></i> Hub</a>
+
+<!-- ============ PIN ============ -->
+<div id="pinGate" class="gate hidden">
+  <div class="gate-box">
+    <div style="font-weight:900;font-size:26px;letter-spacing:.5px">M<span style="color:var(--gold)">IA</span></div>
+    <div style="font-size:11px;color:var(--text2);letter-spacing:.24em;text-transform:uppercase;margin:6px 0 22px">Who's on the floor?</div>
+    <input id="pinUser" type="text" autocomplete="off" placeholder="Username">
+    <input id="pinCode" type="password" inputmode="numeric" autocomplete="off" placeholder="PIN" onkeydown="if(event.key==='Enter')doPin()">
+    <div class="err" id="pinErr"></div>
+    <button class="btn btn-pri" onclick="doPin()">Start</button>
+  </div>
+</div>
 
 <!-- ============ LOGIN ============ -->
 <div id="gate" class="gate">
@@ -169,14 +204,20 @@ textarea{min-height:120px}
 
   <div class="tabs">
     <button class="tab on" data-v="coach" onclick="showTab('coach')">Coach</button>
-    <button class="tab" data-v="cust" onclick="showTab('cust')">Customer</button>
+    <button class="tab" data-v="case" onclick="showTab('case')">Cases</button>
     <button class="tab" data-v="tpl" onclick="showTab('tpl')">Templates</button>
     <button class="tab" data-v="hist" onclick="showTab('hist')">History</button>
     <button class="tab" data-v="set" onclick="showTab('set')">Knowledge</button>
+    <button class="tab" data-v="adm" id="admTab" style="display:none" onclick="showTab('adm')">Admin</button>
   </div>
 
   <!-- ============ COACH ============ -->
   <div class="view on" id="v-coach">
+    <div class="casebar">
+      <span class="pill open" id="caseChip">No case</span>
+      <button class="btn btn-ghost btn-sm" onclick="showTab('case')"><i class="ti ti-users"></i> Cases</button>
+      <span class="who" id="whoAmI"></span>
+    </div>
     <div class="card">
       <div class="card-t"><i class="ti ti-message-2-question"></i> What did the customer say?</div>
       <textarea id="coachIn" placeholder="Paste the customer's message, or the whole chat so far.&#10;&#10;You can also drop in a screenshot below — MIA will read both sides."></textarea>
@@ -211,16 +252,49 @@ textarea{min-height:120px}
     <div id="coachOut"></div>
   </div>
 
-  <!-- ============ CUSTOMER ============ -->
-  <div class="view" id="v-cust">
-    <div class="chat" id="chat"></div>
-    <div style="text-align:center;padding-bottom:20px">
-      <button class="btn btn-ghost btn-sm" onclick="resetChat()"><i class="ti ti-refresh"></i> Start over</button>
+  <!-- ============ CASES ============ -->
+  <div class="view" id="v-case">
+    <div class="card">
+      <div class="card-t"><i class="ti ti-users"></i> Customers</div>
+      <div class="row" style="margin-bottom:10px">
+        <button class="btn btn-pri btn-sm" onclick="newCase()"><i class="ti ti-plus"></i> New customer</button>
+      </div>
+      <div class="chips" id="caseFilter">
+        <button class="chip on" data-f="open" onclick="pickCaseFilter(this)">Open</button>
+        <button class="chip" data-f="all" onclick="pickCaseFilter(this)">All</button>
+        <button class="chip" data-f="booked" onclick="pickCaseFilter(this)">Booked</button>
+        <button class="chip" data-f="ghost" onclick="pickCaseFilter(this)">Ghost</button>
+      </div>
     </div>
-    <div class="composer" id="composer" style="display:none">
-      <div class="composer-in">
-        <textarea id="custIn" rows="1" placeholder="Type as the customer…" onkeydown="custKey(event)"></textarea>
-        <button class="btn btn-pri" onclick="sendCust()"><i class="ti ti-send"></i></button>
+    <div id="caseOut"></div>
+  </div>
+
+  <!-- ============ ADMIN ============ -->
+  <div class="view" id="v-adm">
+    <div class="card">
+      <div class="card-t"><i class="ti ti-user-shield"></i> Advisors</div>
+      <div class="hint">Everyone signs in with a username and PIN. Only admins can change this list.</div>
+      <div id="userOut" style="margin-top:12px"></div>
+      <button class="btn btn-ghost btn-sm btn-block" style="margin-top:10px" onclick="userForm(null)">
+        <i class="ti ti-plus"></i> Add advisor
+      </button>
+    </div>
+    <div class="card" id="userCard" style="display:none">
+      <div class="card-t"><i class="ti ti-edit"></i> <span id="userFormTitle">New advisor</span></div>
+      <label>Username</label>
+      <input type="text" id="u_name" placeholder="e.g. shafiq">
+      <label style="margin-top:11px">PIN <span id="pinHint" style="color:var(--text2)">(4 digits or more)</span></label>
+      <input type="text" id="u_pin" inputmode="numeric" placeholder="Leave blank to keep the current PIN">
+      <label style="margin-top:11px">Role</label>
+      <select id="u_role" style="width:100%;background:#101010;border:1px solid var(--border);border-radius:11px;color:var(--text);padding:12px 13px;font-size:15px;font-family:inherit;outline:none">
+        <option value="sa">Sales advisor</option>
+        <option value="admin">Admin</option>
+      </select>
+      <label style="margin-top:11px"><input type="checkbox" id="u_active" checked> Active</label>
+      <div class="err" id="userErr"></div>
+      <div class="row" style="margin-top:12px">
+        <button class="btn btn-pri btn-sm" onclick="userSave()"><i class="ti ti-device-floppy"></i> Save</button>
+        <button class="btn btn-ghost btn-sm" onclick="userCancel()">Cancel</button>
       </div>
     </div>
   </div>
@@ -355,13 +429,16 @@ const esc = s => (s == null ? "" : String(s)).replace(/[&<>"]/g, c => ({"&":"&am
 
 let KB = {};
 let SHOTS = [];          // [{media_type, data, url}]
-let CHAT = [];           // customer-tab history
+let MIA_USER = null;      // { id, username, role, pin }
+let CASE = null;          // the customer case in progress
+let CASES = [];
+let CASE_FILTER = "open";
+let PENDING = [];         // the message thread sent to MIA for this case
 let BUSY = false;
 let LAST_LOG = null;      // { id, starred } for the reply currently on screen
 let HIST = [];
 let HIST_FILTER = "all";
 let STAGE = "auto";
-let THREAD = null;        // id of the customer conversation in progress
 
 /* ---------- the avatar ---------- */
 function avatarSvg(){
@@ -417,7 +494,34 @@ async function start(){
   $("gate").classList.add("hidden");
   await loadKB();
   paintAvatar();
-  restoreChat();
+  const saved = sessionStorage.getItem("gl_mia_who");
+  if (saved) { try { MIA_USER = JSON.parse(saved); } catch (e) { MIA_USER = null; } }
+  if (MIA_USER) afterPin(); else $("pinGate").classList.remove("hidden");
+}
+
+/* ---------- who is on the floor ---------- */
+async function doPin(){
+  const err = $("pinErr"); err.textContent = "";
+  const u = $("pinUser").value.trim(), pin = $("pinCode").value.trim();
+  if (!u || !pin) { err.textContent = "Username and PIN please."; return; }
+  const { data, error } = await sb.rpc("gl_mia_login", { p_username: u, p_pin: pin });
+  if (error) { err.textContent = error.message; return; }
+  if (!data || !data.length) { err.textContent = "Wrong username or PIN."; return; }
+  MIA_USER = { id: data[0].id, username: data[0].username, role: data[0].role, pin: pin };
+  sessionStorage.setItem("gl_mia_who", JSON.stringify(MIA_USER));
+  $("pinCode").value = "";
+  afterPin();
+}
+function afterPin(){
+  $("pinGate").classList.add("hidden");
+  $("whoAmI").textContent = MIA_USER.username + (MIA_USER.role === "admin" ? " · admin" : "");
+  $("admTab").style.display = MIA_USER.role === "admin" ? "" : "none";
+  loadCases();
+}
+function signOutPin(){
+  MIA_USER = null; CASE = null; PENDING = [];
+  sessionStorage.removeItem("gl_mia_who");
+  $("pinGate").classList.remove("hidden");
 }
 sb.auth.getSession().then(({ data }) => {
   if (data && data.session) start(); else paintAvatar();
@@ -449,9 +553,10 @@ function showTab(v){
   document.querySelectorAll(".tab").forEach(t => t.classList.toggle("on", t.dataset.v === v));
   document.querySelectorAll(".view").forEach(x => x.classList.remove("on"));
   $("v-" + v).classList.add("on");
-  $("composer").style.display = (v === "cust") ? "block" : "none";
   if (v === "hist") loadHistory();
   if (v === "tpl")  loadTpl();
+  if (v === "case") loadCases();
+  if (v === "adm")  loadUsers();
   window.scrollTo({ top: 0 });
 }
 
@@ -512,7 +617,7 @@ async function callMia(mode, messages){
   let out;
   try { out = await r.json(); } catch (e) { throw new Error("MIA sent back something unreadable."); }
   if (!r.ok || out.error) throw new Error(out.error || ("Request failed (" + r.status + ")"));
-  return out.text || "";
+  return out;
 }
 
 /* ---------- coach tab ---------- */
@@ -525,63 +630,90 @@ async function askCoach(){
   const err = $("coachErr"); err.textContent = "";
   const txt = $("coachIn").value.trim();
   if (!txt && !SHOTS.length) { err.textContent = "Paste the customer's message, or add a screenshot."; return; }
+  if (!CASE) { await newCase(txt); }
 
   const content = SHOTS.map(s => ({ type: "image", source: { type: "base64", media_type: s.media_type, data: s.data } }));
   content.push({ type: "text", text: txt || "Here is the chat so far. What should I send next?" });
 
+  PENDING.push({ role: "user", content: content });
+  await saveMsg("user", txt || "(screenshot only)");
+  $("coachIn").value = "";
+  SHOTS = []; renderShots();
+  await sendToMia(txt || "(screenshot only)");
+}
+
+/* the advisor tapped one of MIA's clarify buttons */
+async function answerClarify(ans){
+  if (BUSY) return;
+  PENDING.push({ role: "user", content: [{ type: "text", text: ans }] });
+  await saveMsg("user", ans);
+  await sendToMia(ans);
+}
+
+async function sendToMia(logQ){
   $("coachGo").disabled = true;
   thinking(true, "Reading the chat…");
   $("coachOut").innerHTML = '<div class="empty">Working out the best reply…</div>';
   try {
-    const out = await callMia("coach", [{ role: "user", content }]);
-    renderCoach(out);
-    logAsk(txt || "(screenshot only)", out);
+    const out = await callMia("coach", PENDING.map(m => ({ role: m.role, content: m.content })));
+    const raw = out.text || "";
+    PENDING.push({ role: "assistant", content: [{ type: "text", text: raw }] });
+    await saveMsg("assistant", raw, out.cards_used || []);
+    renderReply(out);
+    logAsk(logQ, raw);
   } catch (e) {
     $("coachOut").innerHTML = "";
-    err.textContent = e.message;
+    $("coachErr").textContent = e.message;
   }
   thinking(false);
   $("coachGo").disabled = false;
 }
 
-const SECTIONS = [
-  { k: "read", label: "Read on the customer", meta: true,  re: /📖\s*READ/ },
-  { k: "goal", label: "Goal of this message", meta: true,  re: /🎯\s*GOAL[^\n]*/ },
-  { k: "en",   label: "English",              meta: false, re: /🇬🇧\s*ENGLISH/ },
-  { k: "bm",   label: "Bahasa Melayu",        meta: false, re: /🇲🇾\s*BAHASA\s*MELAYU/ },
-  { k: "cn",   label: "中文",                  meta: false, re: /🇨🇳\s*中文/ },
-  { k: "why",  label: "Why this works",       meta: true,  re: /💡\s*WHY/ },
-  { k: "next", label: "What's next",          meta: true,  re: /(?:[\u23ED\u23EF\u27A1]\uFE0F?\s*)?WHAT[''`\u2019]?S\s*NEXT/ }
-];
+/* ---------- rendering MIA's JSON ---------- */
+const LANGS = [["en","English"],["bm","Bahasa Melayu"],["zh","中文"]];
+const OPTS  = [["short","Short"],["explain","Explain"],["push","Recommend and push"]];
 
-function renderCoach(raw){
-  const found = [];
-  SECTIONS.forEach(s => {
-    const m = s.re.exec(raw);
-    if (m) found.push({ sec: s, start: m.index, after: m.index + m[0].length });
-  });
-  found.sort((a, b) => a.start - b.start);
+function renderReply(out){
+  const r = out.reply;
 
-  if (found.length < 3) {
-    $("coachOut").innerHTML = starBar() +
-      `<div class="blk"><div class="blk-h"><div class="t">MIA</div>` +
-      `<button class="copy" onclick="copyTxt(this)" data-t="${esc(raw)}">Copy</button></div>` +
-      `<div class="body">${esc(raw)}</div></div>`;
+  if (r && r.type === "clarify") {
+    const opts = (r.options || []).map(o =>
+      `<button onclick="answerClarify(this.getAttribute('data-a'))" data-a="${esc(o)}">${esc(o)}</button>`).join("");
+    $("coachOut").innerHTML =
+      `<div class="clarify"><div class="q">${esc(r.question || "")}</div><div class="opts">${opts}</div></div>` +
+      `<div class="hint">Or type your own answer above and press Write my reply.</div>`;
     return;
   }
 
-  let html = starBar();
-  found.forEach((f, i) => {
-    const end = (i + 1 < found.length) ? found[i + 1].start : raw.length;
-    let body = raw.slice(f.after, end).replace(/[━─—]{3,}/g, "").trim();
-    if (!body) return;
-    html += `<div class="blk ${f.sec.meta ? "meta" : "lang"}">
-      <div class="blk-h"><div class="t">${esc(f.sec.label)}</div>
-        ${f.sec.meta ? "" : `<button class="copy" onclick="copyTxt(this)" data-lang="${f.sec.k}" data-t="${esc(body)}">Copy</button>`}
-      </div>
-      <div class="body">${esc(body)}</div></div>`;
-  });
-  $("coachOut").innerHTML = html;
+  if (r && r.type === "reply") {
+    let html = starBar();
+    if (r.note) html += `<div class="note">${esc(r.note)}</div>`;
+    LANGS.forEach(([lk, lname]) => {
+      const set = r[lk] || {};
+      html += `<div class="langsec">${esc(lname)}</div>`;
+      OPTS.forEach(([ok, oname]) => {
+        const body = set[ok];
+        if (!body) return;
+        html += `<div class="blk lang">
+          <div class="blk-h"><div class="t">${esc(oname)}</div>
+            <button class="copy" onclick="copyTxt(this)" data-lang="${lk}" data-t="${esc(body)}">Copy</button>
+          </div>
+          <div class="body">${esc(body)}</div></div>`;
+      });
+    });
+    if (out.cards_used && out.cards_used.length) {
+      html += `<div class="hint" style="margin-top:10px">Deck cards used: ${esc(out.cards_used.join(", "))}</div>`;
+    }
+    $("coachOut").innerHTML = html;
+    return;
+  }
+
+  // anything else: show it plainly rather than breaking
+  const raw = out.text || "";
+  $("coachOut").innerHTML = starBar() +
+    `<div class="blk"><div class="blk-h"><div class="t">MIA</div>` +
+    `<button class="copy" onclick="copyTxt(this)" data-t="${esc(raw)}">Copy</button></div>` +
+    `<div class="body">${esc(raw)}</div></div>`;
 }
 
 function copyTxt(btn){
@@ -750,17 +882,6 @@ async function logAsk(question, answer){
   } catch (e) { /* logging must never break the reply */ }
 }
 
-/* Customer-tab turns are saved to the database too, so a good reply is never
-   lost to a refresh and can be starred later from the History tab. */
-async function logCustomerTurn(question, answer){
-  try {
-    const { data } = await sb.auth.getSession();
-    const email = (data && data.session && data.session.user.email) || null;
-    await sb.from("gl_mia_log")
-      .insert({ mode: "customer", question: question, answer: answer, asked_by: email, thread_id: THREAD });
-  } catch (e) { /* never break the chat */ }
-}
-
 async function starThis(){
   if (!LAST_LOG) return;
   const next = !LAST_LOG.starred;
@@ -841,28 +962,11 @@ function renderHistory(){
       <div class="meta">${when}${who}${count}${tag}${g.starred ? " · ⭐" : ""}</div>
       <div class="ans">${body}
         <div class="acts" style="border-top:1px solid var(--border);padding-top:11px">
-          ${g.threadId && g.mode === "customer"
-            ? `<button class="mini on" onclick="continueThread('${esc(g.threadId)}')">↩ Continue this chat</button>` : ""}
           <button class="mini danger" onclick="deleteGroup('${esc(g.key)}')">Delete</button>
         </div>
       </div>
     </div>`;
   }).join("");
-}
-
-function continueThread(threadId){
-  const turns = HIST.filter(r => r.thread_id === threadId)
-                    .sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
-  if (!turns.length) return;
-  CHAT = [];
-  turns.forEach(t => {
-    CHAT.push({ role: "user", content: t.question || "" });
-    CHAT.push({ role: "assistant", content: t.answer || "" });
-  });
-  THREAD = threadId;
-  saveChat();
-  showTab("cust");
-  paintChat(false);
 }
 
 async function deleteGroup(key){
@@ -899,67 +1003,160 @@ function histCopy(id){
   else fallbackCopy(t, function(){});
 }
 
-/* ---------- customer tab ---------- */
-const CHAT_KEY = "gl_mia_chat";
+/* ---------- cases ---------- */
+function caseChip(){
+  const c = CASE;
+  $("caseChip").textContent = c ? c.title : "No case";
+  $("caseChip").className = "pill " + (c ? c.status : "open");
+}
 
-function newThread(){ return "c" + Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+async function loadCases(){
+  if (!MIA_USER) return;
+  let q = sb.from("gl_mia_case").select("*").order("updated_at", { ascending: false }).limit(60);
+  if (CASE_FILTER !== "all") q = q.eq("status", CASE_FILTER);
+  const { data, error } = await q;
+  const box = $("caseOut");
+  if (error) { box.innerHTML = '<div class="err">Could not load: ' + esc(error.message) + '</div>'; return; }
+  CASES = data || [];
+  if (!CASES.length) { box.innerHTML = '<div class="empty">No customers here yet.</div>'; return; }
+  box.innerHTML = CASES.map(c => {
+    const when = new Date(c.updated_at).toLocaleString();
+    const mine = CASE && CASE.id === c.id;
+    return `<div class="caserow ${mine ? "on" : ""}" onclick="openCase('${c.id}')">
+      <div class="ct">
+        <div class="cn">${esc(c.title)}</div>
+        <div class="cm">${esc(c.car_model || "")}${c.car_model ? " · " : ""}${esc(c.created_by || "")} · ${esc(when)}</div>
+      </div>
+      <span class="pill ${c.status}">${c.status}</span>
+    </div>`;
+  }).join("") + `
+    <div class="card" style="margin-top:12px">
+      <div class="card-t"><i class="ti ti-settings"></i> Current case</div>
+      <div class="row">
+        <button class="btn btn-ghost btn-sm" onclick="renameCase()"><i class="ti ti-pencil"></i> Rename</button>
+        <button class="btn btn-ghost btn-sm" onclick="setCaseStatus('booked')"><i class="ti ti-check"></i> Booked</button>
+        <button class="btn btn-ghost btn-sm" onclick="setCaseStatus('ghost')"><i class="ti ti-ghost"></i> Ghost</button>
+        <button class="btn btn-ghost btn-sm" onclick="setCaseStatus('open')"><i class="ti ti-rotate"></i> Reopen</button>
+      </div>
+      <div class="hint">Closing a case keeps the chat. It just moves out of Open.</div>
+    </div>`;
+}
 
-function saveChat(){
-  try {
-    localStorage.setItem(CHAT_KEY, JSON.stringify({ thread: THREAD, chat: CHAT.slice(-40) }));
-  } catch (e) { /* private mode, ignore */ }
+function pickCaseFilter(btn){
+  document.querySelectorAll("#caseFilter .chip").forEach(c => c.classList.remove("on"));
+  btn.classList.add("on");
+  CASE_FILTER = btn.getAttribute("data-f");
+  loadCases();
 }
-function loadChat(){
-  try {
-    const raw = localStorage.getItem(CHAT_KEY);
-    const obj = raw ? JSON.parse(raw) : null;
-    if (obj && Array.isArray(obj.chat)) { CHAT = obj.chat; THREAD = obj.thread || newThread(); }
-    else if (Array.isArray(obj)) { CHAT = obj; THREAD = newThread(); }   // older saved format
-    else { CHAT = []; THREAD = newThread(); }
-  } catch (e) { CHAT = []; THREAD = newThread(); }
+
+async function newCase(firstText){
+  const title = (firstText || "").trim().slice(0, 40) || ("Customer " + new Date().toLocaleDateString());
+  const { data, error } = await sb.from("gl_mia_case")
+    .insert({ title: title, created_by: MIA_USER ? MIA_USER.username : null })
+    .select("*").single();
+  if (error) { $("coachErr").textContent = "Could not start a case: " + error.message; return null; }
+  CASE = data; PENDING = [];
+  caseChip();
+  return data;
 }
-function emptyChat(){
-  $("chat").innerHTML = '<div class="empty">Type as if you were the customer.<br>MIA replies the way she would on WhatsApp.</div>';
-}
-function resetChat(){
-  CHAT = [];
-  THREAD = newThread();
-  try { localStorage.removeItem(CHAT_KEY); } catch (e) {}
-  emptyChat();
-}
-function restoreChat(){
-  loadChat();
-  if (CHAT.length) paintChat(false); else emptyChat();
-}
-function paintChat(typing){
-  const rows = CHAT.map(m =>
-    `<div class="msg ${m.role === "user" ? "me" : "them"}">${esc(m.content)}</div>`).join("");
-  $("chat").innerHTML = rows + (typing ? '<div class="typing"><i></i><i></i><i></i></div>' : "");
-  window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" });
-}
-function custKey(e){
-  if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendCust(); }
-}
-async function sendCust(){
-  if (BUSY) return;
-  const box = $("custIn");
-  const t = box.value.trim();
-  if (!t) return;
-  box.value = "";
-  CHAT.push({ role: "user", content: t });
-  saveChat();
-  paintChat(true);
-  thinking(true, "Typing…");
-  try {
-    const out = await callMia("customer", CHAT.map(m => ({ role: m.role, content: m.content })));
-    CHAT.push({ role: "assistant", content: out });
-    logCustomerTurn(t, out);
-  } catch (e) {
-    CHAT.push({ role: "assistant", content: "⚠️ " + e.message });
+
+async function openCase(id){
+  const c = CASES.find(x => x.id === id);
+  if (!c) return;
+  CASE = c;
+  const { data } = await sb.from("gl_mia_msg").select("*").eq("case_id", id).order("created_at");
+  PENDING = (data || []).map(m => ({ role: m.role, content: [{ type: "text", text: m.content }] }));
+  caseChip();
+  const last = (data || []).filter(m => m.role === "assistant").pop();
+  if (last) {
+    let parsed = null;
+    try { parsed = JSON.parse(last.content); } catch (e) { parsed = null; }
+    renderReply({ reply: parsed, text: last.content, cards_used: last.cards_used || [] });
+  } else {
+    $("coachOut").innerHTML = '<div class="empty">Nothing sent on this customer yet.</div>';
   }
-  saveChat();
-  thinking(false);
-  paintChat(false);
+  showTab("coach");
+}
+
+async function saveMsg(role, content, cards){
+  if (!CASE) return;
+  try {
+    await sb.from("gl_mia_msg").insert({ case_id: CASE.id, role: role, content: content, cards_used: cards || [] });
+    await sb.from("gl_mia_case").update({ title: CASE.title }).eq("id", CASE.id);  // bumps updated_at
+  } catch (e) { /* never break the reply */ }
+}
+
+async function renameCase(){
+  if (!CASE) { alert("Open a case first."); return; }
+  const t = prompt("Name this customer", CASE.title);
+  if (!t) return;
+  const { error } = await sb.from("gl_mia_case").update({ title: t.trim() }).eq("id", CASE.id);
+  if (error) { alert(error.message); return; }
+  CASE.title = t.trim();
+  caseChip(); loadCases();
+}
+
+async function setCaseStatus(st){
+  if (!CASE) { alert("Open a case first."); return; }
+  const { error } = await sb.from("gl_mia_case").update({ status: st }).eq("id", CASE.id);
+  if (error) { alert(error.message); return; }
+  CASE.status = st;
+  if (st !== "open") { CASE = null; PENDING = []; $("coachOut").innerHTML = ""; }
+  caseChip(); loadCases();
+}
+
+/* ---------- admin: advisors ---------- */
+let USER_EDIT = null;
+
+async function loadUsers(){
+  if (!MIA_USER || MIA_USER.role !== "admin") return;
+  const { data, error } = await sb.rpc("gl_mia_user_list", { p_actor: MIA_USER.username, p_actor_pin: MIA_USER.pin });
+  const box = $("userOut");
+  if (error) { box.innerHTML = '<div class="err">' + esc(error.message) + '</div>'; return; }
+  box.innerHTML = (data || []).map(u => `<div class="urow">
+      <div class="un">${esc(u.username)}${u.active ? "" : " · off"}</div>
+      <span class="pill ${u.role === "admin" ? "booked" : ""}">${esc(u.role)}</span>
+      <button class="btn btn-ghost btn-sm" onclick='userForm(${JSON.stringify(u).replace(/'/g, "&#39;")})'>Edit</button>
+    </div>`).join("");
+}
+
+function userForm(u){
+  USER_EDIT = u;
+  $("userCard").style.display = "block";
+  $("userFormTitle").textContent = u ? ("Edit " + u.username) : "New advisor";
+  $("u_name").value = u ? u.username : "";
+  $("u_pin").value = "";
+  $("pinHint").textContent = u ? "(leave blank to keep the current PIN)" : "(4 digits or more)";
+  $("u_role").value = u ? u.role : "sa";
+  $("u_active").checked = u ? u.active : true;
+  $("userErr").textContent = "";
+}
+function userCancel(){ USER_EDIT = null; $("userCard").style.display = "none"; }
+
+async function userSave(){
+  const err = $("userErr"); err.textContent = "";
+  const name = $("u_name").value.trim();
+  const pin  = $("u_pin").value.trim();
+  if (!name) { err.textContent = "Username please."; return; }
+  if (!USER_EDIT && pin.length < 4) { err.textContent = "PIN must be at least 4 digits."; return; }
+  const { error } = await sb.rpc("gl_mia_user_save", {
+    p_actor: MIA_USER.username, p_actor_pin: MIA_USER.pin,
+    p_id: USER_EDIT ? USER_EDIT.id : null,
+    p_username: name, p_pin: pin || null,
+    p_role: $("u_role").value, p_active: $("u_active").checked
+  });
+  if (error) { err.textContent = error.message; return; }
+  userCancel(); loadUsers();
+}
+
+async function userDelete(){
+  if (!USER_EDIT) return;
+  if (!confirm("Remove " + USER_EDIT.username + "?")) return;
+  const { error } = await sb.rpc("gl_mia_user_delete", {
+    p_actor: MIA_USER.username, p_actor_pin: MIA_USER.pin, p_id: USER_EDIT.id
+  });
+  if (error) { $("userErr").textContent = error.message; return; }
+  userCancel(); loadUsers();
 }
 </script>
 </body>
