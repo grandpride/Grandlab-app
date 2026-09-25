@@ -147,6 +147,14 @@
     border-radius:9px; padding:7px 6px; font-size:12.5px; font-weight:600; cursor:pointer;
   }
   .optbar button[aria-pressed="true"]{background:var(--gold); border-color:var(--gold); color:#111}
+  .prunning{display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+  .prlive{font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;padding:3px 9px;border-radius:999px;background:#12341f;border:1px solid #1d5236;color:#41d18a}
+  .prlive.ended{background:#241010;border-color:#4a1d1d;color:#d16b6b}
+  .prruns{font-size:12px;color:var(--dim)}
+  .prices{width:100%;border-collapse:collapse;margin-top:2px}
+  .prices td{padding:8px 10px;border:1px solid var(--border);font-size:14px}
+  .prices td:first-child{color:var(--dim);width:45%}
+  .prices td:last-child{font-weight:800;color:var(--gold);text-align:right}
   .langbar{display:flex; gap:6px; margin-bottom:8px}
   .langbar button{
     background:#101010; border:1px solid var(--border); color:var(--dim);
@@ -433,6 +441,7 @@
       </div>
       <div class="tabs" role="tablist">
         <button role="tab" data-tab="knowledge" aria-selected="true"><i class="ti ti-book-2"></i>Knowledge</button>
+        <button role="tab" data-tab="promo" aria-selected="false"><i class="ti ti-tag"></i>Promo</button>
         <button role="tab" data-tab="replies" aria-selected="false"><i class="ti ti-message-2"></i>Sales Replies</button>
         <button role="tab" data-tab="close" aria-selected="false"><i class="ti ti-route"></i>Step To Close</button>
         <button role="tab" data-tab="mix" aria-selected="false"><i class="ti ti-calculator"></i>Mix &amp; Match</button>
@@ -774,8 +783,35 @@
     return cardShell(item, String(idx), h);
   }
 
+  function renderPromo(item) {
+    var c = item.content || {};
+    var h = '';
+
+    var st = c.status || 'live';
+    h += '<div class="prunning">' +
+         '<span class="prlive' + (st === 'live' ? '' : ' ended') + '">' + esc(st === 'live' ? 'Running now' : 'Ended') + '</span>' +
+         (c.runs ? '<span class="prruns">' + esc(c.runs) + '</span>' : '') +
+         '</div>';
+
+    h += sayBlock(c.send, 'Send this to the customer', null, 'p:' + item.slug);
+
+    if (c.prices && c.prices.length) {
+      h += '<div class="blk"><h4>Price</h4><table class="prices"><tbody>' +
+        c.prices.map(function (r) {
+          return '<tr><td>' + esc(r[0]) + '</td><td>' + esc(r[1]) + '</td></tr>';
+        }).join('') + '</tbody></table></div>';
+    }
+
+    h += listBlock("What's included", c.includes);
+    h += listBlock('Never do this', c.avoid, 'avoid');
+    h += listBlock('Worth knowing', c.notes);
+    h += kbBlock(item.kb_keys);
+    return cardShell(item, null, h);
+  }
+
   function renderItem(item, idx) {
     if (item.tab === 'knowledge') return renderKnowledge(item);
+    if (item.tab === 'promo') return renderPromo(item);
     if (item.tab === 'replies') return renderReply(item);
     return renderClose(item, idx);
   }
@@ -1463,7 +1499,7 @@
     return item._hay;
   }
 
-  var TABNAME = { knowledge: 'Knowledge', replies: 'Sales Replies', close: 'Step To Close' };
+  var TABNAME = { knowledge: 'Knowledge', promo: 'Promo', replies: 'Sales Replies', close: 'Step To Close' };
 
   /* ---------------- render ---------------- */
 
@@ -1479,7 +1515,7 @@
     ppf: 'PPF', tint: 'Tint', wrap: 'Wrap', coating: 'Coating', wash: 'Wash',
     polish: 'Polish', detailing: 'Detailing', bike: 'Bike', products: 'Products',
     price: 'Price', compare: 'Compare', trust: 'Trust', logistics: 'Logistics',
-    stall: 'Objections', product: 'Product', flow: 'General'
+    stall: 'Objections', product: 'Product', flow: 'General', combo: 'Package'
   };
 
   function label(g) { return GRPLBL[g] || (g.charAt(0).toUpperCase() + g.slice(1)); }
