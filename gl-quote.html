@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>GL Quote | Grandlab</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.7.0/dist/tabler-icons.min.css">
+<style>
+:root{--bg:#080808;--card:#141414;--card2:#1c1c1c;--gold:#F5C518;--border:#2a2a2a;--text:#f2f2f2;--text2:#9a9a9a;--ok:#37d67a;--red:#ff5c5c;--blue:#4d9fff}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:15px;padding-bottom:110px}
+.top{position:sticky;top:0;z-index:20;background:rgba(8,8,8,.97);backdrop-filter:blur(10px);border-bottom:1px solid var(--border);padding:12px 14px}
+.top h1{margin:0;font-size:17px;font-weight:700;display:flex;align-items:center;gap:8px}
+.top h1 i{color:var(--gold)}
+.top h1 .back{width:32px;height:32px;border-radius:10px;background:var(--card2);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;text-decoration:none;flex-shrink:0}
+.top h1 .back i{color:var(--text2);font-size:17px}
+.wrap{padding:14px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:14px;margin-bottom:12px}
+.card h2{margin:0 0 12px;font-size:13px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.6px}
+label{display:block;font-size:12px;color:var(--text2);margin:0 0 5px}
+input,select,textarea{width:100%;background:var(--card2);border:1px solid var(--border);border-radius:12px;color:var(--text);padding:12px;font-size:16px;font-family:inherit;outline:none}
+input:focus,select:focus,textarea:focus{border-color:var(--gold)}
+input.up{text-transform:uppercase}
+.row{display:flex;gap:10px}.row>*{flex:1}
+.fld{margin-bottom:12px}
+.btn{border:none;border-radius:14px;padding:14px;font-size:15px;font-weight:700;font-family:inherit;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;width:100%}
+.btn.gold{background:var(--gold);color:#000}
+.btn.ghost{background:var(--card2);color:var(--text);border:1px solid var(--border)}
+.btn:disabled{opacity:.45}
+.btn.sm{padding:11px;font-size:13px}
+
+/* track picker */
+.trk{display:flex;gap:10px}
+.trk div{flex:1;border:1.5px solid var(--border);background:var(--card2);border-radius:14px;padding:13px 10px;text-align:center;cursor:pointer}
+.trk div b{display:block;font-size:14px;font-weight:700}
+.trk div span{font-size:11px;color:var(--text2)}
+.trk div.on{border-color:var(--gold);background:rgba(245,197,24,.1)}
+.trk div.on b{color:var(--gold)}
+.trk.lock div{opacity:.45;cursor:not-allowed}
+.trk.lock div.on{opacity:1}
+.note{border-radius:12px;padding:11px 12px;font-size:12.5px;line-height:1.5;margin-top:10px;display:flex;gap:9px;align-items:flex-start}
+.note i{font-size:16px;margin-top:1px;flex-shrink:0}
+.note.lockd{background:rgba(77,159,255,.09);border:1px solid rgba(77,159,255,.3);color:#bcd9ff}
+.note.newc{background:rgba(55,214,122,.08);border:1px solid rgba(55,214,122,.28);color:#bff0d2}
+.note.warn{background:rgba(245,197,24,.08);border:1px solid rgba(245,197,24,.28);color:#f5dd8d}
+
+/* services */
+.srch{position:relative;margin-bottom:10px}
+.srch i{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--text2)}
+.srch input{padding-left:36px}
+.cats{display:flex;gap:7px;overflow-x:auto;padding-bottom:8px;margin-bottom:6px}
+.cats div{white-space:nowrap;flex-shrink:0;background:var(--card2);border:1px solid var(--border);border-radius:18px;padding:8px 14px;font-size:13px;cursor:pointer}
+.cats div.on{background:var(--gold);color:#000;border-color:var(--gold);font-weight:600}
+.sel{max-height:320px;overflow-y:auto}
+.svc{display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid var(--border);cursor:pointer}
+.svc:last-child{border-bottom:none}
+.svc .tick{width:24px;height:24px;border-radius:7px;border:1.5px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
+.svc.on .tick{background:var(--gold);color:#000;border-color:var(--gold)}
+.svc .nm{flex:1;min-width:0}
+.svc .nm b{display:block;font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.svc .nm span{font-size:11px;color:var(--text2)}
+.svc .nm .nc{color:var(--red);font-weight:700}
+.svc .pr{font-size:14px;font-weight:700;color:var(--gold);white-space:nowrap}
+.pick{background:rgba(245,197,24,.07);border:1px solid rgba(245,197,24,.28);border-radius:12px;padding:10px 12px;margin-bottom:8px;display:flex;align-items:center;gap:10px}
+.pick .nm{flex:1;min-width:0}
+.pick .nm b{display:block;font-size:13.5px}
+.pick .nm small{font-size:11px;color:var(--text2)}
+.pick .pr{font-weight:700;color:var(--gold);cursor:pointer}
+.pick .x{color:var(--red);font-size:17px;cursor:pointer}
+
+.bar{position:fixed;left:0;right:0;bottom:0;background:rgba(8,8,8,.97);backdrop-filter:blur(10px);border-top:1px solid var(--border);padding:12px 14px calc(12px + env(safe-area-inset-bottom));display:flex;gap:10px;align-items:center;z-index:30}
+.bar .tot{flex:1}
+.bar .tot small{display:block;font-size:11px;color:var(--text2)}
+.bar .tot b{font-size:19px;color:var(--gold)}
+.bar .tot .was{font-size:12px;color:var(--text2);text-decoration:line-through;margin-left:6px}
+.bar .btn{width:auto;flex:1.1}
+
+.ov{position:fixed;inset:0;background:rgba(0,0,0,.88);display:flex;align-items:center;justify-content:center;z-index:80;padding:18px}
+.ov .box{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:18px;max-width:440px;width:100%;max-height:90vh;overflow-y:auto}
+.ov h3{margin:0 0 4px;font-size:18px}
+.msg{background:var(--card2);border:1px solid var(--border);border-radius:12px;padding:12px;font-size:13px;line-height:1.55;white-space:pre-wrap;margin:10px 0;max-height:230px;overflow-y:auto}
+.muted{color:var(--text2);font-size:12px;line-height:1.5}
+.toast{position:fixed;left:14px;right:14px;bottom:96px;background:var(--card2);border:1px solid var(--border);border-radius:12px;padding:13px;text-align:center;font-size:14px;z-index:90;opacity:0;transition:.25s;pointer-events:none}
+.toast.on{opacity:1}
+.toast.err{border-color:var(--red);color:var(--red)}
+.hide{display:none!important}
+.load{text-align:center;padding:40px;color:var(--text2)}
+.qrow{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:12px;margin-bottom:9px}
+.qrow .h{display:flex;align-items:center;gap:8px;margin-bottom:5px}
+.qrow .h b{flex:1;font-size:14px}
+.pill{font-size:10px;font-weight:700;padding:3px 8px;border-radius:7px;text-transform:uppercase}
+.pill.A{background:rgba(55,214,122,.15);color:var(--ok)}
+.pill.B{background:rgba(77,159,255,.15);color:var(--blue)}
+.qrow .m{font-size:11.5px;color:var(--text2);line-height:1.6}
+</style>
+</head>
+<body>
+
+<div class="top">
+  <h1><a href="gl-hub.html" class="back"><i class="ti ti-arrow-left"></i></a>
+      <i class="ti ti-file-text"></i> <span style="flex:1">GL Quote</span>
+      <span class="back" id="listBtn" style="cursor:pointer"><i class="ti ti-list"></i></span></h1>
+</div>
+
+<div id="boot" class="load"><i class="ti ti-loader-2"></i> Loading…</div>
+
+<div id="app" class="wrap hide">
+
+  <div id="pList" class="hide"><div id="qlist" class="load">Loading…</div></div>
+
+  <div id="pForm">
+    <div class="card">
+      <h2>Customer</h2>
+      <div class="row fld">
+        <div><label>Phone</label><input id="phone" type="tel" inputmode="numeric" placeholder="60123456789"></div>
+        <div><label>Car plate</label><input id="plate" class="up" placeholder="WXY 1234"></div>
+      </div>
+      <div class="fld"><label>Name</label><input id="cname" class="up" placeholder="Customer name"></div>
+
+      <label>Who is this customer?</label>
+      <div class="trk" id="trk">
+        <div data-t="A"><b>Personal</b><span>My own customer</span></div>
+        <div data-t="B"><b>Grandlab</b><span>Shop customer</span></div>
+      </div>
+      <div id="trkNote"></div>
+    </div>
+
+    <div class="card">
+      <h2>Car</h2>
+      <div class="row fld">
+        <div><label>Brand</label><select id="brand"></select></div>
+        <div><label>Model</label><select id="modelSel"></select></div>
+      </div>
+      <div class="fld hide" id="manualWrap">
+        <label>Model name</label><input id="modelManual" class="up" placeholder="Type the model">
+      </div>
+      <div class="row fld">
+        <div><label>Car type <span id="auto" class="hide" style="color:var(--gold);font-size:9px;font-weight:800">AUTO</span></label>
+          <select id="ctype">
+            <option>Sedan</option><option>SUV</option><option>MPV</option><option>Supercar</option><option>Motorcycle</option>
+          </select></div>
+        <div><label>Colour</label><input id="colour" class="up" placeholder="WHITE"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Services</h2>
+      <div id="picked"></div>
+      <button class="btn ghost sm" id="addCustom" style="margin-bottom:12px"><i class="ti ti-plus"></i> Add custom service</button>
+      <div class="srch"><i class="ti ti-search"></i><input id="q" placeholder="Search service…"></div>
+      <div class="cats" id="cats"></div>
+      <div class="sel" id="svcList"></div>
+    </div>
+
+    <div class="card">
+      <h2>Note for the customer</h2>
+      <textarea id="notes" rows="2" placeholder="Optional"></textarea>
+    </div>
+  </div>
+</div>
+
+<div class="bar hide" id="bar">
+  <div class="tot"><small id="totLbl">Total</small><b id="tot">RM 0</b><span class="was hide" id="was"></span></div>
+  <button class="btn gold" id="genBtn"><i class="ti ti-brand-whatsapp"></i> Generate</button>
+</div>
+
+<div class="ov hide" id="customOv">
+  <div class="box" style="text-align:left">
+    <h3>Custom service</h3>
+    <p class="muted" style="margin:0 0 12px">For this quote only.</p>
+    <div class="fld"><label>Service name</label><input id="csName" placeholder="e.g. Headlight Restoration"></div>
+    <div class="row fld">
+      <div><label>Retail price (RM)</label><input id="csRetail" type="number" inputmode="decimal" placeholder="0"></div>
+      <div><label>Quote price (RM)</label><input id="csPrice" type="number" inputmode="decimal" placeholder="0"></div>
+    </div>
+    <button class="btn gold" id="csSave"><i class="ti ti-check"></i> Add</button>
+    <button class="btn ghost" style="margin-top:8px" id="csCancel">Cancel</button>
+  </div>
+</div>
+
+<div class="ov hide" id="done">
+  <div class="box">
+    <h3 id="doneRef">Quote saved</h3>
+    <p class="muted" id="doneSub"></p>
+    <label style="margin-top:12px">Message for the customer</label>
+    <div class="msg" id="msgCust"></div>
+    <button class="btn gold" id="waCust"><i class="ti ti-brand-whatsapp"></i> Send to customer</button>
+    <button class="btn ghost sm" style="margin-top:7px" id="cpCust"><i class="ti ti-copy"></i> Copy</button>
+    <label style="margin-top:16px">Message for the group</label>
+    <div class="msg" id="msgGrp"></div>
+    <button class="btn ghost" id="waGrp"><i class="ti ti-users"></i> Send to group</button>
+    <button class="btn ghost sm" style="margin-top:7px" id="cpGrp"><i class="ti ti-copy"></i> Copy</button>
+    <button class="btn ghost" style="margin-top:14px" id="newBtn">New quote</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script>
+(function(){
+'use strict';
+
+var SB_URL='https://eychljpzorzmaveixlnu.supabase.co';
+var SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV5Y2hsanB6b3J6bWF2ZWl4bG51Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2NDk2NjQsImV4cCI6MjA5NzIyNTY2NH0.6dA1zhz5ZIwf8byFB8vhfOzPI-uPPdPihEr1b8GG_oA';
+
+var sb=window.supabase.createClient(SB_URL,SB_KEY,{auth:{storageKey:'gl_auth',persistSession:true,autoRefreshToken:true}});
+var $=function(id){return document.getElementById(id);};
+
+var S={user:null,services:[],cats:[],cat:'All',q:'',models:[],brands:[],
+       picked:{},customs:[],track:'A',locked:false,sending:false,viewing:false};
+
+function toast(m,err){var t=$('toast');t.textContent=m;t.className='toast on'+(err?' err':'');
+  setTimeout(function(){t.className='toast'+(err?' err':'');},2600);}
+function money(n){return 'RM '+Number(n||0).toLocaleString('en-MY',{maximumFractionDigits:0});}
+function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){
+  return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+
+/* ---------- boot ---------- */
+sb.auth.getSession().then(function(r){
+  var s=r&&r.data?r.data.session:null;
+  if(!s){location.href='gl-hub.html';return;}
+  S.user=s.user.email;
+  return Promise.all([
+    sb.from('gl_services')
+      .select('id,name,category,brand,base_price,price_by_type,commissionable')
+      .or('hidden.is.null,hidden.eq.false')
+      .or('active.is.null,active.eq.true').order('category').order('sort_order'),
+    sb.from('gl_car_models').select('brand_name,name,type')
+      .or('active.is.null,active.eq.true').order('brand_name').order('name')
+  ]);
+}).then(function(res){
+  if(!res)return;
+  S.services=res[0].data||[];
+  S.models=res[1].data||[];
+  var seen={};S.cats=[];
+  S.services.forEach(function(s){if(s.category&&!seen[s.category]){seen[s.category]=1;S.cats.push(s.category);}});
+  var bs={};S.brands=[];
+  S.models.forEach(function(m){if(m.brand_name&&!bs[m.brand_name]){bs[m.brand_name]=1;S.brands.push(m.brand_name);}});
+  fillBrands();render();
+  $('boot').className='hide';$('app').className='wrap';$('bar').className='bar';
+}).catch(function(e){$('boot').innerHTML='Could not load: '+esc(e.message||e);});
+
+/* ---------- brand / model ---------- */
+function fillBrands(){
+  $('brand').innerHTML='<option value="">— select brand —</option>'+
+    S.brands.map(function(b){return '<option>'+esc(b)+'</option>';}).join('')+
+    '<option value="__other__">Not listed…</option>';
+}
+function fillModels(keep){
+  var b=$('brand').value;
+  if(b==='__other__'){$('modelSel').innerHTML='<option value="__other__">Type it below</option>';
+    $('modelSel').value='__other__';return showManual(true);}
+  var list=S.models.filter(function(m){return m.brand_name===b;});
+  $('modelSel').innerHTML='<option value="">— select model —</option>'+
+    list.map(function(m){return '<option value="'+esc(m.name)+'">'+esc(m.name)+'</option>';}).join('')+
+    '<option value="__other__">Not listed…</option>';
+  if(keep)$('modelSel').value=keep;
+  showManual($('modelSel').value==='__other__');
+}
+function showManual(on){$('manualWrap').className=on?'fld':'fld hide';}
+function onModel(){
+  var v=$('modelSel').value;
+  if(v==='__other__'){showManual(true);$('auto').className='hide';return;}
+  showManual(false);
+  if(!v)return;
+  var b=$('brand').value,hit=null;
+  S.models.forEach(function(m){if(!hit&&m.brand_name===b&&m.name===v)hit=m;});
+  if(hit&&hit.type)setType(hit.type,true);
+}
+function setType(t,isAuto){
+  if($('ctype').value!==t){$('ctype').value=t;S.picked={};renderPicked();renderSvc();renderBar();}
+  $('auto').className=isAuto?'':'hide';
+}
+function curModel(){
+  var v=$('modelSel').value;
+  if(v&&v!=='__other__')return v.toUpperCase();
+  return $('modelManual').value.trim().toUpperCase();
+}
+$('brand').addEventListener('change',function(){fillModels();onModel();});
+$('modelSel').addEventListener('change',onModel);
+$('ctype').addEventListener('change',function(){S.picked={};$('auto').className='hide';
+  renderPicked();renderSvc();renderBar();});
+
+/* ---------- existing-customer lookup ---------- */
+var lkTimer=null;
+function queueLookup(){clearTimeout(lkTimer);lkTimer=setTimeout(doLookup,500);}
+$('phone').addEventListener('input',queueLookup);
+$('plate').addEventListener('input',queueLookup);
+
+function doLookup(){
+  var ph=$('phone').value.replace(/\D/g,''),pl=$('plate').value.trim();
+  if(ph.length<7&&pl.length<3){setTrackFree();return;}
+  sb.rpc('gl_quote_check_customer',{p_phone:ph,p_plate:pl}).then(function(r){
+    if(r.error){console.warn(r.error);return;}
+    var d=r.data||{};
+    if(d.existing){
+      S.locked=true;S.track='B';
+      if(!$('cname').value.trim()&&d.name)$('cname').value=d.name;
+      $('trk').className='trk lock';
+      $('trkNote').innerHTML='<div class="note lockd"><i class="ti ti-lock"></i><span>'+
+        'Already a Grandlab customer'+(d.name?' ('+esc(d.name)+')':'')+
+        ' &mdash; matched by '+esc(d.reason||'record')+'. This one counts as Grandlab, not personal.</span></div>';
+    }else{
+      S.locked=false;
+      $('trk').className='trk';
+      $('trkNote').innerHTML='<div class="note newc"><i class="ti ti-user-plus"></i>'+
+        '<span>New customer &mdash; not in our system. Mark as Personal to claim it as yours.</span></div>';
+    }
+    renderTrack();
+  });
+}
+function setTrackFree(){S.locked=false;$('trk').className='trk';$('trkNote').innerHTML='';renderTrack();}
+function renderTrack(){
+  Array.prototype.forEach.call($('trk').children,function(d){
+    d.className=(d.getAttribute('data-t')===S.track)?'on':'';
+  });
+}
+$('trk').addEventListener('click',function(e){
+  var d=e.target.closest?e.target.closest('[data-t]'):null;
+  if(!d)return;
+  if(S.locked){toast('Already a Grandlab customer — cannot mark personal',true);return;}
+  S.track=d.getAttribute('data-t');renderTrack();
+});
+
+/* ---------- services ---------- */
+function priceOf(s){
+  var ct=$('ctype').value,p=null;
+  if(s.price_by_type&&s.price_by_type[ct]!=null)p=Number(s.price_by_type[ct]);
+  if(p==null&&s.base_price!=null)p=Number(s.base_price);
+  return p;
+}
+function render(){
+  $('cats').innerHTML=['All'].concat(S.cats).map(function(c){
+    return '<div class="'+(S.cat===c?'on':'')+'" data-c="'+esc(c)+'">'+esc(c)+'</div>';}).join('');
+  renderPicked();renderSvc();renderTrack();renderBar();
+}
+function renderSvc(){
+  var q=S.q.toLowerCase();
+  var list=S.services.filter(function(s){
+    if(S.cat!=='All'&&s.category!==S.cat)return false;
+    var p=priceOf(s);if(p==null||p<=0)return false;
+    if(q&&(s.name||'').toLowerCase().indexOf(q)<0)return false;
+    return true;
+  }).slice(0,120);
+  if(!list.length){$('svcList').innerHTML='<p class="muted" style="padding:14px 0">No match.</p>';return;}
+  $('svcList').innerHTML=list.map(function(s){
+    var p=priceOf(s),on=!!S.picked[s.id];
+    var nc=s.commissionable===false?'<span class="nc"> · no commission</span>':'';
+    return '<div class="svc'+(on?' on':'')+'" data-sid="'+esc(s.id)+'">'+
+      '<div class="tick">'+(on?'<i class="ti ti-check"></i>':'')+'</div>'+
+      '<div class="nm"><b>'+esc(s.name)+'</b><span>'+esc(s.brand||s.category||'')+nc+'</span></div>'+
+      '<div class="pr">'+money(p)+'</div></div>';
+  }).join('');
+}
+function renderPicked(){
+  var arr=sel();
+  if(!arr.length){$('picked').innerHTML='';return;}
+  $('picked').innerHTML=arr.map(function(s){
+    var disc=s.retail>s.price?' <small>was '+money(s.retail)+'</small>':'';
+    return '<div class="pick"><div class="nm"><b>'+esc(s.name)+'</b>'+
+      '<small>'+esc(s.category||'')+(s.commissionable===false?' · no commission':'')+'</small></div>'+
+      '<div class="pr" data-edit="'+esc(s.id)+'">'+money(s.price)+disc+'</div>'+
+      '<i class="ti ti-x x" data-rm="'+esc(s.id)+'"></i></div>';
+  }).join('');
+}
+function sel(){var a=[];for(var k in S.picked)if(S.picked.hasOwnProperty(k))a.push(S.picked[k]);return a;}
+function total(){var t=0;sel().forEach(function(s){t+=Number(s.price||0);});return t;}
+function retailTotal(){var t=0;sel().forEach(function(s){t+=Number(s.retail||s.price||0);});return t;}
+
+function renderBar(){
+  var t=total(),r=retailTotal(),n=sel().length;
+  $('totLbl').textContent=n+' service'+(n===1?'':'s');
+  $('tot').textContent=money(t);
+  if(r>t){$('was').textContent=money(r);$('was').className='was';}
+  else $('was').className='was hide';
+}
+
+$('cats').addEventListener('click',function(e){
+  var c=e.target.getAttribute('data-c');if(!c)return;S.cat=c;render();});
+$('q').addEventListener('input',function(){S.q=this.value;renderSvc();});
+
+$('svcList').addEventListener('click',function(e){
+  var row=e.target.closest?e.target.closest('.svc'):null;if(!row)return;
+  var id=row.getAttribute('data-sid');
+  if(S.picked[id])delete S.picked[id];
+  else{
+    var s=null;S.services.forEach(function(x){if(String(x.id)===id)s=x;});
+    if(s){var p=priceOf(s);
+      S.picked[id]={id:s.id,name:s.name,category:s.category,price:p,retail:p,
+                    commissionable:s.commissionable!==false};}
+  }
+  renderPicked();renderSvc();renderBar();
+});
+
+$('picked').addEventListener('click',function(e){
+  var id=e.target.getAttribute('data-rm');
+  if(id){delete S.picked[id];
+    S.customs=S.customs.filter(function(c){return c.id!==id;});
+    renderPicked();renderSvc();renderBar();return;}
+  id=e.target.getAttribute('data-edit');
+  if(id&&S.picked[id]){
+    var cur=S.picked[id];
+    var v=prompt('Quote price for '+cur.name+'\n\nRetail is '+money(cur.retail)+
+                 '. Lower price = discount.',cur.price);
+    if(v===null)return;v=Number(v);
+    if(!(v>0))return toast('Enter a valid price',true);
+    cur.price=v;renderPicked();renderBar();
+  }
+});
+
+/* ---------- custom service ---------- */
+$('addCustom').addEventListener('click',function(){
+  $('csName').value='';$('csPrice').value='';$('csRetail').value='';
+  $('customOv').className='ov';});
+$('csCancel').addEventListener('click',function(){$('customOv').className='ov hide';});
+$('csSave').addEventListener('click',function(){
+  var nm=$('csName').value.trim().replace(/\S+/g,function(w){
+    return w.charAt(0).toUpperCase()+w.slice(1).toLowerCase();});
+  var rt=Number($('csRetail').value),pr=Number($('csPrice').value);
+  if(!nm)return toast('Name required',true);
+  if(!(rt>0))return toast('Enter the retail price',true);
+  if(!(pr>0))pr=rt;
+  var id='custom_'+Date.now()+'_'+Math.floor(Math.random()*999);
+  var item={id:id,name:nm,category:'Custom',price:pr,retail:rt,commissionable:true,custom:true};
+  S.customs.push(item);S.picked[id]=item;
+  $('customOv').className='ov hide';
+  renderPicked();renderBar();toast('Added');
+});
+
+/* ---------- save + messages ---------- */
+$('genBtn').addEventListener('click',function(){
+  if(S.sending)return;
+  var arr=sel();
+  if(!$('phone').value.replace(/\D/g,'')&&!$('plate').value.trim())
+    return toast('Enter a phone or plate',true);
+  if(!curModel())return toast('Pick or type a model',true);
+  if(!arr.length)return toast('Pick at least one service',true);
+
+  S.sending=true;
+  var btn=$('genBtn');btn.disabled=true;
+  btn.innerHTML='<i class="ti ti-loader-2"></i> Saving…';
+
+  sb.from('gl_quotes').insert({
+    track:S.track,
+    track_locked:S.locked,
+    match_reason:S.locked?'existing':null,
+    customer_name:$('cname').value.trim().toUpperCase(),
+    phone:$('phone').value.replace(/\D/g,''),
+    plate:$('plate').value.trim().toUpperCase(),
+    model:curModel(),
+    car_type:$('ctype').value,
+    colour:$('colour').value.trim().toUpperCase(),
+    services:arr,
+    total:total(),
+    retail_total:retailTotal(),
+    notes:$('notes').value.trim(),
+    created_by:S.user
+  }).select('id,ref').single().then(function(r){
+    S.sending=false;btn.disabled=false;
+    btn.innerHTML='<i class="ti ti-brand-whatsapp"></i> Generate';
+    if(r.error)return toast('Failed: '+r.error.message,true);
+    showDone(r.data.ref);
+  }).catch(function(e){
+    S.sending=false;btn.disabled=false;
+    btn.innerHTML='<i class="ti ti-brand-whatsapp"></i> Generate';
+    toast('Failed: '+(e.message||e),true);
+  });
+});
+
+/* Customer message: short, human, minimal emoji, price LAST,
+   and the original price shown whenever there is a discount. */
+function custMsg(){
+  var arr=sel(),t=total(),r=retailTotal();
+  var nm=$('cname').value.trim();
+  var first=nm?nm.split(/\s+/)[0]:'';
+  var car=[curModel(),$('plate').value.trim().toUpperCase()].filter(Boolean).join(' ');
+
+  var m='Hi'+(first?' '+first.charAt(0).toUpperCase()+first.slice(1).toLowerCase():'')+
+        ', thanks for checking with Grandlab.\n\n';
+  m+='For your '+car+' we would do:\n';
+  m+=arr.map(function(s){return '- '+s.name;}).join('\n')+'\n';
+  if($('notes').value.trim())m+='\n'+$('notes').value.trim()+'\n';
+  m+='\n';
+  if(r>t){
+    var pct=Math.round((r-t)/r*100);
+    m+='Normally '+money(r)+', for you '+money(t)+(pct>0?' ('+pct+'% off)':'')+'.';
+  }else{
+    m+=money(t)+'.';
+  }
+  m+='\n\nLet me know and I will arrange a slot for you.';
+  return m;
+}
+
+/* Group message: internal record, structure is fine here. */
+function grpMsg(ref){
+  var arr=sel(),t=total(),r=retailTotal();
+  var m='*'+ref+'* · '+(S.track==='A'?'PERSONAL':'GRANDLAB')+'\n';
+  m+=[$('plate').value.trim().toUpperCase(),curModel(),$('ctype').value]
+      .filter(Boolean).join(' · ')+'\n';
+  var who=[$('cname').value.trim().toUpperCase(),$('phone').value.replace(/\D/g,'')]
+      .filter(Boolean).join(' · ');
+  if(who)m+=who+'\n';
+  m+='\n'+arr.map(function(s){
+    return '- '+s.name+' — '+money(s.price)+(s.retail>s.price?' (retail '+money(s.retail)+')':'');
+  }).join('\n')+'\n';
+  m+='\nQuoted *'+money(t)+'*'+(r>t?' · retail '+money(r):'')+'\n';
+  m+='By '+(S.user||'');
+  if(S.locked)m+='\nLocked to Grandlab — existing customer';
+  return m;
+}
+
+function showDone(ref){
+  var cm=custMsg(),gm=grpMsg(ref);
+  $('doneRef').textContent=ref+' saved';
+  $('doneSub').textContent=(S.track==='A'?'Personal customer — counts to your own sales.'
+                                          :'Grandlab customer.');
+  $('msgCust').textContent=cm;
+  $('msgGrp').textContent=gm;
+  $('done').className='ov';
+
+  var ph=$('phone').value.replace(/\D/g,'');
+  $('waCust').onclick=function(){
+    window.open((ph?'https://wa.me/'+ph+'?text=':'https://wa.me/?text=')+
+      encodeURIComponent(cm),'_blank');};
+  $('waGrp').onclick=function(){
+    window.open('https://wa.me/?text='+encodeURIComponent(gm),'_blank');};
+  $('cpCust').onclick=function(){copyText(cm);};
+  $('cpGrp').onclick=function(){copyText(gm);};
+  $('newBtn').onclick=function(){location.reload();};
+}
+function copyText(s){
+  if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(s);
+  else{var ta=document.createElement('textarea');ta.value=s;document.body.appendChild(ta);
+    ta.select();document.execCommand('copy');ta.remove();}
+  toast('Copied');
+}
+
+/* ---------- my quotes ---------- */
+$('listBtn').addEventListener('click',function(){
+  if(S.viewing){S.viewing=false;$('pList').className='hide';$('pForm').className='';
+    $('bar').className='bar';return;}
+  S.viewing=true;$('pForm').className='hide';$('pList').className='';
+  $('bar').className='bar hide';
+  $('qlist').className='load';$('qlist').textContent='Loading…';
+  sb.from('gl_quotes').select('ref,track,track_locked,plate,model,total,retail_total,created_at,status')
+    .eq('created_by',S.user).order('created_at',{ascending:false}).limit(30)
+    .then(function(r){
+      if(r.error){$('qlist').textContent=r.error.message;return;}
+      var rows=r.data||[];$('qlist').className='';
+      if(!rows.length){$('qlist').innerHTML='<p class="muted" style="text-align:center;padding:30px">Nothing yet.</p>';return;}
+      $('qlist').innerHTML=rows.map(function(q){
+        var d=new Date(q.created_at);
+        return '<div class="qrow"><div class="h"><b>'+esc(q.plate||'—')+'</b>'+
+          '<span style="font-size:11px;color:var(--text2)">'+esc(q.ref)+'</span>'+
+          '<span class="pill '+esc(q.track)+'">'+(q.track==='A'?'Personal':'Grandlab')+'</span></div>'+
+          '<div class="m">'+esc(q.model||'')+'<br>'+
+          d.toLocaleDateString('en-MY',{day:'2-digit',month:'short'})+' · '+money(q.total)+
+          (q.retail_total>q.total?' (retail '+money(q.retail_total)+')':'')+
+          (q.track_locked?' · locked':'')+'</div></div>';
+      }).join('');
+    });
+});
+
+})();
+</script>
+</body>
+</html>
