@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Grandlab Customers</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{--bg:#FFFFFF;--card:#FFFFFF;--card2:#F6F7F8;--gold:#F5C518;--gold-ink:#8A6D00;
+      --text:#111111;--text2:#5F6368;--border:#E3E5E8;--red:#C0392B;--green:#157347;--amber:#9A6700}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);
+     font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-size:14px}
+.wrap{max-width:900px;margin:0 auto;padding:14px}
+.top{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:4px}
+.back{color:var(--text2);text-decoration:none;font-size:13px}
+h1{font-size:21px;font-weight:900;margin:2px 0 2px}
+h1 span{color:var(--gold-ink)}
+.sub{color:var(--text2);font-size:12px;margin-bottom:12px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:10px}
+label{display:block;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--text2);margin-bottom:5px}
+input,select{width:100%;padding:11px;border:1px solid var(--border);border-radius:10px;
+     background:var(--card);color:var(--text);font-family:inherit;font-size:14px}
+input:focus,select:focus{outline:none;border-color:var(--gold-ink)}
+.btn{display:block;width:100%;background:var(--gold);color:#000;border:none;border-radius:11px;
+     padding:13px;font-size:15px;font-weight:800;cursor:pointer;font-family:inherit}
+.btn2{background:var(--card2);color:var(--text);border:1px solid var(--border)}
+.btn-sm{width:auto;padding:8px 13px;font-size:13px;border-radius:9px}
+.row{display:flex;gap:8px}.row>*{flex:1}
+.searchbar{display:flex;gap:8px;margin-bottom:12px}
+.searchbar input{flex:1}
+.cust{background:var(--card);border:1px solid var(--border);border-radius:13px;padding:13px;
+      margin-bottom:9px;cursor:pointer}
+.cust:hover{border-color:var(--gold-ink)}
+.cust .nm{font-weight:800;font-size:15px}
+.cust .ph{color:var(--text2);font-size:12.5px;margin-top:1px}
+.chips{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}
+.chip{background:var(--card2);border:1px solid var(--border);border-radius:7px;
+      padding:3px 8px;font-size:11.5px;font-weight:700}
+.chip.plate{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--gold);
+      border-color:var(--gold);color:#000}
+.chip.pkg{background:#FFF8E1;border-color:#E8D48A;color:var(--gold-ink)}
+.chip.warn{background:#FDECEA;border-color:#F2C2BC;color:var(--red)}
+.meta{display:flex;gap:12px;flex-wrap:wrap;color:var(--text2);font-size:11.5px;margin-top:8px}
+.empty{color:var(--text2);text-align:center;padding:24px 10px;font-size:13px}
+.status{color:var(--text2);font-size:12.5px;padding:7px 0}
+.err{color:var(--red)}.ok{color:var(--green)}
+.hide{display:none}
+.dl{display:flex;justify-content:space-between;gap:10px;padding:7px 0;border-bottom:1px solid var(--border);font-size:13.5px}
+.dl b{font-weight:800}
+.dl .k{color:var(--text2)}
+.sec{font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:.06em;
+     color:var(--gold-ink);margin:14px 0 7px}
+.gate{position:fixed;inset:0;background:var(--bg);z-index:50;display:flex;align-items:center;justify-content:center;padding:18px}
+.gate .card{max-width:340px;width:100%}
+.hint{color:var(--text2);font-size:11.5px;margin-top:6px;line-height:1.45}
+.note{background:#FFF8E1;border:1px solid #E8D48A;border-radius:9px;padding:9px 11px;
+      font-size:12px;color:#6b5600;margin-bottom:10px}
+</style>
+</head>
+<body>
+
+<div class="gate" id="gate">
+  <div class="card">
+    <h1>GRAND<span>LAB</span></h1>
+    <div class="sub">Customer list — staff sign in</div>
+    <label>Email</label><input id="email" type="email" autocomplete="username">
+    <label style="margin-top:9px">Password</label><input id="pass" type="password" autocomplete="current-password">
+    <button class="btn" style="margin-top:12px" onclick="doLogin()">SIGN IN</button>
+    <div id="loginErr" class="status err"></div>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="top">
+    <a class="back" href="gl-hub.html">&#8592; Hub</a>
+    <button class="btn btn2 btn-sm" onclick="openAdd()">+ New customer</button>
+  </div>
+  <h1>GRAND<span>LAB</span> CUSTOMERS</h1>
+  <div class="sub" id="countLine">Search by name, phone, plate, email or SQL code</div>
+
+  <!-- LIST -->
+  <div id="listView">
+    <div class="searchbar">
+      <input id="q" placeholder="Name, phone, plate, email, SQL code…" autocomplete="off">
+      <button class="btn btn2 btn-sm" onclick="runSearch()">Search</button>
+    </div>
+    <div id="status" class="status"></div>
+    <div id="list"></div>
+    <button class="btn btn2 hide" id="more" onclick="loadMore()">Load more</button>
+  </div>
+
+  <!-- DETAIL -->
+  <div id="detailView" class="hide"></div>
+
+  <!-- ADD / EDIT -->
+  <div id="formView" class="hide"></div>
+</div>
+
+<script>
+const SUPABASE_URL="https://eychljpzorzmaveixlnu.supabase.co";
+const SUPABASE_ANON="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV5Y2hsanB6b3J6bWF2ZWl4bG51Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2NDk2NjQsImV4cCI6MjA5NzIyNTY2NH0.6dA1zhz5ZIwf8byFB8vhfOzPI-uPPdPihEr1b8GG_oA";
+const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON,
+      {auth:{persistSession:true,autoRefreshToken:true,storageKey:'gl_auth'}});
+const $=id=>document.getElementById(id);
+const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const PAGE=40;
+let OFFSET=0, LASTQ='', CUR=null;
+
+/* ---------- login (shares gl_auth with the other staff apps) ---------- */
+async function boot(){
+  const {data}=await sb.auth.getSession();
+  if(data&&data.session){ $('gate').classList.add('hide'); runSearch(); }
+  else $('gate').classList.remove('hide');
+}
+async function doLogin(){
+  const email=$('email').value.trim(), pass=$('pass').value;
+  $('loginErr').textContent='Signing in…';
+  const {error}=await sb.auth.signInWithPassword({email,password:pass});
+  if(error){ $('loginErr').textContent='Login failed: '+error.message; return; }
+  $('loginErr').textContent=''; $('gate').classList.add('hide'); runSearch();
+}
+
+/* ---------- list ----------
+   Search runs in the DATABASE via gl_customer_list(). gl_walkin has 5,000+
+   rows, so nothing is ever fetched wholesale into the browser.              */
+function show(view){
+  ['listView','detailView','formView'].forEach(v=>$(v).classList.add('hide'));
+  $(view).classList.remove('hide');
+}
+function runSearch(){ OFFSET=0; LASTQ=$('q').value.trim(); $('list').innerHTML=''; loadMore(); }
+
+async function loadMore(){
+  $('status').textContent='Loading…';
+  const {data,error}=await sb.rpc('gl_customer_list',
+        {p_q:LASTQ, p_limit:PAGE, p_offset:OFFSET});
+  if(error){ $('status').innerHTML='<span class="err">Error: '+esc(error.message)+'</span>'; return; }
+  const rows=data||[];
+  if(OFFSET===0 && !rows.length){
+    $('list').innerHTML='<div class="empty">No customer found for “'+esc(LASTQ)+'”.<br><br>'+
+      '<button class="btn btn2 btn-sm" onclick="openAdd()">+ Add them as a new customer</button></div>';
+    $('status').textContent=''; $('more').classList.add('hide'); show('listView'); return;
+  }
+  $('list').insertAdjacentHTML('beforeend', rows.map(cardHtml).join(''));
+  OFFSET+=rows.length;
+  $('status').textContent=(LASTQ?('Matching “'+LASTQ+'” · '):'')+OFFSET+' shown';
+  $('more').classList.toggle('hide', rows.length<PAGE);
+  CACHE={}; rows.forEach(r=>CACHE[r.cust_key]=r);
+  Object.assign(ALL, CACHE);
+  show('listView');
+}
+let CACHE={}, ALL={};
+
+function cardHtml(r){
+  const cars=(r.cars||[]).slice(0,6).map(c=>'<span class="chip plate">'+esc(c.plate)+'</span>').join('');
+  const extra=(r.car_count>6)?('<span class="chip">+'+(r.car_count-6)+' more</span>'):'';
+  const pkg=r.pkg_left>0?'<span class="chip pkg">'+r.pkg_left+' package use'+(r.pkg_left>1?'s':'')+' left</span>':'';
+  const multi=(r.all_names&&r.all_names.length>1)
+      ? '<span class="chip warn">'+r.all_names.length+' name spellings</span>' : '';
+  return '<div class="cust" onclick="openDetail(\''+esc(r.cust_key)+'\')">'+
+    '<div class="nm">'+esc(r.name||'(no name)')+'</div>'+
+    '<div class="ph">'+esc(r.phone||'no phone')+(r.sqlacc_code?(' · SQL '+esc(r.sqlacc_code)):'')+'</div>'+
+    '<div class="chips">'+cars+extra+pkg+multi+'</div>'+
+    '<div class="meta">'+
+      '<span>'+r.car_count+' car'+(r.car_count===1?'':'s')+'</span>'+
+      (r.visits?'<span>'+r.visits+' visits</span>':'')+
+      (r.last_service?'<span>last '+esc(r.last_service)+'</span>':'<span>no service yet</span>')+
+    '</div></div>';
+}
+
+/* ---------- detail ---------- */
+function openDetail(key){
+  const r=ALL[key]; if(!r) return;
+  CUR=r;
+  const cars=(r.cars||[]).map(c=>
+    '<div class="dl"><span><span class="chip plate">'+esc(c.plate)+'</span> '+
+    esc(c.model||'')+'</span><span class="k">'+esc(c.car_type||'')+'</span></div>').join('')
+    || '<div class="empty">No car on file.</div>';
+  const names=(r.all_names&&r.all_names.length>1)
+    ? '<div class="note">Recorded under '+r.all_names.length+' spellings: '+
+      r.all_names.map(esc).join(' · ')+'. Editing the name updates all '+r.rows_merged+' records.</div>' : '';
+  $('detailView').innerHTML=
+    '<button class="btn btn2 btn-sm" style="margin-bottom:12px" onclick="show(\'listView\')">&#8592; Back to list</button>'+
+    '<div class="card">'+
+      '<div style="font-size:19px;font-weight:900">'+esc(r.name||'(no name)')+'</div>'+
+      '<div class="ph" style="color:var(--text2);font-size:13px;margin-top:2px">'+esc(r.phone||'no phone')+'</div>'+
+      names+
+      '<div class="sec">Details</div>'+
+      '<div class="dl"><span class="k">Phone</span><b>'+esc(r.phone||'—')+'</b></div>'+
+      '<div class="dl"><span class="k">Email</span><b>'+esc(r.email||'—')+'</b></div>'+
+      '<div class="dl"><span class="k">SQL Account code</span><b>'+esc(r.sqlacc_code||'—')+'</b></div>'+
+      '<div class="dl"><span class="k">Total visits</span><b>'+(r.visits||0)+'</b></div>'+
+      '<div class="dl"><span class="k">Last service</span><b>'+esc(r.last_service||'—')+'</b></div>'+
+      '<div class="dl"><span class="k">Package uses left</span><b>'+(r.pkg_left||0)+'</b></div>'+
+      '<div class="dl"><span class="k">Records merged</span><b>'+r.rows_merged+'</b></div>'+
+      '<div class="sec">Vehicles ('+r.car_count+')</div>'+cars+
+      '<div class="row" style="margin-top:14px">'+
+        '<button class="btn btn2 btn-sm" onclick="openEdit()">Edit customer</button>'+
+        '<button class="btn btn2 btn-sm" onclick="openAddCar()">+ Add car</button>'+
+      '</div>'+
+      '<div class="row" style="margin-top:8px">'+
+        '<a class="btn btn2 btn-sm" style="text-align:center;text-decoration:none;line-height:1.5" '+
+          'href="gl-jobcard.html">Create job card</a>'+
+        (r.cars&&r.cars.length?('<a class="btn btn2 btn-sm" style="text-align:center;text-decoration:none;line-height:1.5" '+
+          'href="gl-platescan.html">Open plate scanner</a>'):'')+
+      '</div>'+
+    '</div>';
+  show('detailView');
+}
+
+/* ---------- add / edit ----------
+   Edit writes to EVERY record in the group, so fixing a name or phone fixes it
+   everywhere instead of leaving half the rows stale.                        */
+function field(id,lbl,val,ph,type){
+  return '<label style="margin-top:9px">'+lbl+'</label>'+
+    '<input id="'+id+'" type="'+(type||'text')+'" value="'+esc(val||'')+'" placeholder="'+esc(ph||'')+'">';
+}
+function openAdd(){
+  CUR=null;
+  $('formView').innerHTML=
+    '<button class="btn btn2 btn-sm" style="margin-bottom:12px" onclick="show(\'listView\')">&#8592; Cancel</button>'+
+    '<div class="card"><div style="font-size:17px;font-weight:900">New customer</div>'+
+    '<div class="hint">Create the customer first, then raise the job card or invoice.</div>'+
+    field('f_name','Customer name','','e.g. TAI MING')+
+    field('f_phone','Phone','','e.g. 60123456789','tel')+
+    field('f_email','Email (optional)','','name@email.com','email')+
+    field('f_plate','Car plate (optional)','','e.g. ABC1234')+
+    field('f_model','Model (optional)','','e.g. PERODUA MYVI')+
+    '<label style="margin-top:9px">Car type (optional)</label>'+
+    '<select id="f_ctype"><option value="">—</option>'+
+      ['SEDAN','SUV','MPV','HATCHBACK','PICKUP','COUPE','Motorcycle','Supercar']
+        .map(t=>'<option>'+t+'</option>').join('')+'</select>'+
+    field('f_sql','SQL Account code (optional)','','e.g. C4553')+
+    '<button class="btn" style="margin-top:14px" onclick="saveNew()">SAVE CUSTOMER</button>'+
+    '<div id="formMsg" class="status"></div></div>';
+  show('formView');
+}
+function openEdit(){
+  const r=CUR; if(!r) return;
+  $('formView').innerHTML=
+    '<button class="btn btn2 btn-sm" style="margin-bottom:12px" onclick="openDetail(\''+esc(r.cust_key)+'\')">&#8592; Cancel</button>'+
+    '<div class="card"><div style="font-size:17px;font-weight:900">Edit customer</div>'+
+    '<div class="note">Saving updates all <b>'+r.rows_merged+'</b> record'+(r.rows_merged===1?'':'s')+
+      ' for this customer, so the details match everywhere.</div>'+
+    field('f_name','Customer name',r.name)+
+    field('f_phone','Phone',r.phone,'','tel')+
+    field('f_email','Email',r.email,'name@email.com','email')+
+    field('f_sql','SQL Account code',r.sqlacc_code)+
+    '<button class="btn" style="margin-top:14px" onclick="saveEdit()">SAVE CHANGES</button>'+
+    '<div id="formMsg" class="status"></div></div>';
+  show('formView');
+}
+function openAddCar(){
+  const r=CUR; if(!r) return;
+  $('formView').innerHTML=
+    '<button class="btn btn2 btn-sm" style="margin-bottom:12px" onclick="openDetail(\''+esc(r.cust_key)+'\')">&#8592; Cancel</button>'+
+    '<div class="card"><div style="font-size:17px;font-weight:900">Add a car</div>'+
+    '<div class="hint">Added to '+esc(r.name||'this customer')+'.</div>'+
+    field('f_plate','Car plate','','e.g. ABC1234')+
+    field('f_model','Model','','e.g. PERODUA MYVI')+
+    '<label style="margin-top:9px">Car type</label>'+
+    '<select id="f_ctype"><option value="">—</option>'+
+      ['SEDAN','SUV','MPV','HATCHBACK','PICKUP','COUPE','Motorcycle','Supercar']
+        .map(t=>'<option>'+t+'</option>').join('')+'</select>'+
+    '<button class="btn" style="margin-top:14px" onclick="saveCar()">ADD CAR</button>'+
+    '<div id="formMsg" class="status"></div></div>';
+  show('formView');
+}
+
+const val=id=>{const e=$(id);return e?e.value.trim():'';};
+const normPhone=p=>String(p||'').replace(/[^0-9]/g,'').replace(/^(60|0)/,'');
+
+async function saveNew(){
+  const name=val('f_name'), phone=val('f_phone');
+  const m=$('formMsg');
+  if(!name){ m.innerHTML='<span class="err">Enter the customer name.</span>'; return; }
+  if(phone && normPhone(phone).length<7){ m.innerHTML='<span class="err">That phone looks too short.</span>'; return; }
+  m.textContent='Checking…';
+  // duplicate guard: a phone already on file means this customer exists
+  if(phone){
+    const {data:dupe}=await sb.rpc('gl_customer_list',{p_q:phone,p_limit:1,p_offset:0});
+    if(dupe&&dupe.length){
+      m.innerHTML='<span class="err">That phone already belongs to <b>'+esc(dupe[0].name)+
+        '</b>.</span> <button class="btn btn2 btn-sm" style="margin-top:8px" onclick="openExisting(\''+
+        esc(dupe[0].cust_key)+'\')">Open that customer</button>';
+      ALL[dupe[0].cust_key]=dupe[0];
+      return;
+    }
+  }
+  m.textContent='Saving…';
+  const row={name:name, phone:phone||null, email:val('f_email')||null,
+             plate:val('f_plate').toUpperCase()||null, model:val('f_model')||null,
+             car_type:val('f_ctype')||null, sqlacc_code:val('f_sql')||null};
+  const {error}=await sb.from('gl_walkin').insert(row);
+  if(error){ m.innerHTML='<span class="err">Could not save: '+esc(error.message)+'</span>'; return; }
+  m.innerHTML='<span class="ok">Customer saved.</span>';
+  setTimeout(()=>{ $('q').value=phone||name; runSearch(); },700);
+}
+function openExisting(k){ openDetail(k); }
+
+async function saveEdit(){
+  const r=CUR, m=$('formMsg'); if(!r) return;
+  const name=val('f_name');
+  if(!name){ m.innerHTML='<span class="err">Name cannot be blank.</span>'; return; }
+  const patch={name:name, phone:val('f_phone')||null, email:val('f_email')||null,
+               sqlacc_code:val('f_sql')||null};
+  m.textContent='Updating '+r.rows_merged+' record'+(r.rows_merged===1?'':'s')+'…';
+  const {error}=await sb.from('gl_walkin').update(patch).in('id', r.row_ids);
+  if(error){ m.innerHTML='<span class="err">Update failed: '+esc(error.message)+
+      '</span><div class="hint">Editing needs the reception login.</div>'; return; }
+  m.innerHTML='<span class="ok">Updated.</span>';
+  setTimeout(()=>{ $('q').value=patch.phone||name; runSearch(); },700);
+}
+
+async function saveCar(){
+  const r=CUR, m=$('formMsg'); if(!r) return;
+  const plate=val('f_plate').toUpperCase().replace(/\s+/g,'');
+  if(!plate){ m.innerHTML='<span class="err">Enter the car plate.</span>'; return; }
+  m.textContent='Adding…';
+  const {error}=await sb.from('gl_walkin').insert({
+    name:r.name, phone:r.phone||null, email:r.email||null, sqlacc_code:r.sqlacc_code||null,
+    plate:plate, model:val('f_model')||null, car_type:val('f_ctype')||null});
+  if(error){ m.innerHTML='<span class="err">Could not add: '+esc(error.message)+'</span>'; return; }
+  m.innerHTML='<span class="ok">Car added.</span>';
+  setTimeout(()=>{ $('q').value=r.phone||r.name; runSearch(); },700);
+}
+
+$('q').addEventListener('keydown',e=>{ if(e.key==='Enter') runSearch(); });
+boot();
+</script>
+</body>
+</html>
