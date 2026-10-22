@@ -227,6 +227,9 @@ html,body{height:100%;background:var(--bg);font-family:-apple-system,BlinkMacSys
             <option value="workshop">Workshop Lemans</option>
             <option value="showroom">Showroom Palm Motor</option>
           </select></div>
+        <div class="ff" id="jcCampaignWrap" style="display:none"><label>Which ad? — code in the customer's first WhatsApp message</label>
+          <input id="f_campaign" list="jcCampaignList" placeholder="e.g. FF-1888 · blank or N/A if no code" autocapitalize="characters" style="text-transform:uppercase">
+          <datalist id="jcCampaignList"></datalist></div>
         <div class="ff" id="jcReferralWrap" style="display:none"><label>Referred by — referrer's phone</label>
           <input id="f_refphone" type="tel" inputmode="numeric" placeholder="Referrer's phone number" oninput="jcLookupReferrer()">
           <div id="f_reffound" style="font-size:13px;margin-top:5px;min-height:18px;color:var(--text2)"></div></div>
@@ -831,7 +834,8 @@ let SVCS=[], DEFS=[];
 function newJob(){
   EDITING=null; CUR_TYPE='walkin'; foundProfile=null; CAR_PACKAGES=[]; CUST_CARS=[]; WALKIN_CARS=[]; PHOTOS=[]; SEL_TECHS=[];
   JC_EXISTING=false; JC_REFERRER=null;
-  if($('f_leadsrc'))$('f_leadsrc').value=''; if($('jcReferralWrap'))$('jcReferralWrap').style.display='none';
+  if($('f_leadsrc')){$('f_leadsrc').value='';$('f_leadsrc').style.borderColor='';} if($('jcReferralWrap'))$('jcReferralWrap').style.display='none';
+  if($('f_campaign'))$('f_campaign').value=''; if($('jcCampaignWrap'))$('jcCampaignWrap').style.display='none';
   if($('f_reffound'))$('f_reffound').textContent=''; if($('jcRetBadge'))$('jcRetBadge').textContent='';
   if($('f_slot')){ $('f_slot').value=''; }
   if($('f_attendee')) $('f_attendee').value='';
@@ -1007,8 +1011,15 @@ let _lt=null;
 function lookupCust(){ clearTimeout(_lt); _lt=setTimeout(_doLookup,450); }
 /* returning badge + referral helpers */
 function jcMarkReturning(){ const b=$('jcRetBadge'); if(b) b.textContent = JC_EXISTING ? '· ✓ Returning' : ''; }
+/* Meta ad campaign codes (pre-filled in the ad's WhatsApp message). Add next month's code here. */
+const JC_CAMPAIGNS=['FF-1888','FF-4888','NEWCAR-1888','NOV-GLOW','DEC-NEWCAR','JAN-FESTIVE'];
 function onJcLeadSource(){
   const v=$('f_leadsrc').value;
+  if(v){ $('f_leadsrc').style.borderColor=''; }
+  const cw=$('jcCampaignWrap');
+  if(cw){ cw.style.display = v==='ads' ? 'block' : 'none';
+    const dl=$('jcCampaignList'); if(dl&&!dl.children.length) dl.innerHTML=JC_CAMPAIGNS.map(c=>'<option value="'+c+'">').join('');
+    if(v!=='ads'&&$('f_campaign')) $('f_campaign').value=''; }
   $('jcReferralWrap').style.display = v==='referral' ? 'block' : 'none';
   if(v!=='referral'){ JC_REFERRER=null; if($('f_reffound'))$('f_reffound').textContent=''; if($('f_refphone'))$('f_refphone').value=''; }
 }
@@ -1397,6 +1408,9 @@ function collectJob(){
     booking_id:EDITING&&EDITING.booking_id?EDITING.booking_id:null,
     cust_type:CUR_TYPE, tier:foundProfile?foundProfile.tier:null, is_new:!foundProfile,
     lead_source: ($('f_leadsrc')?$('f_leadsrc').value:'')||null,
+    lead_campaign: (function(){ // "N/A", "NA", "-", "none" all mean no code
+      const c=(($('f_leadsrc')&&$('f_leadsrc').value==='ads'&&$('f_campaign'))?$('f_campaign').value.trim().toUpperCase().slice(0,40):'');
+      return /^(N\/?A|NONE|NIL|-+)$/.test(c)?null:(c||null); })(),
     is_returning: JC_EXISTING,
     referral_by_name: (($('f_leadsrc')&&$('f_leadsrc').value==='referral') && JC_REFERRER)?JC_REFERRER.name:null,
     referral_by_ref:  (($('f_leadsrc')&&$('f_leadsrc').value==='referral') && JC_REFERRER)?JC_REFERRER.ref:null,
@@ -1421,6 +1435,12 @@ function collectJob(){
 async function saveJob(silent){
   const j=collectJob();
   if(!j.plate){ toast('Plate required'); return null; }
+  // marketing: every NEW walk-in/appointment job from a NEW customer must say where they came from
+  // (returning customers are counted by the Returning flag; workshop/showroom/boss by their tab; old jobs are never blocked)
+  if(!(EDITING&&EDITING.id) && (CUR_TYPE==='walkin'||CUR_TYPE==='appointment') && !JC_EXISTING && !j.lead_source){
+    const ls=$('f_leadsrc'); if(ls){ ls.style.borderColor='#dc2626'; ls.scrollIntoView({behavior:'smooth',block:'center'}); ls.focus(); }
+    toast('Pick "Cust from where" first — new customer'); return null;
+  }
   const {error}=await sb.from('gl_jobs').upsert(j);
   if(error){ toast('Save failed: '+error.message); return null; }
   // register the car so the plate scanner + lookups can find it later
@@ -1671,7 +1691,7 @@ function editJob(id){
   populateStaffDropdown(); SEL_TECHS=Array.isArray(j.techs)?j.techs.slice():(j.staff?j.staff.split(',').map(s=>s.trim()).filter(Boolean):[]); renderTechChips();
   if($('f_attendee')) $('f_attendee').value=j.attendee||'';
   // restore marketing source + referral + returning
-  if($('f_leadsrc')){ $('f_leadsrc').value=j.lead_source||''; onJcLeadSource(); }
+  if($('f_leadsrc')){ $('f_leadsrc').value=j.lead_source||''; if($('f_campaign'))$('f_campaign').value=j.lead_campaign||''; onJcLeadSource(); }
   JC_EXISTING = j.is_returning===true;
   if($('jcRetBadge')) $('jcRetBadge').textContent = JC_EXISTING ? '· ✓ Returning' : '';
   if(j.referral_by_name){ JC_REFERRER={name:j.referral_by_name, ref:j.referral_by_ref||''};
