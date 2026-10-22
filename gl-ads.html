@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Grandlab Ads Report</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{--bg:#FFFFFF;--card:#FFFFFF;--card2:#F6F7F8;--gold:#F5C518;--gold-ink:#8A6D00;
+      --text:#111111;--text2:#5F6368;--border:#E3E5E8;--red:#C0392B;--green:#157347;
+      --amber:#9A6700;--sel:#FFF8E1;--head:#EEF0F2;--wa:#25D366}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);
+     font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-size:13px}
+.hide{display:none !important}
+.bar{display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid var(--border);
+     background:var(--card2);position:sticky;top:0;z-index:30;flex-wrap:wrap}
+.bar .ttl{font-weight:900;font-size:15px;white-space:nowrap}
+.bar .ttl span{color:var(--gold-ink)}
+.back{color:var(--text2);text-decoration:none;font-size:12.5px;white-space:nowrap}
+.grow{flex:1}
+select{padding:7px 9px;border:1px solid var(--border);border-radius:7px;background:var(--card);
+     color:var(--text);font-family:inherit;font-size:13px}
+input{padding:7px 9px;border:1px solid var(--border);border-radius:7px;background:var(--card);
+     color:var(--text);font-family:inherit;font-size:13px;width:100%}
+.btn{background:var(--gold);color:#000;border:none;border-radius:7px;padding:7px 13px;font-size:12.5px;
+     font-weight:800;cursor:pointer;font-family:inherit;white-space:nowrap;text-decoration:none;display:inline-block}
+.btn2{background:var(--card);color:var(--text);border:1px solid var(--border)}
+.btn:disabled{opacity:.5;cursor:default}
+.sync{color:var(--text2);font-size:11.5px;white-space:nowrap}
+.sync.bad{color:var(--red);font-weight:700}
+.wrap{max-width:1280px;margin:0 auto;padding:14px 12px 40px}
+.status{color:var(--text2);font-size:12px;padding:6px 0}
+.err{color:var(--red)}
+
+.notice{border:1px solid #E8D48A;background:#FFF8E1;border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:12.5px;line-height:1.5}
+.notice b{color:var(--gold-ink)}
+
+.kpis{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px;margin-bottom:14px}
+.kpi{border:1px solid var(--border);border-radius:10px;padding:10px 12px;background:var(--card)}
+.kpi .l{font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.03em;color:var(--text2)}
+.kpi .v{font-size:20px;font-weight:900;margin-top:3px;font-variant-numeric:tabular-nums}
+.kpi .s{font-size:11px;color:var(--text2);margin-top:1px}
+
+.sect{font-size:11px;font-weight:900;letter-spacing:.06em;text-transform:uppercase;color:var(--text2);margin:18px 0 8px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:10px}
+.card{border:1px solid var(--border);border-radius:12px;background:var(--card);padding:12px;display:flex;flex-direction:column;gap:8px}
+.chead{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.badge{display:inline-flex;align-items:center;gap:5px;border-radius:20px;padding:3px 9px;font-size:11.5px;font-weight:800}
+.badge i{width:7px;height:7px;border-radius:50%;display:inline-block}
+.b-scale{background:#E7F4EC;color:var(--green)}.b-scale i{background:var(--green)}
+.b-hold{background:#FFF4D6;color:var(--amber)}.b-hold i{background:#E0A800}
+.b-cut{background:#FBE9E7;color:var(--red)}.b-cut i{background:var(--red)}
+.b-learn{background:var(--card2);color:var(--text2)}.b-learn i{background:#9AA0A6}
+.chan{font-size:11.5px;color:var(--text2)}
+.cname{font-weight:900;font-size:15px;line-height:1.25}
+.csub{font-size:11px;color:var(--text2);margin-top:2px;line-height:1.35}
+.roas .l{font-size:11px;color:var(--text2)}
+.roas .v{font-size:28px;font-weight:900;font-variant-numeric:tabular-nums;line-height:1.1}
+.roas .d{font-size:11.5px;color:var(--text2)}
+.roas .d.up{color:var(--green)}.roas .d.down{color:var(--red)}
+.mgrid{display:grid;grid-template-columns:1fr 1fr;gap:6px 10px}
+.m .l{font-size:10.5px;color:var(--text2)}
+.m .v{font-size:14px;font-weight:800;font-variant-numeric:tabular-nums}
+.funnel{display:flex;gap:4px;flex-wrap:wrap}
+.chip{font-size:10.5px;border:1px solid var(--border);border-radius:20px;padding:2px 7px;color:var(--text2);background:var(--card2)}
+.chip b{color:var(--text)}
+.thumb{width:100%;aspect-ratio:16/10;border-radius:9px;background:#1b1b1b center/cover no-repeat;position:relative;overflow:hidden}
+.thumb .cap{position:absolute;left:0;right:0;bottom:0;padding:6px 9px;background:linear-gradient(transparent,rgba(0,0,0,.75));color:#fff;font-size:11px;font-weight:700}
+.thumb.none{aspect-ratio:auto;height:46px;background:var(--card2);display:flex;align-items:center;justify-content:center;color:var(--text2);font-size:11px}
+.view{border:1px solid var(--border);background:var(--card);border-radius:8px;padding:7px;font-weight:800;font-size:12px;cursor:pointer;font-family:inherit;color:var(--text)}
+.view:hover{background:var(--sel)}
+.empty{color:var(--text2);text-align:center;padding:26px 12px;border:1px dashed var(--border);border-radius:12px}
+.foot{color:var(--text2);font-size:11px;margin-top:18px;line-height:1.5}
+
+/* drawer */
+.drawer{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:50;display:flex;justify-content:flex-end}
+.dpanel{width:min(760px,100%);height:100%;background:var(--bg);overflow:auto;padding:14px}
+.dhead{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.dhead .t{font-weight:900;font-size:16px;flex:1}
+table.l{width:100%;border-collapse:collapse;font-size:12.5px}
+table.l th{background:var(--head);text-align:left;font-size:10.5px;text-transform:uppercase;letter-spacing:.03em;color:var(--text2);padding:6px 8px}
+table.l td{padding:7px 8px;border-bottom:1px solid var(--border);vertical-align:top}
+.pill{display:inline-block;border-radius:20px;padding:1px 8px;font-size:11px;font-weight:800;white-space:nowrap}
+.p-talking{background:#E8F0FE;color:#1A56B5}.p-waiting{background:var(--card2);color:var(--text2)}
+.p-followup_sent{background:#FFF4D6;color:var(--amber)}.p-ghost{background:#EEE;color:#555}
+.p-booked{background:#E7F4EC;color:var(--green)}.p-paid{background:#157347;color:#fff}.p-closed{background:#EEE;color:#555}
+.rem{white-space:pre-wrap;color:var(--text2);font-size:11.5px;max-width:260px}
+.wa{color:#128C7E;font-weight:700;text-decoration:none}
+
+/* login */
+.gate{position:fixed;inset:0;background:var(--bg);z-index:60;display:flex;align-items:center;justify-content:center;padding:18px}
+.gate .inner{max-width:330px;width:100%;border:1px solid var(--border);border-radius:12px;padding:18px}
+.gate h1{font-size:19px;font-weight:900;margin:0 0 3px}
+.gate h1 span{color:var(--gold-ink)}
+.gate .sub{color:var(--text2);font-size:12px}
+.gate label{display:block;font-size:11px;font-weight:800;text-transform:uppercase;color:var(--text2);margin:10px 0 4px}
+
+@media(max-width:900px){ .kpis{grid-template-columns:repeat(3,minmax(0,1fr))} }
+@media(max-width:520px){ .kpis{grid-template-columns:repeat(2,minmax(0,1fr))} .kpi .v{font-size:17px} }
+</style>
+</head>
+<body>
+
+<div class="gate hide" id="gate"><div class="inner">
+  <h1>GRAND<span>LAB</span></h1>
+  <div class="sub">Ads Report — staff sign in</div>
+  <label>Email</label><input id="email" type="email" autocomplete="username">
+  <label>Password</label><input id="pass" type="password" autocomplete="current-password">
+  <button class="btn" style="width:100%;margin-top:12px;padding:11px" onclick="doLogin()">SIGN IN</button>
+  <div id="loginErr" class="status err"></div>
+</div></div>
+
+<div class="bar">
+  <a class="back" href="gl-hub.html">&#8592; Hub</a>
+  <div class="ttl">GRAND<span>LAB</span> ADS REPORT</div>
+  <div class="grow"></div>
+  <select id="period" onchange="load()">
+    <option value="month">This month</option>
+    <option value="7">Last 7 days</option>
+    <option value="30">Last 30 days</option>
+    <option value="last">Last month</option>
+  </select>
+  <span class="sync" id="sync"></span>
+  <button class="btn btn2" id="syncBtn" onclick="syncNow()">Sync Meta now</button>
+</div>
+
+<div class="wrap">
+  <div id="notice"></div>
+  <div id="status" class="status">Loading…</div>
+  <div class="kpis" id="kpis"></div>
+  <div id="cards"></div>
+  <div class="foot">
+    <b>How to read this.</b> Return on ad spend = money paid in POS by the customers who came from that ad, divided by what Meta charged.
+    <b>Scale</b> = RM3 or more back for every RM1 spent. <b>Hold</b> = RM1 to RM3. <b>Cut</b> = under RM1. <b>Learning</b> = under RM100 spent, too early to judge.
+    Leads = WhatsApp chats that came from the ad (the code in the first message, or Meta's click-to-WhatsApp tag). Paid orders and revenue are matched by phone number in POS, so a customer who pays under another number is missed.
+    Spend and ad pictures come from Meta every hour. WhatsApp tracking started 22 Oct 2026.
+  </div>
+</div>
+
+<div class="drawer hide" id="drawer" onclick="if(event.target===this)closeDrawer()">
+  <div class="dpanel">
+    <div class="dhead"><div class="t" id="dTitle"></div><button class="btn btn2" onclick="closeDrawer()">Close</button></div>
+    <div id="dBody"></div>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL='https://eychljpzorzmaveixlnu.supabase.co';
+const SUPABASE_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV5Y2hsanB6b3J6bWF2ZWl4bG51Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2NDk2NjQsImV4cCI6MjA5NzIyNTY2NH0.6dA1zhz5ZIwf8byFB8vhfOzPI-uPPdPihEr1b8GG_oA';
+const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON,{auth:{persistSession:true,autoRefreshToken:true,storageKey:'gl_auth'}});
+const $=id=>document.getElementById(id);
+const esc=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const KL=8*3600e3, DAY=86400e3;
+const rm=n=>'RM '+Math.round(Number(n)||0).toLocaleString('en-MY');
+const num=n=>(Math.round(Number(n)||0)).toLocaleString('en-MY');
+const klDate=t=>new Date(t+KL).toISOString().slice(0,10);
+const klWhen=t=>t?new Date(t).toLocaleString('en-GB',{timeZone:'Asia/Kuala_Lumpur',day:'numeric',month:'short',hour:'numeric',minute:'2-digit',hour12:true}):'';
+let GROUPS=[];
+
+/* ---------- login ---------- */
+async function boot(){
+  const {data}=await sb.auth.getSession();
+  if(data&&data.session){ $('gate').classList.add('hide'); load(); }
+  else $('gate').classList.remove('hide');
+}
+async function doLogin(){
+  const email=$('email').value.trim(), pass=$('pass').value;
+  if(!email||!pass){ $('loginErr').textContent='Enter email and password.'; return; }
+  $('loginErr').textContent='Signing in…';
+  let res;
+  try{ res=await sb.auth.signInWithPassword({email,password:pass}); }
+  catch(e){ $('loginErr').textContent='Network error: '+(e.message||e); return; }
+  if(res.error){ $('loginErr').textContent='Login failed: '+res.error.message; return; }
+  $('loginErr').textContent=''; $('gate').classList.add('hide'); load();
+}
+$('pass').addEventListener('keydown',e=>{ if(e.key==='Enter') doLogin(); });
+
+/* ---------- period ---------- */
+function range(){
+  const p=$('period').value, now=Date.now();
+  const today=klDate(now);
+  if(p==='7'||p==='30'){ const d=Number(p); return {from:klDate(now-(d-1)*DAY), to:today, label:'last '+d+' days'}; }
+  const k=new Date(now+KL); const y=k.getUTCFullYear(), m=k.getUTCMonth();
+  const first=(yy,mm)=>new Date(Date.UTC(yy,mm,1)).toISOString().slice(0,10);
+  if(p==='last'){ const s=first(y,m-1), e=klDate(Date.parse(first(y,m)+'T00:00:00Z')-DAY); return {from:s,to:e,label:'last month'}; }
+  return {from:first(y,m), to:today, label:'this month'};
+}
+const startIso=d=>new Date(Date.parse(d+'T00:00:00+08:00')).toISOString();
+const endIso=d=>new Date(Date.parse(d+'T00:00:00+08:00')+DAY).toISOString();
+
+/* ---------- data ---------- */
+async function all(q){ const r=await q; if(r.error) throw new Error(r.error.message); return r.data||[]; }
+
+async function load(){
+  $('status').textContent='Loading…'; $('status').className='status';
+  const R=range();
+  try{
+    const [ads,camps,daily,chats,adMsgs,logs]=await Promise.all([
+      all(sb.from('gl_meta_ad').select('id,campaign_id,name,effective_status,code,code_source,thumbnail_url,welcome_text').limit(2000)),
+      all(sb.from('gl_meta_campaign').select('id,name,effective_status,code').limit(1000)),
+      all(sb.from('gl_meta_ad_daily').select('ad_id,campaign_id,day,spend,clicks,impressions,conversations').gte('day',R.from).lte('day',R.to).limit(20000)),
+      all(sb.from('gl_wa_chat').select('*').gte('first_in_at',startIso(R.from)).lt('first_in_at',endIso(R.to)).limit(5000)),
+      all(sb.from('gl_wa_msg').select('chat_jid,ad_id').eq('direction','in').not('ad_id','is',null).gte('wa_ts',startIso(R.from)).limit(5000)),
+      all(sb.from('gl_meta_sync_log').select('*').order('started_at',{ascending:false}).limit(5)),
+    ]);
+    render(R,ads,camps,daily,chats,adMsgs,logs);
+  }catch(e){
+    $('status').textContent='Could not load: '+e.message; $('status').className='status err';
+  }
+}
+
+function syncLine(logs){
+  const s=$('sync'), last=logs[0], ok=logs.find(l=>l.ok);
+  if(!last){ s.textContent='Meta not connected yet'; s.className='sync bad'; return 'none'; }
+  if(last.ok){ s.textContent='Meta synced '+klWhen(last.finished_at||last.started_at); s.className='sync'; return 'ok'; }
+  s.textContent='Last Meta sync failed'+(ok?' (last good: '+klWhen(ok.finished_at)+')':''); s.className='sync bad';
+  return last.detail||'error';
+}
+
+function render(R,ads,camps,daily,chats,adMsgs,logs){
+  const sync=syncLine(logs);
+  let note='';
+  if(sync==='none') note='<div class="notice"><b>Meta is not connected yet.</b> WhatsApp leads, bookings and sales already show below. Ad spend, return on ad spend and the ad pictures appear after the Meta token is added (Supabase secrets <b>META_TOKEN</b> and <b>META_AD_ACCOUNT</b>). New promos then appear here by themselves within the hour.</div>';
+  else if(sync!=='ok') note='<div class="notice"><b>Meta sync problem:</b> '+esc(sync)+'</div>';
+  $('notice').innerHTML=note;
+
+  const adById={}; ads.forEach(a=>adById[a.id]=a);
+  const campById={}; camps.forEach(c=>campById[c.id]=c);
+  const keyOfAd=a=>a&&a.code?a.code:(a?'CAMP:'+a.campaign_id:null);
+  const adOfChat={}; adMsgs.forEach(m=>{ if(!adOfChat[m.chat_jid]) adOfChat[m.chat_jid]=m.ad_id; });
+
+  const G={};
+  const g=k=>G[k]||(G[k]={key:k,spend:0,clicks:0,impr:0,conv:0,chats:[],ads:new Set(),camps:new Set()});
+  daily.forEach(d=>{
+    const a=adById[d.ad_id]||{id:d.ad_id,campaign_id:d.campaign_id};
+    const x=g(keyOfAd(a)); x.spend+=Number(d.spend)||0; x.clicks+=Number(d.clicks)||0; x.impr+=Number(d.impressions)||0; x.conv+=Number(d.conversations)||0;
+    x.ads.add(a.id); if(a.campaign_id) x.camps.add(a.campaign_id);
+  });
+  chats.forEach(c=>{
+    let k=null;
+    if(c.lead_code&&c.lead_code!=='META-AD') k=c.lead_code;
+    else if(adOfChat[c.chat_jid]&&adById[adOfChat[c.chat_jid]]) k=keyOfAd(adById[adOfChat[c.chat_jid]]);
+    else if(c.lead_code==='META-AD') k='META-AD';
+    else k='ORGANIC';
+    const x=g(k); x.chats.push(c);
+    const aid=adOfChat[c.chat_jid]; if(aid&&adById[aid]){ x.ads.add(aid); x.camps.add(adById[aid].campaign_id); }
+  });
+  ads.forEach(a=>{ if(a.code&&G[a.code]){ G[a.code].ads.add(a.id); G[a.code].camps.add(a.campaign_id); } });
+
+  const list=Object.values(G).map(x=>{
+    const paid=x.chats.filter(c=>c.status==='paid');
+    x.leads=x.chats.length;
+    x.revenue=paid.reduce((s,c)=>s+(Number(c.paid_rm)||0),0);
+    x.paid=paid.length;
+    x.booked=x.chats.filter(c=>c.status==='booked'||c.status==='paid').length;
+    x.ghost=x.chats.filter(c=>c.status==='ghost').length;
+    x.replied=x.chats.filter(c=>c.last_out_at).length;
+    x.roas=x.spend>0?x.revenue/x.spend:null;
+    const adsArr=[...x.ads].map(id=>adById[id]).filter(Boolean);
+    x.thumb=(adsArr.find(a=>a.thumbnail_url)||{}).thumbnail_url||'';
+    x.active=adsArr.filter(a=>a.effective_status==='ACTIVE').length;
+    x.adNames=adsArr.map(a=>a.name).filter(Boolean);
+    x.campNames=[...x.camps].map(id=>campById[id]&&campById[id].name).filter(Boolean);
+    return x;
+  });
+  const paidAds=list.filter(x=>x.key!=='ORGANIC'&&x.spend>0);
+  const totSpend=list.reduce((s,x)=>s+x.spend,0);
+  const adRev=paidAds.reduce((s,x)=>s+x.revenue,0);
+  const avg=totSpend>0?adRev/totSpend:null;
+  list.forEach(x=>{
+    x.vsAvg=(x.roas!=null&&avg)?Math.round((x.roas/avg-1)*100):null;
+    x.verdict=(x.key==='ORGANIC')?'none':(x.key==='META-AD')?'unmatched':(x.spend<100)?'learn':x.roas>=3?'scale':x.roas>=1?'hold':'cut';
+  });
+  GROUPS=list;
+
+  const allChats=chats.length, fromAds=list.filter(x=>x.key!=='ORGANIC').reduce((s,x)=>s+x.leads,0);
+  const booked=list.reduce((s,x)=>s+x.booked,0), paidN=list.reduce((s,x)=>s+x.paid,0), rev=list.reduce((s,x)=>s+x.revenue,0);
+  $('kpis').innerHTML=[
+    ['Ad spend',totSpend?rm(totSpend):'—',sync==='none'?'Meta not connected':R.label],
+    ['WhatsApp chats',num(allChats),num(fromAds)+' from ads'],
+    ['Booked',num(booked),allChats?Math.round(booked/allChats*100)+'% of chats':''],
+    ['Paid orders',num(paidN),''],
+    ['Revenue',rm(rev),'matched in POS'],
+    ['Return on ad spend',avg!=null?avg.toFixed(1)+'×':'—',avg!=null?'ad revenue ÷ spend':'needs Meta spend'],
+  ].map(k=>'<div class="kpi"><div class="l">'+k[0]+'</div><div class="v">'+k[1]+'</div><div class="s">'+esc(k[2])+'</div></div>').join('');
+
+  const order={scale:0,hold:1,cut:2,learn:3,unmatched:4,none:5};
+  const coded=list.filter(x=>x.key!=='ORGANIC'&&!x.key.startsWith('CAMP:')).sort((a,b)=>(order[a.verdict]-order[b.verdict])||(b.spend-a.spend)||(b.leads-a.leads));
+  const nocode=list.filter(x=>x.key.startsWith('CAMP:')).sort((a,b)=>b.spend-a.spend);
+  const organic=list.find(x=>x.key==='ORGANIC');
+
+  let h='';
+  h+='<div class="sect">Ads by code · '+esc(R.label)+'</div>';
+  h+=coded.length?'<div class="grid">'+coded.map(card).join('')+'</div>':'<div class="empty">No ad leads in this period yet.</div>';
+  if(nocode.length) h+='<div class="sect">Ads with no code found</div><div class="grid">'+nocode.map(card).join('')+'</div>';
+  if(organic&&organic.leads) h+='<div class="sect">Not from ads</div><div class="grid">'+card(organic)+'</div>';
+  $('cards').innerHTML=h;
+  $('status').textContent=allChats||totSpend?'':'Nothing in this period yet.';
+}
+
+function title(x){
+  if(x.key==='ORGANIC') return {t:'Not from ads',s:'Walk-in contacts, referrals, repeat customers'};
+  if(x.key==='META-AD') return {t:'Meta ad (no code)',s:'Customer deleted the code, ad not matched yet'};
+  if(x.key.startsWith('CAMP:')) return {t:x.campNames[0]||'Campaign',s:'No code in the ad message. Add one (e.g. FF-1888) to track it properly.'};
+  return {t:x.key,s:(x.campNames.length?x.campNames.slice(0,2).join(' · '):'')+(x.active?' · '+x.active+' active ad'+(x.active>1?'s':''):'')};
+}
+
+function card(x){
+  const v={scale:['b-scale','Scale'],hold:['b-hold','Hold'],cut:['b-cut','Cut'],learn:['b-learn','Learning'],unmatched:['b-learn','Not matched'],none:['b-learn','Organic']}[x.verdict];
+  const tt=title(x);
+  const d=x.vsAvg==null?'':(x.vsAvg>=0?'<div class="d up">'+x.vsAvg+'% above your average</div>':'<div class="d down">'+Math.abs(x.vsAvg)+'% below your average</div>');
+  const cap=x.adNames[0]?esc(x.adNames[0]):'';
+  const thumb=x.thumb?'<div class="thumb" style="background-image:url(\''+esc(x.thumb)+'\')">'+(cap?'<div class="cap">'+cap+'</div>':'')+'</div>'
+    :(x.key==='ORGANIC'?'':'<div class="thumb none">'+(cap||'Ad picture appears after Meta sync')+'</div>');
+  return '<div class="card">'+
+    '<div class="chead"><span class="badge '+v[0]+'"><i></i>'+v[1]+'</span><span class="chan">WhatsApp</span></div>'+
+    '<div><div class="cname">'+esc(tt.t)+'</div><div class="csub">'+esc(tt.s)+'</div></div>'+
+    (x.key==='ORGANIC'?'':'<div class="roas"><div class="l">Return on ad spend</div><div class="v">'+(x.roas!=null?x.roas.toFixed(1)+'×':'—')+'</div>'+d+'</div>')+
+    '<div class="mgrid">'+
+      (x.key==='ORGANIC'?'':'<div class="m"><div class="l">Spend</div><div class="v">'+(x.spend?rm(x.spend):'—')+'</div></div>')+
+      '<div class="m"><div class="l">Leads</div><div class="v">'+num(x.leads)+(x.conv&&x.conv!==x.leads?' <span class="csub">('+num(x.conv)+' by Meta)</span>':'')+'</div></div>'+
+      '<div class="m"><div class="l">Paid orders</div><div class="v">'+num(x.paid)+'</div></div>'+
+      '<div class="m"><div class="l">Revenue</div><div class="v">'+rm(x.revenue)+'</div></div>'+
+      (x.key==='ORGANIC'?'':'<div class="m"><div class="l">Cost per lead</div><div class="v">'+(x.spend&&x.leads?rm(x.spend/x.leads):'—')+'</div></div>')+
+    '</div>'+
+    '<div class="funnel"><span class="chip">replied <b>'+x.replied+'</b></span><span class="chip">booked <b>'+x.booked+'</b></span><span class="chip">ghost <b>'+x.ghost+'</b></span>'+lostAt(x)+'</div>'+
+    thumb+
+    '<button class="view" onclick="openLeads(\''+esc(x.key)+'\')">View '+x.leads+' lead'+(x.leads===1?'':'s')+' →</button>'+
+  '</div>';
+}
+
+function lostAt(x){
+  const c={}; x.chats.filter(r=>r.status==='ghost').forEach(r=>{ const s=String(r.stage||'no stage').split(' — ')[0]; c[s]=(c[s]||0)+1; });
+  const top=Object.entries(c).sort((a,b)=>b[1]-a[1])[0];
+  return top?'<span class="chip">most ghost at <b>'+esc(top[0])+'</b></span>':'';
+}
+
+/* ---------- leads drawer ---------- */
+const STATUS={talking:'Talking',waiting:'Waiting for customer',followup_sent:'Followed up',ghost:'Ghost',booked:'Booked',paid:'Paid',closed:'Closed'};
+function openLeads(key){
+  const x=GROUPS.find(g=>g.key===key); if(!x) return;
+  $('dTitle').textContent=title(x).t+' · '+x.leads+' lead'+(x.leads===1?'':'s');
+  const rows=x.chats.slice().sort((a,b)=>String(b.last_in_at||'').localeCompare(String(a.last_in_at||'')));
+  $('dBody').innerHTML=rows.length?'<table class="l"><thead><tr><th>Customer</th><th>Status</th><th>Stage</th><th>Last message</th><th>Remark</th></tr></thead><tbody>'+
+    rows.map(c=>'<tr>'+
+      '<td><b>'+esc(c.name||'Customer')+'</b><br>'+(c.phone?'<a class="wa" target="_blank" rel="noopener" href="https://wa.me/'+esc(c.phone)+'">+'+esc(c.phone)+'</a>':'<span class="csub">hidden number</span>')+
+        (c.paid_rm?'<br><span class="csub">'+rm(c.paid_rm)+' paid</span>':'')+'</td>'+
+      '<td><span class="pill p-'+esc(c.status)+'">'+esc(STATUS[c.status]||c.status)+'</span></td>'+
+      '<td>'+esc(c.stage||'—')+'</td>'+
+      '<td class="csub">in: '+esc(klWhen(c.last_in_at))+(c.last_out_at?'<br>out: '+esc(klWhen(c.last_out_at)):'')+'</td>'+
+      '<td><div class="rem">'+esc(c.remark||'')+'</div></td>'+
+    '</tr>').join('')+'</tbody></table>':'<div class="empty">No WhatsApp chats for this one in the period.</div>';
+  $('drawer').classList.remove('hide');
+}
+function closeDrawer(){ $('drawer').classList.add('hide'); }
+document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeDrawer(); });
+
+/* ---------- sync ---------- */
+async function syncNow(){
+  const b=$('syncBtn'); b.disabled=true; b.textContent='Syncing…';
+  try{
+    const {data,error}=await sb.functions.invoke('meta-sync',{body:{force:true}});
+    if(error) throw error;
+    if(data&&data.connected===false) alert('Meta is not connected yet. Add the META_TOKEN and META_AD_ACCOUNT secrets in Supabase first.');
+    else if(data&&data.ok===false) alert('Meta sync failed: '+(data.error||'unknown'));
+  }catch(e){ alert('Sync failed: '+(e.message||e)); }
+  b.disabled=false; b.textContent='Sync Meta now';
+  load();
+}
+
+boot();
+</script>
+</body>
+</html>
