@@ -155,7 +155,8 @@ const COLS=[
   {k:'name',  t:'Customer Name', w:'190px', get:r=>r.name||'(no name)'},
   {k:'code',  t:'Code',   w:'78px',  get:r=>r.sqlacc_code||''},
   {k:'phone', t:'Phone',  w:'125px', get:r=>r.phone||''},
-  {k:'plates',t:'Vehicles',w:'200px',get:r=>(r.cars||[]).map(c=>c.plate).join(' ')},
+  {k:'plates',t:'Vehicles',w:'280px',
+   get:r=>(r.cars||[]).map(c=>(c.model?c.model+' - ':'')+c.plate).join(', ')},
   {k:'cars',  t:'Cars',   w:'52px',  num:1, get:r=>r.car_count},
   {k:'pkg',   t:'Pkg',    w:'52px',  num:1, get:r=>r.pkg_left},
   {k:'due',   t:'Coating Due', w:'105px', get:r=>r._due||''},
@@ -163,6 +164,56 @@ const COLS=[
   {k:'last',  t:'Last Service',w:'105px', get:r=>r.last_service||''}
 ];
 let ROWS=[], OFFSET=0, LASTQ='', SORT={k:'last',dir:-1}, FILT={}, CUR=null, EDIT=false, VEH=[];
+/* Car brand/model lists, same source as the job card (gl_car_brands /
+   gl_car_models) so a car added here gets the same type the job card infers. */
+let BRANDS=[], MODELS={};
+const CAR_TYPES=['Sedan','SUV','MPV','Supercar','Motorcycle'];
+async function loadBrands(){
+  if(BRANDS.length) return BRANDS;
+  const {data}=await sb.from('gl_car_brands').select('id,name')
+      .eq('active',true).order('sort_order',{ascending:true});
+  BRANDS=data||[]; return BRANDS;
+}
+async function brandChange(pfx){
+  const bid=$(pfx+'brand').value, ms=$(pfx+'modelsel'), mi=$(pfx+'model');
+  if(!bid||bid==='__other'){ ms.style.display='none'; mi.style.display='block'; mi.value=''; return; }
+  ms.style.display='block'; mi.style.display='none';
+  ms.innerHTML='<option>Loading…</option>';
+  let list=MODELS[bid];
+  if(!list){
+    const {data}=await sb.from('gl_car_models').select('name,type')
+        .eq('brand_id',bid).eq('active',true).order('sort_order',{ascending:true});
+    list=data||[]; MODELS[bid]=list;
+  }
+  const bname=(BRANDS.find(b=>String(b.id)===String(bid))||{}).name||'';
+  ms.innerHTML='<option value="">— select model —</option>'+
+    list.map(m=>'<option value="'+esc(m.name)+'" data-type="'+esc(m.type||'')+'">'+esc(m.name)+'</option>').join('')+
+    '<option value="__other">Other / not listed</option>';
+  ms.dataset.brand=bname;
+}
+function modelChange(pfx){
+  const ms=$(pfx+'modelsel'), mi=$(pfx+'model'), v=ms.value;
+  if(v==='__other'){ ms.style.display='none'; mi.style.display='block'; mi.value=''; mi.focus(); return; }
+  if(!v){ mi.value=''; return; }
+  mi.value=((ms.dataset.brand||'')+' '+v).trim();
+  const t=(ms.options[ms.selectedIndex]||{}).getAttribute
+        ? ms.options[ms.selectedIndex].getAttribute('data-type') : '';
+  if(t){ const ct=$(pfx+'ctype'); if(ct) ct.value=t; }
+}
+function carPicker(pfx){
+  return '<select id="'+pfx+'brand" onchange="brandChange(\''+pfx+'\')">'+
+           '<option value="">— select brand —</option>'+
+           BRANDS.map(b=>'<option value="'+b.id+'">'+esc(b.name)+'</option>').join('')+
+           '<option value="__other">Other / not listed</option></select>';
+}
+function modelPicker(pfx){
+  return '<select id="'+pfx+'modelsel" style="display:none" onchange="modelChange(\''+pfx+'\')"></select>'+
+         '<input id="'+pfx+'model" placeholder="e.g. HONDA CIVIC">';
+}
+function typePicker(pfx){
+  return '<select id="'+pfx+'ctype"><option value="">—</option>'+
+         CAR_TYPES.map(t=>'<option>'+t+'</option>').join('')+'</select>';
+}
 
 /* ---------- login ---------- */
 async function boot(){
@@ -251,8 +302,11 @@ function paint(){
       '<br><br><button class="btn btn2" onclick="openNew()">+ Add as new customer</button></div></td></tr>';
   } else {
     $('rows').innerHTML=list.map(r=>{
-      const plates=(r.cars||[]).slice(0,3).map(c=>'<span class="pl">'+esc(c.plate)+'</span>').join('')
-                 + (r.car_count>3?('<span class="sub">+'+(r.car_count-3)+'</span>'):'');
+      // model + plate, e.g. HONDA CIVIC - ABC1234
+      const plates=(r.cars||[]).slice(0,3).map(c=>
+            '<span class="pl">'+esc(c.plate)+'</span>'+
+            (c.model?('<span class="sub">'+esc(c.model)+'</span> '):' ')).join('')
+          + (r.car_count>3?('<span class="sub">+'+(r.car_count-3)+'</span>'):'');
       const multi=(r.all_names&&r.all_names.length>1)?' <span class="sub">('+r.all_names.length+')</span>':'';
       return '<tr onclick="openCust(\''+esc(r.cust_key)+'\')">'+
         '<td><span class="nm">'+esc(r.name||'(no name)')+'</span>'+multi+'</td>'+
@@ -327,8 +381,11 @@ function drawCust(loading){
       '<tr><td class="d">'+esc(h.date||'')+'</td><td>'+esc(h.service||'')+'</td>'+
       '<td class="a">'+esc(money(h.amount))+'</td></tr>').join('');
     const more=(v.history||[]).length>8?('<div class="hint">+'+((v.history||[]).length-8)+' older</div>'):'';
-    const pk=(v.packages||[]).map(p=>'<span class="pkline">'+esc(p.name)+' · '+p.left+' left</span>').join('')
-             || '<span class="sub">No active package</span>';
+    const pk=(v.packages||[]).map(p=>
+          '<span class="pkline" style="cursor:pointer" title="Edit this package" '+
+          'onclick="event.stopPropagation();editPkg('+i+','+p.id+')">'+esc(p.name)+' · '+p.left+' left'+
+          (p.shared?' <b title="works on all this customer\u2019s cars">\u2605</b>':'')+'</span>').join('')
+          || '<span class="sub">No active package</span>';
     return '<div class="veh">'+
       '<div class="vtop">'+
         '<button class="qrbtn" title="Print QR label" onclick="printLabel('+i+')">'+qrSvg(QR_TARGET+v.plate,64)+'</button>'+
@@ -343,6 +400,7 @@ function drawCust(loading){
           '<div class="vacts">'+
             (v.next_due?('<button class="btn btn-wa btn-xs" onclick="remind('+i+')">Coating Reminder</button>'):'')+
             '<button class="btn btn2 btn-xs" onclick="printLabel('+i+')">QR Label</button>'+
+            '<button class="btn btn2 btn-xs" onclick="addPkg('+i+')">+ Package</button>'+
           '</div>'+
         '</div>'+
       '</div>'+
@@ -438,9 +496,97 @@ function printLabel(i){
   w.document.close();
 }
 
+/* ---------- packages ----------
+   Lets a package the customer already holds be entered and linked, including
+   one that is part-used. "All cars" writes phone_key so a wash package follows
+   the customer; "this car only" leaves it blank, which is right for coating. */
+const PKG_NAMES=['Balance Bathe Essence Package','Cancoat Coating Maintenance',
+  'Balance Cancoat Maintenance','Bathe Essence','10 Times Bathe Essence Package',
+  'Infinite Coating Maintenance','Balance Mohs Maintenance','MOHS Coating Maintenance',
+  '50% Off 10 Times Bathe Essence Package','Balance Infinite Maintenance',
+  'Balance Matte Coating Maintenance'];
+
+function pkgNamePicker(cur){
+  const known=PKG_NAMES.includes(cur||'');
+  return '<select id="p_namesel" onchange="pkgNameSel()" style="max-width:320px">'+
+    PKG_NAMES.map(n=>'<option'+(n===cur?' selected':'')+'>'+esc(n)+'</option>').join('')+
+    '<option value="__other"'+(cur&&!known?' selected':'')+'>Other / type it</option></select>'+
+    '<input id="p_name" value="'+esc(cur||'')+'" placeholder="Package name" '+
+      'style="display:'+((cur&&!known)?'block':'none')+';margin-top:5px">';
+}
+function pkgNameSel(){
+  const sel=$('p_namesel'), inp=$('p_name');
+  if(sel.value==='__other'){ inp.style.display='block'; inp.value=''; inp.focus(); }
+  else { inp.style.display='none'; inp.value=sel.value; }
+}
+function pkgForm(title,v,i,pkg){
+  const isEdit=!!pkg;
+  $('maintain').innerHTML=
+   '<div class="bar"><a class="back" href="#" onclick="drawCust(false);return false;">&#8592; Back</a>'+
+     '<div class="ttl">'+esc(title)+'</div><div class="grow"></div>'+
+     '<button class="btn" onclick="savePkg('+i+','+(isEdit?pkg.id:'null')+')">Save</button>'+
+     (isEdit?('<button class="btn btn2" onclick="cancelPkg('+i+','+pkg.id+')">Cancel package</button>'):'')+
+     '<button class="btn btn2" onclick="drawCust(false)">Close</button></div>'+
+   '<div class="pane"><div class="box">'+
+     '<div class="bt">'+esc(vehTitle(v))+'</div>'+
+     '<div class="fields">'+
+       fRow('Package *', pkgNamePicker(isEdit?pkg.name:''))+
+       fRow('Total uses *', '<input id="p_total" type="number" min="1" value="'+(isEdit?pkg.total:10)+'" style="max-width:110px">')+
+       fRow('Already used',  '<input id="p_used" type="number" min="0" value="'+(isEdit?pkg.used:0)+'" style="max-width:110px">')+
+       fRow('Applies to',
+         '<select id="p_shared" style="max-width:280px">'+
+         '<option value="car"'+((isEdit&&!pkg.shared)?' selected':'')+'>This car only (coating)</option>'+
+         '<option value="all"'+((isEdit&&pkg.shared)?' selected':'')+'>All of this customer\u2019s cars (wash)</option>'+
+         '</select>')+
+     '</div>'+
+     '<div class="hint">Enter a part-used package by setting &ldquo;already used&rdquo; &mdash; the balance is the difference.</div>'+
+     '</div><div id="msg" class="status"></div></div>';
+  show('maintain');
+}
+function addPkg(i){ const v=VEH[i]; if(v) pkgForm('ADD PACKAGE',v,i,null); }
+function editPkg(i,id){
+  const v=VEH[i]; if(!v) return;
+  const pkg=(v.packages||[]).find(p=>Number(p.id)===Number(id));
+  if(pkg) pkgForm('EDIT PACKAGE',v,i,pkg);
+}
+async function savePkg(i,id){
+  const v=VEH[i], r=CUR; if(!v||!r) return;
+  const name=val('p_name')||($('p_namesel')?$('p_namesel').value:'');
+  const total=parseInt(val('p_total'),10), used=parseInt(val('p_used')||'0',10);
+  if(!name||name==='__other'){ msgEl('<span class="err">Choose or type the package name.</span>'); return; }
+  if(!(total>0)){ msgEl('<span class="err">Total uses must be at least 1.</span>'); return; }
+  if(used<0||used>total){ msgEl('<span class="err">Already-used must be between 0 and '+total+'.</span>'); return; }
+  const shared=$('p_shared').value==='all';
+  const pk=String(r.phone||'').replace(/[^0-9]/g,'').replace(/^(60|0)/,'');
+  if(shared && pk.length<7){ msgEl('<span class="err">This customer has no phone, so it cannot apply to all cars.</span>'); return; }
+  const body={service_name:name, total_uses:total, used_uses:used,
+              vehicle_label:v.plate, phone_key: shared?pk:null, status:'active'};
+  msgEl('Saving…');
+  let error;
+  if(id){ ({error}=await sb.from('gl_packages').update(body).eq('id',id)); }
+  else   { ({error}=await sb.from('gl_packages').insert(Object.assign({source:'manual'},body))); }
+  if(error){ msgEl('<span class="err">Could not save: '+esc(error.message)+
+      '</span><div class="hint">Package edits need the reception login.</div>'); return; }
+  msgEl('<span class="ok">Package saved.</span>');
+  await refreshVeh();
+}
+async function cancelPkg(i,id){
+  if(!confirm('Cancel this package? It stops counting as a balance but is not deleted.')) return;
+  msgEl('Cancelling…');
+  const {error}=await sb.from('gl_packages').update({status:'cancelled'}).eq('id',id);
+  if(error){ msgEl('<span class="err">Failed: '+esc(error.message)+'</span>'); return; }
+  await refreshVeh();
+}
+async function refreshVeh(){
+  const plates=(CUR.cars||[]).map(c=>c.plate).filter(Boolean);
+  const {data}=await sb.rpc('gl_customer_detail',{p_plates:plates,p_phone:CUR.phone||''});
+  VEH=data||[]; drawCust(false);
+}
+
 /* ---------- new customer / vehicle ---------- */
-function openNew(){
+async function openNew(){
   CUR=null;
+  await loadBrands();
   $('maintain').innerHTML=
    '<div class="bar"><a class="back" href="#" onclick="backToList();return false;">&#8592; Browse</a>'+
      '<div class="ttl">NEW CUSTOMER</div><div class="grow"></div>'+
@@ -456,16 +602,15 @@ function openNew(){
      '</div></div>'+
      '<div class="box"><div class="bt">First vehicle (optional)</div><div class="fields">'+
        fRow('Car plate', inp('n_plate','','e.g. ABC1234'))+
-       fRow('Model',     inp('n_model','','e.g. HONDA CIVIC'))+
-       fRow('Car type',  '<select id="n_ctype"><option value="">—</option>'+
-            ['SEDAN','SUV','MPV','HATCHBACK','PICKUP','COUPE','Motorcycle','Supercar']
-              .map(t=>'<option>'+t+'</option>').join('')+'</select>')+
-       fRow('','')+
+       fRow('Brand',     carPicker('n_'))+
+       fRow('Model',     modelPicker('n_'))+
+       fRow('Car type',  typePicker('n_'))+
      '</div></div><div id="msg" class="status"></div></div>';
   show('maintain');
 }
-function addCar(){
+async function addCar(){
   const r=CUR; if(!r) return;
+  await loadBrands();
   $('maintain').innerHTML=
    '<div class="bar"><a class="back" href="#" onclick="drawCust(false);return false;">&#8592; Back</a>'+
      '<div class="ttl">ADD VEHICLE</div><div class="grow"></div>'+
@@ -474,12 +619,12 @@ function addCar(){
    '<div class="pane"><div class="box"><div class="bt">New vehicle for '+esc(r.name||'this customer')+'</div>'+
      '<div class="fields">'+
        fRow('Car plate *', inp('c_plate','','e.g. ABC1234'))+
-       fRow('Model',       inp('c_model','','e.g. HONDA CIVIC'))+
-       fRow('Car type',    '<select id="c_ctype"><option value="">—</option>'+
-            ['SEDAN','SUV','MPV','HATCHBACK','PICKUP','COUPE','Motorcycle','Supercar']
-              .map(t=>'<option>'+t+'</option>').join('')+'</select>')+
-       fRow('','')+
-     '</div></div><div id="msg" class="status"></div></div>';
+       fRow('Brand',       carPicker('c_'))+
+       fRow('Model',       modelPicker('c_'))+
+       fRow('Car type',    typePicker('c_'))+
+     '</div>'+
+     '<div class="hint">Pick the brand then the model and the car type fills itself, same as the job card.</div>'+
+     '</div><div id="msg" class="status"></div></div>';
   show('maintain');
 }
 
