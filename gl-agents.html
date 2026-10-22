@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Agent Desk</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.x/dist/tabler-icons.min.css">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+:root{--bg:#080808;--card:#141414;--card2:#1c1c1c;--gold:#F5C518;--text:#fff;--text2:#9a9a9a;--border:#2a2a2a;--red:#ff4d4f;--green:#22c55e;--cyan:#38e1ff}
+html,body{height:100%;background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:var(--text)}
+.hide{display:none!important}
+button{font-family:inherit}
+.gate{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:var(--bg);z-index:50;padding:18px}
+.gate-box{width:100%;max-width:340px;background:var(--card);border:1px solid var(--border);border-radius:18px;padding:26px}
+.gate label{display:block;font-size:11px;color:var(--text2);margin:12px 0 6px;letter-spacing:.08em;text-transform:uppercase}
+.gate input{width:100%;background:var(--card2);border:1px solid var(--border);color:#fff;padding:12px;border-radius:10px;font-size:15px}
+.gate button{width:100%;margin-top:18px;background:var(--gold);color:#000;border:0;padding:13px;border-radius:10px;font-weight:900;font-size:15px}
+.err{color:var(--red);font-size:12px;margin-top:10px;min-height:14px}
+
+.app{display:flex;flex-direction:column;height:100dvh;max-width:1100px;margin:0 auto}
+.top{display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid #1a1a1a}
+.brand{font-weight:900;font-size:18px;flex:1;min-width:0;white-space:nowrap;overflow:hidden}
+.brand span{color:var(--gold)}
+.brand small{font-size:10px;color:var(--text2);letter-spacing:.2em;margin-left:6px}
+.hbtn{background:var(--card2);border:1px solid var(--border);color:var(--text2);border-radius:16px;padding:6px 11px;font-size:11px;font-weight:800;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:4px;white-space:nowrap}
+.tabs{display:flex;gap:6px;padding:8px 14px;border-bottom:1px solid #1a1a1a}
+.tab{background:none;border:1px solid var(--border);color:var(--text2);border-radius:16px;padding:6px 14px;font-size:12px;font-weight:800;cursor:pointer}
+.tab.on{background:var(--gold);color:#000;border-color:var(--gold)}
+.body{flex:1;display:flex;min-height:0}
+.side{width:260px;border-right:1px solid #1a1a1a;overflow:auto;padding:10px;flex:0 0 auto}
+@media (max-width:760px){.side{display:none}.side.open{display:block;position:fixed;inset:96px 0 0 0;width:auto;background:var(--bg);z-index:30}}
+.newbtn{width:100%;background:var(--gold);color:#000;border:0;border-radius:12px;padding:10px;font-weight:900;font-size:13px;cursor:pointer;margin-bottom:8px}
+.th{padding:9px 10px;border-radius:10px;cursor:pointer;margin-bottom:4px;border:1px solid transparent}
+.th:hover{background:var(--card)}
+.th.on{background:var(--card);border-color:#333}
+.th b{display:block;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.th span{font-size:10px;color:var(--text2)}
+.pill{display:inline-block;font-size:9px;font-weight:900;padding:1px 6px;border-radius:8px;margin-left:4px;letter-spacing:.05em}
+.p-awaiting{background:#422006;color:#fbbf24}.p-approved{background:#052e16;color:#4ade80}.p-rejected{background:#450a0a;color:#f87171}
+.p-busy{background:#082f49;color:#38bdf8}.p-error{background:#450a0a;color:#f87171}.p-changes{background:#2e1065;color:#c4b5fd}
+
+.main{flex:1;display:flex;flex-direction:column;min-width:0}
+.chat{flex:1;overflow:auto;padding:14px}
+.empty{color:var(--text2);text-align:center;margin-top:40px;font-size:14px;line-height:1.6}
+.empty b{color:#fff;font-size:18px;display:block;margin-bottom:6px}
+.chips{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:16px}
+.chip{background:var(--card);border:1px solid var(--border);color:#ddd;border-radius:16px;padding:8px 12px;font-size:12px;cursor:pointer}
+.msg{display:flex;gap:10px;margin-bottom:14px;max-width:820px}
+.msg.me{margin-left:auto;flex-direction:row-reverse}
+.av{width:34px;height:34px;border-radius:50%;flex:0 0 auto;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:13px;color:#000}
+.bub{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:10px 12px;min-width:0}
+.msg.me .bub{background:#2a2410;border-color:#4a3f12}
+.who{font-size:12px;font-weight:900;margin-bottom:3px}
+.who small{font-weight:700;color:var(--text2);margin-left:6px;font-size:10px}
+.txt{font-size:14px;line-height:1.5;white-space:pre-wrap;word-wrap:break-word;color:#e5e5e5}
+.msg.board .bub{border-color:#5c4a12}
+.msg.final .bub{background:#101a10;border:1px solid #2f6b3a}
+.msg.final .who{color:#4ade80}
+.msg.err .bub{border-color:#5a1d1f}
+.tag{display:inline-block;font-size:9px;font-weight:900;letter-spacing:.12em;color:#000;background:var(--gold);border-radius:6px;padding:1px 6px;margin-bottom:6px}
+.acts{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+.ab{border:0;border-radius:10px;padding:9px 14px;font-weight:900;font-size:13px;cursor:pointer}
+.ab.ok{background:var(--green);color:#000}.ab.no{background:#3f1d1d;color:#fca5a5}.ab.ch{background:#2e1065;color:#ddd6fe}
+.decided{margin-top:10px;font-size:12px;font-weight:800}
+.live{display:flex;align-items:center;gap:8px;color:var(--cyan);font-size:12px;font-weight:800;margin:4px 0 14px 44px}
+.dots span{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--cyan);margin-right:3px;animation:bl 1.2s infinite}
+.dots span:nth-child(2){animation-delay:.2s}.dots span:nth-child(3){animation-delay:.4s}
+@keyframes bl{50%{opacity:.2}}
+.composer{border-top:1px solid #1a1a1a;padding:10px 14px;display:flex;gap:8px;align-items:flex-end}
+.composer textarea{flex:1;background:var(--card);border:1px solid var(--border);color:#fff;border-radius:14px;padding:11px 12px;font-size:15px;font-family:inherit;resize:none;max-height:160px;min-height:46px}
+.send{background:var(--gold);color:#000;border:0;border-radius:14px;width:48px;height:46px;font-size:20px;cursor:pointer;flex:0 0 auto}
+.send:disabled{opacity:.4}
+.hint{font-size:10px;color:var(--text2);padding:0 14px 8px}
+
+.pane{flex:1;overflow:auto;padding:14px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:12px;margin-bottom:10px}
+.card h4{font-size:11px;letter-spacing:.16em;color:var(--gold);text-transform:uppercase;margin-bottom:8px}
+.ag{display:grid;grid-template-columns:40px 1fr;gap:10px;align-items:start}
+.ag input,.ag textarea,.mem textarea{width:100%;background:var(--card2);border:1px solid var(--border);color:#fff;border-radius:8px;padding:8px;font-size:13px;font-family:inherit}
+.ag textarea{min-height:60px;margin-top:6px}
+.row{display:flex;gap:6px}
+.row input{flex:1}
+.small{font-size:11px;color:var(--text2);margin-top:4px}
+.save{background:var(--gold);color:#000;border:0;border-radius:8px;padding:7px 12px;font-weight:900;font-size:12px;cursor:pointer;margin-top:8px}
+.mi{display:flex;gap:8px;align-items:flex-start;padding:8px 0;border-top:1px solid #222;font-size:13px;line-height:1.45}
+.mi:first-child{border-top:0}
+.mi .k{font-size:9px;font-weight:900;letter-spacing:.1em;padding:2px 6px;border-radius:6px;background:#222;color:#bbb;flex:0 0 auto;margin-top:2px}
+.mi .k.d{background:#052e16;color:#4ade80}
+.mi p{flex:1}
+.mi button{background:none;border:0;color:#777;cursor:pointer;font-size:16px}
+.toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:var(--gold);color:#000;padding:10px 18px;border-radius:20px;font-weight:800;font-size:13px;display:none;z-index:60}
+</style>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+/* ===== GRANDLAB ACCESS GUARD =====
+   Who may open this page is set in the GrandPride Staff Manager (gp_staff.apps).
+   admin@grandpride.com always has full access. */
+(function(){
+  var APP_KEY = 'agentdesk';
+  var GP_URL='https://iefevjkeckysdluzazeq.supabase.co';
+  var GP_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImllZmV2amtlY2t5c2RsdXphemVxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEwODI1MTMsImV4cCI6MjA5NjY1ODUxM30.xVqifxHta7rPtxf0hh1C4_rexhwWQhaiOxEzVr_oM5k';
+  var MASTER=['admin@grandpride.com'];
+  function deny(msg){
+    document.documentElement.innerHTML =
+      '<body style="background:#080808;color:#fff;font-family:-apple-system,Segoe UI,sans-serif;'+
+      'display:flex;align-items:center;justify-content:center;height:100vh;margin:0;text-align:center">'+
+      '<div style="max-width:340px;padding:26px;border:1px solid #2a2a2a;border-radius:16px;background:#141414">'+
+      '<div style="font-size:34px">&#128274;</div>'+
+      '<div style="font-weight:900;font-size:17px;margin:10px 0;color:#F5C518">NO ACCESS</div>'+
+      '<div style="font-size:13px;color:#9a9a9a;line-height:1.5">'+msg+'</div>'+
+      '<a href="gl-hub.html" style="display:block;margin-top:18px;background:#F5C518;color:#000;'+
+      'padding:12px;border-radius:10px;font-weight:800;text-decoration:none">BACK TO HUB</a>'+
+      '</div></body>';
+  }
+  window.GL_GUARD = (async function(){
+    try{
+      var gl = supabase.createClient(
+        'https://eychljpzorzmaveixlnu.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV5Y2hsanB6b3J6bWF2ZWl4bG51Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2NDk2NjQsImV4cCI6MjA5NzIyNTY2NH0.6dA1zhz5ZIwf8byFB8vhfOzPI-uPPdPihEr1b8GG_oA',
+        {auth:{persistSession:true,autoRefreshToken:true,storageKey:'gl_auth'}});
+      var s = await gl.auth.getSession();
+      if(!s.data.session) return;
+      var email = (s.data.session.user.email||'').toLowerCase();
+      if(MASTER.indexOf(email)>=0) return;
+      var gp = supabase.createClient(GP_URL, GP_ANON, {auth:{persistSession:false,storageKey:'gp_read'}});
+      var r = await gp.from('gp_staff').select('name,apps').ilike('email',email).maybeSingle();
+      if(r.error||!r.data){ deny('This login is not in the staff list. Ask the manager to add you.'); return; }
+      var apps = r.data.apps;
+      if(typeof apps==='string'){ try{apps=JSON.parse(apps)}catch(e){apps=[]} }
+      if(!Array.isArray(apps)) apps=[];
+      if(apps.indexOf(APP_KEY)<0){
+        deny('Hi '+(r.data.name||'')+', you do not have access to this app.<br><br>Ask the manager to enable it in Staff Manager.');
+      }
+    }catch(e){ /* if the check itself fails, do not lock anyone out */ }
+  })();
+})();
+</script>
+</head>
+<body>
+
+<div id="gate" class="gate hide">
+  <div class="gate-box">
+    <div class="brand" style="text-align:center;font-size:26px">AGENT<span>DESK</span></div>
+    <label>Email</label><input id="lg_email" type="email" autocomplete="username">
+    <label>Password</label><input id="lg_pass" type="password" autocomplete="current-password">
+    <div class="err" id="lg_err"></div>
+    <button onclick="doLogin()">Sign in</button>
+  </div>
+</div>
+
+<div class="app hide" id="app">
+  <div class="top">
+    <button class="hbtn" id="menuBtn" onclick="toggleSide()" style="display:none"><i class="ti ti-menu-2"></i></button>
+    <div class="brand">AGENT<span>DESK</span><small>GRANDLAB &middot; GRANDPRIDE</small></div>
+    <a class="hbtn" href="gl-tower.html"><i class="ti ti-building-skyscraper"></i>Tower</a>
+    <a class="hbtn" href="gl-hub.html"><i class="ti ti-arrow-left"></i>Hub</a>
+  </div>
+  <div class="tabs">
+    <button class="tab on" data-t="chat" onclick="setTab('chat')">Chat</button>
+    <button class="tab" data-t="agents" onclick="setTab('agents')">Agents</button>
+    <button class="tab" data-t="memory" onclick="setTab('memory')">Memory</button>
+  </div>
+
+  <div class="body" id="v_chat">
+    <div class="side" id="side">
+      <button class="newbtn" onclick="newThread()"><i class="ti ti-plus"></i> New question</button>
+      <div id="threads"></div>
+    </div>
+    <div class="main">
+      <div class="chat" id="chat"></div>
+      <div class="composer">
+        <textarea id="q" rows="1" placeholder="Ask the board anything... (English / BM / 中文)" oninput="grow(this)" onkeydown="if(event.key==='Enter'&&!event.shiftKey&&window.innerWidth>760){event.preventDefault();ask()}"></textarea>
+        <button class="send" id="sendBtn" onclick="ask()"><i class="ti ti-send"></i></button>
+      </div>
+      <div class="hint">Agents only advise. Nothing in your POS, jobs or fleet is changed. You approve every recommendation.</div>
+    </div>
+  </div>
+
+  <div class="pane hide" id="v_agents"></div>
+  <div class="pane hide" id="v_memory"></div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const SUPABASE_URL='https://eychljpzorzmaveixlnu.supabase.co';
+const SUPABASE_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV5Y2hsanB6b3J6bWF2ZWl4bG51Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2NDk2NjQsImV4cCI6MjA5NzIyNTY2NH0.6dA1zhz5ZIwf8byFB8vhfOzPI-uPPdPihEr1b8GG_oA';
+const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON,{auth:{persistSession:true,autoRefreshToken:true,storageKey:'gl_auth'}});
+const BUSY=['routing','meeting','board'];
+let AG={}, THREADS=[], CUR=null, LASTID=0, POLL=null, SENDING=false;
+
+function el(id){return document.getElementById(id)}
+function esc(s){return String(s==null?'':s).replace(/[<>&"]/g,function(c){return {'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]})}
+function toast(m){const t=el('toast');t.textContent=m;t.style.display='block';setTimeout(function(){t.style.display='none'},2600)}
+function grow(t){t.style.height='auto';t.style.height=Math.min(160,t.scrollHeight)+'px'}
+function when(s){const d=new Date(s);return d.toLocaleString('en-GB',{timeZone:'Asia/Kuala_Lumpur',day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}
+function fmt(t){return esc(t).replace(/\*\*([^*\n]+)\*\*/g,'<b>$1</b>').replace(/^#{1,4}\s*/gm,'')}
+function initials(n){n=String(n||'?').trim();const w=n.split(/\s+/);return (w[0][0]+(w[1]?w[1][0]:'')).toUpperCase()}
+
+(async function(){
+  const s=await sb.auth.getSession();
+  if(!s.data.session){el('gate').classList.remove('hide');return}
+  el('app').classList.remove('hide');
+  if(window.innerWidth<=760)el('menuBtn').style.display='';
+  await loadAgents(); await loadThreads();
+  const last=(function(){try{return localStorage.getItem('gl_agent_thread')}catch(e){return null}})();
+  if(last&&THREADS.some(function(t){return t.id===last}))openThread(last); else renderEmpty();
+})();
+async function doLogin(){
+  const r=await sb.auth.signInWithPassword({email:el('lg_email').value.trim(),password:el('lg_pass').value});
+  if(r.error){el('lg_err').textContent=r.error.message;return}
+  location.reload();
+}
+function toggleSide(){el('side').classList.toggle('open')}
+function setTab(t){
+  ['chat','agents','memory'].forEach(function(k){el('v_'+k).classList.toggle('hide',k!==t)});
+  Array.from(document.querySelectorAll('.tab')).forEach(function(b){b.classList.toggle('on',b.dataset.t===t)});
+  if(t==='agents')renderAgents(); if(t==='memory')renderMemory();
+}
+
+/* ---------------- agents ---------------- */
+async function loadAgents(){
+  const r=await sb.from('gl_agents').select('*').order('sort');
+  AG={}; (r.data||[]).forEach(function(a){AG[a.key]=a});
+  AG.jimmy={name:'You',title:'',color:'#F5C518'};
+  AG.board={name:'Board decision',title:'CEO + MD agreed',color:'#4ade80'};
+}
+function agentOf(k){return AG[k]||{name:k,title:'',color:'#666'}}
+function renderAgents(){
+  const list=Object.values(AG).filter(function(a){return a.key});
+  el('v_agents').innerHTML='<div class="card"><h4>Your AI team</h4><div class="small">Rename any agent and set its job title here. Changes apply from the next question. The job description tells the agent what it is responsible for.</div></div>'+
+  list.map(function(a){
+    return '<div class="card"><div class="ag"><div class="av" style="background:'+esc(a.color||'#666')+'">'+esc(initials(a.name))+'</div><div>'+
+      '<div class="row"><input id="an_'+a.key+'" value="'+esc(a.name)+'" placeholder="Name"><input id="at_'+a.key+'" value="'+esc(a.title)+'" placeholder="Job title"></div>'+
+      '<textarea id="ab_'+a.key+'" placeholder="What this agent is responsible for">'+esc(a.brief)+'</textarea>'+
+      '<div class="small">'+(a.role==='front'?'Front desk: chooses who joins each meeting.':a.role==='board'?'Board: both board members must agree before you see the answer.':'Department: reads '+esc((a.data_keys||[]).join(', '))+' data.')+
+      ' &middot; '+(a.company==='gl'?'Grandlab':a.company==='gp'?'Grandpride':'Both companies')+'</div>'+
+      '<label class="small" style="display:flex;gap:6px;align-items:center;margin-top:6px"><input type="checkbox" id="aa_'+a.key+'" '+(a.active?'checked':'')+' style="width:auto"> Working (untick = resting on the rooftop, not called into meetings)</label>'+
+      '<button class="save" onclick="saveAgent(\''+a.key+'\')">Save</button></div></div></div>';
+  }).join('');
+}
+async function saveAgent(k){
+  const p={name:el('an_'+k).value.trim()||AG[k].name,title:el('at_'+k).value.trim()||AG[k].title,brief:el('ab_'+k).value.trim(),active:el('aa_'+k).checked,updated_at:new Date().toISOString()};
+  const r=await sb.from('gl_agents').update(p).eq('key',k);
+  if(r.error){toast('Save failed: '+r.error.message);return}
+  Object.assign(AG[k],p); toast('Saved '+p.name); renderAgents();
+}
+
+/* ---------------- memory ---------------- */
+async function renderMemory(){
+  const r=await sb.from('gl_agent_memory').select('*').eq('active',true).order('created_at',{ascending:false}).limit(200);
+  const rows=r.data||[];
+  el('v_memory').innerHTML='<div class="card mem"><h4>Teach the team</h4><div class="small">Anything you write here, every agent will treat as true in every meeting.</div>'+
+    '<textarea id="newMem" rows="3" placeholder="e.g. Koko is on leave until 30 Oct. Do not promise PPF jobs before then." style="margin-top:8px"></textarea><button class="save" onclick="addMem()">Add to memory</button></div>'+
+    '<div class="card"><h4>What the team remembers ('+rows.length+')</h4>'+(rows.length?rows.map(function(m){
+      return '<div class="mi"><span class="k'+(m.kind==='decision'?' d':'')+'">'+(m.kind==='decision'?'DECISION':'NOTE')+'</span><p>'+esc(m.text)+'<br><span class="small">'+when(m.created_at)+'</span></p><button title="Forget" onclick="forget('+m.id+')"><i class="ti ti-trash"></i></button></div>';
+    }).join(''):'<div class="small">Nothing yet.</div>')+'</div>';
+}
+async function addMem(){
+  const t=el('newMem').value.trim(); if(!t)return;
+  const r=await sb.from('gl_agent_memory').insert({kind:'note',text:t,created_by:'jimmy'});
+  if(r.error){toast('Failed: '+r.error.message);return}
+  toast('Remembered'); renderMemory();
+}
+async function forget(id){
+  if(!confirm('Remove this from the team memory? (It is kept in the database but agents will stop using it.)'))return;
+  const r=await sb.from('gl_agent_memory').update({active:false}).eq('id',id);
+  if(r.error){toast('Failed: '+r.error.message);return}
+  renderMemory();
+}
+
+/* ---------------- threads ---------------- */
+async function loadThreads(){
+  const r=await sb.from('gl_agent_threads').select('*').order('updated_at',{ascending:false}).limit(60);
+  THREADS=r.data||[]; renderThreads();
+}
+function statusPill(t){
+  if(BUSY.indexOf(t.status)>=0)return '<span class="pill p-busy">MEETING</span>';
+  if(t.status==='error')return '<span class="pill p-error">ERROR</span>';
+  if(t.decision==='approved')return '<span class="pill p-approved">APPROVED</span>';
+  if(t.decision==='rejected')return '<span class="pill p-rejected">REJECTED</span>';
+  if(t.decision==='changes')return '<span class="pill p-changes">CHANGES</span>';
+  if(t.status==='awaiting')return '<span class="pill p-awaiting">DECIDE</span>';
+  return '';
+}
+function renderThreads(){
+  el('threads').innerHTML=THREADS.length?THREADS.map(function(t){
+    return '<div class="th'+(CUR&&CUR.id===t.id?' on':'')+'" onclick="openThread(\''+t.id+'\')"><b>'+esc(t.title||'Question')+'</b><span>'+when(t.updated_at)+'</span>'+statusPill(t)+'</div>';
+  }).join(''):'<div class="small" style="padding:6px">No questions yet.</div>';
+}
+function newThread(){CUR=null;LASTID=0;stopPoll();try{localStorage.removeItem('gl_agent_thread')}catch(e){};renderThreads();renderEmpty();el('side').classList.remove('open');el('q').focus()}
+function renderEmpty(){
+  const front=agentOf('front').name;
+  const ex=['How is Grandlab doing this month vs last month?','Plan Grandlab marketing for next 2 weeks','Which Grandpride cars should Nono feature in content this month?','Apa masalah paling besar di shop sekarang?','下个月PPF要不要做促销？'];
+  el('chat').innerHTML='<div class="empty"><b>Ask the board</b>'+esc(front)+' will call the right agents into the meeting room.<br>Each one checks live data, then the CEO and MD agree on one recommendation for you to approve.'+
+    '<div class="chips">'+ex.map(function(e){return '<div class="chip" onclick="useEx(this)">'+esc(e)+'</div>'}).join('')+'</div></div>';
+}
+function useEx(c){el('q').value=c.textContent;grow(el('q'));el('q').focus()}
+async function openThread(id){
+  CUR=THREADS.find(function(t){return t.id===id})||{id:id}; LASTID=0;
+  try{localStorage.setItem('gl_agent_thread',id)}catch(e){}
+  el('chat').innerHTML=''; renderThreads(); el('side').classList.remove('open');
+  await pull(); startPoll();
+}
+
+/* ---------------- messages ---------------- */
+function msgHTML(m){
+  const a=agentOf(m.agent_key), me=m.role==='user';
+  let cls='msg'+(me?' me':'')+(m.kind==='board'?' board':'')+(m.kind==='final'?' final':'')+(m.kind==='error'?' err':'');
+  let head=me?'':'<div class="who" style="color:'+esc(a.color||'#fff')+'">'+esc(a.name)+'<small>'+esc(a.title||'')+'</small></div>';
+  let tag=m.kind==='final'&&!(m.meta&&m.meta.direct)?'<div class="tag">BOARD RECOMMENDATION'+(m.meta&&m.meta.board==='split'?' &middot; BOARD SPLIT':'')+'</div>':'';
+  let acts='';
+  if(m.kind==='final'&&!(m.meta&&m.meta.direct))acts='<div id="acts_'+m.id+'"></div>';
+  return '<div class="'+cls+'" data-id="'+m.id+'"><div class="av" style="background:'+esc(me?'#F5C518':(a.color||'#666'))+'">'+esc(me?'J':initials(a.name))+'</div><div class="bub">'+head+tag+'<div class="txt">'+fmt(m.content)+'</div>'+acts+'</div></div>';
+}
+async function pull(){
+  if(!CUR)return;
+  const id=CUR.id;
+  const [mr,tr]=await Promise.all([
+    sb.from('gl_agent_msgs').select('*').eq('thread_id',id).gt('id',LASTID).order('id'),
+    sb.from('gl_agent_threads').select('*').eq('id',id).maybeSingle()
+  ]);
+  if(!CUR||CUR.id!==id)return;
+  if(tr.data){CUR=tr.data;const i=THREADS.findIndex(function(t){return t.id===id});if(i>=0)THREADS[i]=tr.data;else THREADS.unshift(tr.data);renderThreads()}
+  const box=el('chat'); const stick=box.scrollHeight-box.scrollTop-box.clientHeight<120;
+  const lv=el('liveRow'); if(lv)lv.remove();
+  (mr.data||[]).forEach(function(m){LASTID=Math.max(LASTID,m.id);box.insertAdjacentHTML('beforeend',msgHTML(m))});
+  // approve buttons on the latest final only
+  Array.from(box.querySelectorAll('[id^="acts_"]')).forEach(function(d,i,arr){d.innerHTML=''; if(i===arr.length-1)d.innerHTML=decisionHTML()});
+  if(CUR&&BUSY.indexOf(CUR.status)>=0)box.insertAdjacentHTML('beforeend','<div class="live" id="liveRow"><span class="dots"><span></span><span></span><span></span></span>'+esc(CUR.stage_text||'Meeting in progress')+'</div>');
+  if(stick||(mr.data||[]).length)box.scrollTop=box.scrollHeight;
+  el('sendBtn').disabled=SENDING||(CUR&&BUSY.indexOf(CUR.status)>=0);
+  if(CUR&&BUSY.indexOf(CUR.status)<0)stopPoll(true);
+}
+function decisionHTML(){
+  if(!CUR)return '';
+  if(CUR.decision){const map={approved:['#4ade80','Approved'],rejected:['#f87171','Rejected'],changes:['#c4b5fd','Asked for changes']};const d=map[CUR.decision]||['#ddd',CUR.decision];
+    return '<div class="decided" style="color:'+d[0]+'">'+d[1]+(CUR.decided_at?' &middot; '+when(CUR.decided_at):'')+(CUR.decision_note?'<br><span style="color:#bbb;font-weight:600">'+esc(CUR.decision_note)+'</span>':'')+'</div>';}
+  if(CUR.status!=='awaiting')return '';
+  return '<div class="acts"><button class="ab ok" onclick="decide(\'approved\')"><i class="ti ti-check"></i> Approve</button><button class="ab ch" onclick="decide(\'changes\')">Change it</button><button class="ab no" onclick="decide(\'rejected\')">Reject</button></div>';
+}
+async function decide(d){
+  if(!CUR)return;
+  let note='';
+  if(d==='changes'){note=prompt('What should the board change? (You can also just type it in the chat box.)')||''; }
+  if(d==='rejected'){note=prompt('Why reject? (optional, helps the team learn)')||''; }
+  const msgs=Array.from(el('chat').querySelectorAll('.msg.final .txt')); const last=msgs.length?msgs[msgs.length-1].textContent:'';
+  const now=new Date().toISOString();
+  const r=await sb.from('gl_agent_threads').update({decision:d,decision_note:note||null,decided_at:now,status:d==='changes'?'awaiting':'done',updated_at:now}).eq('id',CUR.id);
+  if(r.error){toast('Failed: '+r.error.message);return}
+  if(d==='approved'){
+    await sb.from('gl_agent_memory').insert({kind:'decision',thread_id:CUR.id,created_by:'jimmy',text:'Jimmy APPROVED ('+now.slice(0,10)+') on "'+(CUR.title||'')+'": '+last.slice(0,900)});
+  }else if(d==='rejected'){
+    await sb.from('gl_agent_memory').insert({kind:'decision',thread_id:CUR.id,created_by:'jimmy',text:'Jimmy REJECTED the board idea on "'+(CUR.title||'')+'"'+(note?': '+note:'')+'. Do not propose it again unless asked.'});
+  }
+  CUR.decision=d;CUR.decision_note=note;CUR.decided_at=now;
+  toast(d==='approved'?'Approved and saved to memory':d==='rejected'?'Rejected':'Noted');
+  LASTID=0; el('chat').innerHTML=''; await pull();
+  if(d==='changes'&&note){el('q').value=note;ask()}
+}
+function startPoll(){stopPoll();POLL=setInterval(pull,1800)}
+function stopPoll(keepLast){if(POLL){clearInterval(POLL);POLL=null}}
+
+async function ask(){
+  const q=el('q').value.trim(); if(!q||SENDING)return;
+  if(CUR&&BUSY.indexOf(CUR.status)>=0){toast('The board is still in a meeting');return}
+  SENDING=true; el('sendBtn').disabled=true;
+  if(!CUR){el('chat').innerHTML=''}
+  el('chat').insertAdjacentHTML('beforeend','<div class="msg me" id="pending"><div class="av" style="background:#F5C518">J</div><div class="bub"><div class="txt">'+esc(q)+'</div></div></div><div class="live" id="liveRow"><span class="dots"><span></span><span></span><span></span></span>Sending to '+esc(agentOf('front').name)+'</div>');
+  el('chat').scrollTop=el('chat').scrollHeight;
+  try{
+    const s=await sb.auth.getSession(); const tok=s.data.session&&s.data.session.access_token;
+    const r=await fetch(SUPABASE_URL+'/functions/v1/agent-desk',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+tok,'apikey':SUPABASE_ANON},
+      body:JSON.stringify({question:q,thread_id:CUR?CUR.id:null})});
+    const j=await r.json().catch(function(){return {}});
+    if(!r.ok||!j.thread_id)throw new Error(j.error||('HTTP '+r.status));
+    el('q').value=''; grow(el('q'));
+    const p=el('pending'); if(p)p.remove();
+    if(!CUR||CUR.id!==j.thread_id){await loadThreads(); await openThread(j.thread_id)} else {await pull(); startPoll()}
+  }catch(e){
+    const p=el('pending'); if(p)p.remove(); const lv=el('liveRow'); if(lv)lv.remove();
+    toast('Could not send: '+e.message);
+  }
+  SENDING=false; el('sendBtn').disabled=false;
+}
+</script>
+</body>
+</html>

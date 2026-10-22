@@ -150,6 +150,11 @@ textarea{min-height:120px}
 .opts button{background:#101010;border:1px solid var(--border);color:var(--text);border-radius:11px;padding:12px;font-size:14px;font-weight:600;cursor:pointer;text-align:left;font-family:inherit}
 .opts button:hover{border-color:var(--gold)}
 .note{font-size:12.5px;color:var(--text2);border-left:2px solid var(--gold);padding-left:10px;margin-bottom:12px}
+.flowstep{border:1px solid var(--border);border-radius:12px;background:#101010;padding:10px 12px;margin-bottom:10px}
+.flowstep .now{font-size:13px;font-weight:800;color:var(--gold)}
+.flowstep .nx{font-size:12.5px;color:var(--text2);margin-top:3px}
+.handover{border:1px solid #6b2a1f;background:#1c0d0a;color:#ffb4a6;border-radius:12px;padding:10px 12px;margin-bottom:10px;font-size:13px;font-weight:700}
+.leadtag{display:inline-block;font-size:11.5px;font-weight:700;color:#41d18a;border:1px solid #1d5236;border-radius:999px;padding:4px 10px;margin-bottom:10px}
 .langsec{font-size:11px;font-weight:800;letter-spacing:.18em;text-transform:uppercase;color:var(--text2);margin:16px 0 8px}
 .urow{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--border);border-radius:11px;background:#101010;margin-bottom:8px}
 .urow .un{flex:1;font-weight:700;font-size:14px}
@@ -689,20 +694,38 @@ async function sendToMia(logQ){
 const LANGS = [["en","English"],["bm","Bahasa Melayu"],["zh","中文"]];
 const OPTS  = [["short","Short"],["explain","Explain"],["push","Recommend and push"]];
 
+/* v18: where the chat is in the sales flow, hand-over flag, lead source. Missing fields show nothing. */
+function flowBits(r){
+  let h = "";
+  const s = (r && r.step && typeof r.step === "object") ? r.step : null;
+  if (s && (s.now || s.next)) {
+    h += `<div class="flowstep">` +
+      (s.now ? `<div class="now">${esc(String(s.now))}</div>` : "") +
+      (s.next ? `<div class="nx">Next: ${esc(String(s.next))}</div>` : "") + `</div>`;
+  }
+  if (r && typeof r.handover === "string" && r.handover.trim()) {
+    h += `<div class="handover">Check with Jimmy before sending: ${esc(r.handover.trim())}</div>`;
+  }
+  if (r && typeof r.lead === "string" && r.lead.trim()) {
+    h += `<div class="leadtag">Lead: ${esc(r.lead.trim())} · tag it on the job card</div>`;
+  }
+  return h;
+}
+
 function renderReply(out){
   const r = out.reply;
 
   if (r && r.type === "clarify") {
     const opts = (r.options || []).map(o =>
       `<button onclick="answerClarify(this.getAttribute('data-a'))" data-a="${esc(o)}">${esc(o)}</button>`).join("");
-    $("coachOut").innerHTML =
+    $("coachOut").innerHTML = flowBits(r) +
       `<div class="clarify"><div class="q">${esc(r.question || "")}</div><div class="opts">${opts}</div></div>` +
       `<div class="hint">Or type your own answer above and press Write my reply.</div>`;
     return;
   }
 
   if (r && r.type === "reply") {
-    let html = starBar();
+    let html = starBar() + flowBits(r);
     if (r.note) html += `<div class="note">${esc(r.note)}</div>`;
     LANGS.forEach(([lk, lname]) => {
       const set = r[lk] || {};
