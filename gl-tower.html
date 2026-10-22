@@ -1813,18 +1813,26 @@ function drawMeet(){
     if(!DEMO)h+='<a class="open" href="gl-agents.html" onclick="try{localStorage.setItem(\'gl_agent_thread\',\''+t.id+'\')}catch(e){}">'+(fin&&t.status==='awaiting'?'Approve or change in Agent Desk':'Open full meeting in Agent Desk')+' &rarr;</a>';
   }else h+='<div class="q" style="color:#aaa;font-weight:600">Ask a question and watch the agents walk to the meeting room.</div>';
   if(!MEET.active)h+='<div class="row"><textarea id="mq" placeholder="Ask the board (English / BM / 中文)"></textarea><button class="go" onclick="askBoard()"><i class="ti ti-send"></i></button></div>';
-  box.innerHTML=h;
+  // the panel refreshes every few seconds: skip when nothing changed, and never wipe what Jimmy is typing
+  if(box._h===h)return;
+  var old=el('mq'), keep=old?old.value:'', had=old&&document.activeElement===old, s0=old?old.selectionStart:0, s1=old?old.selectionEnd:0;
+  box._h=h; box.innerHTML=h;
+  var nq=el('mq'); if(nq&&keep){nq.value=keep}
+  if(nq&&had){nq.focus();try{nq.setSelectionRange(s0,s1)}catch(e){}}
 }
 async function askBoard(){
   var q=(el('mq')||{}).value; q=String(q||'').trim(); if(!q)return;
-  if(DEMO)return demoMeeting(q);
+  if(askBoard.busy)return; askBoard.busy=true;
+  var clearQ=function(){var m=el('mq'); if(m)m.value='';};
+  if(DEMO){askBoard.busy=false; clearQ(); return demoMeeting(q);}
   try{
     var s=await sb.auth.getSession(), tok=s.data.session&&s.data.session.access_token;
     var r=await fetch(SUPABASE_URL+'/functions/v1/agent-desk',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+tok,'apikey':SUPABASE_ANON},body:JSON.stringify({question:q})});
     var j=await r.json().catch(function(){return {}});
     if(!r.ok)throw new Error(j.error||('HTTP '+r.status));
-    MEET.closedFor=null; MEET.shown=true; MEET.thread=null; await pollMeeting();
+    clearQ(); MEET.closedFor=null; MEET.shown=true; MEET.thread=null; await pollMeeting();
   }catch(e){alert('Could not ask the board: '+e.message)}
+  askBoard.busy=false;
 }
 /* demo: a scripted meeting for filming (no AI call, nothing saved) */
 function demoMeeting(q){
