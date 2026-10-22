@@ -7,96 +7,129 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 :root{--bg:#FFFFFF;--card:#FFFFFF;--card2:#F6F7F8;--gold:#F5C518;--gold-ink:#8A6D00;
-      --text:#111111;--text2:#5F6368;--border:#E3E5E8;--red:#C0392B;--green:#157347;--amber:#9A6700}
+      --text:#111111;--text2:#5F6368;--border:#E3E5E8;--red:#C0392B;--green:#157347;
+      --amber:#9A6700;--sel:#FFF8E1;--head:#EEF0F2}
 *{box-sizing:border-box}
+html,body{height:100%}
 body{margin:0;background:var(--bg);color:var(--text);
-     font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-size:14px}
-.wrap{max-width:900px;margin:0 auto;padding:14px}
-.top{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:4px}
-.back{color:var(--text2);text-decoration:none;font-size:13px}
-h1{font-size:21px;font-weight:900;margin:2px 0 2px}
-h1 span{color:var(--gold-ink)}
-.sub{color:var(--text2);font-size:12px;margin-bottom:12px}
-.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:10px}
-label{display:block;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--text2);margin-bottom:5px}
-input,select{width:100%;padding:11px;border:1px solid var(--border);border-radius:10px;
-     background:var(--card);color:var(--text);font-family:inherit;font-size:14px}
-input:focus,select:focus{outline:none;border-color:var(--gold-ink)}
-.btn{display:block;width:100%;background:var(--gold);color:#000;border:none;border-radius:11px;
-     padding:13px;font-size:15px;font-weight:800;cursor:pointer;font-family:inherit}
-.btn2{background:var(--card2);color:var(--text);border:1px solid var(--border)}
-.btn-sm{width:auto;padding:8px 13px;font-size:13px;border-radius:9px}
-.row{display:flex;gap:8px}.row>*{flex:1}
-.searchbar{display:flex;gap:8px;margin-bottom:12px}
-.searchbar input{flex:1}
-.cust{background:var(--card);border:1px solid var(--border);border-radius:13px;padding:13px;
-      margin-bottom:9px;cursor:pointer}
-.cust:hover{border-color:var(--gold-ink)}
-.cust .nm{font-weight:800;font-size:15px}
-.cust .ph{color:var(--text2);font-size:12.5px;margin-top:1px}
-.chips{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}
-.chip{background:var(--card2);border:1px solid var(--border);border-radius:7px;
-      padding:3px 8px;font-size:11.5px;font-weight:700}
-.chip.plate{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--gold);
-      border-color:var(--gold);color:#000}
-.chip.pkg{background:#FFF8E1;border-color:#E8D48A;color:var(--gold-ink)}
-.chip.warn{background:#FDECEA;border-color:#F2C2BC;color:var(--red)}
-.meta{display:flex;gap:12px;flex-wrap:wrap;color:var(--text2);font-size:11.5px;margin-top:8px}
-.empty{color:var(--text2);text-align:center;padding:24px 10px;font-size:13px}
-.status{color:var(--text2);font-size:12.5px;padding:7px 0}
-.err{color:var(--red)}.ok{color:var(--green)}
+     font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-size:13px}
 .hide{display:none !important}
-.dl{display:flex;justify-content:space-between;gap:10px;padding:7px 0;border-bottom:1px solid var(--border);font-size:13.5px}
-.dl b{font-weight:800}
-.dl .k{color:var(--text2)}
-.sec{font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:.06em;
-     color:var(--gold-ink);margin:14px 0 7px}
-.gate{position:fixed;inset:0;background:var(--bg);z-index:50;display:flex;align-items:center;justify-content:center;padding:18px}
-.gate .card{max-width:340px;width:100%}
+
+/* ---- app chrome ---- */
+.bar{display:flex;align-items:center;gap:10px;padding:8px 12px;border-bottom:1px solid var(--border);
+     background:var(--card2);position:sticky;top:0;z-index:20;flex-wrap:wrap}
+.bar .ttl{font-weight:900;font-size:15px;white-space:nowrap}
+.bar .ttl span{color:var(--gold-ink)}
+.back{color:var(--text2);text-decoration:none;font-size:12.5px;white-space:nowrap}
+.grow{flex:1;min-width:120px}
+.count{color:var(--text2);font-size:12px;white-space:nowrap}
+
+input,select{padding:7px 9px;border:1px solid var(--border);border-radius:7px;
+     background:var(--card);color:var(--text);font-family:inherit;font-size:13px;width:100%}
+input:focus,select:focus{outline:none;border-color:var(--gold-ink)}
+.btn{background:var(--gold);color:#000;border:none;border-radius:7px;padding:7px 14px;
+     font-size:13px;font-weight:800;cursor:pointer;font-family:inherit;white-space:nowrap}
+.btn2{background:var(--card);color:var(--text);border:1px solid var(--border)}
+.btn:disabled{opacity:.5;cursor:default}
+
+/* ---- grid ---- */
+.gridwrap{overflow:auto}
+table{border-collapse:collapse;width:100%;font-size:13px}
+thead th{background:var(--head);text-align:left;font-weight:800;font-size:11.5px;
+     text-transform:uppercase;letter-spacing:.03em;color:var(--text2);
+     padding:7px 9px;border-bottom:1px solid var(--border);white-space:nowrap;
+     position:sticky;top:0;z-index:10;cursor:pointer;user-select:none}
+thead th:hover{color:var(--text)}
+thead th .ar{color:var(--gold-ink);font-size:10px}
+thead tr.filt th{position:sticky;top:30px;background:var(--card2);padding:4px 5px;z-index:9}
+thead tr.filt input{padding:4px 6px;font-size:12px;border-radius:5px}
+tbody td{padding:6px 9px;border-bottom:1px solid var(--border);vertical-align:top}
+tbody tr{cursor:pointer}
+tbody tr:nth-child(even){background:#FAFBFC}
+tbody tr:hover{background:var(--sel)}
+.nm{font-weight:700}
+.sub{color:var(--text2);font-size:11.5px}
+.pl{display:inline-block;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+    background:var(--gold);border-radius:4px;padding:1px 5px;font-size:11.5px;
+    font-weight:700;color:#000;margin:1px 3px 1px 0}
+.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.warn{color:var(--red);font-size:11px;font-weight:700}
+.pkg{color:var(--gold-ink);font-weight:800}
+.empty{color:var(--text2);text-align:center;padding:30px 12px}
+.status{color:var(--text2);font-size:12px;padding:7px 12px}
+.err{color:var(--red)}.ok{color:var(--green)}
+
+/* ---- maintain form ---- */
+.pane{padding:12px;max-width:1000px}
+.fh{display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap}
+.fh .h{font-size:16px;font-weight:900;flex:1}
+.box{border:1px solid var(--border);border-radius:9px;margin-bottom:12px;overflow:hidden}
+.box .bt{background:var(--card2);padding:6px 10px;font-size:11px;font-weight:900;
+         text-transform:uppercase;letter-spacing:.05em;color:var(--gold-ink);
+         border-bottom:1px solid var(--border)}
+.fields{display:grid;grid-template-columns:150px 1fr 150px 1fr;gap:0}
+.fields .lb{padding:8px 10px;color:var(--text2);font-size:12.5px;border-bottom:1px solid var(--border);
+            background:#FCFCFD;display:flex;align-items:center}
+.fields .vl{padding:5px 10px;border-bottom:1px solid var(--border);display:flex;align-items:center;min-height:34px}
+.fields .vl b{font-weight:700}
+.note{background:#FFF8E1;border-bottom:1px solid #E8D48A;padding:7px 10px;font-size:12px;color:#6b5600}
+.vtable td{padding:6px 10px}
+.hint{color:var(--text2);font-size:11.5px;padding:7px 10px}
+
+/* ---- login ---- */
+.gate{position:fixed;inset:0;background:var(--bg);z-index:60;display:flex;
+      align-items:center;justify-content:center;padding:18px}
 .gate.hide{display:none !important}
-.hint{color:var(--text2);font-size:11.5px;margin-top:6px;line-height:1.45}
-.note{background:#FFF8E1;border:1px solid #E8D48A;border-radius:9px;padding:9px 11px;
-      font-size:12px;color:#6b5600;margin-bottom:10px}
+.gate .inner{max-width:330px;width:100%;border:1px solid var(--border);border-radius:12px;padding:18px}
+.gate h1{font-size:19px;font-weight:900;margin:0 0 3px}
+.gate h1 span{color:var(--gold-ink)}
+.gate label{display:block;font-size:11px;font-weight:800;text-transform:uppercase;
+            color:var(--text2);margin:10px 0 4px}
+
+/* ---- phone ---- */
+@media(max-width:880px){
+  .fields{grid-template-columns:110px 1fr}
+  thead tr.filt{display:none}
+  thead th.opt,tbody td.opt{display:none}
+  tbody td{padding:8px 9px}
+  .bar{padding:8px}
+}
 </style>
 </head>
 <body>
 
-<div class="gate" id="gate">
-  <div class="card">
-    <h1>GRAND<span>LAB</span></h1>
-    <div class="sub">Customer list — staff sign in</div>
-    <label>Email</label><input id="email" type="email" autocomplete="username">
-    <label style="margin-top:9px">Password</label><input id="pass" type="password" autocomplete="current-password">
-    <button class="btn" style="margin-top:12px" onclick="doLogin()">SIGN IN</button>
-    <div id="loginErr" class="status err"></div>
-  </div>
-</div>
+<div class="gate" id="gate"><div class="inner">
+  <h1>GRAND<span>LAB</span></h1>
+  <div class="sub">Customers — staff sign in</div>
+  <label>Email</label><input id="email" type="email" autocomplete="username">
+  <label>Password</label><input id="pass" type="password" autocomplete="current-password">
+  <button class="btn" style="width:100%;margin-top:12px;padding:11px" onclick="doLogin()">SIGN IN</button>
+  <div id="loginErr" class="status err"></div>
+</div></div>
 
-<div class="wrap">
-  <div class="top">
+<!-- ============ BROWSE ============ -->
+<div id="browse">
+  <div class="bar">
     <a class="back" href="gl-hub.html">&#8592; Hub</a>
-    <button class="btn btn2 btn-sm" onclick="openAdd()">+ New customer</button>
+    <div class="ttl">GRAND<span>LAB</span> CUSTOMERS</div>
+    <div class="grow"><input id="q" placeholder="Search name, phone, plate, email or SQL code…" autocomplete="off"></div>
+    <button class="btn btn2" onclick="runSearch()">Search</button>
+    <button class="btn" onclick="openNew()">+ New</button>
+    <div class="count" id="count"></div>
   </div>
-  <h1>GRAND<span>LAB</span> CUSTOMERS</h1>
-  <div class="sub" id="countLine">Search by name, phone, plate, email or SQL code</div>
-
-  <!-- LIST -->
-  <div id="listView">
-    <div class="searchbar">
-      <input id="q" placeholder="Name, phone, plate, email, SQL code…" autocomplete="off">
-      <button class="btn btn2 btn-sm" onclick="runSearch()">Search</button>
-    </div>
-    <div id="status" class="status"></div>
-    <div id="list"></div>
-    <button class="btn btn2 hide" id="more" onclick="loadMore()">Load more</button>
-  </div>
-
-  <!-- DETAIL -->
-  <div id="detailView" class="hide"></div>
-
-  <!-- ADD / EDIT -->
-  <div id="formView" class="hide"></div>
+  <div id="status" class="status"></div>
+  <div class="gridwrap"><table>
+    <thead>
+      <tr id="hrow"></tr>
+      <tr class="filt" id="frow"></tr>
+    </thead>
+    <tbody id="rows"></tbody>
+  </table></div>
+  <div style="padding:10px 12px"><button class="btn btn2 hide" id="more" onclick="loadMore()">Load more</button></div>
 </div>
+
+<!-- ============ MAINTAIN ============ -->
+<div id="maintain" class="hide"></div>
 
 <script>
 const SUPABASE_URL="https://eychljpzorzmaveixlnu.supabase.co";
@@ -105,233 +138,277 @@ const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON,
       {auth:{persistSession:true,autoRefreshToken:true,storageKey:'gl_auth'}});
 const $=id=>document.getElementById(id);
 const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-const PAGE=40;
-let OFFSET=0, LASTQ='', CUR=null;
+const PAGE=150;
 
-/* ---------- login (shares gl_auth with the other staff apps) ---------- */
+/* Columns: key, label, width, how to read it, optional=hide on phone */
+const COLS=[
+  {k:'name',  t:'Customer Name', get:r=>r.name||'(no name)'},
+  {k:'code',  t:'Code',  w:'90px',  opt:1, get:r=>r.sqlacc_code||''},
+  {k:'phone', t:'Phone', w:'140px',        get:r=>r.phone||''},
+  {k:'plates',t:'Vehicles',                get:r=>(r.cars||[]).map(c=>c.plate).join(' ')},
+  {k:'cars',  t:'Cars',  w:'60px',  opt:1, num:1, get:r=>r.car_count},
+  {k:'pkg',   t:'Pkg',   w:'60px',  opt:1, num:1, get:r=>r.pkg_left},
+  {k:'visits',t:'Visits',w:'70px',  opt:1, num:1, get:r=>r.visits},
+  {k:'last',  t:'Last Service', w:'110px', get:r=>r.last_service||''}
+];
+let ROWS=[], OFFSET=0, LASTQ='', SORT={k:'last',dir:-1}, FILT={}, CUR=null, EDIT=false;
+
+/* ---------- login (shared gl_auth session) ---------- */
 async function boot(){
   const {data}=await sb.auth.getSession();
-  if(data&&data.session){ $('gate').classList.add('hide'); runSearch(); }
+  if(data&&data.session){ $('gate').classList.add('hide'); buildHead(); runSearch(); }
   else $('gate').classList.remove('hide');
 }
 async function doLogin(){
   const email=$('email').value.trim(), pass=$('pass').value;
-  $('loginErr').textContent='Signing in…';
   if(!email||!pass){ $('loginErr').textContent='Enter email and password.'; return; }
+  $('loginErr').textContent='Signing in…';
   let res;
   try{ res=await sb.auth.signInWithPassword({email,password:pass}); }
   catch(e){ $('loginErr').textContent='Network error: '+(e.message||e); return; }
   if(res.error){ $('loginErr').textContent='Login failed: '+res.error.message; return; }
-  if(!res.data||!res.data.session){ $('loginErr').textContent='No session returned — try again.'; return; }
-  $('loginErr').textContent=''; $('gate').classList.add('hide'); runSearch();
+  $('loginErr').textContent=''; $('gate').classList.add('hide'); buildHead(); runSearch();
 }
+$('pass').addEventListener('keydown',e=>{ if(e.key==='Enter') doLogin(); });
+$('q').addEventListener('keydown',e=>{ if(e.key==='Enter') runSearch(); });
 
-/* ---------- list ----------
-   Search runs in the DATABASE via gl_customer_list(). gl_walkin has 5,000+
-   rows, so nothing is ever fetched wholesale into the browser.              */
-function show(view){
-  ['listView','detailView','formView'].forEach(v=>$(v).classList.add('hide'));
-  $(view).classList.remove('hide');
+/* ---------- grid ---------- */
+function buildHead(){
+  $('hrow').innerHTML=COLS.map(c=>
+    '<th class="'+(c.opt?'opt':'')+'" '+(c.w?('style="width:'+c.w+'"'):'')+
+    ' onclick="sortBy(\''+c.k+'\')">'+esc(c.t)+
+    '<span class="ar"> '+(SORT.k===c.k?(SORT.dir>0?'&#9650;':'&#9660;'):'')+'</span></th>').join('');
+  $('frow').innerHTML=COLS.map(c=>
+    '<th class="'+(c.opt?'opt':'')+'"><input data-f="'+c.k+'" placeholder="filter"'+
+    ' value="'+esc(FILT[c.k]||'')+'" oninput="onFilter(this)"></th>').join('');
+  // the filter row sticks under the header; measure it rather than hardcode an
+  // offset, or a taller header overlaps the filters
+  requestAnimationFrame(()=>{
+    const h=$('hrow').getBoundingClientRect().height||30;
+    document.querySelectorAll('thead tr.filt th').forEach(th=>th.style.top=h+'px');
+  });
 }
-function runSearch(){ OFFSET=0; LASTQ=$('q').value.trim(); $('list').innerHTML=''; loadMore(); }
+function onFilter(el){ FILT[el.dataset.f]=el.value.trim().toUpperCase(); paint(); }
+function sortBy(k){ SORT = (SORT.k===k)?{k:k,dir:-SORT.dir}:{k:k,dir:1}; buildHead(); paint(); }
 
+function runSearch(){ OFFSET=0; ROWS=[]; LASTQ=$('q').value.trim(); loadMore(); }
 async function loadMore(){
   $('status').textContent='Loading…';
-  const {data,error}=await sb.rpc('gl_customer_list',
-        {p_q:LASTQ, p_limit:PAGE, p_offset:OFFSET});
+  const {data,error}=await sb.rpc('gl_customer_list',{p_q:LASTQ,p_limit:PAGE,p_offset:OFFSET});
   if(error){ $('status').innerHTML='<span class="err">Error: '+esc(error.message)+'</span>'; return; }
-  const rows=data||[];
-  if(OFFSET===0 && !rows.length){
-    $('list').innerHTML='<div class="empty">No customer found for “'+esc(LASTQ)+'”.<br><br>'+
-      '<button class="btn btn2 btn-sm" onclick="openAdd()">+ Add them as a new customer</button></div>';
-    $('status').textContent=''; $('more').classList.add('hide'); show('listView'); return;
+  const got=data||[];
+  ROWS=ROWS.concat(got); OFFSET+=got.length;
+  $('more').classList.toggle('hide', got.length<PAGE);
+  $('status').textContent='';
+  paint();
+}
+function cmp(a,b){
+  const c=COLS.find(x=>x.k===SORT.k)||COLS[0];
+  let x=c.get(a), y=c.get(b);
+  if(c.num){ x=Number(x)||0; y=Number(y)||0; return (x-y)*SORT.dir; }
+  x=String(x||'').toUpperCase(); y=String(y||'').toUpperCase();
+  if(x===y) return 0;
+  if(x==='') return 1; if(y==='') return -1;      // blanks always last
+  return (x<y?-1:1)*SORT.dir;
+}
+function paint(){
+  let list=ROWS.slice();
+  // per-column filters narrow the rows already loaded (instant, no round-trip)
+  Object.keys(FILT).forEach(k=>{
+    const v=FILT[k]; if(!v) return;
+    const c=COLS.find(x=>x.k===k);
+    list=list.filter(r=>String(c.get(r)||'').toUpperCase().includes(v));
+  });
+  list.sort(cmp);
+  if(!list.length){
+    $('rows').innerHTML='<tr><td colspan="'+COLS.length+'"><div class="empty">'+
+      (LASTQ?('No customer matches &ldquo;'+esc(LASTQ)+'&rdquo;.'):'No customers loaded.')+
+      '<br><br><button class="btn btn2" onclick="openNew()">+ Add as new customer</button></div></td></tr>';
+  } else {
+    $('rows').innerHTML=list.map((r,i)=>{
+      const plates=(r.cars||[]).slice(0,4).map(c=>'<span class="pl">'+esc(c.plate)+'</span>').join('')
+                 + (r.car_count>4?('<span class="sub"> +'+(r.car_count-4)+'</span>'):'');
+      const multi=(r.all_names&&r.all_names.length>1)
+            ?('<div class="warn">'+r.all_names.length+' spellings</div>'):'';
+      return '<tr onclick="openCust(\''+esc(r.cust_key)+'\')">'+
+        '<td><div class="nm">'+esc(r.name||'(no name)')+'</div>'+multi+'</td>'+
+        '<td class="opt">'+esc(r.sqlacc_code||'')+'</td>'+
+        '<td>'+esc(r.phone||'<span class="sub">—</span>')+'</td>'+
+        '<td>'+(plates||'<span class="sub">no car</span>')+'</td>'+
+        '<td class="opt num">'+r.car_count+'</td>'+
+        '<td class="opt num">'+(r.pkg_left>0?('<span class="pkg">'+r.pkg_left+'</span>'):'—')+'</td>'+
+        '<td class="opt num">'+(r.visits||'—')+'</td>'+
+        '<td>'+esc(r.last_service||'')+'</td></tr>';
+    }).join('');
   }
-  $('list').insertAdjacentHTML('beforeend', rows.map(cardHtml).join(''));
-  OFFSET+=rows.length;
-  $('status').textContent=(LASTQ?('Matching “'+LASTQ+'” · '):'')+OFFSET+' shown';
-  $('more').classList.toggle('hide', rows.length<PAGE);
-  CACHE={}; rows.forEach(r=>CACHE[r.cust_key]=r);
-  Object.assign(ALL, CACHE);
-  show('listView');
-}
-let CACHE={}, ALL={};
-
-function cardHtml(r){
-  const cars=(r.cars||[]).slice(0,6).map(c=>'<span class="chip plate">'+esc(c.plate)+'</span>').join('');
-  const extra=(r.car_count>6)?('<span class="chip">+'+(r.car_count-6)+' more</span>'):'';
-  const pkg=r.pkg_left>0?'<span class="chip pkg">'+r.pkg_left+' package use'+(r.pkg_left>1?'s':'')+' left</span>':'';
-  const multi=(r.all_names&&r.all_names.length>1)
-      ? '<span class="chip warn">'+r.all_names.length+' name spellings</span>' : '';
-  return '<div class="cust" onclick="openDetail(\''+esc(r.cust_key)+'\')">'+
-    '<div class="nm">'+esc(r.name||'(no name)')+'</div>'+
-    '<div class="ph">'+esc(r.phone||'no phone')+(r.sqlacc_code?(' · SQL '+esc(r.sqlacc_code)):'')+'</div>'+
-    '<div class="chips">'+cars+extra+pkg+multi+'</div>'+
-    '<div class="meta">'+
-      '<span>'+r.car_count+' car'+(r.car_count===1?'':'s')+'</span>'+
-      (r.visits?'<span>'+r.visits+' visits</span>':'')+
-      (r.last_service?'<span>last '+esc(r.last_service)+'</span>':'<span>no service yet</span>')+
-    '</div></div>';
+  const anyF=Object.values(FILT).some(v=>v);
+  $('count').textContent=list.length+(anyF?(' of '+ROWS.length+' loaded'):' loaded')
+      + (ROWS[0]&&ROWS[0].total_count?(' · '+ROWS[0].total_count+' total'):'');
 }
 
-/* ---------- detail ---------- */
-function openDetail(key){
-  const r=ALL[key]; if(!r) return;
-  CUR=r;
+/* ---------- maintain customer ---------- */
+function show(v){ $('browse').classList.toggle('hide',v!=='browse');
+                  $('maintain').classList.toggle('hide',v!=='maintain'); }
+function openCust(k){ CUR=ROWS.find(r=>r.cust_key===k); if(!CUR) return; EDIT=false; drawCust(); }
+function backToList(){ show('browse'); }
+
+function fRow(lb,html){ return '<div class="lb">'+lb+'</div><div class="vl">'+html+'</div>'; }
+function inp(id,v,ph){ return '<input id="'+id+'" value="'+esc(v||'')+'" placeholder="'+esc(ph||'')+'">'; }
+
+function drawCust(){
+  const r=CUR, ed=EDIT;
   const cars=(r.cars||[]).map(c=>
-    '<div class="dl"><span><span class="chip plate">'+esc(c.plate)+'</span> '+
-    esc(c.model||'')+'</span><span class="k">'+esc(c.car_type||'')+'</span></div>').join('')
-    || '<div class="empty">No car on file.</div>';
+    '<tr><td style="width:120px"><span class="pl">'+esc(c.plate)+'</span></td>'+
+    '<td>'+esc(c.model||'<span class="sub">—</span>')+'</td>'+
+    '<td style="width:110px" class="sub">'+esc(c.car_type||'')+'</td></tr>').join('')
+    || '<tr><td colspan="3" class="hint">No vehicle on file.</td></tr>';
   const names=(r.all_names&&r.all_names.length>1)
     ? '<div class="note">Recorded under '+r.all_names.length+' spellings: '+
-      r.all_names.map(esc).join(' · ')+'. Editing the name updates all '+r.rows_merged+' records.</div>' : '';
-  $('detailView').innerHTML=
-    '<button class="btn btn2 btn-sm" style="margin-bottom:12px" onclick="show(\'listView\')">&#8592; Back to list</button>'+
-    '<div class="card">'+
-      '<div style="font-size:19px;font-weight:900">'+esc(r.name||'(no name)')+'</div>'+
-      '<div class="ph" style="color:var(--text2);font-size:13px;margin-top:2px">'+esc(r.phone||'no phone')+'</div>'+
-      names+
-      '<div class="sec">Details</div>'+
-      '<div class="dl"><span class="k">Phone</span><b>'+esc(r.phone||'—')+'</b></div>'+
-      '<div class="dl"><span class="k">Email</span><b>'+esc(r.email||'—')+'</b></div>'+
-      '<div class="dl"><span class="k">SQL Account code</span><b>'+esc(r.sqlacc_code||'—')+'</b></div>'+
-      '<div class="dl"><span class="k">Total visits</span><b>'+(r.visits||0)+'</b></div>'+
-      '<div class="dl"><span class="k">Last service</span><b>'+esc(r.last_service||'—')+'</b></div>'+
-      '<div class="dl"><span class="k">Package uses left</span><b>'+(r.pkg_left||0)+'</b></div>'+
-      '<div class="dl"><span class="k">Records merged</span><b>'+r.rows_merged+'</b></div>'+
-      '<div class="sec">Vehicles ('+r.car_count+')</div>'+cars+
-      '<div class="row" style="margin-top:14px">'+
-        '<button class="btn btn2 btn-sm" onclick="openEdit()">Edit customer</button>'+
-        '<button class="btn btn2 btn-sm" onclick="openAddCar()">+ Add car</button>'+
-      '</div>'+
-      '<div class="row" style="margin-top:8px">'+
-        '<a class="btn btn2 btn-sm" style="text-align:center;text-decoration:none;line-height:1.5" '+
-          'href="gl-jobcard.html">Create job card</a>'+
-        (r.cars&&r.cars.length?('<a class="btn btn2 btn-sm" style="text-align:center;text-decoration:none;line-height:1.5" '+
-          'href="gl-platescan.html">Open plate scanner</a>'):'')+
-      '</div>'+
-    '</div>';
-  show('detailView');
+      r.all_names.map(esc).join(' &middot; ')+'</div>' : '';
+  $('maintain').innerHTML=
+   '<div class="bar">'+
+     '<a class="back" href="#" onclick="backToList();return false;">&#8592; Browse</a>'+
+     '<div class="ttl">MAINTAIN CUSTOMER</div><div class="grow"></div>'+
+     (ed?('<button class="btn" onclick="saveCust()">Save</button>'+
+          '<button class="btn btn2" onclick="EDIT=false;drawCust()">Cancel</button>')
+        :('<button class="btn btn2" onclick="EDIT=true;drawCust()">Edit</button>'+
+          '<button class="btn btn2" onclick="addCar()">+ Vehicle</button>'+
+          '<a class="btn" style="text-decoration:none;line-height:1.9" href="gl-jobcard.html">New Job Card</a>'))+
+   '</div>'+
+   '<div class="pane">'+
+     '<div class="box">'+
+       '<div class="bt">Customer</div>'+names+
+       (ed?'<div class="note">Saving updates all <b>'+r.rows_merged+
+           '</b> record'+(r.rows_merged===1?'':'s')+' for this customer.</div>':'')+
+       '<div class="fields">'+
+         fRow('Customer name', ed?inp('e_name',r.name):('<b>'+esc(r.name||'—')+'</b>'))+
+         fRow('SQL Acc code',  ed?inp('e_code',r.sqlacc_code,'e.g. C4553'):esc(r.sqlacc_code||'—'))+
+         fRow('Phone',         ed?inp('e_phone',r.phone):esc(r.phone||'—'))+
+         fRow('Email',         ed?inp('e_email',r.email,'name@email.com'):esc(r.email||'—'))+
+         fRow('Total visits',  String(r.visits||0))+
+         fRow('Last service',  esc(r.last_service||'—'))+
+         fRow('Package uses left', '<b class="pkg">'+(r.pkg_left||0)+'</b>')+
+         fRow('Records merged', String(r.rows_merged))+
+       '</div>'+
+     '</div>'+
+     '<div class="box">'+
+       '<div class="bt">Vehicles ('+r.car_count+')</div>'+
+       '<table class="vtable"><tbody>'+cars+'</tbody></table>'+
+     '</div>'+
+     '<div id="msg" class="status"></div>'+
+   '</div>';
+  show('maintain');
 }
 
-/* ---------- add / edit ----------
-   Edit writes to EVERY record in the group, so fixing a name or phone fixes it
-   everywhere instead of leaving half the rows stale.                        */
-function field(id,lbl,val,ph,type){
-  return '<label style="margin-top:9px">'+lbl+'</label>'+
-    '<input id="'+id+'" type="'+(type||'text')+'" value="'+esc(val||'')+'" placeholder="'+esc(ph||'')+'">';
-}
-function openAdd(){
+/* ---------- new customer ---------- */
+function openNew(){
   CUR=null;
-  $('formView').innerHTML=
-    '<button class="btn btn2 btn-sm" style="margin-bottom:12px" onclick="show(\'listView\')">&#8592; Cancel</button>'+
-    '<div class="card"><div style="font-size:17px;font-weight:900">New customer</div>'+
-    '<div class="hint">Create the customer first, then raise the job card or invoice.</div>'+
-    field('f_name','Customer name','','e.g. TAI MING')+
-    field('f_phone','Phone','','e.g. 60123456789','tel')+
-    field('f_email','Email (optional)','','name@email.com','email')+
-    field('f_plate','Car plate (optional)','','e.g. ABC1234')+
-    field('f_model','Model (optional)','','e.g. PERODUA MYVI')+
-    '<label style="margin-top:9px">Car type (optional)</label>'+
-    '<select id="f_ctype"><option value="">—</option>'+
-      ['SEDAN','SUV','MPV','HATCHBACK','PICKUP','COUPE','Motorcycle','Supercar']
-        .map(t=>'<option>'+t+'</option>').join('')+'</select>'+
-    field('f_sql','SQL Account code (optional)','','e.g. C4553')+
-    '<button class="btn" style="margin-top:14px" onclick="saveNew()">SAVE CUSTOMER</button>'+
-    '<div id="formMsg" class="status"></div></div>';
-  show('formView');
+  $('maintain').innerHTML=
+   '<div class="bar">'+
+     '<a class="back" href="#" onclick="backToList();return false;">&#8592; Browse</a>'+
+     '<div class="ttl">NEW CUSTOMER</div><div class="grow"></div>'+
+     '<button class="btn" onclick="saveNew()">Save</button>'+
+     '<button class="btn btn2" onclick="backToList()">Cancel</button>'+
+   '</div>'+
+   '<div class="pane"><div class="box">'+
+     '<div class="bt">Customer</div>'+
+     '<div class="hint">Create the customer first, then raise the job card.</div>'+
+     '<div class="fields">'+
+       fRow('Customer name *', inp('n_name','','e.g. TAI MING'))+
+       fRow('SQL Acc code',    inp('n_code','','e.g. C4553'))+
+       fRow('Phone',           inp('n_phone','','e.g. 60123456789'))+
+       fRow('Email',           inp('n_email','','name@email.com'))+
+     '</div></div>'+
+     '<div class="box"><div class="bt">First vehicle (optional)</div>'+
+     '<div class="fields">'+
+       fRow('Car plate', inp('n_plate','','e.g. ABC1234'))+
+       fRow('Model',     inp('n_model','','e.g. PERODUA MYVI'))+
+       fRow('Car type',  '<select id="n_ctype"><option value="">—</option>'+
+            ['SEDAN','SUV','MPV','HATCHBACK','PICKUP','COUPE','Motorcycle','Supercar']
+              .map(t=>'<option>'+t+'</option>').join('')+'</select>')+
+       fRow('','')+
+     '</div></div>'+
+     '<div id="msg" class="status"></div>'+
+   '</div>';
+  show('maintain');
 }
-function openEdit(){
+function addCar(){
   const r=CUR; if(!r) return;
-  $('formView').innerHTML=
-    '<button class="btn btn2 btn-sm" style="margin-bottom:12px" onclick="openDetail(\''+esc(r.cust_key)+'\')">&#8592; Cancel</button>'+
-    '<div class="card"><div style="font-size:17px;font-weight:900">Edit customer</div>'+
-    '<div class="note">Saving updates all <b>'+r.rows_merged+'</b> record'+(r.rows_merged===1?'':'s')+
-      ' for this customer, so the details match everywhere.</div>'+
-    field('f_name','Customer name',r.name)+
-    field('f_phone','Phone',r.phone,'','tel')+
-    field('f_email','Email',r.email,'name@email.com','email')+
-    field('f_sql','SQL Account code',r.sqlacc_code)+
-    '<button class="btn" style="margin-top:14px" onclick="saveEdit()">SAVE CHANGES</button>'+
-    '<div id="formMsg" class="status"></div></div>';
-  show('formView');
-}
-function openAddCar(){
-  const r=CUR; if(!r) return;
-  $('formView').innerHTML=
-    '<button class="btn btn2 btn-sm" style="margin-bottom:12px" onclick="openDetail(\''+esc(r.cust_key)+'\')">&#8592; Cancel</button>'+
-    '<div class="card"><div style="font-size:17px;font-weight:900">Add a car</div>'+
-    '<div class="hint">Added to '+esc(r.name||'this customer')+'.</div>'+
-    field('f_plate','Car plate','','e.g. ABC1234')+
-    field('f_model','Model','','e.g. PERODUA MYVI')+
-    '<label style="margin-top:9px">Car type</label>'+
-    '<select id="f_ctype"><option value="">—</option>'+
-      ['SEDAN','SUV','MPV','HATCHBACK','PICKUP','COUPE','Motorcycle','Supercar']
-        .map(t=>'<option>'+t+'</option>').join('')+'</select>'+
-    '<button class="btn" style="margin-top:14px" onclick="saveCar()">ADD CAR</button>'+
-    '<div id="formMsg" class="status"></div></div>';
-  show('formView');
+  $('maintain').innerHTML=
+   '<div class="bar">'+
+     '<a class="back" href="#" onclick="drawCust();return false;">&#8592; Back</a>'+
+     '<div class="ttl">ADD VEHICLE</div><div class="grow"></div>'+
+     '<button class="btn" onclick="saveCar()">Save</button>'+
+     '<button class="btn btn2" onclick="drawCust()">Cancel</button>'+
+   '</div>'+
+   '<div class="pane"><div class="box">'+
+     '<div class="bt">New vehicle for '+esc(r.name||'this customer')+'</div>'+
+     '<div class="fields">'+
+       fRow('Car plate *', inp('c_plate','','e.g. ABC1234'))+
+       fRow('Model',       inp('c_model','','e.g. PERODUA MYVI'))+
+       fRow('Car type',    '<select id="c_ctype"><option value="">—</option>'+
+            ['SEDAN','SUV','MPV','HATCHBACK','PICKUP','COUPE','Motorcycle','Supercar']
+              .map(t=>'<option>'+t+'</option>').join('')+'</select>')+
+       fRow('','')+
+     '</div></div><div id="msg" class="status"></div></div>';
+  show('maintain');
 }
 
+/* ---------- writes ---------- */
 const val=id=>{const e=$(id);return e?e.value.trim():'';};
 const normPhone=p=>String(p||'').replace(/[^0-9]/g,'').replace(/^(60|0)/,'');
+const msg=(h)=>{ const m=$('msg'); if(m) m.innerHTML=h; };
 
 async function saveNew(){
-  const name=val('f_name'), phone=val('f_phone');
-  const m=$('formMsg');
-  if(!name){ m.innerHTML='<span class="err">Enter the customer name.</span>'; return; }
-  if(phone && normPhone(phone).length<7){ m.innerHTML='<span class="err">That phone looks too short.</span>'; return; }
-  m.textContent='Checking…';
-  // duplicate guard: a phone already on file means this customer exists
+  const name=val('n_name'), phone=val('n_phone');
+  if(!name){ msg('<span class="err">Enter the customer name.</span>'); return; }
+  if(phone && normPhone(phone).length<7){ msg('<span class="err">That phone looks too short.</span>'); return; }
   if(phone){
-    const {data:dupe}=await sb.rpc('gl_customer_list',{p_q:phone,p_limit:1,p_offset:0});
-    if(dupe&&dupe.length){
-      m.innerHTML='<span class="err">That phone already belongs to <b>'+esc(dupe[0].name)+
-        '</b>.</span> <button class="btn btn2 btn-sm" style="margin-top:8px" onclick="openExisting(\''+
-        esc(dupe[0].cust_key)+'\')">Open that customer</button>';
-      ALL[dupe[0].cust_key]=dupe[0];
+    msg('Checking for an existing customer…');
+    const {data:d}=await sb.rpc('gl_customer_list',{p_q:phone,p_limit:1,p_offset:0});
+    if(d&&d.length){
+      ROWS.push(d[0]);
+      msg('<span class="err">That phone already belongs to <b>'+esc(d[0].name)+
+          '</b>.</span> <button class="btn btn2" style="margin-left:6px" onclick="openCust(\''+
+          esc(d[0].cust_key)+'\')">Open it</button>');
       return;
     }
   }
-  m.textContent='Saving…';
-  const row={name:name, phone:phone||null, email:val('f_email')||null,
-             plate:val('f_plate').toUpperCase()||null, model:val('f_model')||null,
-             car_type:val('f_ctype')||null, sqlacc_code:val('f_sql')||null};
-  const {error}=await sb.from('gl_walkin').insert(row);
-  if(error){ m.innerHTML='<span class="err">Could not save: '+esc(error.message)+'</span>'; return; }
-  m.innerHTML='<span class="ok">Customer saved.</span>';
-  setTimeout(()=>{ $('q').value=phone||name; runSearch(); },700);
+  msg('Saving…');
+  const {error}=await sb.from('gl_walkin').insert({
+    name:name, phone:phone||null, email:val('n_email')||null, sqlacc_code:val('n_code')||null,
+    plate:val('n_plate').toUpperCase().replace(/\s+/g,'')||null,
+    model:val('n_model')||null, car_type:val('n_ctype')||null});
+  if(error){ msg('<span class="err">Could not save: '+esc(error.message)+'</span>'); return; }
+  msg('<span class="ok">Customer saved.</span>');
+  setTimeout(()=>{ $('q').value=phone||name; backToList(); runSearch(); },600);
 }
-function openExisting(k){ openDetail(k); }
-
-async function saveEdit(){
-  const r=CUR, m=$('formMsg'); if(!r) return;
-  const name=val('f_name');
-  if(!name){ m.innerHTML='<span class="err">Name cannot be blank.</span>'; return; }
-  const patch={name:name, phone:val('f_phone')||null, email:val('f_email')||null,
-               sqlacc_code:val('f_sql')||null};
-  m.textContent='Updating '+r.rows_merged+' record'+(r.rows_merged===1?'':'s')+'…';
-  const {error}=await sb.from('gl_walkin').update(patch).in('id', r.row_ids);
-  if(error){ m.innerHTML='<span class="err">Update failed: '+esc(error.message)+
-      '</span><div class="hint">Editing needs the reception login.</div>'; return; }
-  m.innerHTML='<span class="ok">Updated.</span>';
-  setTimeout(()=>{ $('q').value=patch.phone||name; runSearch(); },700);
+async function saveCust(){
+  const r=CUR; if(!r) return;
+  const name=val('e_name');
+  if(!name){ msg('<span class="err">Name cannot be blank.</span>'); return; }
+  msg('Updating '+r.rows_merged+' record'+(r.rows_merged===1?'':'s')+'…');
+  const {error}=await sb.from('gl_walkin').update({
+    name:name, phone:val('e_phone')||null, email:val('e_email')||null,
+    sqlacc_code:val('e_code')||null}).in('id', r.row_ids);
+  if(error){ msg('<span class="err">Update failed: '+esc(error.message)+
+      '</span><div class="hint">Editing needs the reception login.</div>'); return; }
+  msg('<span class="ok">Saved.</span>');
+  setTimeout(()=>{ $('q').value=val('e_phone')||name; backToList(); runSearch(); },600);
 }
-
 async function saveCar(){
-  const r=CUR, m=$('formMsg'); if(!r) return;
-  const plate=val('f_plate').toUpperCase().replace(/\s+/g,'');
-  if(!plate){ m.innerHTML='<span class="err">Enter the car plate.</span>'; return; }
-  m.textContent='Adding…';
+  const r=CUR; if(!r) return;
+  const plate=val('c_plate').toUpperCase().replace(/\s+/g,'');
+  if(!plate){ msg('<span class="err">Enter the car plate.</span>'); return; }
+  msg('Adding…');
   const {error}=await sb.from('gl_walkin').insert({
     name:r.name, phone:r.phone||null, email:r.email||null, sqlacc_code:r.sqlacc_code||null,
-    plate:plate, model:val('f_model')||null, car_type:val('f_ctype')||null});
-  if(error){ m.innerHTML='<span class="err">Could not add: '+esc(error.message)+'</span>'; return; }
-  m.innerHTML='<span class="ok">Car added.</span>';
-  setTimeout(()=>{ $('q').value=r.phone||r.name; runSearch(); },700);
+    plate:plate, model:val('c_model')||null, car_type:val('c_ctype')||null});
+  if(error){ msg('<span class="err">Could not add: '+esc(error.message)+'</span>'); return; }
+  msg('<span class="ok">Vehicle added.</span>');
+  setTimeout(()=>{ $('q').value=r.phone||r.name; backToList(); runSearch(); },600);
 }
 
-$('q').addEventListener('keydown',e=>{ if(e.key==='Enter') runSearch(); });
-$('pass').addEventListener('keydown',e=>{ if(e.key==='Enter') doLogin(); });
 boot();
 </script>
 </body>
