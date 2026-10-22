@@ -5,11 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Grandlab Admin</title>
 <style>
-  :root{
-    --bg:#0e0e10; --panel:#17171a; --panel2:#1f1f24; --line:#2c2c33;
-    --yellow:#F5C518; --text:#f4f4f5; --muted:#8a8a93; --ok:#3ecf8e; --danger:#ff5c5c;
-    --r:12px;
-  }
+  :root{--bg:#FFFFFF;--panel:#FFFFFF;--panel2:#F6F7F8;--line:#E3E5E8;--yellow:#F5C518;--text:#111111;--muted:#5F6368;--ok:#157347;--danger:#C0392B;--r:12px;--gold-ink:#8A6D00}
   *{margin:0;padding:0;box-sizing:border-box;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;}
   body{background:var(--bg);color:var(--text);height:100vh;overflow:hidden;}
   .wrap{display:grid;grid-template-columns:1fr 420px;height:100vh;}
@@ -71,7 +67,7 @@
     border:1px solid var(--line);border-radius:8px;cursor:pointer;}
   .icon-grid button.sel{border-color:var(--yellow);background:#2a2410;}
   .thumb{width:100%;height:120px;border-radius:9px;object-fit:contain;border:1px solid var(--line);
-    background:#0A0A0A;margin-top:8px;}
+    background:#FFFFFF;margin-top:8px;}
   .upl{display:flex;align-items:center;gap:10px;margin-top:8px;}
   .swatch-row{display:flex;gap:14px;flex-wrap:wrap;}
   .swatch{display:flex;flex-direction:column;gap:6px;align-items:center;}
@@ -94,7 +90,7 @@
   .media-strip{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0;}
   .media-thumb{position:relative;width:64px;height:64px;border-radius:8px;overflow:hidden;border:1px solid var(--line);}
   .media-thumb img,.media-thumb video{width:100%;height:100%;object-fit:cover;}
-  .media-thumb button{position:absolute;top:2px;right:2px;background:rgba(0,0,0,.6);color:#fff;border:none;border-radius:50%;width:18px;height:18px;font-size:11px;cursor:pointer;line-height:1;}
+  .media-thumb button{position:absolute;top:2px;right:2px;background:rgba(0,0,0,.6);color:#111111;border:none;border-radius:50%;width:18px;height:18px;font-size:11px;cursor:pointer;line-height:1;}
   .addon-thumb{width:40px;height:40px;border-radius:6px;background:var(--bg);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;overflow:hidden;flex:0 0 auto;color:var(--muted);}
   .addon-thumb img{width:100%;height:100%;object-fit:cover;}
   .hint{font-size:12px;color:var(--muted);margin-top:6px;line-height:1.5;}
@@ -105,7 +101,7 @@
   .savebar .status{margin-right:auto;font-size:13px;color:var(--muted);}
 
   /* ---- right: preview ---- */
-  .preview-col{background:#000;display:flex;align-items:center;justify-content:center;
+  .preview-col{background:#F6F7F8;display:flex;align-items:center;justify-content:center;
     border-left:1px solid var(--line);position:relative;}
   .preview-label{position:absolute;top:16px;left:50%;transform:translateX(-50%);
     font-size:12px;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;}
@@ -154,7 +150,7 @@
   .keybox input{margin-top:8px;}
   .bk-wd-row{display:flex;gap:6px;flex-wrap:wrap;}
   .bk-wd{padding:7px 12px;border-radius:9px;border:1px solid var(--line);background:var(--surface,#fff);color:inherit;cursor:pointer;font-size:13px;}
-  .bk-wd.on{background:#E5533C;color:#fff;border-color:#E5533C;}
+  .bk-wd.on{background:#E5533C;color:#111111;border-color:#111111;}
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
@@ -1605,7 +1601,7 @@ function renderServices(){
           <button class="btn btn-danger btn-sm" onclick="delAddon(${i},${ai})">✕</button>
         </div>`).join('')}</div>
       <button class="btn btn-ghost btn-sm" onclick="addAddon(${i})">+ Add add-on</button>
-      ${services.some(x=>!x.id)?'<div class="svc-hint" style="color:#e0a030">⚠ Save once so new services get an ID before linking them as add-ons.</div>':''}
+      ${services.some(x=>!x.id)?'<div class="svc-hint" style="color:#111111">⚠ Save once so new services get an ID before linking them as add-ons.</div>':''}
 
       <div class="svc-sub">Item Info</div>
       <textarea rows="3" oninput="upd('svc',${i},'item_info',this.value)" placeholder="A premium hand car wash using...">${esc(s.item_info||'')}</textarea>
@@ -2250,7 +2246,7 @@ function renderMaintenance(){
     const days=Math.round((due-now)/86400000);
     const status=overdue?`<span style="color:#ff6b6b">Overdue ${Math.abs(days)}d</span>`:`<span style="color:var(--yellow)">Due in ${days}d</span>`;
     const dd=due.toISOString().slice(0,10);
-    return `<div class="mini-row" style="display:flex;align-items:center;gap:10px;padding:11px 12px;background:#0a0908;border:1px solid var(--line);border-radius:9px;margin-bottom:8px">
+    return `<div class="mini-row" style="display:flex;align-items:center;gap:10px;padding:11px 12px;background:#FFFFFF;border:1px solid var(--line);border-radius:9px;margin-bottom:8px">
       <div style="flex:1">
         <div style="font-weight:600">${esc(x._name)} ${x._phone?`<span style="color:var(--muted);font-weight:400;font-size:12px">· ${esc(x._phone)}</span>`:''}</div>
         <div style="font-size:12px;color:var(--muted)">${esc(x.service_name||'')}</div>
@@ -2520,7 +2516,7 @@ function renderWalletIcons(){
   if(sz){ sz.value=theme.walletIconSize||54; const lbl=document.getElementById('lbl-wiSize'); if(lbl) lbl.textContent=theme.walletIconSize||54; }
   el.innerHTML = WALLET_ICONS.map(ic=>{
     const url = theme[ic.key]||'';
-    return `<div style="background:#0a0908;border:1px solid var(--line);border-radius:10px;padding:10px;text-align:center">
+    return `<div style="background:#FFFFFF;border:1px solid var(--line);border-radius:10px;padding:10px;text-align:center">
       <div style="font-size:12px;color:var(--muted);margin-bottom:6px">${ic.label}</div>
       <div style="height:46px;display:flex;align-items:center;justify-content:center;margin-bottom:6px">
         ${url?`<img src="${url}" style="height:42px;width:42px;object-fit:contain">`:'<span style="color:var(--muted);font-size:11px">No icon</span>'}
@@ -3152,7 +3148,7 @@ async function loadBalances(){
       html+='<div class="svc-sub">App customers</div>';
       html+=pkgs.map(p=>{
         const left=(p.total_uses||0)-(p.used_uses||0);
-        return `<div class="mini-row" style="display:flex;align-items:center;gap:10px;padding:11px 12px;background:#0a0908;border:1px solid var(--line);border-radius:9px;margin-bottom:8px">
+        return `<div class="mini-row" style="display:flex;align-items:center;gap:10px;padding:11px 12px;background:#FFFFFF;border:1px solid var(--line);border-radius:9px;margin-bottom:8px">
           <div style="flex:1">
             <div style="font-weight:600">${esc(p.vehicle_label||'(no plate)')} <span style="color:var(--muted);font-weight:400;font-size:12px">· ${esc(p.service_name||'')}</span></div>
             <div style="font-size:12px;margin-top:3px;color:var(--yellow)">${left} left</div>
@@ -3163,7 +3159,7 @@ async function loadBalances(){
     }
     if(pend.length){
       html+='<div class="svc-sub" style="margin-top:14px">Walk-ins (pending signup)</div>';
-      html+=pend.map(p=>`<div class="mini-row" style="display:flex;align-items:center;gap:10px;padding:11px 12px;background:#0a0908;border:1px solid var(--line);border-radius:9px;margin-bottom:8px">
+      html+=pend.map(p=>`<div class="mini-row" style="display:flex;align-items:center;gap:10px;padding:11px 12px;background:#FFFFFF;border:1px solid var(--line);border-radius:9px;margin-bottom:8px">
           <div style="flex:1">
             <div style="font-weight:600">${esc(p.plate||'(no plate)')} <span style="color:var(--muted);font-weight:400;font-size:12px">· ${esc(p.name||p.phone||'')}</span></div>
             <div style="font-size:12px;color:var(--muted)">${esc(p.service_name||'')}</div>
@@ -3274,8 +3270,8 @@ function renderPrizes(){
     return `<div class="card" style="margin-top:10px;border-left:4px solid ${p.color||'#F5C518'}">
       <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
         <div>
-          <b>${p.label||'(no label)'}</b> ${p.is_mega?'<span style="color:#e0b000">★ MEGA</span>':''}
-          <div style="font-size:12px;color:var(--muted)">${p.kind}${p.value?(' · '+p.value):''} · weight ${p.weight}${!p.active?' · <span style="color:#c0392b">inactive</span>':''}</div>
+          <b>${p.label||'(no label)'}</b> ${p.is_mega?'<span style="color:#111111">★ MEGA</span>':''}
+          <div style="font-size:12px;color:var(--muted)">${p.kind}${p.value?(' · '+p.value):''} · weight ${p.weight}${!p.active?' · <span style="color:#111111">inactive</span>':''}</div>
         </div>
         <div style="text-align:right">
           <div style="font-size:18px;font-weight:800;color:var(--accent)">${pctTxt}%</div>
@@ -3894,7 +3890,7 @@ function renderHolidays(){
   const names=bookingCfg.closedNames||{};
   if(!days.length){ el.innerHTML='<div class="empty" style="font-size:12px;color:var(--muted)">No public holidays added yet.</div>'; return; }
   el.innerHTML=days.map(d=>`
-    <div class="mini-row" style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:#0a0908;border:1px solid var(--line);border-radius:8px;margin-bottom:6px">
+    <div class="mini-row" style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:#FFFFFF;border:1px solid var(--line);border-radius:8px;margin-bottom:6px">
       <div style="flex:1"><b>${esc(d)}</b> — ${esc(names[d]||'Closed')}</div>
       <button class="btn btn-danger btn-sm" onclick="removeHoliday('${esc(d)}')">✕</button>
     </div>`).join('');

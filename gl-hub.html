@@ -8,21 +8,21 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.x/dist/tabler-icons.min.css">
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-:root{--bg:#080808;--card:#141414;--card2:#1c1c1c;--gold:#F5C518;--text:#fff;--text2:#9a9a9a;--border:#2a2a2a}
+:root{--bg:#FFFFFF;--card:#FFFFFF;--card2:#F6F7F8;--gold:#F5C518;--text:#111111;--text2:#5F6368;--border:#E3E5E8;--gold-ink:#8A6D00}
 html,body{height:100%;background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:var(--text)}
 .app{max-width:640px;margin:0 auto;min-height:100dvh;padding:0 18px 40px}
 .hdr{padding:30px 4px 22px;text-align:center}
 .logo{font-weight:900;font-size:30px;letter-spacing:1px}
-.logo span{color:var(--gold)}
+.logo span{color:var(--gold-ink)}
 .tag{font-size:12px;color:var(--text2);letter-spacing:.25em;text-transform:uppercase;margin-top:6px}
 .grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:10px}
-.sect{font-size:11px;font-weight:800;letter-spacing:.18em;color:var(--gold);text-transform:uppercase;margin:26px 4px 2px;display:flex;align-items:center;gap:10px}
+.sect{font-size:11px;font-weight:800;letter-spacing:.18em;color:var(--gold-ink);text-transform:uppercase;margin:26px 4px 2px;display:flex;align-items:center;gap:10px}
 .sect:first-of-type{margin-top:8px}
 .sect:after{content:"";flex:1;height:1px;background:var(--border)}
 .tile{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:22px 18px;cursor:pointer;text-decoration:none;color:var(--text);display:flex;flex-direction:column;gap:12px;transition:.15s;min-height:140px;position:relative;overflow:hidden}
 .tile:active{transform:scale(.98)}
-.tile:hover{border-color:var(--gold)}
-.tile .ic{width:48px;height:48px;border-radius:12px;background:var(--card2);display:flex;align-items:center;justify-content:center;font-size:26px;color:var(--gold)}
+.tile:hover{border-color:var(--gold-ink)}
+.tile .ic{width:48px;height:48px;border-radius:12px;background:var(--card2);display:flex;align-items:center;justify-content:center;font-size:26px;color:var(--gold-ink)}
 .tile .t{font-weight:800;font-size:17px}
 .tile .d{font-size:12px;color:var(--text2);line-height:1.4}
 .tile.soon{opacity:.55}
@@ -37,9 +37,9 @@ html,body{height:100%;background:var(--bg);font-family:-apple-system,BlinkMacSys
 .gate-box{width:100%;max-width:340px}
 .gate label{display:block;font-size:11px;color:var(--text2);margin-bottom:4px;font-weight:600}
 .gate input{width:100%;background:#1e1e1a;border:1px solid var(--border);border-radius:12px;color:#fff;padding:13px 14px;font-size:15px;font-family:inherit;margin-bottom:12px;outline:none}
-.gate input:focus{border-color:var(--gold)}
+.gate input:focus{border-color:var(--gold-ink)}
 .gate button{width:100%;background:var(--gold);color:#080808;border:none;border-radius:12px;padding:14px;font-weight:800;font-size:15px;font-family:inherit;cursor:pointer}
-.err{color:#e0533d;font-size:12px;min-height:16px;margin-bottom:6px}
+.err{color:#111111;font-size:12px;min-height:16px;margin-bottom:6px}
 </style>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
