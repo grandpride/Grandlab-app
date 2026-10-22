@@ -86,6 +86,11 @@
   .stagebtns{display:grid;grid-template-columns:1fr 1fr;gap:6px}
   .sbtn{border:1px solid var(--border);background:var(--card2);border-radius:10px;padding:9px 6px;font-size:12px;font-weight:700;color:var(--muted);cursor:pointer;text-align:center}
   .hint{font-size:11px;color:var(--muted2);margin-top:5px;line-height:1.5}
+  .b-hold{background:var(--amber-bg);color:var(--amber)} .b-none{background:var(--card2);color:var(--muted)}
+  .cmini{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+  .cmini div{background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:8px}
+  .cmini b{display:block;font-size:15px;font-weight:900;color:var(--text)}
+  .cmini span{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;font-weight:700}
   .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(80px);background:#222;color:#fff;padding:12px 18px;border-radius:12px;font-size:14px;font-weight:600;opacity:0;transition:.25s;z-index:50;border:1px solid var(--border)}
   .toast.show{transform:translateX(-50%) translateY(0);opacity:1}
   .toast.err{background:#3a1a14;border-color:var(--red)}
@@ -187,6 +192,7 @@
     <div class="kpis" id="kpis"></div>
     <div class="pies" id="pies"></div>
     <div class="card" id="cpaCard" style="margin-top:16px"></div>
+    <div class="card" id="codeCard"></div>
   </div>
 
   <!-- ===== REPORTS ===== -->
@@ -249,6 +255,7 @@
       <div class="hint" style="margin-bottom:10px">Use the <b>exact</b> Meta campaign (or ad set) name so imported spend matches. e.g. <span style="color:var(--gold)">GRANDLAB - PPF // COAT // WRAPP 2K25</span></div>
       <div class="field"><label>Meta name (exact)</label><input id="c_name" placeholder="GRANDLAB - PPF // COAT // WRAPP 2K25"></div>
       <div class="field"><label>Short label</label><input id="c_label" placeholder="e.g. PPF Promo"></div>
+      <div class="field"><label>Ad code — the code in this ad's WhatsApp message</label><input id="c_code" placeholder="e.g. FF-1888" style="text-transform:uppercase"></div>
       <div class="field"><label>Channel</label>
         <div class="seg" id="c_channel">
           <div class="opt on" data-ch="facebook" onclick="pickCChannel('facebook')"><i class="ti ti-brand-facebook"></i> Facebook</div>
@@ -526,6 +533,7 @@ function renderDash(){
       Cost per customer (success) <b style="color:var(--gold)">${cpa?('RM'+cpa.toFixed(2)):'— (enter success count)'}</b><br>
       Sources — Ads <b>${S}</b> · Existing <b>${os.existing}</b> · Referral <b>${os.referral}</b> · Walk-in/New <b>${os.walkin||0}</b> · App Booking <b>${os.appbook||0}</b>
     </div>`;
+  renderCodeCard();
 }
 function pieCard(title, parts, total){
   const svg=pieSVG(parts, total);
@@ -554,12 +562,13 @@ function pieSVG(parts, total){
 
 /* ---------- CAMPAIGNS ---------- */
 async function saveCampaign(){
-  const name=$('c_name').value.trim(), label=$('c_label').value.trim();
+  const name=$('c_name').value.trim(), label=$('c_label').value.trim(), code=normCode($('c_code')?$('c_code').value:'');
   if(!name){ $('campMsg').className='msg err'; $('campMsg').textContent='Enter the exact Meta name.'; return; }
   $('campMsg').className='msg'; $('campMsg').textContent='Saving…';
-  const {error}=await sb.from('gl_campaigns').insert({name,short_label:label||null,channel:CCHANNEL,active:true});
+  const row={name,short_label:label||null,channel:CCHANNEL,active:true}; if(code) row.lead_code=code;
+  const {error}=await sb.from('gl_campaigns').insert(row);
   if(error){ $('campMsg').className='msg err'; $('campMsg').textContent=/duplicate|unique/i.test(error.message)?'Already registered.':('Failed: '+error.message); return; }
-  $('campMsg').className='msg ok'; $('campMsg').textContent='✓ Added.'; $('c_name').value=''; $('c_label').value='';
+  $('campMsg').className='msg ok'; $('campMsg').textContent='✓ Added.'; $('c_name').value=''; $('c_label').value=''; if($('c_code'))$('c_code').value='';
   await loadCampaigns(); renderCampaigns();
   setTimeout(()=>{ $('campMsg').textContent=''; },2000);
 }
@@ -578,10 +587,11 @@ function renderCampaigns(){
     return `<div class="lead">
       <div class="lead-top">
         <div><div class="lead-name">${esc(c.short_label||c.name)}</div>
-        <div class="lead-meta"><i class="ti ${chIcon}"></i> ${esc(c.name)}</div></div>
+        <div class="lead-meta"><i class="ti ${chIcon}"></i> ${esc(c.name)}</div>
+        <div class="lead-meta">Ad code: ${c.lead_code?'<b style="color:var(--gold)">'+esc(c.lead_code)+'</b>':'<span style="color:var(--amber)">not set</span>'}</div></div>
         <span class="lead-badge b-won">Active</span>
       </div>
-      <div class="stagebtns"><div class="sbtn" onclick="delCampaign('${c.id}')">Delete</div></div>
+      <div class="stagebtns"><div class="sbtn" onclick="setCampCode('${c.id}')">Set ad code</div><div class="sbtn" onclick="delCampaign('${c.id}')">Delete</div></div>
     </div>`;
   }).join('');
 }
@@ -665,6 +675,80 @@ function renderSpendList(){
       <div class="lead-meta">RM${Number(r.spend).toFixed(2)} · ${r.clicks} clicks · ${r.results} ${esc(r.result_type||'results')}</div>
       ${dead?'<div class="lead-meta" style="color:#e0a000">Covered by a longer import of the same campaign — excluded from totals so spend isn\'t counted twice.</div>':''}
     </div></div></div>`;}).join('');
+}
+
+/* ---------- BY AD CODE ----------
+   Job cards tagged with the ad's WhatsApp code (gl_jobs.lead_campaign) -> jobs + money actually paid
+   (gl_payments by job_id). Spend comes from imported Meta reports of the campaigns linked to that code
+   (Campaigns tab -> Set ad code). Workshop / showroom / boss jobs are left out. */
+const VERDICT={scale:3,cut:1};   // money back per RM1 of ad spend: 3+ = Scale, under 1 = Cut. Rule of thumb, change here.
+let CODE_SEQ=0;
+function normCode(c){return String(c||'').trim().toUpperCase()}
+function rmx(n){return 'RM'+Math.round(Number(n)||0).toLocaleString('en-MY')}
+function spendForCode(ym,code){
+  const camps=CAMPAIGNS.filter(c=>normCode(c.lead_code)===code).map(c=>String(c.name).toLowerCase());
+  if(!camps.length) return null;
+  const [y,m]=ym.split('-').map(Number), mStart=new Date(y,m-1,1), mEnd=new Date(y,m,0);
+  const rows=IMPORTS.filter(r=>{const ps=new Date(r.period_start),pe=new Date(r.period_end);
+    return pe>=mStart&&ps<=mEnd&&camps.indexOf(String(r.campaign_name).toLowerCase())>=0});
+  let spend=0,msg=0; dedupImports_(rows).forEach(r=>{spend+=Number(r.spend)||0;msg+=Number(r.results)||0});
+  return {spend,msg,rows:rows.length};
+}
+async function setCampCode(id){
+  const c=CAMPAIGNS.find(x=>String(x.id)===String(id)); if(!c) return;
+  const v=prompt('Ad code for\n'+c.name+'\n\nType it exactly as in the ad\'s WhatsApp message (e.g. FF-1888). Leave blank to remove.', c.lead_code||'');
+  if(v===null) return;
+  const {error}=await sb.from('gl_campaigns').update({lead_code:normCode(v)||null}).eq('id',id);
+  if(error){ toast('Save failed: '+error.message,true); return; }
+  await loadCampaigns(); renderCampaigns(); toast('Ad code saved ✓');
+}
+async function renderCodeCard(){
+  const box=$('codeCard'); if(!box) return;
+  const seq=++CODE_SEQ, ym=YM, [y,m]=ym.split('-').map(Number);
+  const t0=new Date(y,m-1,1).getTime(), t1=new Date(y,m,1).getTime();
+  box.innerHTML='<div class="card-t">By ad code — '+esc(ymLabel(ym))+'</div><div class="hint">Loading…</div>';
+  const {data:jobs,error}=await sb.from('gl_jobs').select('id,lead_source,lead_campaign,total,cust_type,is_returning').gte('created_at',t0).lt('created_at',t1).limit(5000);
+  if(seq!==CODE_SEQ) return;
+  if(error){ box.innerHTML='<div class="card-t">By ad code</div><div class="msg err">Could not load jobs: '+esc(error.message)+'</div>'; return; }
+  const J=(jobs||[]).filter(j=>['workshop','showroom','boss'].indexOf(String(j.cust_type||'').toLowerCase())<0);
+  const tagged=J.filter(j=>j.lead_campaign);
+  const paid={};
+  const ids=tagged.map(j=>String(j.id));
+  for(let i=0;i<ids.length;i+=150){
+    const {data:pays}=await sb.from('gl_payments').select('job_id,net_paid,voided').in('job_id',ids.slice(i,i+150));
+    (pays||[]).forEach(p=>{ if(p.voided) return; paid[p.job_id]=(paid[p.job_id]||0)+(Number(p.net_paid)||0); });
+  }
+  if(seq!==CODE_SEQ) return;
+  const G={};
+  tagged.forEach(j=>{ const k=normCode(j.lead_campaign); const g=G[k]=G[k]||{jobs:0,paid:0,quoted:0,unpaid:0};
+    g.jobs++; const pd=paid[String(j.id)]||0; g.paid+=pd; g.quoted+=Number(j.total)||0; if(!pd) g.unpaid+=Number(j.total)||0; });
+  CAMPAIGNS.forEach(c=>{ const k=normCode(c.lead_code); if(k&&c.active!==false&&!G[k]) G[k]={jobs:0,paid:0,quoted:0,unpaid:0}; });
+  const codes=Object.keys(G).sort((a,b)=>G[b].paid-G[a].paid||G[b].jobs-G[a].jobs);
+  const adsNoCode=J.filter(j=>j.lead_source==='ads'&&!j.lead_campaign).length;
+  const noSource=J.filter(j=>['walkin','appointment'].indexOf(String(j.cust_type||'').toLowerCase())>=0&&j.is_returning!==true&&!j.lead_source).length;
+  let h='<div class="card-t">By ad code — '+esc(ymLabel(ym))+'</div>';
+  if(!codes.length) h+='<div class="empty" style="padding:14px">No ad codes yet this month. They appear once the front desk picks <b>FB / IG Ads</b> and the code on the job card.</div>';
+  codes.forEach(k=>{
+    const g=G[k], sp=spendForCode(ym,k), labels=CAMPAIGNS.filter(c=>normCode(c.lead_code)===k).map(c=>c.short_label||c.name);
+    const spend=sp?sp.spend:0, ret=spend>0?g.paid/spend:null, cpj=(spend>0&&g.jobs)?spend/g.jobs:null;
+    let badge='<span class="lead-badge b-none">No spend yet</span>';
+    if(ret!=null) badge=ret>=VERDICT.scale?'<span class="lead-badge b-won">Scale</span>':ret<VERDICT.cut?'<span class="lead-badge b-lost">Cut</span>':'<span class="lead-badge b-hold">Hold</span>';
+    h+='<div class="lead"><div class="lead-top"><div><div class="lead-name">'+esc(k)+'</div><div class="lead-meta">'+
+      (labels.length?esc(labels.join(' · ')):'<span style="color:var(--amber)">No Meta campaign linked — set it in Campaigns</span>')+'</div></div>'+badge+'</div>'+
+      '<div class="cmini">'+
+        '<div><span>Jobs</span><b>'+g.jobs+'</b></div>'+
+        '<div><span>Paid</span><b>'+rmx(g.paid)+'</b></div>'+
+        '<div><span>Avg / job</span><b>'+(g.jobs?rmx(g.quoted/g.jobs):'—')+'</b></div>'+
+        '<div><span>Ad spend</span><b>'+(sp&&sp.rows?rmx(spend):'—')+'</b></div>'+
+        '<div><span>Cost / job</span><b>'+(cpj!=null?rmx(cpj):'—')+'</b></div>'+
+        '<div><span>Back per RM1</span><b>'+(ret!=null?'RM'+ret.toFixed(2):'—')+'</b></div>'+
+      '</div>'+(g.unpaid>0?'<div class="hint">'+rmx(g.unpaid)+' quoted on jobs not paid yet.</div>':'')+'</div>';
+  });
+  h+='<div class="hint" style="margin-top:8px">'+
+     (adsNoCode?'<b>'+adsNoCode+'</b> ad customer(s) without a code · ':'')+
+     (noSource?'<b style="color:var(--amber)">'+noSource+'</b> new customer job(s) with no source picked · ':'')+
+     'Scale = RM'+VERDICT.scale+'+ back for every RM1 spent, Cut = under RM'+VERDICT.cut+'. Spend comes from the Meta report you import in Ad spend.</div>';
+  box.innerHTML=h;
 }
 
 /* ---------- render all ---------- */
