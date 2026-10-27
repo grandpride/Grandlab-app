@@ -1080,7 +1080,7 @@ const SUPA_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlz
    Set VAPID_PUBLIC below (public half of your Grandlab VAPID keypair).
    The private half lives ONLY as a Supabase secret in the push-send function.
    ============================================================ */
-const VAPID_PUBLIC = "BF8hmkUPBWFrwdGq8op9kzVv_cR_4yDX83iTkvRrMMKGlVd9v7IIoHHY51HT3V9sXHeKbuz7hOo3NoAnno20RF0";
+const VAPID_PUBLIC = "BA1rgJdiziXy2xDoE0ygpe0Al-nHIhwEA1gmQ7UPyKHTIXt_S2vMnajSpuyUeAXqD55z76q-bmTyDeSGdk7w7gI";
 
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', function(){
@@ -1137,6 +1137,11 @@ async function enablePush(){
     if(perm !== 'granted') return false;
     const reg = await navigator.serviceWorker.ready;
     let sub = await reg.pushManager.getSubscription();
+    // Server move (Oct 2026) gave a new VAPID key: drop a subscription made with an old key, then subscribe fresh.
+    if(sub && sub.options && sub.options.applicationServerKey){
+      const have = new Uint8Array(sub.options.applicationServerKey), want = vapidToUint8(VAPID_PUBLIC);
+      if(have.length !== want.length || have.some((b,i)=>b!==want[i])){ try{ await sub.unsubscribe(); }catch(_e){} sub = null; }
+    }
     if(!sub){
       sub = await reg.pushManager.subscribe({
         userVisibleOnly: true,
