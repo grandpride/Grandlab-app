@@ -1167,7 +1167,7 @@
    Manages: gl_onboarding_slides, gl_services, gl_settings(theme)
    Runs locally; uses service_role key kept in this browser only.
    =========================================================== */
-const SUPA_URL = "https://eychljpzorzmaveixlnu.supabase.co";
+const SUPA_URL = "https://db.grandlab.com.my";
 let SVC_KEY = localStorage.getItem("gl_svc_key") || "";
 const BUCKET = "gl-images";
 const CAR_TYPES = ["Sedan","SUV","MPV","Supercar","Motorcycle"];
@@ -2181,7 +2181,7 @@ function renderFlash(){
 function toLocalInput(iso){ if(!iso) return ''; try{ const d=new Date(iso); const off=d.getTimezoneOffset(); const l=new Date(d.getTime()-off*60000); return l.toISOString().slice(0,16); }catch(e){ return ''; } }
 function addFlash(){flashDeals.push({title:"New Deal",deal_price:null,orig_price:null,total_qty:50,grabbed:0,ends_at:null,service_id:'',image_url:null,sort_order:flashDeals.length+1,active:true});renderFlash();}
 function delFlash(i){if(flashDeals[i].id)deletedFlashIds.push(flashDeals[i].id);flashDeals.splice(i,1);renderFlash();}
-const PUSH_FN_URL_GL = "https://eychljpzorzmaveixlnu.supabase.co/functions/v1/push-send";
+const PUSH_FN_URL_GL = "https://db.grandlab.com.my/functions/v1/push-send";
 async function notifyFlash(i){
   const d = flashDeals[i];
   if(!d || !d.title){ toast("Add a title first"); return; }
