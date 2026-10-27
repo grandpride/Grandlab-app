@@ -46,8 +46,8 @@ html,body{height:100%;background:var(--bg);font-family:-apple-system,BlinkMacSys
 <script>
 /* Show only the tiles this person is allowed to open (set in Staff Manager). */
 (function(){
-  var GP_URL='https://iefevjkeckysdluzazeq.supabase.co';
-  var GP_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImllZmV2amtlY2t5c2RsdXphemVxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEwODI1MTMsImV4cCI6MjA5NjY1ODUxM30.xVqifxHta7rPtxf0hh1C4_rexhwWQhaiOxEzVr_oM5k';
+  var GP_URL='https://gpdb.grandlab.com.my';
+  var GP_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzkzMDY5NDExLCJleHAiOjE5NTA3NDk0MTF9.ql0qv5ycO4qPDfzLZDdZvjMBqWJMxDRwS8m8HZxUuss';
   var MASTER=['admin@grandpride.com'];
   var MAP={
     'gl-platescan.html':'platescan','gl-inspect.html':'inspect','gl-qc.html':'qc',
@@ -67,7 +67,7 @@ html,body{height:100%;background:var(--bg);font-family:-apple-system,BlinkMacSys
   window.addEventListener('DOMContentLoaded',function(){
     (async function(){
       try{
-        var gl=supabase.createClient('https://eychljpzorzmaveixlnu.supabase.co','eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV5Y2hsanB6b3J6bWF2ZWl4bG51Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2NDk2NjQsImV4cCI6MjA5NzIyNTY2NH0.6dA1zhz5ZIwf8byFB8vhfOzPI-uPPdPihEr1b8GG_oA',
+        var gl=supabase.createClient('https://db.grandlab.com.my','eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzkzMDY5NDExLCJleHAiOjE5NTA3NDk0MTF9.IcbPnDCd9p6Z-_FNMvzfg9k6ayX7IpC48zdGacAD_qw',
           {auth:{persistSession:true,autoRefreshToken:true,storageKey:'gl_auth'}});
         var s=await gl.auth.getSession();
         if(!s.data.session)return;
@@ -322,8 +322,8 @@ html,body{height:100%;background:var(--bg);font-family:-apple-system,BlinkMacSys
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
-const SUPABASE_URL="https://eychljpzorzmaveixlnu.supabase.co";
-const SUPABASE_ANON="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV5Y2hsanB6b3J6bWF2ZWl4bG51Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2NDk2NjQsImV4cCI6MjA5NzIyNTY2NH0.6dA1zhz5ZIwf8byFB8vhfOzPI-uPPdPihEr1b8GG_oA";
+const SUPABASE_URL="https://db.grandlab.com.my";
+const SUPABASE_ANON="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzkzMDY5NDExLCJleHAiOjE5NTA3NDk0MTF9.IcbPnDCd9p6Z-_FNMvzfg9k6ayX7IpC48zdGacAD_qw";
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON,{auth:{persistSession:true,autoRefreshToken:true,storageKey:'gl_auth'}});
 const $=id=>document.getElementById(id);
 
