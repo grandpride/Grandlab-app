@@ -21,10 +21,8 @@ html,body{height:100%;background:var(--bg);font-family:-apple-system,BlinkMacSys
 
 /* ---------------- rail ---------------- */
 .rail{width:var(--rail);flex:none;background:#fff;border-right:1px solid var(--border);display:flex;flex-direction:column;height:100dvh;z-index:40}
-.brand{display:flex;align-items:center;gap:9px;padding:17px 18px 15px;border-bottom:1px solid var(--border2);flex:none}
-.brand .mark{width:30px;height:30px;border-radius:8px;background:var(--gold);color:#111;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:14px;flex:none}
-.brand .nm{font-weight:900;font-size:16px;letter-spacing:.3px;white-space:nowrap}
-.brand .nm span{color:var(--gold-ink)}
+.brand{display:flex;align-items:center;padding:18px 18px 16px;border-bottom:1px solid var(--border2);flex:none}
+.brand .blogo{width:178px;max-width:100%;height:auto;display:block}
 .navs{flex:1;overflow-y:auto;padding:11px 10px}
 .ngrp{font-size:9.5px;font-weight:800;letter-spacing:.16em;color:var(--text3);text-transform:uppercase;padding:14px 9px 6px}
 .nav{display:flex;align-items:center;gap:11px;padding:10px 10px;border-radius:9px;cursor:pointer;color:var(--text2);font-size:13.5px;font-weight:600;border:none;background:none;width:100%;text-align:left;font-family:inherit;transition:.12s;position:relative}
@@ -144,8 +142,7 @@ iframe.appf.on{display:block}
 .gate input:focus{border-color:var(--gold);background:#fff}
 .gate button{width:100%;background:var(--gold);color:#111;border:none;border-radius:12px;padding:14px;font-weight:800;font-size:15px;font-family:inherit;cursor:pointer}
 .err{color:var(--red);font-size:12px;min-height:16px;margin-bottom:6px}
-.glogo{font-weight:900;font-size:30px;text-align:center;margin-bottom:6px}
-.glogo span{color:var(--gold-ink)}
+.glogoimg{width:268px;max-width:100%;height:auto;display:block;margin:0 auto 18px}
 
 /* ---------------- responsive ---------------- */
 @media(max-width:1180px){ .grid{grid-template-columns:repeat(3,1fr)} }
@@ -173,7 +170,7 @@ iframe.appf.on{display:block}
 
 <div id="gate" class="gate">
   <div class="gate-box">
-    <div class="glogo">GRAND<span>LAB</span></div>
+    <img class="glogoimg" src="https://grandpride.github.io/Grandlab-app/grandlab-logo-dark.png" alt="Grandlab">
     <div style="text-align:center;margin-bottom:24px;font-size:12px;color:var(--text2);letter-spacing:.25em;text-transform:uppercase">Operations Hub</div>
     <label>Email</label>
     <input id="email" type="email" autocomplete="username" placeholder="admin@grandpride.com">
@@ -188,7 +185,7 @@ iframe.appf.on{display:block}
 
 <div class="shell">
   <aside class="rail" id="rail">
-    <div class="brand"><div class="mark">G</div><div class="nm">GRAND<span>LAB</span></div></div>
+    <div class="brand"><img class="blogo" src="https://grandpride.github.io/Grandlab-app/grandlab-logo-dark-compact.png" alt="Grandlab"></div>
     <nav class="navs" id="navs"></nav>
     <div class="railfoot">
       <button class="nav" onclick="signOut()"><i class="ti ti-logout"></i>Sign out</button>
