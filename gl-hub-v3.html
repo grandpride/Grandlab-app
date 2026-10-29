@@ -1,0 +1,798 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="mobile-web-app-capable" content="yes">
+<title>Grandlab Hub</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.x/dist/tabler-icons.min.css">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+:root{
+  --bg:#FFFFFF;--card2:#F6F7F8;--card3:#FAFAFB;
+  --gold:#F5C518;--gold-soft:#FEF6D6;--gold-ink:#8A6D00;
+  --text:#111111;--text2:#5F6368;--text3:#8A8F96;--border:#E3E5E8;--border2:#EFF0F2;
+  --red:#C0392B;--red-soft:#FDEDEB;--rail:232px;--bar:60px;
+}
+html,body{height:100%;background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:var(--text);-webkit-font-smoothing:antialiased;overflow:hidden}
+
+/* ---------------- shell ---------------- */
+.shell{display:flex;height:100dvh;overflow:hidden}
+
+/* ---------------- rail ---------------- */
+.rail{width:var(--rail);flex:none;background:#fff;border-right:1px solid var(--border);display:flex;flex-direction:column;height:100dvh;z-index:40}
+.brand{display:flex;align-items:center;gap:9px;padding:17px 18px 15px;border-bottom:1px solid var(--border2);flex:none}
+.brand .mark{width:30px;height:30px;border-radius:8px;background:var(--gold);color:#111;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:14px;flex:none}
+.brand .nm{font-weight:900;font-size:16px;letter-spacing:.3px;white-space:nowrap}
+.brand .nm span{color:var(--gold-ink)}
+.navs{flex:1;overflow-y:auto;padding:11px 10px}
+.ngrp{font-size:9.5px;font-weight:800;letter-spacing:.16em;color:var(--text3);text-transform:uppercase;padding:14px 9px 6px}
+.nav{display:flex;align-items:center;gap:11px;padding:10px 10px;border-radius:9px;cursor:pointer;color:var(--text2);font-size:13.5px;font-weight:600;border:none;background:none;width:100%;text-align:left;font-family:inherit;transition:.12s;position:relative}
+.nav i,.nav svg.ti{font-size:18px;width:18px;height:18px;flex:none}
+.nav:hover{background:var(--card2);color:var(--text)}
+.nav.on{background:var(--gold-soft);color:var(--gold-ink);font-weight:800}
+.nav.on:before{content:"";position:absolute;left:-10px;top:7px;bottom:7px;width:3px;border-radius:0 3px 3px 0;background:var(--gold)}
+.nav .pill{margin-left:auto;background:var(--red);color:#fff;font-size:10px;font-weight:800;min-width:19px;height:19px;border-radius:10px;display:flex;align-items:center;justify-content:center;padding:0 5px}
+.nav .ext{margin-left:auto;font-size:13px;color:var(--text3)}
+.railfoot{flex:none;border-top:1px solid var(--border2);padding:11px 10px}
+
+/* ---------------- main ---------------- */
+.main{flex:1;min-width:0;display:flex;flex-direction:column;height:100dvh}
+.bar{height:var(--bar);flex:none;border-bottom:1px solid var(--border2);display:flex;align-items:center;gap:14px;padding:0 20px;background:#fff}
+.burger{display:none;background:none;border:none;font-size:21px;color:var(--text);cursor:pointer;padding:4px}
+.vtitle{font-weight:800;font-size:16px;white-space:nowrap}
+.srch{flex:1;position:relative;max-width:440px;margin-left:auto}
+.srch i,.srch svg.ti{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--text3);width:16px;height:16px;font-size:16px;pointer-events:none}
+.srch input{width:100%;background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:9px 12px 9px 35px;font-size:13.5px;font-family:inherit;color:var(--text);outline:none}
+.srch input:focus{border-color:var(--gold);background:#fff;box-shadow:0 0 0 3px var(--gold-soft)}
+.res{position:absolute;top:calc(100% + 6px);left:0;right:0;background:#fff;border:1px solid var(--border);border-radius:12px;box-shadow:0 12px 34px rgba(0,0,0,.14);max-height:60vh;overflow:auto;display:none;z-index:50}
+.res.on{display:block}
+.rrow{padding:10px 13px;border-bottom:1px solid var(--border2);cursor:pointer;display:block;text-decoration:none;color:var(--text)}
+.rrow:last-child{border-bottom:none}
+.rrow:hover{background:var(--gold-soft)}
+.rrow .n{font-weight:700;font-size:13.5px}
+.rrow .m{font-size:11px;color:var(--text2);margin-top:2px;line-height:1.45}
+.rrow .m b{color:var(--gold-ink)}
+.rmsg{padding:15px;text-align:center;color:var(--text2);font-size:12.5px}
+.iconbtn{background:none;border:1px solid var(--border);width:34px;height:34px;border-radius:9px;color:var(--text2);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;flex:none}
+.iconbtn:hover{border-color:var(--gold);color:var(--gold-ink)}
+
+.stage{flex:1;min-height:0;position:relative;background:var(--card3)}
+.view{position:absolute;inset:0;overflow-y:auto;display:none}
+.view.on{display:block}
+.pad{padding:22px 20px 40px;max-width:1240px}
+iframe.appf{position:absolute;inset:0;width:100%;height:100%;border:0;background:#fff;display:none}
+iframe.appf.on{display:block}
+
+/* ---------------- dashboard ---------------- */
+.sect{font-size:10.5px;font-weight:800;letter-spacing:.17em;color:var(--gold-ink);text-transform:uppercase;margin:0 2px 11px;display:flex;align-items:center;gap:10px}
+.sect:after{content:"";flex:1;height:1px;background:var(--border)}
+.sect.mt{margin-top:26px}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:13px}
+.stat{background:#fff;border:1px solid var(--border);border-radius:14px;padding:16px;position:relative;overflow:hidden;cursor:pointer;text-decoration:none;color:var(--text);display:block;transition:.14s}
+.stat:hover{border-color:var(--gold);transform:translateY(-1px)}
+.stat:before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--gold)}
+.stat .k{font-size:10px;font-weight:700;letter-spacing:.11em;text-transform:uppercase;color:var(--text2)}
+.stat .v{font-size:30px;font-weight:900;line-height:1.1;margin-top:6px;letter-spacing:-.02em}
+.stat .v.sm{font-size:23px}
+.stat .s{font-size:10.5px;color:var(--text3);margin-top:3px}
+.mid{display:grid;grid-template-columns:1.3fr 1fr;gap:20px;align-items:start;margin-top:26px}
+.att{background:#fff;border:1px solid var(--border);border-radius:14px;overflow:hidden}
+.arow{display:flex;align-items:center;gap:12px;padding:13px 15px;border-bottom:1px solid var(--border2);text-decoration:none;color:var(--text);cursor:pointer;width:100%;background:none;border-left:0;border-right:0;border-top:0;font-family:inherit;text-align:left}
+.arow:last-child{border-bottom:none}
+.arow:hover{background:var(--card3)}
+.arow .ai{width:32px;height:32px;border-radius:9px;background:var(--gold-soft);color:var(--gold-ink);display:flex;align-items:center;justify-content:center;flex:none}
+.arow .ai svg.ti,.arow .ai i{width:17px;height:17px;font-size:17px}
+.arow.hot .ai{background:var(--red-soft);color:var(--red)}
+.arow .ab{flex:1;min-width:0}
+.arow .at{font-weight:700;font-size:13.5px}
+.arow .ad{font-size:11px;color:var(--text2);margin-top:2px}
+.arow .an{font-weight:900;font-size:18px;margin-left:auto;padding-left:10px}
+.arow.hot .an{color:var(--red)}
+.arow .ar{color:var(--text3);width:15px;height:15px;font-size:15px;margin-left:8px;flex:none}
+.allclear{padding:22px 16px;text-align:center;color:var(--text2);font-size:12.5px}
+.allclear svg.ti,.allclear i{display:block;margin:0 auto 7px;width:25px;height:25px;font-size:25px;color:var(--gold)}
+.qa{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.qbtn{display:flex;align-items:center;gap:10px;background:#fff;border:1px solid var(--border);border-radius:12px;padding:13px 14px;text-decoration:none;color:var(--text);font-weight:700;font-size:13px;cursor:pointer;font-family:inherit;transition:.14s;text-align:left}
+.qbtn:hover{border-color:var(--gold);background:var(--gold-soft)}
+.qbtn svg.ti,.qbtn i{width:18px;height:18px;font-size:18px;color:var(--gold-ink);flex:none}
+.qbtn.pri{background:var(--gold);border-color:var(--gold)}
+.qbtn.pri svg.ti,.qbtn.pri i{color:#111}
+
+/* ---------------- all tools ---------------- */
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:13px}
+.tile{background:#fff;border:1px solid var(--border);border-radius:15px;padding:16px 15px;cursor:pointer;text-decoration:none;color:var(--text);display:flex;flex-direction:column;gap:10px;transition:.14s;min-height:124px;position:relative;overflow:hidden}
+.tile:hover{border-color:var(--gold)}
+.tile:active{transform:scale(.985)}
+.tile .ic{width:40px;height:40px;border-radius:11px;background:var(--card2);display:flex;align-items:center;justify-content:center;color:var(--gold-ink);flex:none}
+.tile .ic svg.ti,.tile .ic i{width:21px;height:21px;font-size:21px}
+.tile .t{font-weight:800;font-size:14.5px;line-height:1.25}
+.tile .d{font-size:11px;color:var(--text2);line-height:1.42}
+.tile .badge{position:absolute;top:10px;right:10px;font-size:8.5px;font-weight:800;letter-spacing:.05em;background:var(--gold-soft);color:var(--gold-ink);padding:3px 7px;border-radius:20px;text-transform:uppercase}
+.full{grid-column:1 / -1;flex-direction:row;align-items:center;min-height:auto;padding:15px;gap:14px}
+
+.ph{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;color:var(--text2);text-align:center;padding:40px 20px;gap:12px}
+.ph .pi{width:56px;height:56px;border-radius:15px;background:var(--gold-soft);color:var(--gold-ink);display:flex;align-items:center;justify-content:center}
+.ph .pi svg.ti,.ph .pi i{width:27px;height:27px;font-size:27px}
+.ph b{font-size:16px;color:var(--text);font-weight:800}
+.ph span{font-size:12.5px;max-width:330px;line-height:1.55}
+.demochip{display:none;background:var(--gold-soft);border:1px solid var(--gold);color:var(--gold-ink);border-radius:9px;padding:8px 12px;font-size:11.5px;font-weight:700;margin-bottom:18px}
+.demochip.on{display:block}
+.scrim{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:35}
+.scrim.on{display:block}
+
+/* ---------------- mobile bottom tab bar ---------------- */
+.tabbar{display:none;position:fixed;left:0;right:0;bottom:0;z-index:38;background:#fff;
+  border-top:1px solid var(--border);padding-bottom:env(safe-area-inset-bottom)}
+.tabs{display:flex}
+.tab{flex:1;background:none;border:none;font-family:inherit;cursor:pointer;padding:7px 2px 6px;
+  display:flex;flex-direction:column;align-items:center;gap:3px;color:var(--text3);
+  font-size:10px;font-weight:700;position:relative;min-height:54px;justify-content:center}
+.tab svg.ti,.tab i{width:21px;height:21px;font-size:21px}
+.tab.on{color:var(--gold-ink)}
+.tab.on:before{content:"";position:absolute;top:0;left:22%;right:22%;height:3px;border-radius:0 0 3px 3px;background:var(--gold)}
+.tab .tpill{position:absolute;top:4px;left:50%;margin-left:5px;background:var(--red);color:#fff;
+  font-size:9px;font-weight:800;min-width:16px;height:16px;border-radius:9px;
+  display:flex;align-items:center;justify-content:center;padding:0 4px}
+
+/* ---------------- login ---------------- */
+.gate{position:fixed;inset:0;background:var(--bg);z-index:80;display:flex;align-items:center;justify-content:center;padding:24px}
+.gate.hidden{display:none}
+.gate-box{width:100%;max-width:340px}
+.gate label{display:block;font-size:11px;color:var(--text2);margin-bottom:4px;font-weight:600}
+.gate input{width:100%;background:var(--card2);border:1px solid var(--border);border-radius:12px;color:var(--text);padding:13px 14px;font-size:15px;font-family:inherit;margin-bottom:12px;outline:none}
+.gate input:focus{border-color:var(--gold);background:#fff}
+.gate button{width:100%;background:var(--gold);color:#111;border:none;border-radius:12px;padding:14px;font-weight:800;font-size:15px;font-family:inherit;cursor:pointer}
+.err{color:var(--red);font-size:12px;min-height:16px;margin-bottom:6px}
+.glogo{font-weight:900;font-size:30px;text-align:center;margin-bottom:6px}
+.glogo span{color:var(--gold-ink)}
+
+/* ---------------- responsive ---------------- */
+@media(max-width:1180px){ .grid{grid-template-columns:repeat(3,1fr)} }
+@media(max-width:1000px){ .mid{grid-template-columns:1fr} .stats{grid-template-columns:repeat(2,1fr)} }
+@media(max-width:860px){
+  :root{--bar:52px}
+  .rail{position:fixed;left:0;top:0;bottom:0;transform:translateX(-100%);transition:transform .22s ease;box-shadow:0 0 40px rgba(0,0,0,.18)}
+  .rail.open{transform:none}
+  .burger{display:none}            /* bottom bar replaces the hamburger */
+  .tabbar{display:block}
+  .grid{grid-template-columns:repeat(2,1fr)}
+  .pad{padding:16px 14px 20px}
+  .bar{padding:0 14px;gap:10px}
+  .vtitle{font-size:15px}
+  .srch{max-width:none}
+  /* keep content and frames clear of the bar */
+  .view{padding-bottom:calc(58px + env(safe-area-inset-bottom))}
+  iframe.appf{height:calc(100% - 58px - env(safe-area-inset-bottom))}
+}
+@media(max-width:560px){ .stats{grid-template-columns:1fr 1fr;gap:10px} .stat .v{font-size:25px} .vtitle{display:none} }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+
+<div id="gate" class="gate">
+  <div class="gate-box">
+    <div class="glogo">GRAND<span>LAB</span></div>
+    <div style="text-align:center;margin-bottom:24px;font-size:12px;color:var(--text2);letter-spacing:.25em;text-transform:uppercase">Operations Hub</div>
+    <label>Email</label>
+    <input id="email" type="email" autocomplete="username" placeholder="admin@grandpride.com">
+    <label>Password</label>
+    <input id="pass" type="password" autocomplete="current-password" placeholder="Password">
+    <div class="err" id="err"></div>
+    <button onclick="doLogin()">Sign in</button>
+  </div>
+</div>
+
+<div class="scrim" id="scrim" onclick="closeRail()"></div>
+
+<div class="shell">
+  <aside class="rail" id="rail">
+    <div class="brand"><div class="mark">G</div><div class="nm">GRAND<span>LAB</span></div></div>
+    <nav class="navs" id="navs"></nav>
+    <div class="railfoot">
+      <button class="nav" onclick="signOut()"><i class="ti ti-logout"></i>Sign out</button>
+    </div>
+  </aside>
+
+  <div class="main">
+    <header class="bar">
+      <button class="burger" onclick="openRail()" aria-label="Menu"><i class="ti ti-menu-2"></i></button>
+      <div class="vtitle" id="vtitle">Dashboard</div>
+      <div class="srch">
+        <i class="ti ti-search"></i>
+        <input id="q" type="search" autocomplete="off" placeholder="Search plate, name, phone or code…">
+        <div class="res" id="res"></div>
+      </div>
+      <button class="iconbtn" id="reload" onclick="reloadCurrent()" title="Reload this view"><i class="ti ti-refresh"></i></button>
+    </header>
+
+    <div class="stage" id="stage">
+
+      <section class="view on" id="view-dash"><div class="pad">
+        <div class="demochip" id="demochip">Sample data — layout preview only. Real numbers and the apps themselves load once deployed.</div>
+        <div class="sect">Today</div>
+        <div class="stats">
+          <a class="stat" data-go="board"><div class="k">In Bay</div><div class="v" id="v_bay">—</div><div class="s">Jobs open now</div></a>
+          <a class="stat" data-go="board"><div class="k">Ready</div><div class="v" id="v_ready">—</div><div class="s">Waiting collection</div></a>
+          <a class="stat" data-go="book"><div class="k">Bookings</div><div class="v" id="v_book">—</div><div class="s">Scheduled today</div></a>
+          <a class="stat" data-go="pos"><div class="k">Sales Today</div><div class="v sm" id="v_sales">—</div><div class="s">Paid, excl. voided</div></a>
+        </div>
+        <div class="mid">
+          <div>
+            <div class="sect">Needs Attention</div>
+            <div class="att" id="att"><div class="allclear">Loading…</div></div>
+          </div>
+          <div>
+            <div class="sect">Quick Actions</div>
+            <div class="qa">
+              <button class="qbtn pri" data-go="job"><i class="ti ti-clipboard-plus"></i>New Job</button>
+              <button class="qbtn" data-go="cust"><i class="ti ti-user-plus"></i>New Customer</button>
+              <button class="qbtn" data-go="pos"><i class="ti ti-cash-register"></i>POS</button>
+              <button class="qbtn" data-go="board"><i class="ti ti-device-tv"></i>TV Board</button>
+            </div>
+          </div>
+        </div>
+      </div></section>
+
+      <section class="view" id="view-tools"><div class="pad" id="toolspad">
+<div class="sect">GL OPERATION</div>
+  <div class="grid">
+    <a class="tile" href="https://grandpride.github.io/Grandlab-app/gl-agents.html">
+      <span class="badge">New</span>
+      <div class="ic"><i class="ti ti-users-group"></i></div>
+      <div class="t">Agent Desk</div>
+      <div class="d">Ask the AI board &mdash; agents check live data, CEO + MD agree, you approve.</div>
+    </a>
+
+    <a class="tile" href="https://grandpride.github.io/Grandlab-app/gl-tower.html">
+      <span class="badge">New</span>
+      <div class="ic"><i class="ti ti-building-skyscraper"></i></div>
+      <div class="t">Grand Tower</div>
+      <div class="d">Live building view &mdash; who&rsquo;s in, cars in bay, sales &amp; fleet.</div>
+    </a>
+
+    <a class="tile" href="https://grandpride.github.io/Grandlab-app/gl-customers.html">
+        <span class="badge">New</span>
+        <div class="ic"><i class="ti ti-users"></i></div>
+        <div class="t">Customers</div>
+        <div class="d">Search every customer by name, phone, plate or SQL code &mdash; and add one before you invoice.</div>
+      </a>
+      <a class="tile" href="https://grandpride.github.io/Grandlab-app/gl-platescan.html">
+      <span class="badge">New</span>
+      <div class="ic"><i class="ti ti-scan"></i></div>
+      <div class="t">Plate Scanner</div>
+      <div class="d">Scan or type a plate to pull up the customer, packages &amp; history.</div>
+    </a>
+
+    <a class="tile" href="https://grandpride.github.io/Grandlab-app/gl-inspect.html">
+      <span class="badge">New</span>
+      <div class="ic"><i class="ti ti-camera-plus"></i></div>
+      <div class="t">Vehicle Inspection</div>
+      <div class="d">Check-in damage marking, photos &amp; WhatsApp report link.</div>
+    </a>
+
+    <a class="tile" href="https://grandpride.github.io/Grandlab-app/gl-qc.html">
+      <span class="badge">New</span>
+      <div class="ic"><i class="ti ti-checkup-list"></i></div>
+      <div class="t">QC Check</div>
+      <div class="d">Quality check by service &mdash; defects, photos &amp; staff tracking.</div>
+    </a>
+
+    <a class="tile" href="https://grandpride.github.io/Grandlab-app/gl-staff-appointment-FINAL.html">
+      <div class="ic"><i class="ti ti-calendar-plus"></i></div>
+      <div class="t">GL Booking</div>
+      <div class="d">Create &amp; manage customer appointments.</div>
+    </a>
+
+    <a class="tile" href="https://grandpride.github.io/Grandlab-app/gl-jobcard.html">
+      <div class="ic"><i class="ti ti-clipboard-list"></i></div>
+      <div class="t">Job Card</div>
+      <div class="d">Open job orders, set status, print slips.</div>
+    </a>
+
+    <a class="tile" href="https://grandpride.github.io/Grandlab-app/gl-statement.html">
+      <span class="badge">New</span>
+      <div class="ic"><i class="ti ti-file-dollar"></i></div>
+      <div class="t">Statements</div>
+      <div class="d">Workshop &amp; showroom monthly billing and settlement.</div>
+    </a>
+
+    <a class="tile" href="https://grandpride.github.io/Grandlab-app/grandlab-pos-v2.html">
+      <div class="ic"><i class="ti ti-cash-register"></i></div>
+      <div class="t">POS System</div>
+      <div class="d">Checkout, payments &amp; monthly statements.</div>
+    </a>
+  </div>
+
+  <div class="sect">SALES ADVISOR</div>
+  <div class="grid">
+    <a class="tile" href="https://grandpride.github.io/Grandlab-app/gl-sa-quote.html">
+      <span class="badge">New</span>
+      <div class="ic"><i class="ti ti-file-dollar"></i></div>
+      <div class="t">SA Quotation</div>
+      <div class="d">Quote a partner's car &amp; send it to their WhatsApp group.</div>
+    </a>
+
+    <a class="tile" href="https://grandpride.github.io/Grandlab-app/gl-sa-admin.html">
+      <span class="badge">New</span>
+      <div class="ic"><i class="ti ti-briefcase"></i></div>
+      <div class="t">SA Admin</div>
+      <div class="d">Deals, commission payout &amp; partner advisor roster.</div>
+    </a>
+
+    <a class="tile" href="https://grandpride.github.io/Grandlab-app/gl-quote.html">
+      <span class="badge">New</span>
+      <div class="ic"><i class="ti ti-file-text"></i></div>
+      <div class="t">GL Quote</div>
+      <div class="d">Quote your own customer &amp; send the WhatsApp message.</div>
+    </a>
+  </div>
+
+  <div class="sect">REMINDER</div>
+  <div class="grid">
+    <a class="tile" href="https://grandpride.github.io/Grandlab-app/gl-coating-maintenance.html">
+      <span class="badge">New</span>
+      <div class="ic"><i class="ti ti-shield-check"></i></div>
+      <div class="t">Coating Maintenance</div>
+      <div class="d">Due dates &amp; WhatsApp reminders by coating type.</div>
+    </a>
+  </div>
+
+  <div class="sect">GRANDLAB WARRANTY</div>
+  <div class="grid">
+    <a class="tile" href="https://grandpride.github.io/Grandlab-app/gl-warranty-admin.html">
+      <span class="badge">New</span>
+      <div class="ic"><i class="ti ti-file-certificate"></i></div>
+      <div class="t">e-Warranty Register</div>
+      <div class="d">Manually register a coating, PPF or wrapping warranty.</div>
+    </a>
+
+    <a class="tile" href="https://grandpride.github.io/Grandlab-app/gl-warranty.html">
+      <div class="ic"><i class="ti ti-shield-search"></i></div>
+      <div class="t">Warranty Lookup</div>
+      <div class="d">Search a customer's warranty by car plate.</div>
+    </a>
+  </div>
+
+  <div class="sect">GRANDLAB SCHOOL</div>
+  <div class="grid">
+    <a class="tile" href="https://grandpride.github.io/Grandlab-app/gl-academy.html">
+      <span class="badge">New</span>
+      <div class="ic"><i class="ti ti-school"></i></div>
+      <div class="t">Academy</div>
+      <div class="d">SOP lessons and tests &mdash; pass before you move up.</div>
+    </a>
+
+    <a class="tile" href="https://grandpride.github.io/Grandlab-app/gl-ladder.html">
+      <span class="badge">New</span>
+      <div class="ic"><i class="ti ti-stairs-up"></i></div>
+      <div class="t">Skill Ladder</div>
+      <div class="d">Staff levels, assessments &amp; review dates.</div>
+    </a>
+  </div>
+
+  <div class="sect">GRANDLAB MARKETING</div>
+  <div class="grid">
+    <a class="tile" href="https://grandpride.github.io/Grandlab-app/gl-mkt-calendar.html">
+      <span class="badge">New</span>
+      <div class="ic"><i class="ti ti-speakerphone"></i></div>
+      <div class="t">Promo Calendar</div>
+      <div class="d">This month's offer, content tasks &amp; 12-month plan.</div>
+    </a>
+
+    <a class="tile" href="https://grandpride.github.io/Grandlab-app/gl-daily.html">
+      <span class="badge">New</span>
+      <div class="ic"><i class="ti ti-users-group"></i></div>
+      <div class="t">Daily &amp; Payroll</div>
+      <div class="d">Attendance, discipline incentive &amp; detailing job points.</div>
+    </a>
+
+    <a class="tile" href="https://grandpride.github.io/Grandlab-app/gl-marketing.html">
+      <span class="badge">New</span>
+      <div class="ic"><i class="ti ti-chart-pie"></i></div>
+      <div class="t">Marketing Analysis</div>
+      <div class="d">Track ad leads, won vs wasted &amp; cost per customer.</div>
+    </a>
+
+    <a class="tile" href="https://grandpride.github.io/Grandlab-app/gl-ads.html">
+      <span class="badge">New</span>
+      <div class="ic"><i class="ti ti-chart-bar"></i></div>
+      <div class="t">Ads Report</div>
+      <div class="d">Scale, hold or cut each ad &mdash; spend, WhatsApp leads &amp; sales.</div>
+    </a>
+
+    <a class="tile" href="https://grandpride.github.io/Grandlab-app/gl-commission.html">
+      <span class="badge">New</span>
+      <div class="ic"><i class="ti ti-cash"></i></div>
+      <div class="t">Film Commission</div>
+      <div class="d">PPF, wrap &amp; tint commission &mdash; auto rate, split &amp; approval.</div>
+    </a>
+
+    <a class="tile" href="https://grandpride.github.io/Grandlab-app/gl-sa.html">
+      <span class="badge">New</span>
+      <div class="ic"><i class="ti ti-user-dollar"></i></div>
+      <div class="t">Sales Advisor</div>
+      <div class="d">Monthly personal sales per advisor &mdash; editable commission chart.</div>
+    </a>
+
+    <a class="tile" href="https://grandpride.github.io/Grandlab-app/gl-mia.html">
+      <span class="badge">New</span>
+      <div class="ic"><i class="ti ti-message-chatbot"></i></div>
+      <div class="t">MIA</div>
+      <div class="d">Sales replies in 3 languages &mdash; paste a chat or drop a screenshot.</div>
+    </a>
+
+    <a class="tile" href="https://grandpride.github.io/Grandlab-app/gl-deck.html">
+      <span class="badge">New</span>
+      <div class="ic"><i class="ti ti-book-2"></i></div>
+      <div class="t">GL Deck</div>
+      <div class="d">Product knowledge, sales replies &amp; the step-by-step close.</div>
+    </a>
+  </div>
+      </div></section>
+
+    </div>
+
+    <div class="tabbar" id="tabbar"><div class="tabs" id="tabs"></div></div>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL="https://db.grandlab.com.my";
+const SUPABASE_ANON="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzkzMDY5NDExLCJleHAiOjE5NTA3NDk0MTF9.IcbPnDCd9p6Z-_FNMvzfg9k6ayX7IpC48zdGacAD_qw";
+const GP_URL="https://gpdb.grandlab.com.my";
+const GP_ANON="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzkzMDY5NDExLCJleHAiOjE5NTA3NDk0MTF9.ql0qv5ycO4qPDfzLZDdZvjMBqWJMxDRwS8m8HZxUuss";
+const BASE="https://grandpride.github.io/Grandlab-app/";
+
+let sb=null, SB_OK=false;
+try{
+  if(typeof supabase!=='undefined'&&supabase.createClient){
+    sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON,{auth:{persistSession:true,autoRefreshToken:true,storageKey:'gl_auth'}});
+    SB_OK=true;
+  }
+}catch(e){ console.error('supabase init failed',e); }
+const $=id=>document.getElementById(id);
+const DAY_MS=86400000, KL_OFF=8*3600000;
+function klMidnight(t){t=t||Date.now();return Math.floor((t+KL_OFF)/DAY_MS)*DAY_MS-KL_OFF}
+function ymd(t){return new Date(t).toLocaleDateString('en-CA',{timeZone:'Asia/Kuala_Lumpur'})}
+function money(n){return 'RM '+(Number(n)||0).toLocaleString('en-MY',{maximumFractionDigits:0})}
+function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
+let DEMO = new URLSearchParams(location.search).get('demo')==='1';
+
+/* ---------------- nav model ----------------
+   type 'native'  -> a section already in the page
+   file           -> loaded in an iframe inside the shell
+   ext            -> opens in a new tab (full-screen things)
+   role           -> gp_staff.apps key, same gating as the old hub   */
+const NAV=[
+  {k:'dash', t:'Dashboard',    i:'ti-layout-dashboard', type:'native'},
+  {g:'Daily Work'},
+  {k:'pos',  t:'POS',          i:'ti-cash-register',  f:'grandlab-pos-v2.html',           role:'pos'},
+  {k:'job',  t:'Job Card',     i:'ti-clipboard-list', f:'gl-jobcard.html',                role:'joborder'},
+  {k:'cust', t:'Customers',    i:'ti-users',          f:'gl-customers.html'},
+  {k:'book', t:'Bookings',     i:'ti-calendar-plus',  f:'gl-staff-appointment-FINAL.html',role:'joborder'},
+  {k:'plate',t:'Plate Scanner',i:'ti-scan',           f:'gl-platescan.html',              role:'platescan'},
+  {g:'Follow Up'},
+  {k:'coat', t:'Coating Due',  i:'ti-shield-check',   f:'gl-coating-maintenance.html',    role:'joborder'},
+  {k:'board',t:'TV Board',     i:'ti-device-tv',      ext:'GLboard/gl-board.html'},
+  {g:'Everything'},
+  {k:'tools',t:'All Tools',    i:'ti-apps',           type:'native'}
+];
+const BY={}; NAV.forEach(n=>{ if(n.k) BY[n.k]=n; });
+let CUR='dash';
+const FRAMES={};           /* k -> iframe element, kept alive so state survives */
+const ORDER=[];            /* LRU of loaded iframe keys */
+const MAX_FRAMES=4;
+
+function buildNav(){
+  $('navs').innerHTML = NAV.map(n=>{
+    if(n.g) return '<div class="ngrp">'+esc(n.g)+'</div>';
+    return '<button class="nav" data-k="'+n.k+'"><i class="ti '+n.i+'"></i>'+esc(n.t)+
+      (n.ext?'<i class="ti ti-external-link ext"></i>':'')+
+      '<span class="pill" data-pill="'+n.k+'" style="display:none"></span></button>';
+  }).join('');
+  $('navs').querySelectorAll('.nav').forEach(b=>b.addEventListener('click',()=>go(b.dataset.k)));
+}
+function setPill(k,n){
+  const txt=n>99?'99+':String(n);
+  const el=document.querySelector('[data-pill="'+k+'"]');
+  if(el){ if(n>0){ el.textContent=txt; el.style.display='flex'; } else el.style.display='none'; }
+  const tp=document.querySelector('[data-tpill="'+k+'"]');
+  if(tp){ if(n>0){ tp.textContent=txt; tp.style.display='flex'; } else tp.style.display='none'; }
+}
+
+/* phone: thumb-reachable bottom bar instead of a hidden hamburger menu.
+   'More' opens the same rail, so nothing is unreachable. */
+const TABS=[
+  {k:'dash', t:'Home',      i:'ti-layout-dashboard'},
+  {k:'pos',  t:'POS',       i:'ti-cash-register'},
+  {k:'job',  t:'Jobs',      i:'ti-clipboard-list'},
+  {k:'cust', t:'Customers', i:'ti-users'},
+  {k:'more', t:'More',      i:'ti-dots'}
+];
+function buildTabs(){
+  $('tabs').innerHTML=TABS.map(t=>
+    '<button class="tab" data-tab="'+t.k+'"><i class="ti '+t.i+'"></i>'+esc(t.t)+
+    '<span class="tpill" data-tpill="'+t.k+'" style="display:none"></span></button>').join('');
+  $('tabs').querySelectorAll('.tab').forEach(b=>b.addEventListener('click',()=>{
+    if(b.dataset.tab==='more'){ openRail(); return; }
+    go(b.dataset.tab);
+  }));
+}
+function syncTabs(k){
+  /* views that aren't their own tab (All Tools, a tile opened from it,
+     Bookings, Plate Scanner, Coating Due) light up "More" instead */
+  const known=TABS.some(t=>t.k===k);
+  $('tabs').querySelectorAll('.tab').forEach(b=>
+    b.classList.toggle('on', known ? b.dataset.tab===k : b.dataset.tab==='more'));
+}
+
+function go(k,push){
+  const n=BY[k]; if(!n) return;
+  closeRail();
+  if(n.ext){ window.open(BASE+n.ext,'_blank','noopener'); return; }
+
+  CUR=k;
+  $('vtitle').textContent=n.t;
+  $('navs').querySelectorAll('.nav').forEach(b=>b.classList.toggle('on',b.dataset.k===k));
+  syncTabs(k);
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('on'));
+  Object.values(FRAMES).forEach(f=>f.classList.remove('on'));
+
+  if(n.type==='native'){
+    const v=$('view-'+(k==='dash'?'dash':'tools'));
+    if(v) v.classList.add('on');
+  }else if(DEMO){
+    showPlaceholder(n);
+  }else{
+    mountFrame(k,n);
+  }
+  if(push!==false){ try{ history.replaceState(null,'','#'+k); }catch(e){} }
+}
+/* a tile opened from All Tools becomes a temporary nav entry, so it loads
+   inside the shell instead of navigating away and losing the rail */
+function openTile(file,title,icon){
+  const k='x_'+file.replace(/[^a-z0-9]/gi,'');
+  if(!BY[k]) BY[k]={k:k,t:title,i:icon||'ti-app-window',f:file};
+  go(k);
+}
+function mountFrame(k,n){
+  let f=FRAMES[k];
+  if(!f){
+    f=document.createElement('iframe');
+    f.className='appf'; f.setAttribute('title',n.t); f.setAttribute('loading','lazy');
+    f.src=BASE+n.f;
+    $('stage').appendChild(f);
+    FRAMES[k]=f;
+    ORDER.push(k);
+    /* keep memory sane on shop tablets: drop the least-recently-used app,
+       never the one on screen */
+    while(ORDER.length>MAX_FRAMES){
+      const old=ORDER.find(x=>x!==k);
+      if(!old) break;
+      ORDER.splice(ORDER.indexOf(old),1);
+      if(FRAMES[old]){ FRAMES[old].remove(); delete FRAMES[old]; }
+    }
+  }else{
+    ORDER.splice(ORDER.indexOf(k),1); ORDER.push(k);
+  }
+  f.classList.add('on');
+}
+function showPlaceholder(n){
+  let v=$('view-ph');
+  if(!v){ v=document.createElement('section'); v.className='view'; v.id='view-ph'; $('stage').appendChild(v); }
+  v.innerHTML='<div class="ph"><div class="pi"><i class="ti '+n.i+'"></i></div>'+
+    '<b>'+esc(n.t)+'</b><span>In the real hub this app loads right here, inside the shell — the menu on the left stays put and you keep your place in the other tabs.</span></div>';
+  v.classList.add('on');
+}
+function reloadCurrent(){
+  const n=BY[CUR];
+  if(n&&FRAMES[CUR]){ FRAMES[CUR].src=FRAMES[CUR].src; return; }
+  if(CUR==='dash') loadStats();
+}
+function openRail(){ $('rail').classList.add('open'); $('scrim').classList.add('on'); }
+function closeRail(){ $('rail').classList.remove('open'); $('scrim').classList.remove('on'); }
+
+/* ---------------- dashboard ---------------- */
+function statRow(o){
+  return '<button class="arow'+(o.hot?' hot':'')+'" data-go="'+o.go+'">'+
+    '<div class="ai"><i class="ti '+o.icon+'"></i></div>'+
+    '<div class="ab"><div class="at">'+esc(o.title)+'</div><div class="ad">'+esc(o.sub)+'</div></div>'+
+    '<div class="an">'+esc(o.n)+'</div><i class="ti ti-chevron-right ar"></i></button>';
+}
+function renderAttention(a){
+  const rows=[];
+  if(a.unpaid>0) rows.push({icon:'ti-receipt-off',title:'Unpaid invoices',sub:money(a.unpaidAmt)+' not collected',n:a.unpaid,go:'pos'});
+  if(a.loose>0)  rows.push({icon:'ti-alert-triangle',title:'Loose ends',sub:'Unpaid over 3 days old',n:a.loose,go:'pos',hot:true});
+  if(a.dueWeek>0)rows.push({icon:'ti-shield-check',title:'Coating due',sub:'Next 7 days',n:a.dueWeek,go:'coat'});
+  if(a.overdue>0)rows.push({icon:'ti-bell-exclamation',title:'Overdue, never reminded',sub:'No 1st WhatsApp sent',n:a.overdue,go:'coat',hot:true});
+  if(a.noQc>0)   rows.push({icon:'ti-checkup-list',title:'Jobs without QC',sub:'Completed today',n:a.noQc,go:'tools'});
+  $('att').innerHTML = rows.length ? rows.map(statRow).join('')
+    : '<div class="allclear"><i class="ti ti-circle-check"></i>Nothing needs attention. Good.</div>';
+  setPill('pos',a.unpaid); setPill('coat',a.overdue);
+}
+function paint(d){
+  $('v_bay').textContent=d.inBay; $('v_ready').textContent=d.ready;
+  $('v_book').textContent=d.bookings; $('v_sales').textContent=money(d.sales);
+  renderAttention(d);
+}
+function demoData(){return {inBay:8,ready:3,bookings:5,sales:4820,unpaid:6,unpaidAmt:3200,loose:2,dueWeek:12,overdue:4,noQc:3}}
+async function loadStats(){
+  if(DEMO){ paint(demoData()); return; }
+  if(!SB_OK){ $('att').innerHTML='<div class="allclear"><i class="ti ti-plug-connected-x"></i>Can\'t reach the server right now.</div>'; return; }
+  const now=Date.now(), mid=klMidnight(now), today=ymd(now);
+  const midIso=new Date(mid).toISOString(), nextIso=new Date(mid+DAY_MS).toISOString(), week=ymd(now+7*DAY_MS);
+  const cols='id,plate,model,stage,status,created_at,collected,total';
+  let q;
+  try{
+    q=await Promise.all([
+      sb.from('gl_jobs').select(cols).eq('status','open').limit(300),
+      sb.from('gl_jobs').select(cols).eq('status','unpaid').eq('collected',false).limit(400),
+      sb.from('gl_payments').select('net_paid,sale_date,voided').eq('sale_date',today).limit(2000),
+      sb.from('gl_bookings').select('id',{count:'exact',head:true}).gte('scheduled_at',midIso).lt('scheduled_at',nextIso).in('status',['pending','confirmed','in_progress']),
+      sb.from('gl_service_records').select('id',{count:'exact',head:true}).gte('next_due',today).lte('next_due',week),
+      sb.from('gl_service_records').select('id',{count:'exact',head:true}).lt('next_due',today).is('wa_remind_1_at',null),
+      sb.from('gl_qc').select('job_id').gte('created_at',midIso).limit(500)
+    ]);
+  }catch(e){ console.error('stats',e); paint(demoData()); $('demochip').classList.add('on'); DEMO=true; return; }
+  const ok=i=>(q[i]&&!q[i].error&&q[i].data)?q[i].data:[];
+  const open=ok(0), unpaid=ok(1), pays=ok(2).filter(p=>!p.voided);
+  const seen={}, all=[]; open.concat(unpaid).forEach(j=>{ if(!seen[j.id]){seen[j.id]=1;all.push(j)} });
+  const qcJobs={}; ok(6).forEach(r=>{ if(r.job_id)qcJobs[r.job_id]=1 });
+  const doneToday=all.filter(j=>j.stage==='done'&&Number(j.created_at)>=mid);
+  paint({
+    inBay:open.filter(j=>j.stage!=='done').length,
+    ready:all.filter(j=>j.stage==='done'&&!j.collected&&Number(j.created_at)>=mid).length,
+    bookings:(q[3]&&!q[3].error)?(q[3].count||0):0,
+    sales:pays.reduce((s,p)=>s+(Number(p.net_paid)||0),0),
+    unpaid:unpaid.length,
+    unpaidAmt:unpaid.reduce((s,j)=>s+(Number(j.total)||0),0),
+    loose:unpaid.filter(j=>Number(j.created_at)<now-3*DAY_MS).length,
+    dueWeek:(q[4]&&!q[4].error)?(q[4].count||0):0,
+    overdue:(q[5]&&!q[5].error)?(q[5].count||0):0,
+    noQc:doneToday.filter(j=>!qcJobs[j.id]).length
+  });
+}
+
+/* ---------------- search ---------------- */
+let tmr=null,lastQ='';
+function hideRes(){ $('res').classList.remove('on') }
+function showRes(h){ $('res').innerHTML=h; $('res').classList.add('on') }
+function rowHtml(r){
+  const b=[];
+  if(r.phone)b.push(esc(r.phone));
+  if(r.sqlacc_code)b.push(esc(r.sqlacc_code));
+  if(r.car_count)b.push(r.car_count+' car'+(r.car_count>1?'s':''));
+  if(r.pkg_left)b.push('<b>'+r.pkg_left+' pkg left</b>');
+  return '<a class="rrow" data-go="cust"><div class="n">'+esc(r.name||'(no name)')+'</div>'+
+         '<div class="m">'+b.join(' &middot; ')+(r.plates?'<br>'+esc(r.plates):'')+'</div></a>';
+}
+async function runSearch(t){
+  if(DEMO){ showRes(rowHtml({name:'TAI MING',phone:'60123456789',sqlacc_code:'C0412',car_count:3,pkg_left:9,plates:'HONDA CIVIC - F957, TOYOTA VELLFIRE - VMJ211'})); return; }
+  if(!SB_OK){ showRes('<div class="rmsg">Search unavailable — no connection.</div>'); return; }
+  try{
+    const {data,error}=await sb.rpc('gl_customer_list',{p_q:t,p_limit:8,p_offset:0});
+    if(error) throw error;
+    const rows=data||[];
+    if(!rows.length){ showRes('<div class="rmsg">No match for "'+esc(t)+'"</div>'); return; }
+    showRes(rows.map(rowHtml).join(''));
+  }catch(e){ console.error('search',e); showRes('<div class="rmsg">Search unavailable right now.</div>'); }
+}
+function onSearch(){
+  const t=$('q').value.trim();
+  if(tmr)clearTimeout(tmr);
+  if(t.length<2){ hideRes(); lastQ=''; return; }
+  if(t===lastQ)return;
+  tmr=setTimeout(()=>{ lastQ=t; runSearch(t); },260);
+}
+/* one delegated handler for every data-go element on the page */
+document.addEventListener('click',e=>{
+  const g=e.target.closest('[data-go]');
+  if(g){ e.preventDefault(); hideRes(); go(g.dataset.go); return; }
+  const tile=e.target.closest('#toolspad a.tile');
+  if(tile){
+    const href=tile.getAttribute('href')||'';
+    const file=href.split('/').pop();
+    if(file){
+      e.preventDefault();
+      const ic=tile.querySelector('.ic i,.ic svg');
+      const cls=ic?(ic.getAttribute('class')||''):'';
+      const m=cls.match(/ti-[a-z0-9\-]+/);
+      openTile(file,(tile.querySelector('.t')||{}).textContent||file,m?m[0]:'ti-app-window');
+      return;
+    }
+  }
+  if(!e.target.closest('.srch')) hideRes();
+});
+
+/* ---------------- role gating (same keys as the live hub) ---------------- */
+const ROLE_MAP={
+  'gl-platescan.html':'platescan','gl-inspect.html':'inspect','gl-qc.html':'qc',
+  'gl-staff-appointment-FINAL.html':'joborder','gl-jobcard.html':'joborder',
+  'grandlab-pos-v2.html':'pos','gl-statement.html':'statement',
+  'gl-commission.html':'commission','gl-sa.html':'sacomm','gl-daily.html':'daily',
+  'gl-mia.html':'mia','gl-deck.html':'mia','gl-ladder.html':'ladder','gl-academy.html':'academy',
+  'gl-marketing.html':'marketing','gl-mkt-calendar.html':'marketing','gl-ads.html':'marketing',
+  'gl-coating-maintenance.html':'joborder','gl-warranty-admin.html':'joborder','gl-warranty.html':'joborder',
+  'gl-sa-quote.html':'saquote','gl-sa-admin.html':'saadmin','gl-quote.html':'glquote',
+  'gl-tower.html':'tower','gl-agents.html':'agentdesk'
+};
+const MASTER=['admin@grandpride.com'];
+async function applyRoles(email){
+  try{
+    if(!SB_OK||MASTER.indexOf(email)>=0) return;
+    const gp=supabase.createClient(GP_URL,GP_ANON,{auth:{persistSession:false,storageKey:'gp_read'}});
+    const r=await gp.from('gp_staff').select('name,apps').ilike('email',email).maybeSingle();
+    if(r.error||!r.data) return;
+    let apps=r.data.apps;
+    if(typeof apps==='string'){ try{apps=JSON.parse(apps)}catch(e){apps=[]} }
+    if(!Array.isArray(apps)) return;
+    /* rail items */
+    NAV.forEach(n=>{
+      if(!n.k||!n.role) return;
+      if(apps.indexOf(n.role)<0){
+        const b=document.querySelector('.nav[data-k="'+n.k+'"]');
+        if(b) b.style.display='none';
+      }
+    });
+    /* tiles */
+    document.querySelectorAll('#toolspad a.tile').forEach(a=>{
+      const file=(a.getAttribute('href')||'').split('/').pop().split('?')[0];
+      const key=ROLE_MAP[file];
+      if(key&&apps.indexOf(key)<0) a.style.display='none';
+    });
+    document.querySelectorAll('#toolspad .sect').forEach(sec=>{
+      const grid=sec.nextElementSibling;
+      if(!grid||!grid.classList.contains('grid'))return;
+      const vis=[...grid.querySelectorAll('a.tile')].filter(a=>a.style.display!=='none').length;
+      if(!vis){ sec.style.display='none'; grid.style.display='none'; }
+    });
+  }catch(e){}
+}
+
+/* ---------------- auth ---------------- */
+function start(){
+  loadStats();
+  const h=(location.hash||'').replace('#','');
+  go(BY[h]?h:'dash',false);
+}
+async function boot(){
+  buildNav();
+  buildTabs();
+  $('q').addEventListener('input',onSearch);
+  go('dash',false);
+  if(DEMO){ $('gate').classList.add('hidden'); $('demochip').classList.add('on'); paint(demoData()); return; }
+  if(!SB_OK){
+    $('gate').classList.remove('hidden');
+    $('err').textContent='Can\'t reach the login server. Check your internet, then reload.';
+    return;
+  }
+  try{
+    const {data}=await sb.auth.getSession();
+    if(data&&data.session){
+      $('gate').classList.add('hidden');
+      start(); applyRoles((data.session.user.email||'').toLowerCase());
+      return;
+    }
+  }catch(e){ console.error('session',e); }
+  $('gate').classList.remove('hidden');
+}
+async function doLogin(){
+  if(!SB_OK){ $('err').textContent='No connection to the server.'; return; }
+  const email=$('email').value.trim(), pass=$('pass').value;
+  $('err').textContent='Signing in…';
+  const {error}=await sb.auth.signInWithPassword({email,password:pass});
+  if(error){ $('err').textContent='Login failed: '+error.message; return; }
+  $('err').textContent=''; $('gate').classList.add('hidden');
+  start(); applyRoles(email.toLowerCase());
+}
+async function signOut(){ try{ if(SB_OK) await sb.auth.signOut(); }catch(e){} location.reload(); }
+document.addEventListener('keydown',e=>{
+  if(e.key==='Enter'&&!$('gate').classList.contains('hidden')) doLogin();
+  if(e.key==='Escape') closeRail();
+});
+boot();
+</script>
+</body>
+</html>
