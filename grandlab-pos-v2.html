@@ -1496,7 +1496,7 @@ async function startCheckout(job, gross){
   PAY={ gross, discount:0, discountOk:false, discountBy:null, _pendingDisc:0,
         depositUsed:Number(job.dep_amt)||0, packageUsed:false,
         walletUsed:0, pointsUsed:0, voucher:null, spinPrize:null, method:null, quick:null,
-        custWallet:0, custPoints:0, hasProfile:false, pkgList:[], pkgUse:null, pkgUseIdx:null, pkgUseIdxs:[],
+        custWallet:0, custPoints:0, hasProfile:false, pkgList:[], pkgUse:null, pkgUseIdx:null, pkgUseIdxs:[], pkgTarget:{},
         split1Method:null, split2Method:null, split1Amt:0 };
   if(job.customer_id){
     const {data}=await sb.from('gl_profiles').select('wallet,points,sqlacc_code').eq('id',job.customer_id).maybeSingle();
@@ -1522,7 +1522,7 @@ async function startCheckout(job, gross){
 
 async function loadCheckoutPackages(job){
   PAY.pkgList=[];
-  PAY.pkgUseIdxs=[]; PAY.pkgUse=null; PAY.pkgUseIdx=null; PAY.packageUsed=false;
+  PAY.pkgUseIdxs=[]; PAY.pkgUse=null; PAY.pkgUseIdx=null; PAY.packageUsed=false; PAY.pkgTarget={};
   const plate=(job.plate||CUR.plate||'').trim().toUpperCase();
   const ownerId=job.customer_id||CUR.customer_id||null;
   const phone=(job.hp||CUR.hp||CUR.phone||'').toString();
@@ -1606,27 +1606,61 @@ function pkgCoverBreakdown_(){
     if(any) out.push({pkg, amount:Math.round(amt*100)/100});
     else unmatched.push(pkg);
   });
-  // A package whose name matches no service line covers ONE line, not the whole
-  // bill. Covering everything meant a wash package also wiped out the wiper,
-  // the polish and anything else on the order, so the balance showed RM0 when
-  // there was still money to collect.
-  // Which line? The cheapest unclaimed one. An error that way is spotted at the
-  // counter; the other way silently gives work away.
+  // A package whose name matches no service line covers NOTHING by default.
+  //
+  // It used to fall back to "cover the cheapest unclaimed line". That quietly
+  // gave work away: a Bathe Essence package on a bill that lists only a Polish
+  // claimed the Polish, the balance dropped to RM0, the payment grid collapsed
+  // to "no payment", and the polish went out unpaid.
+  //
+  // Staff now say explicitly which line a non-matching package covers
+  // (PAY.pkgTarget), so the guess can never silently cost money.
   unmatched.forEach(pkg=>{
-    let pick=-1, pickAmt=null;
-    svcs.forEach((sv,i)=>{
-      if(claimed[i]) return;
-      const price=Number(svcPrice(sv))||0;
-      if(pickAmt===null || price<pickAmt){ pickAmt=price; pick=i; }
-    });
-    if(pick>=0){
-      claimed[pick]=true;
-      out.push({pkg, amount:Math.round((pickAmt||0)*100)/100});
+    const key=pkgKey_(pkg);
+    const t=(PAY.pkgTarget||{})[key];
+    if(t!=null && svcs[t] && !claimed[t]){
+      claimed[t]=true;
+      out.push({pkg, amount:Math.round((Number(svcPrice(svcs[t]))||0)*100)/100, chosen:true});
     } else {
-      out.push({pkg, amount:0});   // nothing left to cover
+      out.push({pkg, amount:0, needsTarget:true});
     }
   });
   return out;
+}
+
+/* Stable key for a package, so a chosen target survives a re-render. */
+function pkgKey_(p){ return p && (p.id!=null ? 'id:'+p.id : 'nm:'+String(p.service_name||'')); }
+
+/* Shown under a switched-on package that matches no service line by name.
+   Staff pick the line it covers; until then it covers nothing, so the
+   balance still shows the real amount to collect. */
+function pkgTargetRow_(p){
+  const bd=pkgCoverBreakdown_();
+  const key=pkgKey_(p);
+  const row=bd.find(b=>pkgKey_(b.pkg)===key);
+  if(!row || (!row.needsTarget && !row.chosen)) return '';
+  const svcs=jobServices(CUR)||[];
+  const sel=(PAY.pkgTarget||{})[key];
+  const opts=svcs.map((s,i)=>`<option value="${i}" ${sel===i?'selected':''}>${esc(svcDesc(s))} — ${RM(Number(svcPrice(s))||0)}</option>`).join('');
+  return `<div class="adj" style="padding-top:0">
+    <span class="lab" style="color:var(--ink3);font-size:12px">
+      <i class="ti ti-alert-triangle" style="color:var(--gold-deep)"></i>
+      Name doesn't match a service — choose what it covers
+    </span>
+    <select class="split-sel" style="max-width:220px"
+      onchange="setPkgTarget('${esc(key).replace(/'/g,"\\'")}',this.value)">
+      <option value="" ${sel==null?'selected':''}>Covers nothing</option>
+      ${opts}
+    </select>
+  </div>`;
+}
+
+/* Staff picked which service line this package covers. */
+function setPkgTarget(key,val){
+  PAY.pkgTarget=PAY.pkgTarget||{};
+  if(val===''||val==null) delete PAY.pkgTarget[key];
+  else PAY.pkgTarget[key]=Number(val);
+  renderCheckout();
 }
 /* Deduct one use from every selected package. Shared by the paid and unpaid
    paths - previously only the paid path did this, so a package redeemed on an
@@ -1761,7 +1795,7 @@ function renderCheckout(){
       return `<div class="adj">
         <span class="lab"><i class="ti ti-package"></i> ${esc(cleanPkgName(p.service_name))}${allcars} <b style="color:var(--gold-deep)">· ${bal} left</b>${on?` <span style="color:var(--ink3);font-size:11px">(will use 1 → ${bal-1} left)</span>`:''}</span>
         <button class="toggle ${on?'on':''}" onclick="togglePkgUse(${pi})"><span class="dot"></span></button>
-      </div>`;
+      </div>${on?pkgTargetRow_(p):''}`;
     }).join('')
     :`<div class="adj" style="opacity:.6"><span class="lab"><i class="ti ti-package"></i> No package on this vehicle</span></div>`}
 
