@@ -566,6 +566,33 @@
     10%{opacity:1;}
     100%{transform:translateY(105vh) translateX(var(--drift,20px)) rotate(var(--spin,360deg));opacity:.9;}
   }
+  /* ===== festival v2 - anchored art + ambient particles, BEHIND content ===== */
+  .fest-amb{position:fixed;inset:0;z-index:1;pointer-events:none;overflow:hidden;}
+  #appRoot.fest-themed{background:transparent;}
+  .fest-amb-bg{position:absolute;inset:0;}
+  .fest-ember{position:absolute;bottom:-24px;border-radius:50%;will-change:transform,opacity;
+    animation:festRise linear infinite;}
+  @keyframes festRise{
+    0%{transform:translateY(0) translateX(0) scale(.55);opacity:0;}
+    14%{opacity:.9;}
+    100%{transform:translateY(-104vh) translateX(var(--dx,14px)) scale(1);opacity:0;}
+  }
+  .fest-hang{position:absolute;top:0;transform-origin:50% 0;
+    animation:festSway ease-in-out infinite alternate;}
+  @keyframes festSway{from{transform:rotate(-3.2deg);}to{transform:rotate(3.2deg);}}
+  .fest-flame{transform-origin:50% 100%;animation:festFlicker 1.5s ease-in-out infinite alternate;}
+  @keyframes festFlicker{from{transform:scaleY(.85) scaleX(1.05);opacity:.82;}
+                           to{transform:scaleY(1.1) scaleX(.95);opacity:1;}}
+  .fest-rangoli{position:absolute;opacity:.08;animation:festSpin 120s linear infinite;}
+  @keyframes festSpin{to{transform:rotate(360deg);}}
+  .fest-bulb{animation:festGlow 2.6s ease-in-out infinite;}
+  @keyframes festGlow{0%,100%{opacity:.4}50%{opacity:1}}
+  /* slot for illustrated art (transparent PNG) - anchored, never over the cards */
+  .fest-art{position:absolute;right:-6px;bottom:84px;width:46vw;max-width:210px;
+    opacity:.92;pointer-events:none;filter:drop-shadow(0 10px 24px rgba(0,0,0,.5));}
+  @media (prefers-reduced-motion: reduce){
+    .fest-ember,.fest-hang,.fest-flame,.fest-rangoli,.fest-bulb{animation:none;}
+  }
   /* intro overlay */
   .fest-intro{position:fixed;inset:0;z-index:300;display:flex;flex-direction:column;align-items:center;justify-content:center;
     background:radial-gradient(circle at 50% 40%, var(--festbg2,#1a0a0a) 0%, #050505 100%);
@@ -1371,10 +1398,100 @@ let CURRENT_FEST=null;
 // emoji/glyph used for each decoration style
 const FEST_GLYPH={ lantern:['🏮','🧧','🪙'], ketupat:['🌙','✨','🕌'], diya:['🪔','✨','🟠'],
   lotus:['🪷','✨','🟡'], flag:['🇲🇾','⭐','✨'], snow:['❄️','❅','✦'] };
-// build the persistent decoration layer (falling pieces across the screen)
+// ---- festival v2 scene builders -------------------------------------------
+// Drawn as SVG so every phone shows the same thing. The old emoji layer relied
+// on the device emoji font, which is why a diya rendered as a brown blob.
+function festEmbers(n, colors){
+  let h='';
+  for(let i=0;i<n;i++){
+    const sz=2+Math.random()*4;
+    h+=`<div class="fest-ember" style="left:${(Math.random()*100).toFixed(1)}vw;`
+     +  `width:${sz.toFixed(1)}px;height:${sz.toFixed(1)}px;`
+     +  `background:${colors[i%colors.length]};`
+     +  `box-shadow:0 0 ${(sz*2.5).toFixed(0)}px ${colors[i%colors.length]};`
+     +  `animation-duration:${(9+Math.random()*9).toFixed(1)}s;`
+     +  `animation-delay:${(-Math.random()*16).toFixed(1)}s;`
+     +  `--dx:${(Math.random()*60-30).toFixed(0)}px"></div>`;
+  }
+  return h;
+}
+let _diyaN=0;
+function festDiya(x, hang, scale, delay){
+  // fixed 54x170 viewBox: string runs 0..hang, lamp sits at hang.
+  // unique gradient ids - duplicate ids resolve to the first match in the document.
+  const n = ++_diyaN, dg='dg'+n, fg='fg'+n;
+  const y = Math.max(10, Math.min(118, hang));       // where the lamp hangs
+  return `<div class="fest-hang" style="left:${x};animation-duration:${(3.6+delay).toFixed(1)}s;`
+    + `animation-delay:-${delay}s">`
+    + `<svg width="${(54*scale).toFixed(0)}" height="${(170*scale).toFixed(0)}" viewBox="0 0 54 170" fill="none">`
+    +   `<line x1="27" y1="0" x2="27" y2="${y}" stroke="#7a5c2e" stroke-width="1.4"/>`
+    +   `<g class="fest-flame" style="animation-delay:-${(delay*0.7).toFixed(1)}s">`
+    +     `<path d="M27 ${y+26} C19 ${y+14} 27 ${y+10} 27 ${y} C27 ${y+10} 35 ${y+14} 27 ${y+26} Z" fill="url(#${fg})"/>`
+    +   `</g>`
+    +   `<ellipse cx="27" cy="${y+30}" rx="22" ry="10" fill="url(#${dg})"/>`
+    +   `<path d="M6 ${y+28} Q27 ${y+46} 48 ${y+28} Z" fill="#7d4f1d"/>`
+    +   `<defs>`
+    +     `<linearGradient id="${dg}" x1="0" y1="0" x2="0" y2="1">`
+    +       `<stop offset="0" stop-color="#F0BE63"/><stop offset="1" stop-color="#8a5a22"/></linearGradient>`
+    +     `<linearGradient id="${fg}" x1="0" y1="1" x2="0" y2="0">`
+    +       `<stop offset="0" stop-color="#FF8A1E"/><stop offset=".6" stop-color="#FFD24D"/>`
+    +       `<stop offset="1" stop-color="#FFF6C9"/></linearGradient>`
+    +   `</defs>`
+    + `</svg></div>`;
+}
+function festLights(){
+  let bulbs='';
+  for(let i=0;i<=14;i++){
+    const x=i/14*100, y=8+Math.sin(i/14*Math.PI)*16;
+    const c=['#FFD24D','#FF8A1E','#FFE9A8'][i%3];
+    bulbs+=`<circle class="fest-bulb" cx="${x}%" cy="${y.toFixed(1)}" r="3" fill="${c}" `
+        +  `style="animation-delay:-${(i*0.23).toFixed(2)}s"/>`;
+  }
+  return `<svg style="position:absolute;top:0;left:0;width:100%;height:42px" preserveAspectRatio="none">`
+       + `<path d="M0 8 Q50% 30 100% 8" stroke="rgba(255,210,120,.25)" stroke-width="1" fill="none"/>`
+       + bulbs + `</svg>`;
+}
+function festRangoli(){
+  let rings='';
+  for(let r=26;r<=96;r+=14) rings+=`<circle cx="110" cy="110" r="${r}" stroke="#FFD24D" stroke-width="1.2" fill="none"/>`;
+  let petals='';
+  for(let a=0;a<12;a++) petals+=`<ellipse cx="110" cy="34" rx="7" ry="20" fill="#FF8A1E" `
+      +`transform="rotate(${a*30} 110 110)"/>`;
+  return `<svg class="fest-rangoli" style="left:-70px;bottom:-60px;width:220px;height:220px" viewBox="0 0 220 220">`
+       + rings + petals + `</svg>`;
+}
+// Deepavali scene. Add more keys here as each festival gets its own art.
+const FEST_SCENE = {
+  diya: function(f){
+    const art=(window.STYLE&&STYLE.festArt&&STYLE.festArt[f.key])||f.art||'';
+    return `<div class="fest-amb-bg" style="background:`
+      + `radial-gradient(130% 70% at 50% 0%, #2B1444 0%, #1A0C2B 42%, #0B0614 78%, #070309 100%)"></div>`
+      + festRangoli()
+      + festEmbers(16, ['#FFB347','#FFD24D','#FF7A2F'])
+      + festLights()
+      + festDiya('66vw', 40, 1, 0)
+      + festDiya('82vw', 92, .8, 1.1)
+      + (art?`<img class="fest-art" src="${art}" alt="">`:'');
+  }
+};
+// build the persistent decoration layer
 function renderFestLayer(){
-  document.querySelectorAll('.fest-layer').forEach(e=>e.remove());
+  document.querySelectorAll('.fest-layer,.fest-amb').forEach(e=>e.remove());
+  _diyaN=0;
+  const _root=document.getElementById('appRoot');
+  if(_root) _root.classList.remove('fest-themed');
   if(!CURRENT_FEST) return;
+  // v2 scene if this festival has one, otherwise the original emoji layer
+  const scene=FEST_SCENE[CURRENT_FEST.deco];
+  if(scene){
+    const amb=document.createElement('div');
+    amb.className='fest-amb';
+    amb.innerHTML=scene(CURRENT_FEST);
+    document.body.appendChild(amb);
+    // let the themed background show through, unless a custom bg image is set
+    if(_root && !_root.classList.contains('has-bg')) _root.classList.add('fest-themed');
+    return;
+  }
   const glyphs=FEST_GLYPH[CURRENT_FEST.deco]||['✨'];
   const layer=document.createElement('div'); layer.className='fest-layer';
   const N=22; // visible count across screen
