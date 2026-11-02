@@ -3218,7 +3218,7 @@ async function showReferralQR(){
 }
 
 async function openReferralPage(){
-  appRoot.innerHTML=`<div class="topbar-app"><button class="back" onclick="goBack()">‹</button><div class="ttl">Referral</div></div><div class="app-scroll" style="padding-top:18px"><div class="app-sub">Loading…</div></div>`;
+  // no interim paint - it blanked the screen and read as a flash
   // ensure profile + referrals loaded
   await Promise.allSettled([ fetchProfile(), fetchReferrals() ]);
   // existing users who signed up before referral codes existed → generate one now
@@ -5300,9 +5300,7 @@ function openRewardsList(which){
 
 async function openCoinHistory(){
   const coinName = esc(STYLE.coinName||'G Coin');
-  appRoot.innerHTML=`
-    <div class="topbar-app"><button class="back" onclick="routeTab('rewards')">‹</button><div class="ttl">${coinName} Activity</div></div>
-    <div class="app-scroll" style="padding-top:14px"><div class="app-sub">Loading…</div></div>`;
+  // no interim paint - see openMyPackages
   let rows=[];
   try{
     if(SESSION?.user?.id){
@@ -5378,9 +5376,7 @@ async function redeemReward(id, cost, name){
 async function openVouchers(which){
   if(IS_GUEST){ toast('Sign in to view vouchers'); return; }
   which=which||'active';
-  appRoot.innerHTML=`
-    <div class="topbar-app"><button class="back" onclick="routeTab('wallet')">‹</button><div class="ttl">My Vouchers</div><button class="home-btn" onclick="routeTab('home')">⌂</button></div>
-    <div class="app-scroll" style="padding-top:16px"><div class="app-sub">Loading…</div></div>`;
+  // no interim paint - see openMyPackages
   await fetchClaims();
   const all=(CLAIMS||[]).filter(c=>c.barcode);
   const active=all.filter(c=>c.status!=='redeemed');
