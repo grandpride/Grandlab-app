@@ -513,6 +513,14 @@
   .botnav .nav-mid:active .ring{transform:translateX(-50%) scale(.93);}
   /* one QR only - the raised centre replaces the header icon */
   .top-ic[title="My referral QR"]{display:none;}
+  /* --- floating pill --- */
+  .botnav.pill{border-top:none;padding-bottom:0;
+    margin:0 12px calc(10px + env(safe-area-inset-bottom,0px));
+    border-radius:26px;
+    background:linear-gradient(180deg,#17160f,#0e0e0c);
+    border:1px solid rgba(255,255,255,.08);
+    box-shadow:0 12px 28px rgba(0,0,0,.6),0 2px 8px rgba(0,0,0,.45);}
+  .botnav.pill button{border-radius:26px;}
   .field{margin-top:16px;}
   .veh-kind-toggle{display:flex;gap:8px;margin-bottom:14px;}
   .vk-btn{flex:1;height:46px;background:var(--surface);border:1.5px solid var(--line);border-radius:14px;
@@ -2277,7 +2285,7 @@ function botnav(active){
   const t=(id,label)=>`<button class="${active===id?'on':''}" onclick="routeTab('${id}')"><span class="ic">${navIcon(id)}</span>${label}</button>`;
   const qr=`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><line x1="17" y1="14" x2="21" y2="14"/><line x1="14" y1="17" x2="14" y2="21"/><line x1="21" y1="17" x2="21" y2="21"/><line x1="17" y1="21" x2="17" y2="21"/></svg>`;
   const mid=`<button class="nav-mid" onclick="showReferralQR()"><span class="ring">${qr}</span><span class="cap">My QR</span></button>`;
-  return `<div class="botnav nav7">
+  return `<div class="botnav nav7 pill">
     ${t('home','Home')}${t('package','Package')}${t('order','Order')}${mid}${t('wallet','Wallet')}${t('rewards','Rewards')}${t('account','Account')}
   </div>`;
 }
