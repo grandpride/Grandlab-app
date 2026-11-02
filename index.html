@@ -589,6 +589,13 @@
   @keyframes festSpin{to{transform:rotate(360deg);}}
   .fest-bulb{animation:festGlow 2.6s ease-in-out infinite;}
   @keyframes festGlow{0%,100%{opacity:.4}50%{opacity:1}}
+  /* festival art merged into the member card - clipped by its own corners */
+  .member-card.fest-card{position:relative;overflow:hidden;}
+  .fest-cardart{position:absolute;right:-6px;bottom:-10px;width:132px;z-index:2;
+    pointer-events:none;filter:drop-shadow(0 6px 16px rgba(0,0,0,.45));
+    animation:festSwayArt 5.6s ease-in-out infinite alternate;transform-origin:60% 0;}
+  .member-card.fest-card .member-top,
+  .member-card.fest-card .member-stats{position:relative;z-index:3;}
   /* illustrated hanging art, anchored to the top edge */
   .fest-hangart{position:absolute;top:0;right:3px;width:40vw;max-width:158px;
     transform-origin:62% 0;animation:festSwayArt 5.6s ease-in-out infinite alternate;
@@ -1471,6 +1478,14 @@ function festRangoli(){
   return `<svg class="fest-rangoli" style="left:-70px;bottom:-60px;width:220px;height:220px" viewBox="0 0 220 220">`
        + rings + petals + `</svg>`;
 }
+// Illustration per decoration style. STYLE.festArt[key] from admin wins, so art
+// can be swapped without a deploy.
+const FEST_ART = { diya:'art/fest-deepavali-diyas.png' };
+function festArtUrl(){
+  if(!CURRENT_FEST) return '';
+  return (window.STYLE&&STYLE.festArt&&STYLE.festArt[CURRENT_FEST.key])
+      || FEST_ART[CURRENT_FEST.deco] || '';
+}
 // Surface tint. Without this the cards keep the default near-black and read as
 // black squares sitting on a coloured background.
 const FEST_TINT = {
@@ -1496,8 +1511,7 @@ const FEST_SCENE = {
       + festRangoli()
       + festEmbers(16, ['#FFB347','#FFD24D','#FF7A2F'])
       + festLights()
-      + `<img class="fest-hangart" src="art/fest-deepavali-diyas.png" alt="" `
-        + `onerror="festArtFallback(this)">`
+      + ''   /* the illustration now lives inside the member card */
       + (art?`<img class="fest-art" src="${art}" alt="">`:'');
   }
 };
@@ -2607,7 +2621,8 @@ async function renderHome(){
       </div>
 
       <!-- member card with wallet, points, Join Member -->
-      <div class="member-card ${tierBg?'has-bg':''}" style="${memberCardStyle}">
+      <div class="member-card ${tierBg?'has-bg':''}${festArtUrl()?' fest-card':''}" style="${memberCardStyle}">
+        ${festArtUrl()?`<img class="fest-cardart" src="${festArtUrl()}" alt="" onerror="this.remove()">`:''}
         <div class="member-top">
           <div>
             <div class="member-tier">${esc(currentTierName)}</div>
