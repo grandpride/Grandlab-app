@@ -580,6 +580,8 @@
   .fest-hang{position:absolute;top:0;transform-origin:50% 0;
     animation:festSway ease-in-out infinite alternate;}
   @keyframes festSway{from{transform:rotate(-3.2deg);}to{transform:rotate(3.2deg);}}
+  /* heavier brass lamps swing less - also keeps them clear of the screen edge */
+  @keyframes festSwayArt{from{transform:rotate(-1.6deg);}to{transform:rotate(1.6deg);}}
   .fest-flame{transform-origin:50% 100%;animation:festFlicker 1.5s ease-in-out infinite alternate;}
   @keyframes festFlicker{from{transform:scaleY(.85) scaleX(1.05);opacity:.82;}
                            to{transform:scaleY(1.1) scaleX(.95);opacity:1;}}
@@ -587,11 +589,15 @@
   @keyframes festSpin{to{transform:rotate(360deg);}}
   .fest-bulb{animation:festGlow 2.6s ease-in-out infinite;}
   @keyframes festGlow{0%,100%{opacity:.4}50%{opacity:1}}
+  /* illustrated hanging art, anchored to the top edge */
+  .fest-hangart{position:absolute;top:0;right:3px;width:40vw;max-width:158px;
+    transform-origin:62% 0;animation:festSwayArt 5.6s ease-in-out infinite alternate;
+    filter:drop-shadow(0 8px 22px rgba(0,0,0,.45));}
   /* slot for illustrated art (transparent PNG) - anchored, never over the cards */
   .fest-art{position:absolute;right:-6px;bottom:84px;width:46vw;max-width:210px;
     opacity:.92;pointer-events:none;filter:drop-shadow(0 10px 24px rgba(0,0,0,.5));}
   @media (prefers-reduced-motion: reduce){
-    .fest-ember,.fest-hang,.fest-flame,.fest-rangoli,.fest-bulb{animation:none;}
+    .fest-ember,.fest-hang,.fest-flame,.fest-rangoli,.fest-bulb,.fest-hangart{animation:none;}
   }
   /* intro overlay */
   .fest-intro{position:fixed;inset:0;z-index:300;display:flex;flex-direction:column;align-items:center;justify-content:center;
@@ -1415,6 +1421,11 @@ function festEmbers(n, colors){
   }
   return h;
 }
+// if the illustration cannot load, fall back to the drawn lamps
+function festArtFallback(img){
+  const amb=img.closest('.fest-amb'); img.remove();
+  if(amb) amb.insertAdjacentHTML('beforeend', festDiya('66vw',40,1,0)+festDiya('82vw',92,.8,1.1));
+}
 let _diyaN=0;
 function festDiya(x, hang, scale, delay){
   // fixed 54x170 viewBox: string runs 0..hang, lamp sits at hang.
@@ -1485,8 +1496,8 @@ const FEST_SCENE = {
       + festRangoli()
       + festEmbers(16, ['#FFB347','#FFD24D','#FF7A2F'])
       + festLights()
-      + festDiya('66vw', 40, 1, 0)
-      + festDiya('82vw', 92, .8, 1.1)
+      + `<img class="fest-hangart" src="art/fest-deepavali-diyas.png" alt="" `
+        + `onerror="festArtFallback(this)">`
       + (art?`<img class="fest-art" src="${art}" alt="">`:'');
   }
 };
