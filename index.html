@@ -518,7 +518,7 @@
   .botnav.pill{border-top:none;padding-bottom:0;
     margin:0 12px calc(18px + env(safe-area-inset-bottom,0px));
     border-radius:30px;
-    background:linear-gradient(180deg,#17160f,#0e0e0c);
+    background:var(--navpill,linear-gradient(180deg,#17160f,#0e0e0c));
     border:1px solid rgba(255,255,255,.08);
     box-shadow:0 12px 28px rgba(0,0,0,.6),0 2px 8px rgba(0,0,0,.45);}
   .botnav.pill button{border-radius:30px;}
@@ -1460,6 +1460,22 @@ function festRangoli(){
   return `<svg class="fest-rangoli" style="left:-70px;bottom:-60px;width:220px;height:220px" viewBox="0 0 220 220">`
        + rings + petals + `</svg>`;
 }
+// Surface tint. Without this the cards keep the default near-black and read as
+// black squares sitting on a coloured background.
+const FEST_TINT = {
+  diya: {
+    '--surface'        :'#1E1231',
+    '--surface2'       :'#2A1A42',
+    '--line'           :'#3B2459',
+    '--card-grad'      :'linear-gradient(150deg,#241639 0%,#1A0F2B 55%,#120A1E 100%)',
+    '--card-grad-gold' :'linear-gradient(150deg,#33204C 0%,#1F1334 60%,#140C22 100%)',
+    '--gold-line'      :'rgba(255,176,88,.34)',
+    '--gold-line-soft' :'rgba(255,176,88,.16)',
+    '--navpill'        :'linear-gradient(180deg,#241639,#150C24)'
+  }
+};
+const FEST_TINT_KEYS = ['--surface','--surface2','--line','--card-grad',
+                        '--card-grad-gold','--gold-line','--gold-line-soft','--navpill'];
 // Deepavali scene. Add more keys here as each festival gets its own art.
 const FEST_SCENE = {
   diya: function(f){
@@ -1480,6 +1496,8 @@ function renderFestLayer(){
   _diyaN=0;
   const _root=document.getElementById('appRoot');
   if(_root) _root.classList.remove('fest-themed');
+  // always clear the tint first, so turning a festival off restores the defaults
+  FEST_TINT_KEYS.forEach(k=>document.documentElement.style.removeProperty(k));
   if(!CURRENT_FEST) return;
   // v2 scene if this festival has one, otherwise the original emoji layer
   const scene=FEST_SCENE[CURRENT_FEST.deco];
@@ -1490,6 +1508,8 @@ function renderFestLayer(){
     document.body.appendChild(amb);
     // let the themed background show through, unless a custom bg image is set
     if(_root && !_root.classList.contains('has-bg')) _root.classList.add('fest-themed');
+    const tint=FEST_TINT[CURRENT_FEST.deco];
+    if(tint) for(const k in tint) document.documentElement.style.setProperty(k, tint[k]);
     return;
   }
   const glyphs=FEST_GLYPH[CURRENT_FEST.deco]||['✨'];
