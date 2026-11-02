@@ -498,6 +498,21 @@
   .botnav button.on{color:var(--yellow);}
   .botnav .ic{display:flex;align-items:center;justify-content:center;height:22px;}
   .botnav button.on .ic svg{filter:drop-shadow(0 0 6px rgba(245,197,24,.5));}
+  /* --- raised centre QR nav (6 tabs + centre) --- */
+  .botnav{position:relative;overflow:visible;z-index:40;}
+  .botnav.nav7 button{padding:9px 0 10px;font-size:8px;gap:3px;letter-spacing:-.02em;}
+  .botnav.nav7 .ic{height:19px;}
+  .botnav.nav7 .ic svg{width:18px;height:18px;}
+  .botnav .nav-mid{position:relative;flex:1;max-width:64px;}
+  .botnav .nav-mid .ring{position:absolute;top:-22px;left:50%;transform:translateX(-50%);
+    width:52px;height:52px;border-radius:50%;background:var(--yellow);border:4px solid #0a0a0a;
+    display:flex;align-items:center;justify-content:center;color:#080808;
+    box-shadow:0 6px 18px rgba(245,197,24,.35);transition:transform .12s;}
+  .botnav .nav-mid .ring svg{width:24px;height:24px;}
+  .botnav .nav-mid .cap{margin-top:22px;color:var(--yellow);}
+  .botnav .nav-mid:active .ring{transform:translateX(-50%) scale(.93);}
+  /* one QR only - the raised centre replaces the header icon */
+  .top-ic[title="My referral QR"]{display:none;}
   .field{margin-top:16px;}
   .veh-kind-toggle{display:flex;gap:8px;margin-bottom:14px;}
   .vk-btn{flex:1;height:46px;background:var(--surface);border:1.5px solid var(--line);border-radius:14px;
@@ -2260,8 +2275,10 @@ function navIcon(name){
 }
 function botnav(active){
   const t=(id,label)=>`<button class="${active===id?'on':''}" onclick="routeTab('${id}')"><span class="ic">${navIcon(id)}</span>${label}</button>`;
-  return `<div class="botnav">
-    ${t('home','Home')}${t('package','Package')}${t('order','Order')}${t('wallet','Wallet')}${t('rewards','Rewards')}${t('account','Account')}
+  const qr=`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><line x1="17" y1="14" x2="21" y2="14"/><line x1="14" y1="17" x2="14" y2="21"/><line x1="21" y1="17" x2="21" y2="21"/><line x1="17" y1="21" x2="17" y2="21"/></svg>`;
+  const mid=`<button class="nav-mid" onclick="showReferralQR()"><span class="ring">${qr}</span><span class="cap">My QR</span></button>`;
+  return `<div class="botnav nav7">
+    ${t('home','Home')}${t('package','Package')}${t('order','Order')}${mid}${t('wallet','Wallet')}${t('rewards','Rewards')}${t('account','Account')}
   </div>`;
 }
 
