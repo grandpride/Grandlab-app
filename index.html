@@ -500,27 +500,27 @@
   .botnav button.on .ic svg{filter:drop-shadow(0 0 6px rgba(245,197,24,.5));}
   /* --- raised centre QR nav (6 tabs + centre) --- */
   .botnav{position:relative;overflow:visible;z-index:40;}
-  .botnav.nav7 button{padding:9px 0 10px;font-size:8px;gap:3px;letter-spacing:-.02em;}
-  .botnav.nav7 .ic{height:19px;}
-  .botnav.nav7 .ic svg{width:18px;height:18px;}
+  .botnav.nav7 button{padding:12px 0 13px;font-size:9px;gap:3px;letter-spacing:-.02em;}
+  .botnav.nav7 .ic{height:22px;}
+  .botnav.nav7 .ic svg{width:21px;height:21px;}
   .botnav .nav-mid{position:relative;flex:1;max-width:64px;}
-  .botnav .nav-mid .ring{position:absolute;top:-22px;left:50%;transform:translateX(-50%);
-    width:52px;height:52px;border-radius:50%;background:var(--yellow);border:4px solid #0a0a0a;
+  .botnav .nav-mid .ring{position:absolute;top:-26px;left:50%;transform:translateX(-50%);
+    width:58px;height:58px;border-radius:50%;background:var(--yellow);border:4px solid #0a0a0a;
     display:flex;align-items:center;justify-content:center;color:#080808;
     box-shadow:0 6px 18px rgba(245,197,24,.35);transition:transform .12s;}
-  .botnav .nav-mid .ring svg{width:24px;height:24px;}
-  .botnav .nav-mid .cap{margin-top:22px;color:var(--yellow);}
+  .botnav .nav-mid .ring svg{width:27px;height:27px;}
+  .botnav .nav-mid .cap{margin-top:25px;color:var(--yellow);}
   .botnav .nav-mid:active .ring{transform:translateX(-50%) scale(.93);}
   /* one QR only - the raised centre replaces the header icon */
   .top-ic[title="My referral QR"]{display:none;}
   /* --- floating pill --- */
   .botnav.pill{border-top:none;padding-bottom:0;
-    margin:0 12px calc(10px + env(safe-area-inset-bottom,0px));
-    border-radius:26px;
+    margin:0 12px calc(18px + env(safe-area-inset-bottom,0px));
+    border-radius:30px;
     background:linear-gradient(180deg,#17160f,#0e0e0c);
     border:1px solid rgba(255,255,255,.08);
     box-shadow:0 12px 28px rgba(0,0,0,.6),0 2px 8px rgba(0,0,0,.45);}
-  .botnav.pill button{border-radius:26px;}
+  .botnav.pill button{border-radius:30px;}
   .field{margin-top:16px;}
   .veh-kind-toggle{display:flex;gap:8px;margin-bottom:14px;}
   .vk-btn{flex:1;height:46px;background:var(--surface);border:1.5px solid var(--line);border-radius:14px;
@@ -768,6 +768,17 @@
   .ref-code-row{font-size:12.5px;color:var(--muted);margin-top:3px;}
   .ref-code-row b{color:var(--yellow);letter-spacing:1px;}
   .ref-copy{cursor:pointer;margin-left:6px;}
+  /* --- referral hero: name, big QR, code underneath --- */
+  .ref-hero{text-align:center;margin:2px 0 20px;}
+  .ref-hero-av{width:48px;height:48px;border-radius:50%;background:var(--surface2);margin:0 auto 8px;
+    display:flex;align-items:center;justify-content:center;font-size:22px;overflow:hidden;}
+  .ref-hero-av img{width:100%;height:100%;object-fit:cover;}
+  .ref-hero-name{font-size:19px;font-weight:800;margin-bottom:14px;}
+  .ref-hero-qr{width:208px;height:208px;margin:0 auto;background:#fff;border-radius:18px;padding:10px;
+    display:flex;align-items:center;justify-content:center;box-shadow:0 10px 28px rgba(0,0,0,.45);}
+  .ref-hero-qr img,.ref-hero-qr canvas,.ref-hero-qr table{display:block;}
+  .ref-hero-code{margin-top:14px;font-size:21px;font-weight:800;color:var(--yellow);letter-spacing:2px;}
+  .ref-hero-hint{margin-top:6px;font-size:12.5px;color:var(--muted);}
   .ref-earn-t{font-size:16px;font-weight:800;margin-bottom:12px;}
   .ref-check{display:flex;align-items:center;gap:10px;font-size:13.5px;color:var(--muted);padding:7px 0;}
   .ref-check.on{color:var(--text);}
@@ -846,7 +857,7 @@
     border-radius:14px;padding:0 16px;color:var(--text);font-size:16px;outline:none;}
   .field input:focus{border-color:var(--yellow);}
   .field input:disabled{opacity:.6;}
-  .topbar-app{display:flex;align-items:center;gap:12px;padding:calc(14px + env(safe-area-inset-top)) 18px 14px;
+  .topbar-app{position:relative;display:flex;align-items:center;gap:12px;padding:calc(14px + env(safe-area-inset-top)) 18px 14px;
     border-bottom:1px solid var(--line);}
   .topbar-app .back{background:none;border:none;color:var(--text);font-size:22px;cursor:pointer;}
   .topbar-app .ttl{font-size:18px;font-weight:700;}
@@ -2924,9 +2935,8 @@ function openMyVehicles(){
 /* ---------- My Packages (car-centric: cars → car detail) ---------- */
 async function openMyPackages(){
   if(IS_GUEST){ toast('Sign in to view packages'); return; }
-  appRoot.innerHTML=`
-    <div class="topbar-app"><button class="back" onclick="routeTab('account')">‹</button><div class="ttl">My Cars</div></div>
-    <div class="app-scroll" style="padding-top:18px"><div class="app-sub">Loading…</div></div>`;
+  // no interim paint here - it blanked the whole screen (nav included) and read as a flash.
+  // every other tab fetches first and paints once; match that.
   await Promise.allSettled([ fetchPackages(), fetchClaims(), (!VEHICLES.length?fetchVehicles():Promise.resolve()) ]);
   // count active packages per car
   const pkgCount={};
@@ -3211,13 +3221,13 @@ async function openReferralPage(){
       <button class="help-btn" onclick="showReferralTerms()">?</button>
     </div>
     <div class="app-scroll" style="padding-top:14px">
-      <div class="ref-head">
-        <div class="ref-avatar">${PROFILE?.photo?`<img src="${PROFILE.photo}">`:'🧑'}</div>
-        <div>
-          <div class="ref-name">${esc(PROFILE?.name||'You')}</div>
-          <div class="ref-code-row">Referral Code: <b>${esc(code||'—')}</b>
-            ${code?`<span class="ref-copy" onclick="copyRefCode('${code}')">⧉</span>`:''}</div>
-        </div>
+      <div class="ref-hero">
+        <div class="ref-hero-av">${PROFILE?.photo?`<img src="${PROFILE.photo}">`:'🧑'}</div>
+        <div class="ref-hero-name">${esc(PROFILE?.name||'You')}</div>
+        <div class="ref-hero-qr" id="refHeroQR"></div>
+        <div class="ref-hero-code">${esc(code||'—')}
+          ${code?`<span class="ref-copy" onclick="copyRefCode('${code}')">⧉</span>`:''}</div>
+        <div class="ref-hero-hint">Friends scan this to sign up with your code</div>
       </div>
 
       <div class="ref-earn-t">Earn a free car wash</div>
@@ -3230,7 +3240,6 @@ async function openReferralPage(){
 
       <div class="ref-actions">
         <button class="btn btn-primary ref-share" onclick="shareReferral('${code}')">Share</button>
-        <button class="ref-qr-btn" onclick="showRefQRPopup()">${qrGlyph()}</button>
       </div>
 
       <div class="ref-list-t">Friends I have invited</div>
@@ -3242,6 +3251,13 @@ async function openReferralPage(){
           <div class="ref-friend-status joined">Joined</div>
         </div>`).join('') : `<div class="ref-empty">No referral at the moment</div>`}
     </div>`;
+  // draw the hero QR (same source as the old popup: the signup link carrying the code)
+  const qrHost=document.getElementById('refHeroQR');
+  if(qrHost && code){
+    const link=`${location.origin}${location.pathname}?ref=${encodeURIComponent(code)}`;
+    if(window.QRCode){ new QRCode(qrHost,{text:link,width:188,height:188,colorDark:"#111",colorLight:"#fff"}); }
+    else { qrHost.innerHTML=`<img src="https://api.qrserver.com/v1/create-qr-code/?size=188x188&data=${encodeURIComponent(link)}" width="188" height="188">`; }
+  }
 }
 function qrGlyph(){ return '<svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M3 3h8v8H3V3zm2 2v4h4V5H5zm8-2h8v8h-8V3zm2 2v4h4V5h-4zM3 13h8v8H3v-8zm2 2v4h4v-4H5zm10-2h2v2h-2v-2zm4 0h2v2h-2v-2zm-4 4h2v2h-2v-2zm0 4h2v2h-2v-2zm4-4h2v2h-2v-2zm0 4h2v2h-2v-2z"/></svg>'; }
 
