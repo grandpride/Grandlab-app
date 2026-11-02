@@ -643,7 +643,7 @@
   .mycar-plate{font-size:12.5px;color:var(--muted);margin-top:2px;}
   .mycar-right{display:flex;align-items:center;gap:8px;flex:0 0 auto;}
   .mycar-badge{background:rgba(245,197,24,.14);color:var(--yellow);font-size:11px;font-weight:700;padding:4px 9px;border-radius:12px;}
-  .cd-head{display:flex;align-items:center;gap:10px;margin-bottom:14px;}
+  .cd-head{display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap;}
   .cd-plate{font-size:15px;font-weight:800;letter-spacing:.04em;}
   .cd-type{font-size:11px;background:var(--surface2);color:var(--muted);padding:3px 10px;border-radius:10px;}
   .cd-tabs{display:flex;gap:8px;}
@@ -780,6 +780,12 @@
   .ref-hero-qr img,.ref-hero-qr canvas,.ref-hero-qr table{display:block;}
   .ref-hero-code{margin-top:14px;font-size:21px;font-weight:800;color:var(--yellow);letter-spacing:2px;}
   .ref-hero-hint{margin-top:6px;font-size:12.5px;color:var(--muted);}
+  /* --- car QR: same target as the printed door-jamb sticker --- */
+  .cd-qr-wrap{flex:1 0 100%;display:flex;flex-direction:column;align-items:center;margin-top:16px;}
+  .cd-qr{width:152px;height:152px;background:#fff;border-radius:16px;padding:9px;
+    display:flex;align-items:center;justify-content:center;box-shadow:0 8px 22px rgba(0,0,0,.45);}
+  .cd-qr img,.cd-qr canvas,.cd-qr table{display:block;}
+  .cd-qr-hint{margin-top:9px;font-size:12px;color:var(--muted);text-align:center;}
   .ref-earn-t{font-size:16px;font-weight:800;margin-bottom:12px;}
   .ref-check{display:flex;align-items:center;gap:10px;font-size:13.5px;color:var(--muted);padding:7px 0;}
   .ref-check.on{color:var(--text);}
@@ -2988,12 +2994,13 @@ async function openMyPackages(){
     ${botnav('package')}`;
 }
 
+// Must match QR_TARGET in gl-customers.html, so a scanned sticker and a scanned
+// phone screen open the same page. Change both together.
+const VEHICLE_QR_TARGET="https://app.grandlab.com.my/gl-warranty.html?plate=";
 async function openCarDetail(vehId){
   const v=(VEHICLES||[]).find(x=>String(x.id)===String(vehId)); if(!v) return;
   const label=[v.make,v.model].filter(Boolean).join(' ')||'Vehicle';
-  appRoot.innerHTML=`
-    <div class="topbar-app"><button class="back" onclick="openMyPackages()">‹</button><div class="ttl">${esc(label)}</div><button class="home-btn" onclick="routeTab('home')">⌂</button></div>
-    <div class="app-scroll" style="padding-top:16px"><div class="app-sub">Loading…</div></div>`;
+  // no interim paint here - it blanked the screen and read as a flash
   // fetch this car's service records (populated by POS later)
   let records=[];
   try{
@@ -3030,13 +3037,25 @@ async function openCarDetail(vehId){
       <div class="cd-head">
         <div class="cd-plate">${esc(v.plate||'')}</div>
         ${v.car_type?`<div class="cd-type">${esc(v.car_type)}</div>`:''}
+        ${v.plate?`<div class="cd-qr-wrap">
+          <div class="cd-qr" id="carQR"></div>
+          <div class="cd-qr-hint">Show this to our staff<br>to pull up this car</div>
+        </div>`:''}
       </div>
       <div class="cd-tabs">
         <button class="cd-tab ${tab==='packages'?'on':''}" onclick="window._carTab='packages';openCarDetail('${vehId}')">Packages</button>
         <button class="cd-tab ${tab==='history'?'on':''}" onclick="window._carTab='history';openCarDetail('${vehId}')">History</button>
       </div>
       <div style="margin-top:14px">${tab==='packages'?pkgsBody:histBody}</div>
-    </div>`;
+    </div>
+    ${botnav('package')}`;
+  // same code the printed door-jamb sticker carries, so one scanner handles both
+  const carQrHost=document.getElementById('carQR');
+  if(carQrHost && v.plate){
+    const target=VEHICLE_QR_TARGET+encodeURIComponent(v.plate);
+    if(window.QRCode){ new QRCode(carQrHost,{text:target,width:134,height:134,colorDark:"#111",colorLight:"#fff"}); }
+    else { carQrHost.innerHTML=`<img src="https://api.qrserver.com/v1/create-qr-code/?size=134x134&data=${encodeURIComponent(target)}" width="134" height="134">`; }
+  }
 }
 
 function pkgCardHtml(p, completed){
