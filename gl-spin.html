@@ -297,26 +297,31 @@ async function doSpin(){
       return;
     }
   }catch(e){}
-  // server decides the prize (tamper-proof)
-  let prize=null;
-  try{ const {data}=await sb.rpc('gl_spin_draw'); prize=Array.isArray(data)?data[0]:data; }catch(e){}
-  if(!prize){ const tot=PRIZES.reduce((s,p)=>s+Number(p.weight||1),0); let r=Math.random()*tot,a=0;
-    prize=PRIZES.find(p=>{ a+=Number(p.weight||1); return r<=a; })||PRIZES[0]; }
-  WON=prize;
-  // SAVE THE WIN FIRST — if it fails (duplicate phone), stop and don't spin
-  const ref='SP-'+Math.random().toString(36).slice(2,6).toUpperCase();
+  // One server call draws the prize AND records the win. The browser used to
+  // re-send the drawn prize and insert the row itself, so the "tamper-proof"
+  // draw could simply be skipped and any prize written straight in.
   const s=SUBMITTED;
-  const {error:winErr}=await sb.from('gl_spin_wins').insert({
-    ref_code:ref, name:s.name, phone:'+'+s.phone, plate:s.plate,
-    car_brand:s.brandName==='— select —'?'':s.brandName, car_model:s.model, car_type:s.ctype||null, email:s.email,
-    prize_id:prize.id, prize_label:prize.label, prize_kind:prize.kind, prize_value:prize.value, status:'won'
-  });
-  if(winErr){
+  let prize=null, ref=null;
+  try{
+    const {data,error}=await sb.rpc('gl_spin_record',{
+      p_name:s.name, p_phone:'+'+s.phone, p_plate:s.plate,
+      p_brand:s.brandName, p_model:s.model, p_ctype:s.ctype||null, p_email:s.email });
+    if(error) throw error;
+    const res = Array.isArray(data)?data[0]:data;
+    if(!res || !res.ok){
+      spinning=false; $('spinBtn').disabled=false; $('spinBtn').textContent='SPIN NOW';
+      showStatus(res && res.reason==='already_spun'
+        ? 'This car has already spun. One spin per car.'
+        : 'Could not record your spin. Please try again.','err');
+      return;
+    }
+    prize = res.prize; ref = res.ref;
+  }catch(e){
     spinning=false; $('spinBtn').disabled=false; $('spinBtn').textContent='SPIN NOW';
-    if(String(winErr.message||'').match(/duplicate|unique/i)) showStatus('This car has already spun. One spin per car.','err');
-    else showStatus('Could not record your spin. Please try again.','err');
+    showStatus('Could not record your spin. Please try again.','err');
     return;
   }
+  WON=prize;
   // win saved -> now animate the wheel to land on the prize
   const idx=Math.max(0,PRIZES.findIndex(p=>p.id===prize.id));
   const n=PRIZES.length, seg=360/n;
