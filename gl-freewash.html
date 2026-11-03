@@ -253,8 +253,8 @@ async function submitFreeWash(){
     // create/update gl_walkin (customer record)
     try{
       let ex=null;
-      if(plate){ const {data}=await sb.from('gl_walkin').select('id').ilike('plate',plate).limit(1).maybeSingle(); ex=data; }
-      if(!ex){ const {data}=await sb.from('gl_walkin').select('id').eq('phone','+'+phone).or('plate.is.null,plate.eq.').limit(1).maybeSingle(); ex=data; }
+      if(plate){ ex = await walkinFind(sb, plate, null); }
+      if(!ex){ ex = await walkinFind(sb, null, '+'+phone); }
       const wk={name, phone:'+'+phone, plate, model, car_type:ctype||null};
       if(ex) await sb.from('gl_walkin').update(wk).eq('id',ex.id);
       else await sb.from('gl_walkin').insert(wk);
@@ -296,6 +296,30 @@ function sendToMia(){
 (function(){
   loadCars();
 })();
+
+/* Look a walk-in customer up without being able to read the whole table.
+   gl_walkin_find is SECURITY DEFINER and returns only id/plate/model for an
+   exact plate or phone - never name, phone or email. Falls back to the old
+   direct select while the broad anon read policy is still in place, so this
+   change is safe to deploy on its own. */
+async function walkinFind(sb, plate, phone){
+  try{
+    const {data,error}=await sb.rpc('gl_walkin_find',{p_plate:plate||null,p_phone:phone||null});
+    if(!error) return (data && data.length) ? data[0] : null;
+  }catch(e){ /* fall through */ }
+  try{
+    if(plate){
+      const {data}=await sb.from('gl_walkin').select('id,plate,model').ilike('plate',plate).limit(1).maybeSingle();
+      if(data) return data;
+    }
+    if(phone){
+      const {data}=await sb.from('gl_walkin').select('id,plate,model').eq('phone',phone)
+        .or('plate.is.null,plate.eq.').limit(1).maybeSingle();
+      return data||null;
+    }
+  }catch(e){}
+  return null;
+}
 </script>
 </body>
 </html>
