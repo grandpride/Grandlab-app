@@ -1737,35 +1737,20 @@ async function saveProfile(fields){
    Matched by phone. Plate is carried into vehicle_label (the package link key). */
 async function claimPendingBalances(){
   if(!SESSION?.user?.id) return;
-  const phone = (SESSION.user.phone || (PROFILE&&PROFILE.phone) || '').replace(/[^0-9]/g,'');
-  if(!phone || phone.length<7) return;
-  // find unclaimed pending balances for this phone
-  const r=await fetch(`${SUPA_URL}/rest/v1/gl_pending?phone=eq.${phone}&claimed=eq.false&select=*`,{headers:authHeaders()});
-  if(!r.ok) return;
-  const pend=await r.json();
-  if(!Array.isArray(pend)||!pend.length) return;
-  // create a gl_packages row for each pending balance
-  for(const p of pend){
-    const body={
-      owner_id: SESSION.user.id,
-      vehicle_id: null,
-      vehicle_label: (p.plate||'').toUpperCase(),
-      service_name: p.service_name,
-      pkg_type: p.is_coating ? 'coating_maintenance' : 'package',
-      total_uses: p.remaining||0,
-      used_uses: 0,
-      status: 'active',
-      source: 'claimed_pending'
-    };
-    try{
-      await fetch(`${SUPA_URL}/rest/v1/gl_packages`,{method:'POST',headers:authHeaders(),body:JSON.stringify(body)});
-      // mark this pending row claimed so it can't double-transfer
-      await fetch(`${SUPA_URL}/rest/v1/gl_pending?id=eq.${p.id}`,{method:'PATCH',
-        headers:Object.assign(authHeaders(),{Prefer:'return=minimal'}),body:JSON.stringify({claimed:true})});
-    }catch(e){ console.error('claim one pending failed', e); }
-  }
-  // refresh packages so the app home/package tab shows them immediately
-  try{ await fetchPackages(); }catch(e){}
+  // Server-side. The browser used to read gl_pending and then POST the
+  // gl_packages rows itself, which meant anyone could post a package with any
+  // number of uses. gl_app_claim_pending derives the customer from the session,
+  // reads their phone from their profile, and copies the balance from the
+  // pending row - the browser supplies nothing.
+  // It also matches on the last 9 digits, so the +60.../60... mix in the data
+  // no longer stops a claim.
+  try{
+    const r = await fetch(`${SUPA_URL}/rest/v1/rpc/gl_app_claim_pending`,
+      { method:'POST', headers:authHeaders(), body:'{}' });
+    if(!r.ok){ console.warn('claim pending failed', r.status); return; }
+    const out = await r.json().catch(()=>null);
+    if(out && out.claimed > 0){ try{ await fetchPackages(); }catch(e){} }
+  }catch(e){ console.error('claimPendingBalances', e); }
 }
 async function fetchServices(){
   try{
