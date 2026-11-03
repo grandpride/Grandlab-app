@@ -4299,7 +4299,7 @@ async function doCheckout(method){
       }catch(e){ /* booking mirror is best-effort; order already created */ }
       // multi-use package handling (only finalize package on PAID or counter; for online we still create on return)
       if(method==='counter'){
-        await afterOrderCreated(s, car, carLabel);
+        await afterOrderCreated(orderRef);
         // Points are earned when the sale is actually paid (POS / webhook),
         // not when an unpaid "pay at outlet" booking is created.
         toast("Booked ✓ — pay at outlet"); routeTab('order'); return;
@@ -4322,7 +4322,7 @@ async function doCheckout(method){
           return;
         }
         if(PROFILE){ PROFILE.wallet=Number(res.wallet); PROFILE.points=Number(res.points); }
-        await afterOrderCreated(s, car, carLabel);
+        await afterOrderCreated(orderRef);
         const earned=Number(res.earned||0);
         toast(earned>0 ? `Paid with wallet ✓ · +${earned} G Coin` : 'Paid with wallet ✓');
         try{ await fetchProfile(); }catch(e){}
@@ -4355,31 +4355,20 @@ async function doCheckout(method){
   }catch(e){ console.error('order error:', e); toast("Order error: "+e.message); }
 }
 // create package + milestone rewards after an order is placed (used by counter + paid online)
-async function afterOrderCreated(s, car, carLabel){
-  const uses = Number(s.pkg_uses||0);
-  if(uses>1){
-    const barcode = genBarcodeValue();
-    const pr=await fetch(`${SUPA_URL}/rest/v1/gl_packages`,{
-      method:"POST",headers:Object.assign(authHeaders(),{Prefer:"return=representation"}),
-      body:JSON.stringify({owner_id:SESSION.user.id, vehicle_id:car?.id||null, vehicle_label:carLabel,
-        service_id:s.id, service_name:s.name, pkg_type:s.pkg_type||'custom',
-        total_uses:uses, used_uses:0, barcode:barcode, status:'active', source:'app'})});
-    if(pr.ok){
-      const pkgRow=(await pr.json())[0];
-      const ms=Array.isArray(s.milestones)?s.milestones:[];
-      if(pkgRow && ms.length){
-        const rows=ms.filter(m=>m && m.at).map(m=>({
-          package_id:pkgRow.id, owner_id:SESSION.user.id, at_use:Number(m.at),
-          service_id:m.service_id||null, label:m.label||'Reward',
-          barcode:genBarcodeValue(), status:'locked'}));
-        if(rows.length){
-          await fetch(`${SUPA_URL}/rest/v1/gl_package_rewards`,{
-            method:"POST",headers:authHeaders(),body:JSON.stringify(rows)});
-        }
-      }
-    }
-    PACKAGES=[];
-  }
+async function afterOrderCreated(orderRef){
+  // Server-side. This used to POST the gl_packages row from the browser with
+  // total_uses taken from the client's copy of the service, so anyone could
+  // post themselves a package with any number of uses.
+  // gl_app_create_order_package takes only the order ref: it checks the order
+  // belongs to the caller, then reads pkg_uses and the milestone rewards from
+  // gl_services. It is idempotent, so calling it twice cannot double-issue.
+  if(!orderRef) return;
+  try{
+    const r = await fetch(`${SUPA_URL}/rest/v1/rpc/gl_app_create_order_package`,
+      { method:'POST', headers:authHeaders(), body:JSON.stringify({p_order_ref:orderRef}) });
+    if(!r.ok){ console.warn('create order package failed', r.status); return; }
+    PACKAGES=[];                       // force a refetch so the new package shows
+  }catch(e){ console.error('afterOrderCreated', e); }
 }
 // unique-ish barcode value: GL + base36 timestamp + random — Code128-safe (digits+letters)
 // TEST ONLY (sandbox): find the newest unpaid topup order and credit it,
@@ -4423,9 +4412,7 @@ async function handlePayReturn(){
             toast('Gift sent ✓');
             routeTab('wallet'); return;
           }
-          const svc=(SERVICES||[]).find(x=>String(x.id)===String(ord.service_id));
-          const car=(VEHICLES||[]).find(v=>String(v.id)===String(ord.vehicle_id));
-          if(svc) await afterOrderCreated(svc, car, ord.vehicle_label||'');
+          await afterOrderCreated(ord.order_ref);
           // points are granted server-side by the webhook now; just refresh
           try{ await fetchProfile(); }catch(e){}
         }
