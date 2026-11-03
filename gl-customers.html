@@ -217,6 +217,8 @@ function typePicker(pfx){
 
 /* ---------- login ---------- */
 async function boot(){
+  // ?q=... prefills the search, so a scanned customer QR lands on that person
+  try{ const _q=new URLSearchParams(location.search).get('q'); if(_q) $('q').value=_q; }catch(e){}
   const {data}=await sb.auth.getSession();
   if(data&&data.session){ $('gate').classList.add('hide'); buildHead(); runSearch(); }
   else $('gate').classList.remove('hide');

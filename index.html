@@ -3271,10 +3271,13 @@ async function openReferralPage(){
         </div>`).join('') : `<div class="ref-empty">No referral at the moment</div>`}
     </div>
     ${botnav('qr')}`;
-  // draw the hero QR (same source as the old popup: the signup link carrying the code)
+  // draw the hero QR. It points at q.html, which decides where the scan lands:
+  // reception (a staff session on that browser) gets the customer's record,
+  // anyone else gets the normal signup page carrying the code.
   const qrHost=document.getElementById('refHeroQR');
   if(qrHost && code){
-    const link=`${location.origin}${location.pathname}?ref=${encodeURIComponent(code)}`;
+    const dir=location.pathname.replace(/[^/]*$/,'');
+    const link=`${location.origin}${dir}q.html?c=${encodeURIComponent(code)}`;
     if(window.QRCode){ new QRCode(qrHost,{text:link,width:188,height:188,colorDark:"#111",colorLight:"#fff"}); }
     else { qrHost.innerHTML=`<img src="https://api.qrserver.com/v1/create-qr-code/?size=188x188&data=${encodeURIComponent(link)}" width="188" height="188">`; }
   }
