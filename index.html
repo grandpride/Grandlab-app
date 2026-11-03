@@ -679,7 +679,9 @@
   .social-list{display:flex;flex-direction:column;}
   .social-line{display:flex;align-items:center;gap:12px;background:none;border:none;border-bottom:1px solid var(--line);border-radius:0;padding:15px 4px;text-decoration:none;color:var(--text);transition:.12s;}
   .social-line:active{opacity:.6;}
-  .social-line-ic{font-size:22px;flex:0 0 auto;}
+  .social-line-ic{font-size:22px;flex:0 0 auto;display:flex;align-items:center;justify-content:center;
+    width:26px;height:26px;}
+  .social-line-ic img{width:100%;height:100%;object-fit:contain;display:block;}
   .social-line-nm{font-size:15px;font-weight:700;flex:1;}
   .social-line-go{font-size:15px;color:var(--muted);flex:0 0 auto;}
   /* ===== booking calendar + slots ===== */
@@ -1603,7 +1605,8 @@ let CAR_BRANDS = [];    // gl_car_brands rows
 let CAR_MODELS = [];    // gl_car_models rows
 let HIGHLIGHTS = { items:[], autoslide:true, interval:4000 };
 let REVIEWS = { title:'What our customers say', items:[], autoslide:true };
-let SOCIAL = { title:'Follow us', facebook:'', instagram:'', tiktok:'', shareReward:'' };
+let SOCIAL = { title:'Follow us', facebook:'', instagram:'', tiktok:'', shareReward:'',
+               fbIcon:'', igIcon:'', ttIcon:'' };   // icons uploaded in admin
 let ACTIONBTN = { enabled:false, label:'Free Car Wash', service_id:null };
 let POPUP = { enabled:false, posters:[] };
 let REFERRAL = { terms:[], wash_service_id:null, need_tier:true, need_wash:true, target:5 };
@@ -2551,9 +2554,9 @@ async function renderHome(){
       <div class="sec-title" style="margin-top:22px">Our Social Media</div>
       ${SOCIAL.shareReward?`<div class="social-reward">🎁 ${esc(SOCIAL.shareReward)}</div>`:''}
       <div class="social-list">
-        ${SOCIAL.facebook?`<a class="social-line" href="${esc(SOCIAL.facebook)}" target="_blank" rel="noopener"><span class="social-line-ic">📘</span><span class="social-line-nm">Facebook</span><span class="social-line-go">↗</span></a>`:''}
-        ${SOCIAL.instagram?`<a class="social-line" href="${esc(SOCIAL.instagram)}" target="_blank" rel="noopener"><span class="social-line-ic">📸</span><span class="social-line-nm">Instagram</span><span class="social-line-go">↗</span></a>`:''}
-        ${SOCIAL.tiktok?`<a class="social-line" href="${esc(SOCIAL.tiktok)}" target="_blank" rel="noopener"><span class="social-line-ic">🎵</span><span class="social-line-nm">TikTok</span><span class="social-line-go">↗</span></a>`:''}
+        ${socialLine(SOCIAL.facebook,  SOCIAL.fbIcon, '📘', 'Facebook')}
+        ${socialLine(SOCIAL.instagram, SOCIAL.igIcon, '📸', 'Instagram')}
+        ${socialLine(SOCIAL.tiktok,    SOCIAL.ttIcon, '🎵', 'TikTok')}
       </div>
       <button class="social-share-btn" onclick="shareGrandlab()">↗ Share Grandlab with friends</button>`:''}
 
@@ -2565,6 +2568,19 @@ async function renderHome(){
   if(HIGHLIGHTS.autoslide!==false) startSlider('hlTrack', HIGHLIGHTS.interval||4000);
   if(REVIEWS.autoslide!==false && (REVIEWS.items||[]).length>1) startSlider('rvTrack', 5000);
   startFlashTimers();
+}
+
+// One social row. Uses the icon uploaded in admin; falls back to the emoji if
+// none is set, and also if the image 404s, so a bad URL never leaves a blank.
+function socialLine(url, icon, fallback, name){
+  if(!url) return '';
+  const art = icon
+    ? `<img src="${esc(icon)}" alt="" onerror="this.parentNode.textContent='${fallback}'">`
+    : fallback;
+  return `<a class="social-line" href="${esc(url)}" target="_blank" rel="noopener">`
+       + `<span class="social-line-ic">${art}</span>`
+       + `<span class="social-line-nm">${esc(name)}</span>`
+       + `<span class="social-line-go">↗</span></a>`;
 }
 
 /* ---------- service helpers (category match + visibility) ---------- */

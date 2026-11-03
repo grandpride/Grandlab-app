@@ -846,15 +846,20 @@
         <button class="btn btn-ghost btn-sm" onclick="addReview()">+ Add review</button>
 
         <div class="section-h" style="margin-top:22px">Social media</div>
-        <div class="hint">Links to your social pages + an optional reward message for customers who follow/share.</div>
+        <div class="hint">Links to your social pages + an optional reward message for customers who follow/share.
+          Upload your own icon for each one &mdash; square PNG with a transparent background works best.
+          Leave it empty and the app falls back to a default symbol.</div>
         <label style="margin-top:10px">Section title</label>
         <input id="soTitle" oninput="socialCfg.title=this.value" placeholder="Follow us">
         <label style="margin-top:8px">Facebook URL</label>
         <input id="soFb" oninput="socialCfg.facebook=this.value" placeholder="https://facebook.com/...">
+        <div id="soFbIconRow" class="so-icon-row"></div>
         <label style="margin-top:8px">Instagram URL</label>
         <input id="soIg" oninput="socialCfg.instagram=this.value" placeholder="https://instagram.com/...">
+        <div id="soIgIconRow" class="so-icon-row"></div>
         <label style="margin-top:8px">TikTok URL</label>
         <input id="soTt" oninput="socialCfg.tiktok=this.value" placeholder="https://tiktok.com/@...">
+        <div id="soTtIconRow" class="so-icon-row"></div>
         <label style="margin-top:8px">Share reward message (optional)</label>
         <input id="soReward" oninput="socialCfg.shareReward=this.value" placeholder="Follow & share to earn rewards!">
       </div>
@@ -1170,6 +1175,12 @@
 const SUPA_URL = "https://db.grandlab.com.my";
 let SVC_KEY = localStorage.getItem("gl_svc_key") || "";
 const BUCKET = "gl-images";
+(function(){ const st=document.createElement('style'); st.textContent=
+  '.so-icon-row{display:flex;align-items:center;gap:8px;margin-top:6px;flex-wrap:wrap}'+
+  '.so-icon-prev{width:34px;height:34px;border-radius:8px;object-fit:contain;'+
+    'background:rgba(127,127,127,.12);flex:0 0 auto}'+
+  '.so-icon-none{display:flex;align-items:center;justify-content:center;font-size:10px;opacity:.55}';
+  document.head.appendChild(st); })();
 const CAR_TYPES = ["Sedan","SUV","MPV","Supercar","Motorcycle"];
 const ICONS = ["🛡️","📋","✨","🚗","💧","🧴","🪄","⭐","🏁","🔧","🌟","🧽"];
 
@@ -2424,7 +2435,45 @@ function fillReviewsSocial(){
   if(g('soIg')) g('soIg').value=socialCfg.instagram||'';
   if(g('soTt')) g('soTt').value=socialCfg.tiktok||'';
   if(g('soReward')) g('soReward').value=socialCfg.shareReward||'';
+  renderSocialIcons();
   renderReviews();
+}
+
+/* ---------- social icons (uploaded, so every phone shows the same thing) ---------- */
+const SO_ICONS=[['fbIcon','soFbIconRow','Facebook'],
+                ['igIcon','soIgIconRow','Instagram'],
+                ['ttIcon','soTtIconRow','TikTok']];
+function renderSocialIcons(){
+  SO_ICONS.forEach(function(it){
+    const key=it[0], rowId=it[1], label=it[2];
+    const el=document.getElementById(rowId); if(!el) return;
+    const url=socialCfg[key]||'';
+    el.innerHTML =
+      (url ? '<img class="so-icon-prev" src="'+url+'" alt="">'
+           : '<span class="so-icon-prev so-icon-none">none</span>')
+      + '<input type="file" accept="image/*" style="display:none" id="'+rowId+'F" '
+      +   'onchange="uploadSocialIcon(this,\''+key+'\')">'
+      + '<button class="btn btn-ghost btn-sm" onclick="document.getElementById(\''+rowId+'F\').click()">'
+      +   (url?'Replace':'Upload')+' '+label+' icon</button>'
+      + (url ? '<button class="btn btn-ghost btn-sm" onclick="clearSocialIcon(\''+key+'\')">Remove</button>' : '');
+  });
+}
+async function uploadSocialIcon(input,key){
+  const f=input.files[0]; if(!f) return;
+  input.value='';                                  // so picking the same file again still fires
+  toast("Uploading\u2026");
+  const path='social-'+key+'-'+Date.now()+'-'+f.name.replace(/[^a-z0-9.]/gi,'_');
+  const r=await fetch(SUPA_URL+'/storage/v1/object/'+BUCKET+'/'+path,
+    {method:"POST",headers:{apikey:SVC_KEY,Authorization:"Bearer "+SVC_KEY},body:f});
+  if(!r.ok){ toast("Upload failed \u2014 is the gl-images bucket public?"); return; }
+  socialCfg[key]=SUPA_URL+'/storage/v1/object/public/'+BUCKET+'/'+path;
+  renderSocialIcons();
+  toast("Icon \u2713 \u2014 remember to Save");
+}
+function clearSocialIcon(key){
+  delete socialCfg[key];                           // the old file stays in storage, unreferenced
+  renderSocialIcons();
+  toast("Icon removed \u2014 remember to Save");
 }
 function renderReviews(){
   const el=document.getElementById('rvList'); if(!el) return;
