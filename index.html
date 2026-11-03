@@ -4479,20 +4479,20 @@ async function fetchPosPayments(){
 let ORDERS=[];
 async function renderOrders(which){
   which=which||'available';
-  try{ if(!IS_GUEST && SESSION?.user?.id) ORDERS=await fetchOrders(); }catch(e){}
-  if(!VEHICLES.length) try{ if(!IS_GUEST&&SESSION?.user?.id) await fetchVehicles(); }catch(e){}
+  const signedIn = !IS_GUEST && !!SESSION?.user?.id;
+  // One parallel batch. This used to be four awaits in a row, so every tap on
+  // Order cost four round trips end to end before anything painted.
+  // Orders / payments / reminders are money data and are deliberately NOT
+  // cached between visits - a customer must see a booking the moment it exists.
+  let posPays=[], reminders=[];
+  await Promise.allSettled([
+    signedIn ? fetchOrders().then(r=>{ ORDERS = r || ORDERS; }) : Promise.resolve(),
+    (signedIn && !VEHICLES.length) ? fetchVehicles() : Promise.resolve(),
+    (signedIn && which==='past')      ? fetchPosPayments().then(r=>{ posPays = r || []; })   : Promise.resolve(),
+    (which==='available')             ? fetchMaintenanceReminders().then(r=>{ reminders = r || []; }) : Promise.resolve()
+  ]);
   const available=ORDERS.filter(o=>o.status==='upcoming');
   const past=ORDERS.filter(o=>o.status==='completed'||o.status==='cancelled');
-  // completed POS counter sales (from gl_payments) — shown in Past
-  let posPays=[];
-  if(which==='past'){
-    try{ if(!IS_GUEST && SESSION?.user?.id) posPays=await fetchPosPayments(); }catch(e){}
-  }
-  // maintenance reminders due soon (from service records the POS writes)
-  let reminders=[];
-  if(which==='available'){
-    try{ reminders=await fetchMaintenanceReminders(); }catch(e){}
-  }
   const card=(o)=>{
     const isPaid = o.payment_status==='paid';
     const payBadge = isPaid
@@ -4826,11 +4826,14 @@ function waIcon(key, fallback){
 async function renderWallet(){
   const p=PROFILE||{};
   const joined = p.created_at ? new Date(p.created_at).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}) : '—';
-  let txns=[];
-  try{ if(!IS_GUEST && SESSION?.user?.id) txns=await fetchWalletTxns(); }catch(e){}
-  // also pull reward redemptions (points spent) to show in the history
-  let redeems=[];
-  try{ if(!IS_GUEST && SESSION?.user?.id) redeems=await fetchRedemptionHistory(); }catch(e){}
+  // both in one batch instead of one after the other
+  let txns=[], redeems=[];
+  if(!IS_GUEST && SESSION?.user?.id){
+    await Promise.allSettled([
+      fetchWalletTxns().then(r=>{ txns = r || []; }),
+      fetchRedemptionHistory().then(r=>{ redeems = r || []; })
+    ]);
+  }
   // build a unified, date-sorted list of entries
   const entries=[];
   txns.forEach(t=>entries.push({
@@ -5215,8 +5218,18 @@ async function runAppSpin(){
 async function renderRewards(){
   const p=PROFILE||{};
   const coins = p.points||0;
-  if(!REWARDS.length) try{ await fetchRewards(); }catch(e){}
-  if(!SERVICES.length) try{ await fetchServices(); }catch(e){}
+  // Start the spin-wins request too, so all three overlap. It used to run
+  // after the batch, which made Rewards two round trips deep instead of one.
+  const _uid=(SESSION&&SESSION.user&&SESSION.user.id)||'';
+  const spinP = _uid
+    ? fetch(`${SUPA_URL}/rest/v1/gl_spin_wins?owner_id=eq.${_uid}&order=created_at.desc`,
+            {headers:authHeaders()}).then(r=>r.ok?r.json():[]).catch(()=>[])
+    : Promise.resolve([]);
+  // catalogue data, safe to keep for the session; fetch the two together
+  await Promise.allSettled([
+    (!REWARDS.length)  ? fetchRewards()  : Promise.resolve(),
+    (!SERVICES.length) ? fetchServices() : Promise.resolve()
+  ]);
   const svcById=(id)=>SERVICES.find(s=>String(s.id)===String(id));
   const cardHtml=(r)=>{
     let img=r.image_url, nm=r.name;
@@ -5239,10 +5252,8 @@ async function renderRewards(){
   // spin-wheel prizes won with this account (merged by phone)
   let spinHtml='';
   try{
-    const uid=(SESSION&&SESSION.user&&SESSION.user.id)||'';
-    if(uid){
-      const rr=await fetch(`${SUPA_URL}/rest/v1/gl_spin_wins?owner_id=eq.${uid}&order=created_at.desc`,{headers:authHeaders()});
-      const wins=rr.ok?await rr.json():[];
+    const wins = await spinP;          // already in flight since the top
+    {
       if(wins&&wins.length){
         spinHtml=`<div class="sec-title" style="margin-top:14px">🎡 Spin Prizes</div>
           <div style="padding:0 16px">`+wins.map(w=>{
