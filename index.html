@@ -9,6 +9,14 @@
 <meta name="theme-color" content="#0A0A0A" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<!-- Static home-screen icon + short label. These must exist in the HTML itself:
+     applyStyle() later overrides the icon with the admin-uploaded logo, but that
+     needs a round trip, and iOS reads apple-touch-icon the moment the customer
+     taps Add to Home Screen. Without this, an early tap gets a screenshot of the
+     page instead of an icon. -->
+<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png" />
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png" />
+<meta name="apple-mobile-web-app-title" content="Grandlab" />
 <title>Grandlab Detailing</title>
 <style>
   :root{
