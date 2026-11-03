@@ -2492,7 +2492,6 @@ async function renderHome(){
       <div class="checkin-box">
         <div class="ci-row">${checkinHtml}</div>
         <button class="btn btn-primary ci-btn ${doneToday?'done':''}" onclick="${doneToday?'':'doCheckin()'}">${doneToday?'Checked in today ✓':(esc(STYLE.checkinBtn||'Check-in'))}</button>
-        ${refCode?`<div class="ci-qr" onclick="showReferralQR()">⊞ My Referral QR</div>`:''}
       </div>`:''}
 
       <!-- OUR BRANDS (auto-slide carousel) -->
