@@ -61,27 +61,26 @@
       <p class="sub" id="heroSub">Spin the wheel &mdash; every spin wins something.</p>
     </div>
 
-    <!-- STEP 1: spin straight away, no details asked -->
-    <div id="wheelStep" class="card">
+    <!-- STEP 2: the wheel, animated to the prize the server already picked -->
+    <div id="wheelStep" class="card hidden">
       <div class="wheel-wrap">
         <div class="pointer"></div>
         <div id="wheelDots" style="position:absolute;inset:0;z-index:3"></div>
         <div class="wheel" style="position:absolute;inset:0;z-index:1"></div>
         <canvas id="wheel" width="292" height="292" style="position:absolute;top:14px;left:14px;z-index:2;border-radius:50%;transition:transform 6.4s cubic-bezier(.1,.7,.03,1)"></canvas>
       </div>
-      <button class="btn btn-gold" id="spinBtn" onclick="doSpin()">SPIN NOW</button>
       <div id="status" class="status"></div>
     </div>
 
-    <!-- STEP 2: they won - now collect details -->
-    <div id="regStep" class="card hidden">
-      <div class="prize-won" id="wonLabel"></div>
-      <p class="sub" style="text-align:center;margin-bottom:14px">Enter your details to claim it.</p>
+    <!-- STEP 1: details first, so the prize is drawn and recorded server-side -->
+    <div id="regStep" class="card">
+      <div class="prize-won" id="wonLabel">Your details</div>
+      <p class="sub" style="text-align:center;margin-bottom:14px">Fill these in, then spin. Every spin wins something.</p>
       <div class="field"><label>Name</label><input id="rName" placeholder="Your name"></div>
       <div class="field"><label>Phone Number</label><input id="rPhone" type="tel" inputmode="numeric" placeholder="e.g. 60123456789"></div>
       <div class="field"><label>Car Plate</label><input id="rPlate" placeholder="e.g. ABC1234" style="text-transform:uppercase"></div>
       <div class="field"><label>Email</label><input id="rEmail" type="email" placeholder="you@email.com"></div>
-      <button class="btn btn-gold" id="regBtn" onclick="doRegister()">CLAIM MY PRIZE</button>
+      <button class="btn btn-gold" id="regBtn" onclick="doRegister()">SPIN NOW</button>
       <div id="regStatus" class="status"></div>
     </div>
 
@@ -108,7 +107,9 @@
 const SUPABASE_URL="https://db.grandlab.com.my";
 const SUPABASE_ANON="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzkzMDY5NDExLCJleHAiOjE5NTA3NDk0MTF9.IcbPnDCd9p6Z-_FNMvzfg9k6ayX7IpC48zdGacAD_qw";
 const CS_WHATSAPP="60129384313";              // Mia
-const COOLDOWN_DAYS=7;                        // next free spin after a week
+/* There is no cooldown. gl_spin_wins has a permanent unique index on
+   (phone, plate), so one car gets one spin for good - a "next free spin on
+   <date>" message would have been a promise the database never honours. */
 const VALID_DAYS=30;                          // how long a won prize stays redeemable
 const fmtD=d=>d.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON,{auth:{persistSession:false}});
@@ -174,12 +175,19 @@ async function loadPrizes(){
     const {data}=await sb.from('gl_spin_prizes').select('*').eq('active',true).order('sort_order',{ascending:true});
     PRIZES=data||[];
   }catch(e){ PRIZES=[]; }
-  if(!PRIZES.length){ $('status').textContent='Prizes unavailable right now.'; $('spinBtn').disabled=true; return; }
+  if(!PRIZES.length){
+    // the wheel step is hidden until they register, so say it where they are
+    $('regStatus').textContent='Prizes unavailable right now.';
+    $('regStatus').className='status err';
+    $('regBtn').disabled=true;
+    return;
+  }
   drawWheel();
 }
 
-/* A pending spin is remembered so refreshing the page cannot re-roll a better
-   prize. The prize itself is decided server-side by gl_spin_draw. */
+/* A recorded win is remembered so refreshing the page cannot re-roll a better
+   prize, and so the prize survives a reload mid-animation. The prize itself is
+   drawn and written server-side by gl_spin_record. */
 function savePending(o){ try{ localStorage.setItem('gl_giveaway_pending', JSON.stringify(o)); }catch(e){} }
 function readPending(){ try{ return JSON.parse(localStorage.getItem('gl_giveaway_pending')||'null'); }catch(e){ return null; } }
 function clearPending(){ try{ localStorage.removeItem('gl_giveaway_pending'); }catch(e){} }
@@ -188,30 +196,28 @@ function clearPending(){ try{ localStorage.removeItem('gl_giveaway_pending'); }c
    and the car PLATE are checked in the database at claim time - that is what
    actually stops a repeat. */
 
-async function doSpin(){
-  if(spinning || !PRIZES.length) return;
-  spinning=true; $('spinBtn').disabled=true; $('spinBtn').textContent='Spinning...';
-
-  let prize=null;
-  try{ const {data}=await sb.rpc('gl_spin_draw'); prize=Array.isArray(data)?data[0]:data; }catch(e){}
-  if(!prize){
-    const tot=PRIZES.reduce((s,p)=>s+Number(p.weight||1),0); let r=Math.random()*tot,a=0;
-    prize=PRIZES.find(p=>{ a+=Number(p.weight||1); return r<=a; })||PRIZES[0];
-  }
-  WON=prize;
-  const ref='GW-'+Math.random().toString(36).slice(2,6).toUpperCase();
-  PENDING_REF=ref;
-  savePending({ref:ref, prize:prize, at:Date.now()});
-
-  const idx=Math.max(0,PRIZES.findIndex(p=>p.id===prize.id));
-  const n=PRIZES.length, seg=360/n;
+/* The wheel is an animation, not the draw. By the time it turns, gl_spin_record
+   has already picked the prize and written the row, so a refresh, a second tab
+   or an edited page cannot change what was won. */
+function animateToPrize(prize, onDone){
+  const n=PRIZES.length||1, seg=360/n;
+  const idx=Math.max(0,PRIZES.findIndex(p=>p.id===(prize&&prize.id)));
   $('wheel').style.transform=`rotate(${360*8 + (360 - (idx*seg + seg/2))}deg)`;
-  setTimeout(()=>{
-    $('wheelStep').classList.add('hidden');
-    $('regStep').classList.remove('hidden');
-    $('wonLabel').textContent='You won: '+(WON.label||'');
-    $('heroSub').textContent='Almost there';
-  }, 6600);
+  setTimeout(onDone, 6600);
+}
+
+function showDone(){
+  const p=WON||{}, c=CLAIMED||{};
+  $('regStep').classList.add('hidden');
+  $('wheelStep').classList.add('hidden');
+  $('coolStep').classList.add('hidden');
+  $('doneStep').classList.remove('hidden');
+  $('doneLabel').textContent=p.label||'';
+  $('doneRef').textContent=PENDING_REF||'';
+  $('nextNote').innerHTML='<b>Valid '+(c.from||fmtD(new Date()))+' &ndash; '+(c.to||'')+'</b><br>'+
+    'Book with our customer service before it expires.<br><br>'+
+    'One spin per car &mdash; thanks for playing!';
+  $('heroSub').textContent='Prize claimed';
 }
 
 async function doRegister(){
@@ -224,53 +230,50 @@ async function doRegister(){
   if(phone.length<9){ st.textContent='Please enter a valid phone number.'; st.className='status err'; return; }
   if(!plate){ st.textContent='Please enter your car plate.'; st.className='status err'; return; }
   if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){ st.textContent='Please enter a valid email.'; st.className='status err'; return; }
-  $('regBtn').disabled=true; st.textContent='Saving...'; st.className='status';
+  if(spinning) return;
+  if(!PRIZES.length){ st.textContent='Prizes unavailable right now.'; st.className='status err'; return; }
+  spinning=true;
+  $('regBtn').disabled=true; $('regBtn').textContent='Spinning...';
+  st.textContent=''; st.className='status';
 
-  // one spin per phone per COOLDOWN_DAYS - checked here because no phone was
-  // known at spin time
+  /* One call draws the prize and writes the row. The "one spin per car" rule is
+     the unique index on (phone, plate) in the database, not a check here - a
+     client-side check could be skipped, and two phones hitting Spin at the same
+     second would both pass it. */
+  let res=null;
   try{
-    const since=new Date(Date.now()-COOLDOWN_DAYS*86400000).toISOString();
-    // Check the PHONE and the PLATE. Phone alone let the same car come back on a
-    // second number; plate alone would let one person use several cars.
-    let prev=[];
-    const {data:byPhone}=await sb.from('gl_spin_wins')
-      .select('created_at,prize_label,phone,plate')
-      .eq('phone','+'+phone).gte('created_at',since)
-      .order('created_at',{ascending:false}).limit(1);
-    prev=prev.concat(byPhone||[]);
-    if(plate){
-      const {data:byPlate}=await sb.from('gl_spin_wins')
-        .select('created_at,prize_label,phone,plate')
-        .ilike('plate',plate).gte('created_at',since)
-        .order('created_at',{ascending:false}).limit(1);
-      prev=prev.concat(byPlate||[]);
-    }
-    // if both matched, report whichever spun most recently
-    prev.sort((a,b)=>new Date(b.created_at)-new Date(a.created_at));
-    if(prev && prev.length){
-      const last=new Date(prev[0].created_at);
-      const next=new Date(last.getTime()+COOLDOWN_DAYS*86400000);
+    const {data,error}=await sb.rpc('gl_spin_record',{
+      p_name:name, p_phone:'+'+phone, p_plate:plate,
+      p_brand:null, p_model:null, p_ctype:null, p_email:email });
+    if(error) throw error;
+    res=Array.isArray(data)?data[0]:data;
+  }catch(e){ res=null; }
+
+  if(!res || !res.ok){
+    spinning=false;
+    $('regBtn').disabled=false; $('regBtn').textContent='SPIN NOW';
+    if(res && res.reason==='already_spun'){
       $('regStep').classList.add('hidden'); $('coolStep').classList.remove('hidden');
-      const who=(prev[0].plate&&prev[0].plate.toUpperCase()===plate)?'This car':'This number';
-      $('coolMsg').innerHTML=who+' already spun on <b>'+last.toLocaleDateString('en-GB')+
-        '</b> and won <b>'+esc(prev[0].prize_label||'')+'</b>.<br><br>Your next free spin is on <b>'+
-        next.toLocaleDateString('en-GB')+'</b>. Scan the code again after that date.';
+      $('coolMsg').innerHTML='This car has already had its spin &mdash; <b>one spin per car</b>.'+
+        '<br><br>If you think that is a mistake, message our customer service below and we will check it for you.';
+      $('heroSub').textContent='Already spun';
       clearPending();
       return;
     }
-  }catch(e){}
-
-  const p=WON||{};
-  const {error}=await sb.from('gl_spin_wins').insert({
-    ref_code:PENDING_REF, name:name, phone:'+'+phone, plate:plate, email:email,
-    prize_id:p.id||null, prize_label:p.label||'', prize_kind:p.kind||null,
-    prize_value:p.value||null, status:'won'
-  });
-  if(error){
-    $('regBtn').disabled=false;
     st.textContent='Could not save. Please try again.'; st.className='status err';
     return;
   }
+
+  WON=res.prize||{}; PENDING_REF=res.ref;
+  const p=WON;
+  const validTo0=new Date(Date.now()+VALID_DAYS*86400000);
+  CLAIMED={name:name, phone:phone, plate:plate, email:email,
+           from:fmtD(new Date()), to:fmtD(validTo0)};
+  // The win is already in the database, so remember it here too: a refresh
+  // mid-animation must show the same prize, not re-register and be told the car
+  // already spun.
+  savePending({ref:PENDING_REF, prize:WON, claimed:CLAIMED, at:Date.now()});
+
   // Save the customer to gl_walkin exactly as gl-spin.html does, so they turn up
   // in the plate scanner and job card when they come in to claim. Without this
   // the win is recorded but reception cannot find the customer by plate.
@@ -289,19 +292,11 @@ async function doRegister(){
     else    await sb.from('gl_walkin').insert(wk);
   }catch(e){ /* never block the claim on this */ }
 
-  const validTo=new Date(Date.now()+VALID_DAYS*86400000);
-  CLAIMED={name:name, phone:phone, plate:plate, email:email,
-           from:fmtD(new Date()), to:fmtD(validTo)};
-  clearPending();
-  const next=new Date(Date.now()+COOLDOWN_DAYS*86400000);
-  $('regStep').classList.add('hidden'); $('doneStep').classList.remove('hidden');
-  $('doneLabel').textContent=p.label||'';
-  $('doneRef').textContent=PENDING_REF;
-  $('nextNote').innerHTML='<b>Valid '+fmtD(new Date())+' &ndash; '+fmtD(validTo)+'</b><br>'+
-    'Book with our customer service before it expires.<br><br>'+
-    'Your next free spin is on <b>'+next.toLocaleDateString('en-GB')+
-    '</b> &mdash; just scan this code again.';
-  $('heroSub').textContent='Prize claimed';
+  // now show them the wheel landing on what the server already gave them
+  $('regStep').classList.add('hidden');
+  $('wheelStep').classList.remove('hidden');
+  $('heroSub').textContent='Good luck!';
+  animateToPrize(p, showDone);
 }
 
 function waClaim(){
@@ -324,16 +319,19 @@ function waClaim(){
   window.open(url,'_blank');
 }
 
-/* A spin that was never claimed is restored, so a refresh shows the same prize
-   instead of handing out a fresh roll. */
+/* A recorded win is restored, so a refresh shows the same prize again instead of
+   re-registering the car and being told it already spun.
+   An entry with no `claimed` is from the older build, where the prize was drawn
+   before any details were asked for and so was never written to the database.
+   There is nothing to restore - it is dropped, and they register normally. */
 (function init(){
   loadPrizes();
   const pend=readPending();
-  if(pend && pend.prize){
-    WON=pend.prize; PENDING_REF=pend.ref;
-    $('wheelStep').classList.add('hidden');
-    $('regStep').classList.remove('hidden');
-    $('wonLabel').textContent='You won: '+(WON.label||'');
+  if(pend && pend.prize && pend.ref && pend.claimed){
+    WON=pend.prize; PENDING_REF=pend.ref; CLAIMED=pend.claimed;
+    showDone();
+  } else if(pend){
+    clearPending();
   }
 })();
 
