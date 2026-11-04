@@ -5159,24 +5159,32 @@ async function openAppSpin(){
 async function runAppSpin(){
   const btn=document.getElementById('appSpinBtn'); if(!btn||btn.disabled) return;
   btn.disabled=true; btn.textContent='Spinning…';
-  // draw server-side
-  let prize=null;
-  try{ const r=await fetch(`${SUPA_URL}/rest/v1/rpc/gl_spin_draw`,{method:"POST",headers:authHeaders(),body:"{}"});
-    const d=await r.json(); prize=Array.isArray(d)?d[0]:d; }catch(e){}
-  if(!prize){ const tot=SPIN_PRIZES.reduce((s,p)=>s+Number(p.weight||1),0); let x=Math.random()*tot,a=0;
-    prize=SPIN_PRIZES.find(p=>{a+=Number(p.weight||1);return x<=a;})||SPIN_PRIZES[0]; }
-  // consume the spin server-side
-  try{ await fetch(`${SUPA_URL}/rest/v1/rpc/gl_app_spin_consume`,{method:"POST",headers:authHeaders(),body:"{}"}); }catch(e){}
-  // record the win
-  const ref='SP-'+Math.random().toString(36).slice(2,6).toUpperCase();
+  /* One call consumes the spin, draws the prize and records the win.
+     The browser used to do all three itself, which meant it could name its own
+     prize, and - because the consume result was never checked - could keep
+     spinning after the spins ran out. */
+  let out=null;
   try{
-    await fetch(`${SUPA_URL}/rest/v1/gl_spin_wins`,{
-      method:"POST", headers:Object.assign(authHeaders(),{Prefer:"return=minimal"}),
-      body:JSON.stringify({ref_code:ref, name:(PROFILE&&PROFILE.name)||'', phone:(PROFILE&&PROFILE.phone)||'',
-        prize_id:prize.id, prize_label:prize.label, prize_kind:prize.kind, prize_value:prize.value,
-        status:'won', owner_id:SESSION.user.id})
-    });
+    const r=await fetch(`${SUPA_URL}/rest/v1/rpc/gl_app_spin_record`,
+      {method:"POST",headers:authHeaders(),body:"{}"});
+    if(r.ok) out=await r.json();
   }catch(e){}
+
+  if(!out || !out.ok){
+    btn.disabled=false; btn.textContent='SPIN NOW';
+    const res=document.getElementById('appSpinResult');
+    if(res) res.innerHTML='<span style="color:#ff8a8a">'+
+      ((out&&out.reason==='no_spins') ? 'No spins left right now.'
+                                      : 'Could not spin. Please try again.')+'</span>';
+    const cl=document.getElementById('appSpinClose'); if(cl) cl.style.display='inline-block';
+    return;
+  }
+
+  const prize=out.prize||{};
+  const ref=out.ref||'';
+  // keep the Rewards counter honest without another round trip
+  if(SPIN_STATUS && out.spins_left!=null) SPIN_STATUS.spins_available=out.spins_left;
+
   // animate the wheel to land on the prize
   const n=SPIN_PRIZES.length, idx=Math.max(0,SPIN_PRIZES.findIndex(p=>p.id===prize.id)), seg=360/n;
   const target=360*8 + (360 - (idx*seg + seg/2));
