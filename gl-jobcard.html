@@ -1462,13 +1462,23 @@ async function saveJob(silent){
 
 /* Make a job's car findable by the plate scanner. Walk-in/appointment cars
    go to gl_walkin (upsert by plate); app-member cars go to gl_vehicles
-   (insert if that plate isn't already on the member). Trade jobs
-   (workshop/showroom/boss) are company cars — skipped. Add-only.        */
+   (insert if that plate isn't already on the member).
+
+   Workshop cars (Lemans etc.) are registered too. They are customer cars the
+   workshop sends in, not the workshop's own fleet, so reception needs to find
+   them by plate. The Workshop tab never asks for a customer name or phone, so
+   they go in under the workshop's name with no phone - which also means they
+   can never wrongly merge onto an app signup by phone.
+
+   Showroom and boss cars really are company cars and are still skipped.
+   Add-only: an existing row is never overwritten, only its blank fields
+   filled, so a car that is already a retail customer of ours keeps its own
+   name and phone after a workshop visit.                                */
 async function registerCar_(j){
   const plate=(j.plate||'').trim().toUpperCase().replace(/\s+/g,'');
   if(!plate) return;
   const type=String(j.cust_type||'').toLowerCase();
-  if(type==='workshop'||type==='showroom'||type==='boss') return; // company cars
+  if(type==='showroom'||type==='boss') return; // company cars
   // app member -> gl_vehicles
   if(j.customer_id){
     const {data:ex}=await sb.from('gl_vehicles').select('id').eq('owner_id',j.customer_id).ilike('plate',plate).limit(1).maybeSingle();
@@ -1481,11 +1491,29 @@ async function registerCar_(j){
     return;
   }
   // walk-in -> gl_walkin (upsert by plate; keep existing package fields intact)
-  const row={ name:j.name||'', phone:(j.hp||'').toString().replace(/^\+/,''), plate, model:j.model||'' };
+  const isWorkshop = (type==='workshop');
+  // On the Workshop tab the name field is hidden, and collectJob() falls back
+  // to the boss dropdown, which can still be holding a stale value - so the
+  // workshop's own name is used here rather than j.name.
+  const row = isWorkshop
+    ? { plate, model:j.model||'', name:(j.workshop_name||'Workshop').trim() }
+    : { name:j.name||'', phone:(j.hp||'').toString().replace(/^\+/,''), plate, model:j.model||'' };
   if(j.car_type) row.car_type=j.car_type;
-  const {data:ex}=await sb.from('gl_walkin').select('id').ilike('plate',plate).limit(1).maybeSingle();
-  if(ex){ await sb.from('gl_walkin').update(row).eq('id',ex.id); }
-  else   { await sb.from('gl_walkin').insert(row); }
+  const {data:ex}=await sb.from('gl_walkin')
+    .select('id,name,model,car_type').ilike('plate',plate).limit(1).maybeSingle();
+  if(ex){
+    if(isWorkshop){
+      // gap-fill only: never overwrite a real customer's details
+      const patch={};
+      if(!String(ex.name||'').trim()     && row.name)     patch.name=row.name;
+      if(!String(ex.model||'').trim()    && row.model)    patch.model=row.model;
+      if(!String(ex.car_type||'').trim() && row.car_type) patch.car_type=row.car_type;
+      if(Object.keys(patch).length) await sb.from('gl_walkin').update(patch).eq('id',ex.id);
+    } else {
+      await sb.from('gl_walkin').update(row).eq('id',ex.id);
+    }
+  }
+  else { await sb.from('gl_walkin').insert(row); }
 }
 async function saveAndPrint(){ const j=await saveJob(true); if(j){ toast('Saved ✓'); printSlip(j); showView('list'); } }
 
