@@ -77,7 +77,7 @@
 
     <div class="row2">
       <div><label class="req">Contact Number</label><input id="phone" placeholder="60123456789" inputmode="numeric"></div>
-      <div><label>Email <span style="color:var(--muted2)">(for certificate)</span></label><input id="email" placeholder="optional" inputmode="email"></div>
+      <div><label class="req">Email</label><input id="email" placeholder="name@email.com" inputmode="email" type="email"></div>
     </div>
 
     <label class="req">Vehicle Model</label>
@@ -205,6 +205,7 @@ async function submitWarranty(){
   const p=curProduct();
   const idate=$('idate').value;
   const invoice=$('invoice').value.trim();
+  const email=$('email').value.trim();
   // validation
   if(!plate){ setMsg('Enter the car plate',true); return; }
   if(!cname){ setMsg('Enter the customer name',true); return; }
@@ -213,6 +214,17 @@ async function submitWarranty(){
   if(!p){ setMsg('Select the product',true); return; }
   if(!idate){ setMsg('Select the installation date',true); return; }
   if(!invoice){ setMsg('Enter the invoice ID',true); return; }
+  /* Email is required from here on. The certificate is delivered by email, so a
+     warranty registered without one can never be sent - that is how 31 of the
+     first 33 ended up undeliverable. */
+  if(!email){
+    setMsg('Enter the customer email — the certificate is sent there',true);
+    $('email').focus(); return;
+  }
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)){
+    setMsg('That email address does not look right',true);
+    $('email').focus(); return;
+  }
 
   // duplicate guard: same invoice + product
   const {data:dup}=await sb.from('gl_warranties').select('id')
@@ -225,7 +237,7 @@ async function submitWarranty(){
 
   $('submitBtn').disabled=true; $('submitBtn').innerHTML='<i class="ti ti-loader"></i> Registering…';
   const {error}=await sb.from('gl_warranties').insert({
-    cert_no:cert, customer_name:cname, phone:phone, email:$('email').value.trim()||null,
+    cert_no:cert, customer_name:cname, phone:phone, email:email,
     car_model:model, plate:plate,
     product_name:p.product_name, category:p.category, coverage:$('coverage').value,
     install_date:idate, warranty_years:p.warranty_years, expiry_date:exp.toISOString().slice(0,10),
