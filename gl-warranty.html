@@ -157,37 +157,79 @@ async function doSearch(){
   $('results').innerHTML='';
   if(plate.length<3){ showStatus('Please enter a valid plate number.',true); return; }
   showStatus('Searching…',false);
-  const {data,error}=await sb.from('gl_warranties')
-    .select('*').ilike('plate',plate).order('install_date',{ascending:false});
+  /* This page is public - no login - so it reads through gl_warranty_find, a
+     server function that returns only what the certificate shows. The table
+     itself is staff-only, so phone, email and invoice number never reach the
+     browser. The function also ignores spaces, dashes and case, so "VHN 3118"
+     finds "VHN3118". */
+  const {data,error}=await sb.rpc('gl_warranty_find',{p_plate:plate});
   if(error){ showStatus('Something went wrong. Please try again.',true); return; }
   if(!data||!data.length){
     showStatus('No warranty found for '+plate+'. If you recently did a service, it may take a short while to appear — or please contact us.',true);
     return;
   }
   hideStatus();
-  render(data);
+  await render(data);
 }
 
-function render(list){
-  const out=list.map(w=>certHtml(w)).join('');
-  // T&C — shown as a link (one per category present) instead of the full text
-  const TNC_PDF={
-    coating:'GrandLab_Coating_Warranty_TnC.pdf',
-    ppf:'GrandLab_PPF_Warranty_TnC.pdf',
-    wrapping:'GrandLab_Wrapping_Warranty_TnC.pdf'
-  };
-  const TNC_LABEL={coating:'Coating',ppf:'PPF',wrapping:'Wrapping'};
-  const catsPresent=[...new Set(list.map(w=>(w.category||'').toLowerCase()).filter(c=>TNC_PDF[c]))];
-  const terms=`<div class="tnc-links">
-    <div class="tnc-h">Warranty Terms &amp; Conditions</div>
-    ${catsPresent.map(c=>`<a class="tnc-link" href="${TNC_PDF[c]}" target="_blank" rel="noopener">
-      <span><i class="ti ti-file-text"></i> ${esc(TNC_LABEL[c])} Warranty — Terms &amp; Conditions</span>
-      <i class="ti ti-external-link"></i></a>`).join('')}
+/* Terms live in gl_warranty_terms, one row per category, so the certificate
+   page and the warranty email always show the same wording and it can be
+   changed without touching this file. */
+let TERMS_CACHE=null;
+async function loadTerms(){
+  if(TERMS_CACHE) return TERMS_CACHE;
+  const map={};
+  try{
+    const {data}=await sb.from('gl_warranty_terms').select('*');
+    (data||[]).forEach(t=>{ map[String(t.category||'').toLowerCase()]=t; });
+  }catch(e){ console.warn('terms unavailable', e); }
+  TERMS_CACHE=map;
+  return map;
+}
+
+function tList(arr,cls){
+  return (Array.isArray(arr)?arr:[]).map(x=>`<li class="${cls}">${esc(x)}</li>`).join('');
+}
+
+const TNC_PDF={
+  coating:'GrandLab_Coating_Warranty_TnC.pdf',
+  ppf:'GrandLab_PPF_Warranty_TnC.pdf',
+  wrapping:'GrandLab_Wrapping_Warranty_TnC.pdf'
+};
+
+function termsHtml(cat,t){
+  if(!t) return '';
+  const pdf=TNC_PDF[cat];
+  return `<div class="terms">
+    <h3>${esc(t.title||'Warranty Terms & Conditions')}</h3>
+    <h4>What this warranty covers</h4>
+    <ul>${tList(t.coverage,'good')}</ul>
+    ${t.maintenance?`<h4>Maintenance is required</h4><p class="tpara">${esc(t.maintenance)}</p>`:''}
+    <h4>Curing period &amp; first wash</h4>
+    <ul>${tList(t.curing,'warn')}</ul>
+    <h4>What voids this warranty</h4>
+    <ul>${tList(t.exclusions,'bad')}</ul>
+    <h4>How to keep your warranty valid</h4>
+    <ul>${tList(t.care,'good')}</ul>
+    ${t.claim?`<h4>Making a claim</h4><p class="tpara">${esc(t.claim)}</p>`:''}
+    ${pdf?`<a class="tnc-link" href="${pdf}" target="_blank" rel="noopener">
+      <span><i class="ti ti-file-text"></i> Full terms &amp; conditions (PDF)</span>
+      <i class="ti ti-external-link"></i></a>`:''}
+    <div class="tnote">This warranty is valid only with a matching Certificate of Warranty
+      and original invoice. GrandLab reserves the right to amend these terms for future installations.</div>
   </div>`;
+}
+
+async function render(list){
+  const out=list.map(w=>certHtml(w)).join('');
+  const terms=await loadTerms();
+  // one terms block per category the customer actually has
+  const cats=[...new Set(list.map(w=>String(w.category||'').toLowerCase()).filter(Boolean))];
+  const blocks=cats.map(c=>termsHtml(c,terms[c])).filter(Boolean).join('');
   const foot=`<div class="foot">
     Thank you for choosing GrandLab. For enquiries, please contact your installer outlet.
   </div>`;
-  $('results').innerHTML=out+terms+foot;
+  $('results').innerHTML=out+blocks+foot;
 }
 
 function certHtml(w){
@@ -212,7 +254,6 @@ function certHtml(w){
       <div class="drow"><span class="k">Vehicle</span><span class="v">${esc(w.car_model||'—')}</span></div>
       <div class="drow"><span class="k">Plate No.</span><span class="v">${esc(w.plate||'—')}</span></div>
       <div class="drow"><span class="k">Installer Outlet</span><span class="v">${esc(w.outlet||'GRANDPRIDE LUXURY TRAVEL SDN BHD')}</span></div>
-      <div class="drow"><span class="k">Invoice No.</span><span class="v">${esc(w.invoice_no||'—')}</span></div>
       <div class="drow"><span class="k">Installation Date</span><span class="v">${fmtDate(w.install_date)}</span></div>
       <div class="drow"><span class="k">Warranty Period</span><span class="v">${w.warranty_years?esc(w.warranty_years)+' year'+(Number(w.warranty_years)===1?'':'s'):'—'}</span></div>
       <div class="expiry-box">
