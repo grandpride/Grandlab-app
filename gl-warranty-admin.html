@@ -36,6 +36,24 @@
   .addph{aspect-ratio:1;border:1.5px dashed var(--line);border-radius:9px;background:var(--card2);color:var(--muted);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:11px;cursor:pointer}
   .msg{padding:12px 14px;border-radius:10px;font-size:14px;margin-top:12px;display:none}
   .msg.ok{background:rgba(22,163,74,.14);color:#3ec76e;display:block}
+  .tabs{display:flex;gap:8px;margin-bottom:16px}
+  .tab{flex:1;background:var(--card);border:1px solid var(--line);border-radius:12px;color:var(--muted);
+       padding:11px 10px;font-size:13.5px;font-weight:700;font-family:inherit;cursor:pointer;
+       display:flex;align-items:center;justify-content:center;gap:7px}
+  .tab.a{background:var(--card2);border-color:var(--gold);color:var(--gold)}
+  .cnt{background:var(--red);color:#fff;font-size:11px;font-weight:800;border-radius:20px;
+       padding:1px 7px;min-width:18px;display:none}
+  .cnt.on{display:inline-block}
+  .mrow{border:1px solid var(--line);background:var(--card2);border-radius:12px;padding:13px;margin-bottom:10px}
+  .mrow .mp{font-size:15px;font-weight:800;color:var(--text);letter-spacing:.5px}
+  .mrow .mm{font-size:12px;color:var(--muted);margin:3px 0 10px;line-height:1.5}
+  .mrow .mact{display:flex;gap:8px;align-items:stretch}
+  .mrow .mact input{flex:1;min-width:0;margin:0}
+  .mrow .mact button{flex:none;white-space:nowrap;background:var(--gold);color:#080808;border:none;
+       border-radius:10px;padding:0 15px;font-weight:800;font-size:13px;font-family:inherit;cursor:pointer}
+  .mrow .mact button:disabled{opacity:.5;cursor:default}
+  .mrow .mnote{font-size:12px;margin-top:7px;min-height:14px}
+  .mrow.done{border-color:var(--green)}
   .msg.err{background:rgba(224,83,61,.14);color:var(--red);display:block}
   .found{font-size:12px;color:var(--green);margin-top:6px;min-height:16px}
   .preview{font-size:13px;color:var(--muted);margin-top:6px}
@@ -66,6 +84,23 @@
 </div>
 
 <div class="wrap">
+  <div class="tabs">
+    <button class="tab a" id="tabReg"  onclick="setView('reg')">Register</button>
+    <button class="tab"   id="tabMiss" onclick="setView('miss')">Missing email <span class="cnt" id="missCount"></span></button>
+  </div>
+
+<div id="viewMiss" style="display:none">
+  <div class="card">
+    <h2>Warranties with no email</h2>
+    <div class="hint" style="margin-bottom:12px">
+      These customers cannot be sent their certificate. Add an address and save it —
+      the certificate is emailed once sending is switched on.
+    </div>
+    <div id="missList"><div class="hint">Loading…</div></div>
+  </div>
+</div>
+
+<div id="viewReg">
   <div class="card">
     <h2>Vehicle &amp; Customer</h2>
     <label class="req">Car Plate</label>
@@ -125,6 +160,7 @@
 
   <button class="btn" id="submitBtn" onclick="submitWarranty()"><i class="ti ti-shield-check"></i> Register Warranty</button>
   <div class="msg" id="msg"></div>
+</div><!-- /#viewReg -->
 </div>
 </div><!-- /#app -->
 
@@ -254,6 +290,81 @@ async function submitWarranty(){
   window.scrollTo({top:0,behavior:'smooth'});
 }
 
+/* ---------- MISSING EMAIL ----------
+   Warranties registered before the email field was made required cannot be
+   sent to anyone. This lists them so reception can fill the address in as
+   customers come back. Reads and writes gl_warranties directly, which is
+   reception-only at the database, so a customer could never reach this.      */
+let MISSING=[];
+
+function setView(v){
+  const reg = v==='reg';
+  $('viewReg').style.display  = reg?'block':'none';
+  $('viewMiss').style.display = reg?'none':'block';
+  $('tabReg').classList.toggle('a',reg);
+  $('tabMiss').classList.toggle('a',!reg);
+  if(!reg) loadMissing();
+}
+
+function fmtD(d){
+  if(!d) return '—';
+  return new Date(d+'T00:00:00').toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
+}
+
+async function loadMissing(){
+  $('missList').innerHTML='<div class="hint">Loading…</div>';
+  // every row with no address is stored as NULL - saveEmail below never writes
+  // an empty string, so there is nothing else to match
+  const {data,error}=await sb.from('gl_warranties')
+    .select('id,cert_no,plate,customer_name,phone,product_name,install_date')
+    .is('email',null)
+    .order('install_date',{ascending:false});
+  if(error){ $('missList').innerHTML='<div class="hint" style="color:var(--red)">Could not load: '+esc(error.message)+'</div>'; return; }
+  MISSING=data||[];
+  renderMissing();
+}
+
+function renderMissing(){
+  const c=$('missCount');
+  c.textContent=MISSING.length; c.classList.toggle('on',MISSING.length>0);
+  if(!MISSING.length){
+    $('missList').innerHTML='<div class="hint" style="color:var(--green)">All warranties have an email address.</div>';
+    return;
+  }
+  $('missList').innerHTML=MISSING.map(w=>`
+    <div class="mrow" id="mr_${esc(w.id)}">
+      <div class="mp">${esc(w.plate||'—')}</div>
+      <div class="mm">${esc(w.customer_name||'—')}${w.phone?' · '+esc(w.phone):' · <i>no phone</i>'}<br>
+        ${esc(w.product_name||'')} · ${fmtD(w.install_date)} · ${esc(w.cert_no||'')}</div>
+      <div class="mact">
+        <input id="em_${esc(w.id)}" type="email" inputmode="email" placeholder="name@email.com"
+               onkeydown="if(event.key==='Enter')saveEmail('${esc(w.id)}')">
+        <button id="bt_${esc(w.id)}" onclick="saveEmail('${esc(w.id)}')">Save</button>
+      </div>
+      <div class="mnote" id="nt_${esc(w.id)}"></div>
+    </div>`).join('');
+}
+
+async function saveEmail(id){
+  const inp=$('em_'+id), btn=$('bt_'+id), note=$('nt_'+id);
+  const v=(inp.value||'').trim();
+  const bad=(m)=>{ note.style.color='var(--red)'; note.textContent=m; inp.focus(); };
+  if(!v) return bad('Enter an email address');
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v)) return bad('That email address does not look right');
+
+  btn.disabled=true; note.style.color='var(--muted)'; note.textContent='Saving…';
+  const {error}=await sb.from('gl_warranties').update({email:v}).eq('id',id);
+  if(error){ btn.disabled=false; return bad('Could not save: '+error.message); }
+
+  note.style.color='var(--green)'; note.textContent='✓ Saved — '+v;
+  inp.disabled=true; btn.textContent='Saved';
+  $('mr_'+id).classList.add('done');
+  // drop it from the count without reloading, so the list keeps its place
+  MISSING=MISSING.filter(w=>String(w.id)!==String(id));
+  const c=$('missCount');
+  c.textContent=MISSING.length; c.classList.toggle('on',MISSING.length>0);
+}
+
 /* ---------- LOGIN GATE ---------- */
 async function boot(){
   const {data}=await sb.auth.getSession();
@@ -272,6 +383,9 @@ function showApp(){
   $('idate').value=new Date().toISOString().slice(0,10);
   loadProducts();
   renderPhotos();
+  // fill the tab badge straight away so reception sees the backlog without
+  // having to open the tab
+  loadMissing();
 }
 
 boot();
