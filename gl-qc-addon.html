@@ -1,0 +1,1055 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>QC Add-on | GrandLab</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.7.0/dist/tabler-icons.min.css">
+<style>
+:root{--bg:#080808;--card:#141414;--card2:#1c1c1c;--gold:#F5C518;--border:#2a2a2a;--text:#f2f2f2;--text2:#9a9a9a;--ok:#37d67a;--red:#ff5c5c;--blue:#4d9fff}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:15px;padding-bottom:110px}
+.top{position:sticky;top:0;z-index:20;background:rgba(8,8,8,.96);backdrop-filter:blur(10px);border-bottom:1px solid var(--border);padding:12px 14px 0}
+.top h1{margin:0;font-size:17px;font-weight:700;display:flex;align-items:center;gap:8px}
+.top h1 i{color:var(--gold)}
+.top h1 .back{width:32px;height:32px;border-radius:10px;background:var(--card2);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;text-decoration:none;flex-shrink:0}
+.top h1 .back i{color:var(--text2);font-size:17px}
+.tabs{display:flex;gap:4px;margin-top:10px}
+.tabs button{flex:1;background:none;border:none;border-bottom:2px solid transparent;color:var(--text2);font-weight:700;font-size:12px;font-family:inherit;padding:10px 4px;letter-spacing:.4px;cursor:pointer}
+.tabs button.on{color:var(--gold);border-color:var(--gold)}
+.wrap{padding:14px;max-width:640px;margin:0 auto}
+.card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:14px;margin-bottom:12px}
+.card h2{margin:0 0 12px;font-size:13px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.5px}
+label{display:block;font-size:12px;color:var(--text2);margin:0 0 5px}
+input,select,textarea{width:100%;background:var(--card2);border:1px solid var(--border);border-radius:12px;color:var(--text);padding:12px;font-size:16px;font-family:inherit;outline:none}
+input:focus,select:focus,textarea:focus{border-color:var(--gold)}
+textarea{min-height:70px;resize:vertical}
+.row{display:flex;gap:10px}.row>*{flex:1}
+.fld{margin-bottom:12px}
+.btn{border:none;border-radius:14px;padding:14px;font-size:15px;font-weight:700;font-family:inherit;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;width:100%;color:var(--text);text-decoration:none}
+.btn.gold{background:var(--gold);color:#000}
+.btn.ghost{background:var(--card2);border:1px solid var(--border)}
+.btn.green{background:var(--ok);color:#000}
+.btn.red{background:rgba(255,92,92,.12);color:var(--red);border:1px solid rgba(255,92,92,.35)}
+.btn.sm{padding:10px;font-size:13px;border-radius:11px}
+.btn:disabled{opacity:.45}
+.btns{display:flex;flex-direction:column;gap:8px}
+.chips{display:flex;flex-wrap:wrap;gap:7px}
+.chip{background:var(--card2);border:1px solid var(--border);border-radius:20px;padding:8px 13px;font-size:13px;cursor:pointer;color:var(--text);font-family:inherit}
+.chip.on{background:var(--gold);color:#000;border-color:var(--gold);font-weight:600}
+.front{aspect-ratio:16/10;border:1px dashed var(--border);border-radius:14px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;color:var(--text2);background:var(--card2);cursor:pointer;overflow:hidden}
+.front img{width:100%;height:100%;object-fit:cover}
+.front i{font-size:30px}
+.fcard{background:var(--card2);border:1px solid var(--border);border-radius:15px;overflow:hidden;margin-bottom:11px;position:relative}
+.fcard>img{width:100%;aspect-ratio:4/3;object-fit:cover;display:block;cursor:zoom-in}
+.fcard .no{position:absolute;top:9px;left:9px;background:rgba(0,0,0,.72);color:var(--gold);font-size:11px;font-weight:800;padding:4px 9px;border-radius:14px}
+.fcard .del{position:absolute;top:9px;right:9px;background:rgba(0,0,0,.72);width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:var(--red);font-size:16px;cursor:pointer}
+.fcard .rw{padding:11px}
+.job{background:var(--card2);border:1px solid var(--border);border-radius:13px;padding:11px 12px;margin-bottom:8px;cursor:pointer}
+.job.on{border-color:var(--gold);background:rgba(245,197,24,.07)}
+.job b{font-size:14px}
+.job .m{font-size:12px;color:var(--text2);line-height:1.6;margin-top:3px}
+.came{background:rgba(77,159,255,.08);border:1px solid rgba(77,159,255,.3);border-radius:12px;padding:10px 12px;font-size:13px;line-height:1.6}
+.came b{color:var(--blue);font-size:11px;letter-spacing:.5px;text-transform:uppercase;display:block;margin-bottom:2px}
+.muted{color:var(--text2);font-size:12px;line-height:1.5}
+.hide{display:none!important}
+.load{text-align:center;padding:40px;color:var(--text2)}
+.toast{position:fixed;left:14px;right:14px;bottom:96px;background:var(--card2);border:1px solid var(--border);border-radius:12px;padding:13px;text-align:center;font-size:14px;z-index:90;opacity:0;transition:.25s;pointer-events:none}
+.toast.on{opacity:1}.toast.err{border-color:var(--red);color:var(--red)}
+.ov{position:fixed;inset:0;background:rgba(0,0,0,.85);display:flex;align-items:flex-end;justify-content:center;z-index:80}
+.ov .box{background:var(--card);border:1px solid var(--border);border-radius:20px 20px 0 0;padding:20px 18px calc(20px + env(safe-area-inset-bottom));max-width:560px;width:100%;max-height:92vh;overflow-y:auto}
+.ov .box h3{margin:0 0 6px;font-size:18px}
+.ov.mid{align-items:center;padding:20px}.ov.mid .box{border-radius:18px}
+.lnk{background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:10px;font-size:11px;word-break:break-all;color:var(--text2);margin:12px 0}
+.qrow{background:var(--card);border:1px solid var(--border);border-radius:15px;padding:12px 13px;margin-bottom:10px;cursor:pointer;display:flex;gap:11px;align-items:center}
+.qrow img,.qrow .noimg{width:58px;height:58px;border-radius:11px;object-fit:cover;flex-shrink:0;background:var(--card2)}
+.qrow .mid{flex:1;min-width:0}
+.qrow .mid b{font-size:15px}
+.qrow .mid .m{font-size:12px;color:var(--text2);line-height:1.5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.qrow .r{text-align:right;flex-shrink:0}
+.qrow .r b{display:block;color:var(--gold);font-size:14px;margin-top:5px}
+.pill{display:inline-block;font-size:10px;font-weight:800;padding:4px 8px;border-radius:8px;text-transform:uppercase;letter-spacing:.4px;white-space:nowrap}
+.pill.found{background:rgba(255,92,92,.14);color:var(--red)}
+.pill.quoted{background:rgba(77,159,255,.15);color:var(--blue)}
+.pill.agreed{background:rgba(245,197,24,.15);color:var(--gold)}
+.pill.confirmed{background:rgba(55,214,122,.15);color:var(--ok)}
+.pill.payable{background:rgba(245,197,24,.15);color:var(--gold)}
+.pill.paid{background:rgba(55,214,122,.15);color:var(--ok)}
+.pill.declined,.pill.void{background:rgba(154,154,154,.15);color:var(--text2)}
+.sol{border-top:1px solid var(--border);margin-top:10px;padding-top:10px}
+.sol .lab{font-size:10px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;color:var(--ok);margin-bottom:4px}
+.ln{display:flex;justify-content:space-between;gap:10px;font-size:13px;padding:3px 0}
+.ln span:last-child{color:var(--gold);font-weight:700;white-space:nowrap}
+.tot{display:flex;justify-content:space-between;align-items:center;font-size:16px;font-weight:800;padding:12px 2px 2px}
+.tot span:last-child{color:var(--gold);font-size:20px}
+.ed-line{display:flex;gap:6px;align-items:center;margin-bottom:6px}
+.ed-line input{padding:9px 10px;font-size:14px;border-radius:10px}
+.ed-line .nm{flex:2.4}.ed-line .pr{flex:1;max-width:96px}
+.ed-line .x{color:var(--red);font-size:19px;cursor:pointer;padding:4px}
+.svc{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);cursor:pointer}
+.svc .nm{flex:1;min-width:0}.svc .nm b{display:block;font-size:14px;font-weight:600}.svc .nm span{font-size:11px;color:var(--text2)}
+.svc .pr{color:var(--gold);font-weight:700;white-space:nowrap}
+.tick{display:flex;align-items:center;gap:12px;padding:12px;border:1px solid var(--border);border-radius:13px;margin-bottom:8px;cursor:pointer;background:var(--card2)}
+.tick .bx{width:26px;height:26px;border-radius:8px;border:1.5px solid var(--border);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.tick.on{border-color:var(--gold);background:rgba(245,197,24,.07)}.tick.on .bx{background:var(--gold);color:#000;border-color:var(--gold)}
+.tick .t{flex:1;font-size:14px;line-height:1.4}.tick .t small{display:block;color:var(--text2);font-size:12px}
+.tick .p{color:var(--gold);font-weight:800}
+table.rep{width:100%;border-collapse:collapse;font-size:12px}
+table.rep th{text-align:left;color:var(--text2);font-size:10px;font-weight:800;letter-spacing:.06em;padding:7px 4px;border-bottom:1px solid var(--border);text-transform:uppercase}
+table.rep td{padding:8px 4px;border-bottom:1px solid var(--border);vertical-align:top}
+table.rep td.n{text-align:right;white-space:nowrap}
+.zoom{position:fixed;inset:0;background:#000;z-index:95;display:flex;align-items:center;justify-content:center}
+.zoom img{max-width:100%;max-height:100%}
+.hist{font-size:11px;color:var(--text2);line-height:1.7}
+@media print{
+  body{background:#fff;color:#000;padding:0}
+  .top,.noprint,.toast{display:none!important}
+  .card{border:none;background:#fff;padding:0}
+  table.rep th,table.rep td{border-color:#ccc;color:#000}
+  .wrap{max-width:none}
+}
+</style>
+</head>
+<body>
+
+<div class="top noprint">
+  <h1><a href="gl-hub.html" class="back"><i class="ti ti-arrow-left"></i></a><i class="ti ti-zoom-money"></i> <span style="flex:1">QC Add-on</span></h1>
+  <div class="tabs">
+    <button data-tab="new" class="on">NEW FIND</button>
+    <button data-tab="list">LIST</button>
+    <button data-tab="report">🔒 REPORT</button>
+  </div>
+</div>
+
+<div id="boot" class="load"><i class="ti ti-loader-2"></i> Loading…</div>
+
+<div id="app" class="wrap hide">
+
+  <!-- NEW FIND (Shafiq) -->
+  <div id="pNew">
+    <div class="card">
+      <h2>Car</h2>
+      <div class="fld">
+        <label>Plate number</label>
+        <div class="row" style="gap:8px">
+          <input id="plate" placeholder="e.g. WUX152" autocomplete="off" style="text-transform:uppercase;flex:2">
+          <button class="btn ghost" id="findJob" style="flex:1;width:auto"><i class="ti ti-search"></i> Find</button>
+        </div>
+      </div>
+      <div id="jobs"></div>
+      <div id="manual" class="hide">
+        <div class="row">
+          <div class="fld"><label>Model</label><input id="model" placeholder="e.g. Honda Civic"></div>
+          <div class="fld"><label>Customer name</label><input id="cname"></div>
+        </div>
+      </div>
+      <div class="fld" style="margin:0"><label>Found by</label><input id="finder" style="text-transform:uppercase"></div>
+    </div>
+
+    <div class="card">
+      <h2>Front photo of the car</h2>
+      <div class="front" id="frontBox"><i class="ti ti-camera"></i><span>Tap to take photo</span></div>
+    </div>
+
+    <div class="card">
+      <h2>What else can we do? <span id="nFinds" style="color:var(--gold)"></span></h2>
+      <p class="muted" style="margin:-6px 0 12px">One photo per problem. Write what you see — Jimmy will write the solution and price.</p>
+      <div id="finds"></div>
+      <div class="row">
+        <button class="btn ghost" id="addCam"><i class="ti ti-camera-plus"></i> Take photo</button>
+        <button class="btn ghost" id="addGal"><i class="ti ti-photo-plus"></i> Gallery</button>
+      </div>
+    </div>
+
+    <button class="btn gold" id="sendBtn"><i class="ti ti-send"></i> Send to Jimmy</button>
+  </div>
+
+  <!-- LIST -->
+  <div id="pList" class="hide">
+    <div class="chips" id="filters" style="margin-bottom:12px"></div>
+    <div id="qlist" class="load">Loading…</div>
+  </div>
+
+  <!-- DETAIL -->
+  <div id="pDetail" class="hide"></div>
+
+  <!-- QUOTE EDITOR (Jimmy) -->
+  <div id="pQuote" class="hide"></div>
+
+  <!-- REPORT (Jimmy) -->
+  <div id="pReport" class="hide"></div>
+</div>
+
+<div id="ov" class="ov hide"><div class="box" id="ovBox"></div></div>
+<div id="toast" class="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script>
+/* ===== GRANDLAB ACCESS GUARD (same as gl-qc.html) =====
+   Who may open this page is set in the GrandPride Staff Manager (gp_staff.apps) — needs the 'qc' app.
+   admin@grandpride.com always has full access. */
+(function(){
+  var APP_KEY = 'qc';
+  var GP_URL = 'https://gpdb.grandlab.com.my';
+  var GP_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzkzMDY5NDExLCJleHAiOjE5NTA3NDk0MTF9.ql0qv5ycO4qPDfzLZDdZvjMBqWJMxDRwS8m8HZxUuss';
+  var MASTER = ['admin@grandpride.com'];
+  function deny(msg){
+    document.documentElement.innerHTML =
+      '<body style="background:#080808;color:#fff;font-family:-apple-system,Segoe UI,sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;text-align:center">' +
+      '<div style="max-width:340px;padding:26px;border:1px solid #2a2a2a;border-radius:16px;background:#141414">' +
+      '<div style="font-size:34px">&#128274;</div><div style="font-weight:900;font-size:17px;margin:10px 0;color:#F5C518">NO ACCESS</div>' +
+      '<div style="font-size:13px;color:#9a9a9a;line-height:1.5">' + msg + '</div>' +
+      '<a href="gl-hub.html" style="display:block;margin-top:18px;background:#F5C518;color:#000;padding:12px;border-radius:10px;font-weight:800;text-decoration:none">BACK TO HUB</a></div></body>';
+  }
+  (async function(){
+    try{
+      var gl = supabase.createClient('https://db.grandlab.com.my', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzkzMDY5NDExLCJleHAiOjE5NTA3NDk0MTF9.IcbPnDCd9p6Z-_FNMvzfg9k6ayX7IpC48zdGacAD_qw',
+        {auth:{persistSession:true,autoRefreshToken:true,storageKey:'gl_auth'}});
+      var s = await gl.auth.getSession();
+      if(!s.data.session) return;
+      var email = (s.data.session.user.email||'').toLowerCase();
+      if(MASTER.indexOf(email) >= 0) return;
+      var gp = supabase.createClient(GP_URL, GP_ANON, {auth:{persistSession:false,storageKey:'gp_read'}});
+      var r = await gp.from('gp_staff').select('name,apps').ilike('email', email).maybeSingle();
+      if(r.error || !r.data){ deny('This login is not in the staff list. Ask the manager to add you.'); return; }
+      var apps = r.data.apps;
+      if(typeof apps === 'string'){ try{ apps = JSON.parse(apps); }catch(e){ apps = []; } }
+      if(!Array.isArray(apps)) apps = [];
+      if(apps.indexOf(APP_KEY) < 0) deny('Hi ' + (r.data.name||'') + ', you do not have access to this app.<br><br>Ask the manager to enable QC in Staff Manager.');
+    }catch(e){ /* if the check itself fails, do not lock anyone out */ }
+  })();
+})();
+</script>
+<script>
+(function(){
+'use strict';
+
+var SB_URL = 'https://db.grandlab.com.my';
+var SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzkzMDY5NDExLCJleHAiOjE5NTA3NDk0MTF9.IcbPnDCd9p6Z-_FNMvzfg9k6ayX7IpC48zdGacAD_qw';
+var BUCKET = 'sa-quotes';                 // existing public bucket, files go under qc/<id>/
+var BASE = location.origin + location.pathname.replace(/[^\/]*$/, '');
+var VIEW = BASE + 'gl-qc-view.html';
+var SELF = BASE + 'gl-qc-addon.html';
+var TIMES = ['30 min','1 hour','2 hours','Half day','1 day','2 days'];
+
+var sb = window.supabase.createClient(SB_URL, SB_KEY, {
+  auth:{ storageKey:'gl_auth', persistSession:true, autoRefreshToken:true }
+});
+
+var $ = function(id){ return document.getElementById(id); };
+var S = {
+  user:'', tab:'new', jobs:[], job:null, front:null, finds:[], sending:false,
+  rows:[], filter:'open', cur:null, services:null, pin:null, ed:null
+};
+
+/* ---------- small helpers ---------- */
+function toast(msg, err){
+  var t = $('toast'); t.textContent = msg; t.className = 'toast on' + (err ? ' err' : '');
+  clearTimeout(t._h); t._h = setTimeout(function(){ t.className = 'toast'; }, err ? 4200 : 2400);
+}
+function money(n){ return 'RM ' + Number(n||0).toLocaleString('en-MY',{minimumFractionDigits:0,maximumFractionDigits:2}); }
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+function normPlate(p){ return String(p||'').toUpperCase().replace(/[^A-Z0-9]/g,''); }
+function token(){ var a='abcdefghijkmnpqrstuvwxyz23456789', s=''; for(var i=0;i<16;i++) s += a.charAt(Math.floor(Math.random()*a.length)); return s; }
+function uuid(){
+  if(window.crypto && crypto.randomUUID) return crypto.randomUUID();
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,function(c){ var r=Math.random()*16|0; return (c==='x'?r:(r&3|8)).toString(16); });
+}
+function d8(ts){ if(!ts) return ''; var d = new Date(ts); return d.toLocaleDateString('en-GB',{day:'numeric',month:'short'}) + ' ' + d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}); }
+function dOnly(ts){ if(!ts) return ''; return new Date(ts).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}); }
+function jobDate(ms){ if(!ms) return ''; return new Date(Number(ms)).toLocaleDateString('en-GB',{day:'numeric',month:'short'}); }
+function svcNames(list){ return (Array.isArray(list)?list:[]).map(function(s){ return s && (s.desc||s.name) || ''; }).filter(Boolean); }
+function stOf(q){
+  if(q.status==='confirmed' && q.comm_status==='payable') return 'payable';
+  if(q.status==='confirmed' && q.comm_status==='paid') return 'paid';
+  return q.status;
+}
+var ST_LABEL = { found:'Waiting quote', quoted:'Quoted', agreed:'Customer agreed', confirmed:'Confirmed', payable:'Customer paid', paid:'Comm paid', declined:'Declined', void:'Cancelled' };
+function pill(q){ var s = stOf(q); return '<span class="pill '+s+'">'+esc(ST_LABEL[s]||s)+'</span>'; }
+function openOv(html, mid){ $('ovBox').innerHTML = html; $('ov').className = 'ov' + (mid?' mid':''); }
+function closeOv(){ $('ov').className = 'ov hide'; }
+$('ov').addEventListener('click', function(e){ if(e.target === $('ov')) closeOv(); });
+function zoom(src){
+  var z = document.createElement('div'); z.className = 'zoom'; z.innerHTML = '<img src="'+esc(src)+'">';
+  z.onclick = function(){ z.remove(); }; document.body.appendChild(z);
+}
+window.QA_zoom = zoom;
+
+/* ---------- images ---------- */
+function pickImage(cb, useCamera, multiple){
+  var inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'image/*';
+  if(useCamera) inp.setAttribute('capture','environment');
+  if(multiple) inp.setAttribute('multiple','multiple');
+  inp.onchange = function(){
+    var fs = inp.files ? Array.prototype.slice.call(inp.files) : [];
+    (function nxt(i){ if(i >= fs.length) return; compress(fs[i], function(img){ cb(img); nxt(i+1); }); })(0);
+  };
+  inp.click();
+}
+function compress(file, cb){
+  var r = new FileReader();
+  r.onload = function(e){
+    var img = new Image();
+    img.onload = function(){
+      var max = 1400, w = img.width, h = img.height;
+      if(w > h && w > max){ h = Math.round(h*max/w); w = max; } else if(h >= w && h > max){ w = Math.round(w*max/h); h = max; }
+      var c = document.createElement('canvas'); c.width = w; c.height = h;
+      c.getContext('2d').drawImage(img, 0, 0, w, h);
+      c.toBlob(function(blob){ cb({ blob: blob, url: c.toDataURL('image/jpeg', 0.6) }); }, 'image/jpeg', 0.8);
+    };
+    img.onerror = function(){ toast('Bad image', true); };
+    img.src = e.target.result;
+  };
+  r.readAsDataURL(file);
+}
+function upload(id, name, blob){
+  var path = 'qc/' + id + '/' + name;
+  return sb.storage.from(BUCKET).upload(path, blob, { contentType:'image/jpeg', upsert:true }).then(function(r){
+    if(r.error) throw r.error;
+    return SB_URL + '/storage/v1/object/public/' + BUCKET + '/' + path;
+  });
+}
+
+/* ---------- share (photo + message, like SA Quotation) ---------- */
+function shareBox(title, sub, msg, photoUrl, extraHtml){
+  openOv(
+    '<h3>'+esc(title)+'</h3><p class="muted">'+esc(sub)+'</p>' +
+    '<div class="lnk" style="white-space:pre-wrap;max-height:180px;overflow:auto">'+esc(msg)+'</div>' +
+    '<div class="btns">' +
+    (photoUrl ? '<button class="btn gold" id="shPhoto"><i class="ti ti-photo-share"></i> Send photo + message</button>' : '') +
+    '<button class="btn '+(photoUrl?'ghost':'gold')+'" id="shText"><i class="ti ti-brand-whatsapp"></i> Send text only</button>' +
+    '<button class="btn ghost" id="shCopy"><i class="ti ti-copy"></i> Copy message</button>' +
+    (extraHtml||'') +
+    '<button class="btn ghost" id="shClose">Close</button></div>', true);
+  if(photoUrl) $('shPhoto').onclick = function(){
+    var b = $('shPhoto'); b.disabled = true; b.innerHTML = '<i class="ti ti-loader-2"></i> Preparing…';
+    var src = (typeof photoUrl === 'object') ? Promise.resolve(photoUrl) : fetch(photoUrl).then(function(r){ return r.blob(); });
+    src.then(function(blob){
+      var file = new File([blob], 'grandlab-car.jpg', { type:'image/jpeg' });
+      if(navigator.canShare && navigator.canShare({ files:[file] })) return navigator.share({ files:[file], text: msg });
+      throw new Error('no-file-share');
+    }).then(done, function(e){ done(); if(e && e.name === 'AbortError') return; toast('Photo share not available - use Send text only', true); });
+    function done(){ b.disabled = false; b.innerHTML = '<i class="ti ti-photo-share"></i> Send photo + message'; }
+  };
+  $('shText').onclick = function(){ window.open('https://wa.me/?text=' + encodeURIComponent(msg), '_blank'); };
+  $('shCopy').onclick = function(){ copy(msg); toast('Message copied'); };
+  $('shClose').onclick = closeOv;
+}
+function copy(t){
+  if(navigator.clipboard && navigator.clipboard.writeText){ navigator.clipboard.writeText(t); return; }
+  var ta = document.createElement('textarea'); ta.value = t; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove();
+}
+
+/* ---------- manager PIN ---------- */
+function needPin(cb){
+  if(S.pin){ cb(S.pin); return; }
+  openOv('<h3>🔒 Manager PIN</h3><p class="muted">Only the manager can quote prices, confirm, and see the report.</p>' +
+    '<div class="fld" style="margin-top:12px"><input id="pinIn" type="password" inputmode="numeric" autocomplete="off" placeholder="PIN"></div>' +
+    '<div class="row"><button class="btn ghost" id="pinNo">Cancel</button><button class="btn gold" id="pinOk">Unlock</button></div>', true);
+  setTimeout(function(){ try{ $('pinIn').focus(); }catch(e){} }, 60);
+  function go(){
+    var p = $('pinIn').value.trim(); if(!p) return;
+    $('pinOk').disabled = true;
+    sb.rpc('qc_addon_pin_check', { p_pin: p }).then(function(r){
+      $('pinOk').disabled = false;
+      var d = r.data || {};
+      if(r.error){ toast(r.error.message, true); return; }
+      if(d.ok){ S.pin = p; closeOv(); cb(p); return; }
+      toast(d.locked ? 'Too many wrong PINs. Wait 15 minutes.' : 'Wrong PIN', true);
+      $('pinIn').value = '';
+    });
+  }
+  $('pinOk').onclick = go;
+  $('pinIn').onkeydown = function(e){ if(e.key === 'Enter') go(); };
+  $('pinNo').onclick = closeOv;
+}
+// call a PIN function; on wrong_pin forget the PIN and ask again
+function pinRpc(fn, args, ok){
+  needPin(function(pin){
+    var a = Object.assign({ p_pin: pin }, args);
+    sb.rpc(fn, a).then(function(r){
+      if(r.error){ toast('Failed: ' + r.error.message, true); return; }
+      var d = r.data || {};
+      if(d.ok === false && d.reason === 'wrong_pin'){ S.pin = null; toast('PIN not accepted - enter again', true); return; }
+      if(d.ok === false){ toast(reasonText(d), true); return; }
+      ok(d);
+    });
+  });
+}
+function reasonText(d){
+  var m = {
+    wrong_stage:'Already moved on (now: ' + (d.status||'') + ') - refresh', not_found:'Not found', no_price:'Put a price on at least one problem',
+    nothing_selected:'Tick at least one', already_added:'Already added to the job card', job_not_found:'Job card not found',
+    job_not_open:'That job is already ' + (d.status||'closed') + ' - add by hand', plate_mismatch:'That job is a different car (' + (d.job_plate||'') + ')',
+    job_services_format:'That job card has an unusual services list - add by hand', nothing_to_add:'Nothing to add',
+    nothing_paid:'Enter the amount paid', commission_already_paid:'Commission already paid - cannot cancel', already_void:'Already cancelled',
+    too_short:'PIN must be at least 4 digits', no_issues:'Add at least one photo', no_plate:'Enter the plate'
+  };
+  return m[d.reason] || ('Not saved: ' + (d.reason||'unknown'));
+}
+
+/* ---------- tabs ---------- */
+document.querySelectorAll('.tabs button').forEach(function(b){
+  b.onclick = function(){ setTab(b.getAttribute('data-tab')); };
+});
+function setTab(t){
+  if(t === 'report'){ needPin(function(){ show('report'); }); return; }
+  show(t);
+}
+function show(t){
+  S.tab = t;
+  document.querySelectorAll('.tabs button').forEach(function(b){ b.classList.toggle('on', b.getAttribute('data-tab') === t || (t==='detail'||t==='quote') && b.getAttribute('data-tab')==='list'); });
+  ['pNew','pList','pDetail','pQuote','pReport'].forEach(function(id){ $(id).classList.add('hide'); });
+  var map = { new:'pNew', list:'pList', detail:'pDetail', quote:'pQuote', report:'pReport' };
+  $(map[t]).classList.remove('hide');
+  window.scrollTo(0,0);
+  if(t === 'list') loadList();
+  if(t === 'report') renderReport();
+}
+
+/* =====================================================================
+   NEW FIND (Shafiq)
+   ===================================================================== */
+function initNew(){
+  var f = ''; try{ f = localStorage.getItem('qa_finder') || ''; }catch(e){}
+  $('finder').value = f || 'SHAFIQ';
+  $('findJob').onclick = findJobs;
+  $('plate').onkeydown = function(e){ if(e.key === 'Enter') findJobs(); };
+  $('frontBox').onclick = function(){ pickImage(function(img){ S.front = img; renderFront(); }, true, false); };
+  $('addCam').onclick = function(){ pickImage(addFind, true, false); };
+  $('addGal').onclick = function(){ pickImage(addFind, false, true); };
+  $('sendBtn').onclick = send;
+  renderFinds();
+}
+function addFind(img){ S.finds.push({ blob:img.blob, url:img.url, remark:'' }); renderFinds(); }
+function renderFront(){
+  $('frontBox').innerHTML = S.front ? '<img src="'+S.front.url+'">' : '<i class="ti ti-camera"></i><span>Tap to take photo</span>';
+}
+function renderFinds(){
+  $('nFinds').textContent = S.finds.length ? '(' + S.finds.length + ')' : '';
+  $('finds').innerHTML = S.finds.map(function(f, i){
+    return '<div class="fcard"><img src="'+f.url+'"><span class="no">#'+(i+1)+'</span><span class="del" data-del="'+i+'"><i class="ti ti-trash"></i></span>' +
+      '<div class="rw"><input data-rm="'+i+'" value="'+esc(f.remark)+'" placeholder="What is the problem? e.g. Swirl marks on bonnet"></div></div>';
+  }).join('');
+  $('finds').querySelectorAll('[data-del]').forEach(function(el){
+    el.onclick = function(){ S.finds.splice(+el.getAttribute('data-del'), 1); renderFinds(); };
+  });
+  $('finds').querySelectorAll('[data-rm]').forEach(function(el){
+    el.oninput = function(){ S.finds[+el.getAttribute('data-rm')].remark = el.value; };
+  });
+  $('finds').querySelectorAll('.fcard>img').forEach(function(el){ el.onclick = function(){ zoom(el.src); }; });
+}
+function findJobs(){
+  var p = normPlate($('plate').value);
+  if(p.length < 2){ toast('Enter the plate', true); return; }
+  $('plate').value = p;
+  $('jobs').innerHTML = '<div class="muted" style="padding:6px 2px 10px">Searching…</div>';
+  // plates may be saved with a space — search loosely, then match exactly without spaces
+  var like = '%' + p.split('').join('%') + '%';
+  Promise.all([
+    sb.from('gl_jobs').select('id,plate,model,name,hp,car_type,services,stage,status,created_at,attendee')
+      .ilike('plate', like).order('created_at', { ascending:false }).limit(12),
+    sb.from('gl_qc_addons').select('ref,status,comm_status,created_at,total').eq('plate', p).order('created_at', { ascending:false }).limit(5)
+  ]).then(function(res){
+    if(res[0].error) throw res[0].error;
+    S.jobs = (res[0].data||[]).filter(function(j){ return normPlate(j.plate) === p; }).slice(0, 4);
+    var open = S.jobs.filter(function(j){ return j.status === 'open'; });
+    S.job = open[0] || S.jobs[0] || null;
+    renderJobs(res[1].data||[]);
+  }).catch(function(e){ $('jobs').innerHTML = ''; toast('Search failed: ' + (e.message||e), true); });
+}
+function renderJobs(prev){
+  var h = '';
+  if(!S.jobs.length){
+    h += '<p class="muted" style="margin:0 2px 10px">No job card found for this plate. Fill in the car below.</p>';
+  } else {
+    h += '<label>Job card (what the car came in for)</label>';
+    h += S.jobs.map(function(j, i){
+      var on = S.job && S.job.id === j.id;
+      return '<div class="job'+(on?' on':'')+'" data-j="'+i+'"><b>'+esc(j.plate)+'</b> · '+esc(j.model||'')+
+        ' <span class="pill '+(j.status==='open'?'quoted':'void')+'" style="float:right">'+esc(j.status==='open'?(j.stage||'open'):(j.status||''))+'</span>' +
+        '<div class="m">'+esc(j.name||'—')+' · '+esc(jobDate(j.created_at))+(j.attendee?' · SA '+esc(j.attendee):'')+'</div>' +
+        (on ? '<div class="came" style="margin-top:8px"><b>Came in for</b>'+(svcNames(j.services).map(esc).join('<br>')||'—')+'</div>' : '') +
+        '</div>';
+    }).join('');
+  }
+  if(prev.length){
+    h += '<p class="muted" style="margin:6px 2px 12px">⚠️ Already sent for this car: ' + prev.map(function(q){ return esc(q.ref) + ' (' + esc(ST_LABEL[stOf(q)]||q.status) + ', ' + esc(dOnly(q.created_at)) + ')'; }).join(', ') + '</p>';
+  }
+  $('jobs').innerHTML = h;
+  $('manual').classList.toggle('hide', !!S.jobs.length);
+  $('jobs').querySelectorAll('[data-j]').forEach(function(el){
+    el.onclick = function(){ S.job = S.jobs[+el.getAttribute('data-j')]; renderJobs(prev); };
+  });
+}
+function send(){
+  if(S.sending) return;
+  var plate = normPlate($('plate').value);
+  if(!plate){ toast('Enter the plate', true); return; }
+  if(!S.front){ toast('Take the front photo of the car', true); return; }
+  if(!S.finds.length){ toast('Take at least one photo of a problem', true); return; }
+  for(var i = 0; i < S.finds.length; i++){ if(!(S.finds[i].remark||'').trim()){ toast('Write the problem for photo #' + (i+1), true); return; } }
+  var finder = ($('finder').value||'').trim().toUpperCase() || 'SHAFIQ';
+  try{ localStorage.setItem('qa_finder', finder); }catch(e){}
+  var j = S.job, id = uuid(), tk = token(), stamp = Date.now();
+  S.sending = true; $('sendBtn').disabled = true; $('sendBtn').innerHTML = '<i class="ti ti-loader-2"></i> Sending…';
+  var frontUrl;
+  upload(id, 'front_' + stamp + '.jpg', S.front.blob).then(function(u){
+    frontUrl = u;
+    return Promise.all(S.finds.map(function(f, ix){ return upload(id, 'find_' + stamp + '_' + (ix+1) + '.jpg', f.blob); }));
+  }).then(function(urls){
+    return sb.rpc('qc_addon_create', {
+      p_id: id, p_token: tk, p_plate: plate,
+      p_model: j ? (j.model||'') : $('model').value.trim(),
+      p_car_type: j ? (j.car_type||'') : '',
+      p_colour: '',
+      p_customer_name: j ? (j.name||'') : $('cname').value.trim(),
+      p_customer_phone: j ? (j.hp||'') : '',
+      p_job_id: j ? j.id : '',
+      p_job_services: j ? svcNames(j.services).map(function(n){ return { desc:n }; }) : [],
+      p_front: frontUrl,
+      p_issues: S.finds.map(function(f, ix){ return { photo: urls[ix], remark: f.remark.trim() }; }),
+      p_finder: finder
+    });
+  }).then(function(r){
+    if(r.error) throw r.error;
+    if(!r.data || !r.data.ok) throw new Error(reasonText(r.data||{}));
+    var ref = r.data.ref, frontBlob = S.front.blob;
+    var car = [plate, j ? j.model : $('model').value.trim()].filter(Boolean).join(' · ');
+    var msg = '🔎 *QC ADD-ON* — ' + ref + '\n' +
+      '🚗 ' + car + '\n' +
+      ((j && j.name) || $('cname').value.trim() ? '👤 ' + ((j && j.name) || $('cname').value.trim()) + '\n' : '') +
+      (j ? '📋 Came in for: ' + (svcNames(j.services).join(', ') || '—') + '\n' : '') +
+      '\n⚠️ *Found (' + S.finds.length + ')*\n' +
+      S.finds.map(function(f, i){ return (i+1) + '. ' + f.remark.trim(); }).join('\n') +
+      '\n\n👉 Jimmy, quote here:\n' + SELF + '?q=' + ref + '\n\n— ' + finder;
+    resetNew();
+    shareBox(ref + ' saved', 'Send it to the QC add-on WhatsApp group.', msg, frontBlob);
+  }).catch(function(e){
+    toast('Failed: ' + (e.message||e), true);
+  }).then(function(){
+    S.sending = false; $('sendBtn').disabled = false; $('sendBtn').innerHTML = '<i class="ti ti-send"></i> Send to Jimmy';
+  });
+}
+function resetNew(){
+  S.front = null; S.finds = []; S.jobs = []; S.job = null;
+  $('plate').value = ''; $('model').value = ''; $('cname').value = ''; $('jobs').innerHTML = '';
+  $('manual').classList.add('hide');
+  renderFront(); renderFinds();
+}
+
+/* =====================================================================
+   LIST
+   ===================================================================== */
+var FILTERS = [['open','Open'],['found','Waiting quote'],['quoted','Quoted'],['agreed','Agreed'],['confirmed','Confirmed'],['payable','Customer paid'],['paid','Comm paid'],['closed','Declined / cancelled'],['all','All']];
+function loadList(){
+  $('filters').innerHTML = FILTERS.map(function(f){ return '<button class="chip'+(S.filter===f[0]?' on':'')+'" data-f="'+f[0]+'">'+f[1]+'</button>'; }).join('');
+  $('filters').querySelectorAll('[data-f]').forEach(function(b){ b.onclick = function(){ S.filter = b.getAttribute('data-f'); loadList(); }; });
+  $('qlist').className = 'load'; $('qlist').innerHTML = 'Loading…';
+  sb.from('gl_qc_addons').select('*').order('created_at', { ascending:false }).limit(200).then(function(r){
+    if(r.error){ $('qlist').innerHTML = 'Could not load: ' + esc(r.error.message); return; }
+    S.rows = r.data || [];
+    renderList();
+  });
+}
+function renderList(){
+  var rows = S.rows.filter(function(q){
+    var s = stOf(q);
+    if(S.filter === 'all') return true;
+    if(S.filter === 'open') return ['found','quoted','agreed','confirmed'].indexOf(s) >= 0;
+    if(S.filter === 'closed') return s === 'declined' || s === 'void';
+    return s === S.filter;
+  });
+  $('qlist').className = '';
+  if(!rows.length){ $('qlist').innerHTML = '<div class="load">Nothing here.</div>'; return; }
+  $('qlist').innerHTML = rows.map(function(q){
+    var n = (q.issues||[]).length;
+    var amt = q.paid_total != null ? q.paid_total : (q.agreed_total != null ? q.agreed_total : q.total);
+    return '<div class="qrow" data-id="'+q.id+'">' +
+      (q.front_photo ? '<img src="'+esc(q.front_photo)+'" loading="lazy">' : '<div class="noimg"></div>') +
+      '<div class="mid"><b>'+esc(q.plate)+'</b> <span class="muted">'+esc(q.ref)+'</span>' +
+      '<div class="m">'+esc([q.model, q.customer_name].filter(Boolean).join(' · '))+'</div>' +
+      '<div class="m">'+n+' problem'+(n===1?'':'s')+' · '+esc(q.finder)+' · '+esc(d8(q.created_at))+'</div></div>' +
+      '<div class="r">'+pill(q)+(amt>0?'<b>'+money(amt)+'</b>':'')+'</div></div>';
+  }).join('');
+  $('qlist').querySelectorAll('[data-id]').forEach(function(el){ el.onclick = function(){ openDetail(el.getAttribute('data-id')); }; });
+}
+
+/* =====================================================================
+   DETAIL
+   ===================================================================== */
+function fetchOne(key){
+  var q = sb.from('gl_qc_addons').select('*');
+  q = /^QA-/i.test(key) ? q.eq('ref', key.toUpperCase()) : q.eq('id', key);
+  return q.maybeSingle().then(function(r){ if(r.error) throw r.error; return r.data; });
+}
+function openDetail(key){
+  show('detail');
+  $('pDetail').innerHTML = '<div class="load">Loading…</div>';
+  fetchOne(key).then(function(q){
+    if(!q){ $('pDetail').innerHTML = '<div class="load">Not found.</div>'; return; }
+    S.cur = q; renderDetail();
+  }).catch(function(e){ $('pDetail').innerHTML = '<div class="load">Could not load: '+esc(e.message||e)+'</div>'; });
+}
+function reload(){ return fetchOne(S.cur.id).then(function(q){ S.cur = q; renderDetail(); }); }
+function issueHtml(it, i, q){
+  var ag = (q.agreed||[]).indexOf(i) >= 0;
+  var paid = (q.paid_lines||[]).filter(function(p){ return p.i === i; })[0];
+  return '<div class="fcard"><img src="'+esc(it.photo)+'" onclick="QA_zoom(this.src)"><span class="no">#'+(i+1)+(ag?' · ✓ AGREED':'')+'</span>' +
+    '<div class="rw"><div style="font-size:14px"><b style="color:var(--red);font-size:11px;letter-spacing:.5px">PROBLEM</b><br>'+esc(it.remark)+'</div>' +
+    (it.price > 0 || it.solution ? '<div class="sol"><div class="lab">Solution'+(it.time?' · ⏱ '+esc(it.time):'')+'</div>' +
+      '<div style="font-size:14px;margin-bottom:6px">'+esc(it.solution||'')+'</div>' +
+      (it.lines||[]).map(function(l){ return '<div class="ln"><span>'+esc(l.name)+'</span><span>'+money(l.price)+'</span></div>'; }).join('') +
+      (paid ? '<div class="ln" style="color:var(--ok)"><span>Customer paid</span><span style="color:var(--ok)">'+money(paid.paid)+'</span></div>' : '') +
+      '</div>' : '') +
+    '</div></div>';
+}
+function renderDetail(){
+  var q = S.cur, s = stOf(q), h = '';
+  h += '<button class="btn ghost sm noprint" id="dBack" style="width:auto;margin-bottom:12px"><i class="ti ti-arrow-left"></i> List</button>';
+  h += '<div class="card"><div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><b style="font-size:20px;flex:1">'+esc(q.plate)+'</b>'+pill(q)+'</div>' +
+    '<div class="muted">'+esc(q.ref)+' · '+esc([q.model, q.customer_name].filter(Boolean).join(' · '))+'</div>' +
+    '<div class="muted">Found by <b style="color:var(--text)">'+esc(q.finder)+'</b> · '+esc(d8(q.created_at))+'</div>' +
+    ((q.job_services||[]).length ? '<div class="came" style="margin-top:10px"><b>Came in for</b>'+svcNames(q.job_services).map(esc).join('<br>')+'</div>' : '') +
+    (q.front_photo ? '<div class="front" style="margin-top:12px;border-style:solid;cursor:zoom-in" onclick="QA_zoom(\''+esc(q.front_photo)+'\')"><img src="'+esc(q.front_photo)+'"></div>' : '') +
+    '</div>';
+  h += (q.issues||[]).map(function(it, i){ return issueHtml(it, i, q); }).join('');
+  if(q.note) h += '<div class="card"><h2>Note from Jimmy</h2>'+esc(q.note)+'</div>';
+  if(q.total > 0){
+    h += '<div class="card">' +
+      '<div class="tot"><span>Quoted total</span><span>'+money(q.total)+'</span></div>' +
+      (q.agreed_total != null ? '<div class="tot" style="font-size:14px"><span>Customer agreed</span><span style="font-size:16px">'+money(q.agreed_total)+'</span></div>' : '') +
+      (q.paid_total != null ? '<div class="tot" style="font-size:14px"><span>Customer paid</span><span style="font-size:16px;color:var(--ok)">'+money(q.paid_total)+'</span></div>' +
+        '<div class="tot" style="font-size:14px"><span>'+esc(q.finder)+' commission ('+Number(q.comm_pct)+'%)</span><span style="font-size:16px">'+money(q.comm_amount)+'</span></div>' : '') +
+      (q.job_added_at ? '<p class="muted" style="margin:8px 2px 0">✓ Added to job card '+esc(dOnly(q.job_added_at))+'</p>' : '') +
+      (q.comm_paid_at ? '<p class="muted" style="margin:4px 2px 0">✓ Commission paid '+esc(dOnly(q.comm_paid_at))+(q.comm_paid_ref?' · '+esc(q.comm_paid_ref):'')+'</p>' : '') +
+      '</div>';
+  }
+  if(q.decline_reason) h += '<div class="card"><h2>'+(q.status==='void'?'Cancelled':'Declined')+'</h2>'+esc(q.decline_reason)+'</div>';
+
+  // actions
+  var a = [];
+  if(s === 'found'){
+    a.push('<button class="btn gold" data-a="quote"><i class="ti ti-lock"></i> Quote solution + price</button>');
+    a.push('<button class="btn ghost" data-a="resend"><i class="ti ti-brand-whatsapp"></i> Send to Jimmy again</button>');
+  }
+  if(s === 'quoted' || s === 'agreed'){
+    a.push('<button class="btn gold" data-a="cust"><i class="ti ti-photo-share"></i> Send quote to customer</button>');
+    a.push('<button class="btn green" data-a="agree"><i class="ti ti-checkbox"></i> '+(s==='agreed'?'Change what customer agreed':'Customer agreed — tick items')+'</button>');
+    a.push('<button class="btn ghost" data-a="done"><i class="ti ti-brand-whatsapp"></i> Send "Done quote" to group</button>');
+    if(s === 'agreed') a.push('<button class="btn gold" data-a="confirm"><i class="ti ti-lock"></i> Confirm ('+money(q.agreed_total)+')</button>');
+    if(s === 'quoted') a.push('<button class="btn ghost" data-a="quote"><i class="ti ti-lock"></i> Edit quote</button>');
+    a.push('<button class="btn red" data-a="decline">Customer said no</button>');
+  }
+  if(s === 'confirmed'){
+    if(!q.job_added_at) a.push('<button class="btn gold" data-a="job"><i class="ti ti-lock"></i> Add to job card</button>');
+    a.push('<button class="btn green" data-a="paid"><i class="ti ti-lock"></i> Customer paid — key amount</button>');
+    a.push('<button class="btn ghost" data-a="cust"><i class="ti ti-photo-share"></i> Send quote to customer</button>');
+  }
+  if(s === 'payable') a.push('<button class="btn ghost" data-a="unpaid"><i class="ti ti-lock"></i> Undo customer paid</button>');
+  if(s === 'paid') a.push('<button class="btn ghost" data-a="uncomm"><i class="ti ti-lock"></i> Undo commission paid</button>');
+  if(['found','quoted','agreed','confirmed','payable'].indexOf(s) >= 0) a.push('<button class="btn red sm" data-a="void"><i class="ti ti-lock"></i> Cancel this add-on</button>');
+  h += '<div class="btns noprint">' + a.join('') + '</div>';
+
+  var ev = (q.events||[]).map(function(e){ return esc(d8(e.at)) + ' · ' + esc(e.type) + (e.by?' · '+esc(e.by):''); });
+  if(ev.length) h += '<div class="card" style="margin-top:12px"><h2>History</h2><div class="hist">'+ev.join('<br>')+'</div></div>';
+
+  $('pDetail').innerHTML = h;
+  $('dBack').onclick = function(){ show('list'); };
+  $('pDetail').querySelectorAll('[data-a]').forEach(function(b){ b.onclick = function(){ act(b.getAttribute('data-a')); }; });
+}
+function carLine(q){ return [q.plate, q.model].filter(Boolean).join(' · '); }
+function act(a){
+  var q = S.cur;
+  if(a === 'quote') return needPin(function(){ openQuote(); });
+  if(a === 'resend'){
+    var msg = '🔎 *QC ADD-ON* — ' + q.ref + '\n🚗 ' + carLine(q) + '\n' + (q.customer_name ? '👤 ' + q.customer_name + '\n' : '') +
+      ((q.job_services||[]).length ? '📋 Came in for: ' + svcNames(q.job_services).join(', ') + '\n' : '') +
+      '\n⚠️ *Found (' + (q.issues||[]).length + ')*\n' + (q.issues||[]).map(function(it, i){ return (i+1) + '. ' + it.remark; }).join('\n') +
+      '\n\n👉 Jimmy, quote here:\n' + SELF + '?q=' + q.ref + '\n\n— ' + q.finder;
+    return shareBox(q.ref, 'Send it to the QC add-on WhatsApp group.', msg, q.front_photo);
+  }
+  if(a === 'done') return shareDone(q);
+  if(a === 'cust') return shareCustomer(q);
+  if(a === 'agree') return openAgree();
+  if(a === 'decline') return openDecline();
+  if(a === 'confirm') return pinRpc('qc_addon_confirm', { p_id: q.id }, function(){ toast('Confirmed ✓'); reload().then(function(){ if(!S.cur.job_added_at) openJob(); }); });
+  if(a === 'job') return needPin(function(){ openJob(); });
+  if(a === 'paid') return needPin(function(){ openPaid(); });
+  if(a === 'unpaid') return pinRpc('qc_addon_unpaid', { p_id: q.id }, function(){ toast('Undone'); reload(); });
+  if(a === 'uncomm') return pinRpc('qc_addon_comm_unpaid', { p_id: q.id }, function(){ toast('Undone'); reload(); });
+  if(a === 'void') return needPin(function(){ openVoid(); });
+}
+
+/* ---------- WhatsApp messages after quoting ---------- */
+function solLines(q, onlyAgreed){
+  return (q.issues||[]).map(function(it, i){
+    if(onlyAgreed && (q.agreed||[]).indexOf(i) < 0) return '';
+    if(!(it.price > 0)) return '';
+    return (i+1) + '. ' + it.remark + '\n   ✅ ' + (it.solution || (it.lines||[]).map(function(l){ return l.name; }).join(', ')) +
+      '\n   💰 ' + money(it.price) + (it.time ? '  ⏱ ' + it.time : '');
+  }).filter(Boolean).join('\n\n');
+}
+function shareDone(q){
+  var msg = '✅ *DONE QUOTE* — ' + q.ref + '\n🚗 ' + carLine(q) + '\n\n' + solLines(q) +
+    '\n\n💰 *Total: ' + money(q.total) + '*' + (q.note ? '\n📝 ' + q.note : '') +
+    '\n\n👀 Problem + solution + price (can forward to customer):\n' + VIEW + '?t=' + q.share_token +
+    '\n\n☑️ Customer agreed? Tick here:\n' + SELF + '?q=' + q.ref;
+  shareBox('Done quote', 'Send to the QC add-on group so Shafiq knows.', msg, q.front_photo);
+}
+function shareCustomer(q){
+  var msg = 'Hi' + (q.customer_name ? ' ' + q.customer_name : '') + ', this is GrandLab Detailing 🚗 ' + carLine(q) + '\n\n' +
+    'While checking your car we found:\n\n' + solLines(q) +
+    '\n\nPhotos + details here:\n' + VIEW + '?t=' + q.share_token +
+    '\n\nLet us know which one you would like us to do today 🙏';
+  shareBox('Send to customer', 'Send to the customer\'s WhatsApp (or show them on your phone).', msg, q.front_photo,
+    '<a class="btn ghost" href="'+esc(VIEW+'?t='+q.share_token)+'" target="_blank"><i class="ti ti-eye"></i> Open customer page</a>');
+}
+
+/* ---------- agree / decline (Shafiq) ---------- */
+function openAgree(){
+  var q = S.cur, sel = {};
+  (q.agreed||[]).forEach(function(i){ sel[i] = 1; });
+  function draw(){
+    var tot = 0;
+    var h = '<h3>Customer agreed to…</h3><p class="muted">Tick only what the customer said yes to.</p><div style="margin-top:12px">' +
+      (q.issues||[]).map(function(it, i){
+        if(!(it.price > 0)) return '';
+        if(sel[i]) tot += Number(it.price);
+        return '<div class="tick'+(sel[i]?' on':'')+'" data-i="'+i+'"><div class="bx">'+(sel[i]?'✓':'')+'</div>' +
+          '<div class="t">#'+(i+1)+' '+esc(it.solution||it.remark)+'<small>'+esc(it.remark)+(it.time?' · ⏱ '+esc(it.time):'')+'</small></div><div class="p">'+money(it.price)+'</div></div>';
+      }).join('') + '</div><div class="tot"><span>Total agreed</span><span>'+money(tot)+'</span></div>' +
+      '<div class="row" style="margin-top:12px"><button class="btn ghost" id="agNo">Cancel</button><button class="btn green" id="agOk">Save</button></div>';
+    openOv(h);
+    $('ovBox').querySelectorAll('[data-i]').forEach(function(el){
+      el.onclick = function(){ var i = +el.getAttribute('data-i'); if(sel[i]) delete sel[i]; else sel[i] = 1; draw(); };
+    });
+    $('agNo').onclick = closeOv;
+    $('agOk').onclick = function(){
+      var idx = Object.keys(sel).map(Number);
+      if(!idx.length){ toast('Tick at least one', true); return; }
+      $('agOk').disabled = true;
+      sb.rpc('qc_addon_agree', { p_id: q.id, p_idx: idx, p_by: localFinder() }).then(function(r){
+        $('agOk').disabled = false;
+        if(r.error){ toast(r.error.message, true); return; }
+        if(!r.data.ok){ toast(reasonText(r.data), true); return; }
+        closeOv(); toast('Saved ✓ — tell Jimmy to confirm'); reload().then(function(){ shareAgreed(S.cur); });
+      });
+    };
+  }
+  draw();
+}
+function shareAgreed(q){
+  var msg = '🙌 *CUSTOMER AGREED* — ' + q.ref + '\n🚗 ' + carLine(q) + '\n\n' + solLines(q, true) +
+    '\n\n💰 *Agreed: ' + money(q.agreed_total) + '*\n\n🔒 Jimmy, confirm here:\n' + SELF + '?q=' + q.ref;
+  shareBox('Tell Jimmy', 'Send to the QC add-on group so Jimmy can confirm.', msg, null);
+}
+function localFinder(){ var f = ''; try{ f = localStorage.getItem('qa_finder') || ''; }catch(e){} return f || (S.cur && S.cur.finder) || ''; }
+function openDecline(){
+  openOv('<h3>Customer said no</h3><p class="muted">No commission for this one.</p>' +
+    '<div class="chips" style="margin:12px 0" id="dcQuick">' + ['Too expensive','No time today','Next visit','Not interested'].map(function(t){ return '<button class="chip">'+t+'</button>'; }).join('') + '</div>' +
+    '<div class="fld"><textarea id="dcWhy" placeholder="Reason (optional)"></textarea></div>' +
+    '<div class="row"><button class="btn ghost" id="dcNo">Back</button><button class="btn red" id="dcOk">Customer said no</button></div>');
+  $('dcQuick').querySelectorAll('.chip').forEach(function(c){ c.onclick = function(){ $('dcWhy').value = c.textContent; }; });
+  $('dcNo').onclick = closeOv;
+  $('dcOk').onclick = function(){
+    sb.rpc('qc_addon_decline', { p_id: S.cur.id, p_by: localFinder(), p_reason: $('dcWhy').value.trim() }).then(function(r){
+      if(r.error){ toast(r.error.message, true); return; }
+      if(!r.data.ok){ toast(reasonText(r.data), true); return; }
+      closeOv(); toast('Saved'); reload();
+    });
+  };
+}
+
+/* =====================================================================
+   QUOTE EDITOR (Jimmy, PIN)
+   ===================================================================== */
+function loadServices(){
+  if(S.services) return Promise.resolve(S.services);
+  return sb.from('gl_services').select('id,name,subtitle,category,base_price,price_by_type,active')
+    .or('hidden.is.null,hidden.eq.false').order('category').order('sort_order').then(function(r){
+      if(r.error) throw r.error;
+      S.services = (r.data||[]).filter(function(s){ return s.active !== false; });
+      return S.services;
+    });
+}
+function priceOf(s, ct){
+  var p = null;
+  if(ct && s.price_by_type && s.price_by_type[ct] != null) p = Number(s.price_by_type[ct]);
+  if(p == null && s.base_price != null) p = Number(s.base_price);
+  return p;
+}
+function openQuote(){
+  var q = S.cur;
+  S.ed = {
+    note: q.note || '',
+    issues: (q.issues||[]).map(function(it){
+      return { solution: it.solution||'', time: it.time||'', lines: (it.lines||[]).map(function(l){ return { id:l.id||'', name:l.name, price:l.price }; }) };
+    })
+  };
+  show('quote');
+  renderQuote();
+  loadServices().catch(function(e){ toast('Service list failed: ' + (e.message||e), true); });
+}
+function edTotal(){ var t = 0; S.ed.issues.forEach(function(x){ x.lines.forEach(function(l){ t += Number(l.price)||0; }); }); return t; }
+function renderQuote(){
+  var q = S.cur, h = '';
+  h += '<button class="btn ghost sm" id="qBack" style="width:auto;margin-bottom:12px"><i class="ti ti-arrow-left"></i> Back</button>';
+  h += '<div class="card"><b style="font-size:18px">'+esc(q.plate)+'</b> <span class="muted">'+esc(q.ref)+' · '+esc(q.model||'')+(q.car_type?' · '+esc(q.car_type):'')+'</span>' +
+    ((q.job_services||[]).length ? '<div class="came" style="margin-top:10px"><b>Came in for</b>'+svcNames(q.job_services).map(esc).join('<br>')+'</div>' : '') + '</div>';
+  h += (q.issues||[]).map(function(it, i){
+    var e = S.ed.issues[i];
+    return '<div class="card"><div style="display:flex;gap:10px;margin-bottom:12px"><img src="'+esc(it.photo)+'" style="width:92px;height:70px;object-fit:cover;border-radius:10px;cursor:zoom-in" onclick="QA_zoom(this.src)">' +
+      '<div style="flex:1"><b style="color:var(--gold);font-size:12px">#'+(i+1)+' PROBLEM</b><div style="font-size:14px">'+esc(it.remark)+'</div></div></div>' +
+      '<div class="fld"><label>Solution (what we do)</label><textarea data-sol="'+i+'" placeholder="e.g. 2-step machine polish on bonnet to remove swirls">'+esc(e.solution)+'</textarea></div>' +
+      '<div class="fld"><label>Time needed</label><div class="chips" style="margin-bottom:6px">' +
+        TIMES.map(function(t){ return '<button class="chip'+(e.time===t?' on':'')+'" data-tm="'+i+'" data-v="'+esc(t)+'">'+esc(t)+'</button>'; }).join('') +
+      '</div><input data-tmi="'+i+'" value="'+esc(e.time)+'" placeholder="or type, e.g. 3 hours"></div>' +
+      '<label>Price</label>' +
+      e.lines.map(function(l, k){
+        return '<div class="ed-line"><input class="nm" data-ln="'+i+'" data-k="'+k+'" data-f="name" value="'+esc(l.name)+'" placeholder="Service">' +
+          '<input class="pr" data-ln="'+i+'" data-k="'+k+'" data-f="price" inputmode="decimal" value="'+esc(l.price)+'" placeholder="RM">' +
+          '<span class="x" data-rmln="'+i+'" data-k="'+k+'"><i class="ti ti-x"></i></span></div>';
+      }).join('') +
+      '<div class="row" style="margin-top:6px"><button class="btn ghost sm" data-pick="'+i+'"><i class="ti ti-list-search"></i> From service list</button>' +
+      '<button class="btn ghost sm" data-cus="'+i+'"><i class="ti ti-plus"></i> Own line</button></div></div>';
+  }).join('');
+  h += '<div class="card"><div class="fld" style="margin:0"><label>Note (optional, customer sees it)</label><textarea id="qNote" placeholder="e.g. Can be done today while waiting">'+esc(S.ed.note)+'</textarea></div></div>';
+  h += '<div class="card"><div class="tot"><span>Total</span><span id="qTot">'+money(edTotal())+'</span></div></div>';
+  h += '<button class="btn gold" id="qSave"><i class="ti ti-check"></i> Save quote</button>';
+  $('pQuote').innerHTML = h;
+  var P = $('pQuote');
+  $('qBack').onclick = function(){ show('detail'); renderDetail(); };
+  P.querySelectorAll('[data-sol]').forEach(function(el){ el.oninput = function(){ S.ed.issues[+el.getAttribute('data-sol')].solution = el.value; }; });
+  P.querySelectorAll('[data-tm]').forEach(function(el){ el.onclick = function(){ S.ed.issues[+el.getAttribute('data-tm')].time = el.getAttribute('data-v'); renderQuote(); }; });
+  P.querySelectorAll('[data-tmi]').forEach(function(el){ el.oninput = function(){ S.ed.issues[+el.getAttribute('data-tmi')].time = el.value; }; });
+  P.querySelectorAll('[data-ln]').forEach(function(el){
+    el.oninput = function(){
+      var l = S.ed.issues[+el.getAttribute('data-ln')].lines[+el.getAttribute('data-k')];
+      l[el.getAttribute('data-f')] = el.value;
+      $('qTot').textContent = money(edTotal());
+    };
+  });
+  P.querySelectorAll('[data-rmln]').forEach(function(el){ el.onclick = function(){ S.ed.issues[+el.getAttribute('data-rmln')].lines.splice(+el.getAttribute('data-k'), 1); renderQuote(); }; });
+  P.querySelectorAll('[data-cus]').forEach(function(el){ el.onclick = function(){ S.ed.issues[+el.getAttribute('data-cus')].lines.push({ id:'', name:'', price:'' }); renderQuote(); }; });
+  P.querySelectorAll('[data-pick]').forEach(function(el){ el.onclick = function(){ openPicker(+el.getAttribute('data-pick')); }; });
+  $('qNote').oninput = function(){ S.ed.note = $('qNote').value; };
+  $('qSave').onclick = saveQuote;
+}
+function openPicker(i){
+  var ct = S.cur.car_type || '';
+  function draw(term){
+    var list = (S.services||[]).filter(function(s){
+      var p = priceOf(s, ct); if(!(p > 0)) return false;
+      if(!term) return true;
+      var t = term.toLowerCase();
+      return (s.name||'').toLowerCase().indexOf(t) >= 0 || (s.subtitle||'').toLowerCase().indexOf(t) >= 0 || (s.category||'').toLowerCase().indexOf(t) >= 0;
+    }).slice(0, 60);
+    $('pkList').innerHTML = list.length ? list.map(function(s){
+      return '<div class="svc" data-sid="'+esc(s.id)+'"><div class="nm"><b>'+esc(s.name)+'</b><span>'+esc(s.category||'')+(s.subtitle?' · '+esc(s.subtitle):'')+'</span></div><div class="pr">'+money(priceOf(s, ct))+'</div></div>';
+    }).join('') : '<div class="load">'+(S.services?'No match':'Loading…')+'</div>';
+    $('pkList').querySelectorAll('[data-sid]').forEach(function(el){
+      el.onclick = function(){
+        var s = S.services.filter(function(x){ return String(x.id) === el.getAttribute('data-sid'); })[0];
+        S.ed.issues[i].lines.push({ id: s.id, name: s.name, price: priceOf(s, ct) });
+        closeOv(); renderQuote();
+      };
+    });
+  }
+  openOv('<h3>Pick a service</h3><p class="muted">Price shown for car type: '+esc(ct||'not set (base price)')+'. You can change the price after.</p>' +
+    '<div class="fld" style="margin-top:10px"><input id="pkQ" placeholder="Search e.g. polish, headlamp, coating"></div><div id="pkList" style="max-height:52vh;overflow-y:auto"></div>' +
+    '<button class="btn ghost" style="margin-top:10px" id="pkClose">Close</button>');
+  $('pkClose').onclick = closeOv;
+  $('pkQ').oninput = function(){ draw($('pkQ').value.trim()); };
+  loadServices().then(function(){ draw(''); }).catch(function(){});
+  draw('');
+}
+function saveQuote(){
+  var bad = false;
+  var issues = S.ed.issues.map(function(e){
+    var lines = e.lines.filter(function(l){ return (l.name||'').trim() || String(l.price||'').trim(); }).map(function(l){
+      var p = Number(String(l.price).replace(/[^0-9.]/g,''));
+      if(!(l.name||'').trim() || !(p >= 0) || String(l.price).trim()==='') bad = true;
+      return { id: l.id||'', name: (l.name||'').trim(), price: p };
+    });
+    return { solution: (e.solution||'').trim(), time: (e.time||'').trim(), lines: lines };
+  });
+  if(bad){ toast('Every price line needs a name and a price', true); return; }
+  if(!(edTotal() > 0)){ toast('Put a price on at least one problem', true); return; }
+  $('qSave').disabled = true;
+  pinRpc('qc_addon_quote', { p_id: S.cur.id, p_issues: issues, p_note: S.ed.note.trim() }, function(){
+    toast('Quote saved ✓');
+    reload().then(function(){ show('detail'); renderDetail(); shareDone(S.cur); });
+  });
+  setTimeout(function(){ if($('qSave')) $('qSave').disabled = false; }, 1500);
+}
+
+/* ---------- add to job card (PIN) ---------- */
+function openJob(){
+  var q = S.cur, p = normPlate(q.plate);
+  openOv('<h3>Add to job card</h3><p class="muted">Adds the agreed services to the end of the job card so POS can bill them. Nothing already on the job is changed or removed.</p><div id="jbList" class="load">Loading…</div>');
+  sb.from('gl_jobs').select('id,plate,model,name,services,stage,status,total,created_at')
+    .ilike('plate', '%' + p.split('').join('%') + '%').eq('status','open').order('created_at', { ascending:false }).limit(10)
+    .then(function(r){
+      var jobs = (r.data||[]).filter(function(j){ return normPlate(j.plate) === p; });
+      var pick = jobs.filter(function(j){ return j.id === q.job_id; })[0] || jobs[0];
+      var add = [];
+      (q.agreed||[]).forEach(function(i){ ((q.issues[i]||{}).lines||[]).forEach(function(l){ add.push(l); }); });
+      var h = '';
+      if(!jobs.length) h = '<p class="muted" style="margin:12px 0">No open job card for '+esc(q.plate)+'. Ask reception to open one, or add the services by hand.</p><button class="btn ghost" id="jbClose">Close</button>';
+      else {
+        h = '<label style="margin-top:12px">Job card</label>' + jobs.map(function(j){
+          return '<div class="job'+(pick&&pick.id===j.id?' on':'')+'" data-jid="'+esc(j.id)+'"><b>'+esc(j.plate)+'</b> · '+esc(j.model||'')+'<div class="m">'+esc(j.name||'')+' · '+esc(jobDate(j.created_at))+' · now '+money(j.total)+'</div>' +
+            '<div class="m">'+svcNames(j.services).map(esc).join(', ')+'</div></div>';
+        }).join('') +
+        '<label style="margin-top:12px">Will add</label>' + add.map(function(l){ return '<div class="ln"><span>'+esc(l.name)+'</span><span>'+money(l.price)+'</span></div>'; }).join('') +
+        '<p class="muted" style="margin:10px 0">⚠️ If someone has this job card open and saves it, reload the job card first.</p>' +
+        '<div class="row"><button class="btn ghost" id="jbClose">Not now</button><button class="btn gold" id="jbOk">Add to job card</button></div>';
+      }
+      $('jbList').className = ''; $('jbList').innerHTML = h;
+      $('jbClose').onclick = closeOv;
+      var chosen = pick ? pick.id : null;
+      $('jbList').querySelectorAll('[data-jid]').forEach(function(el){
+        el.onclick = function(){ chosen = el.getAttribute('data-jid'); $('jbList').querySelectorAll('[data-jid]').forEach(function(x){ x.classList.toggle('on', x === el); }); };
+      });
+      if($('jbOk')) $('jbOk').onclick = function(){
+        $('jbOk').disabled = true;
+        pinRpc('qc_addon_add_to_job', { p_id: q.id, p_job_id: chosen }, function(d){
+          closeOv(); toast('Added ' + d.lines + ' line' + (d.lines===1?'':'s') + ' to the job card ✓'); reload();
+        });
+        setTimeout(function(){ if($('jbOk')) $('jbOk').disabled = false; }, 1500);
+      };
+    });
+}
+
+/* ---------- customer paid (PIN): amount after discount ---------- */
+function openPaid(){
+  var q = S.cur, today = new Date();
+  var iso = today.getFullYear() + '-' + ('0'+(today.getMonth()+1)).slice(-2) + '-' + ('0'+today.getDate()).slice(-2);
+  var h = '<h3>Customer paid</h3><p class="muted">Key what the customer actually paid for each add-on (after any discount). '+esc(q.finder)+' gets '+Number(q.comm_pct)+'%.</p><div style="margin-top:12px">';
+  (q.agreed||[]).forEach(function(i){
+    var it = q.issues[i]; if(!it) return;
+    var prev = (q.paid_lines||[]).filter(function(p){ return p.i === i; })[0];
+    h += '<div class="fld"><label>#'+(i+1)+' '+esc(it.solution||it.remark)+' — quoted '+money(it.price)+'</label><input data-pi="'+i+'" inputmode="decimal" value="'+esc(prev?prev.paid:it.price)+'"></div>';
+  });
+  h += '</div><div class="fld"><label>Date paid</label><input type="date" id="pdDate" value="'+iso+'"></div>' +
+    '<div class="tot"><span>Commission</span><span id="pdComm"></span></div>' +
+    '<div class="row" style="margin-top:12px"><button class="btn ghost" id="pdNo">Cancel</button><button class="btn green" id="pdOk">Save</button></div>';
+  openOv(h);
+  function calc(){
+    var t = 0; $('ovBox').querySelectorAll('[data-pi]').forEach(function(el){ t += Number(el.value.replace(/[^0-9.]/g,''))||0; });
+    $('pdComm').textContent = money(Math.round(t * Number(q.comm_pct)) / 100) + ' of ' + money(t);
+  }
+  $('ovBox').querySelectorAll('[data-pi]').forEach(function(el){ el.oninput = calc; });
+  calc();
+  $('pdNo').onclick = closeOv;
+  $('pdOk').onclick = function(){
+    var paid = [], over = false;
+    $('ovBox').querySelectorAll('[data-pi]').forEach(function(el){
+      var i = +el.getAttribute('data-pi'), v = Number(el.value.replace(/[^0-9.]/g,''))||0;
+      if(v > Number(q.issues[i].price)) over = true;
+      paid.push({ i: i, paid: v });
+    });
+    if(over){ toast('Paid cannot be more than quoted', true); return; }
+    pinRpc('qc_addon_paid', { p_id: q.id, p_paid: paid, p_date: $('pdDate').value || null }, function(d){
+      closeOv(); toast('Saved ✓ commission ' + money(d.comm)); reload();
+    });
+  };
+}
+function openVoid(){
+  var q = S.cur;
+  openOv('<h3>Cancel '+esc(q.ref)+'?</h3><p class="muted">No commission will be paid.'+(q.job_added_at?' ⚠️ The services were already added to the job card — remove them there by hand if needed.':'')+'</p>' +
+    '<div class="fld" style="margin-top:12px"><textarea id="vdWhy" placeholder="Reason"></textarea></div>' +
+    '<div class="row"><button class="btn ghost" id="vdNo">Back</button><button class="btn red" id="vdOk">Cancel add-on</button></div>');
+  $('vdNo').onclick = closeOv;
+  $('vdOk').onclick = function(){
+    var why = $('vdWhy').value.trim(); if(!why){ toast('Write the reason', true); return; }
+    pinRpc('qc_addon_void', { p_id: q.id, p_reason: why }, function(){ closeOv(); toast('Cancelled'); reload(); });
+  };
+}
+
+/* =====================================================================
+   REPORT (PIN) — commission on the 15th for last month's paid add-ons
+   ===================================================================== */
+function prevMonth(){ var d = new Date(); d.setDate(1); d.setMonth(d.getMonth()-1); return d.getFullYear() + '-' + ('0'+(d.getMonth()+1)).slice(-2); }
+function monthLabel(m){ var p = m.split('-'); return new Date(+p[0], +p[1]-1, 1).toLocaleDateString('en-GB',{month:'long',year:'numeric'}); }
+function payDay(m){ var p = m.split('-'); return new Date(+p[0], +p[1], 15).toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'}); }
+function renderReport(){
+  if(!S.repMonth) S.repMonth = prevMonth();
+  var m = S.repMonth, p = m.split('-');
+  var from = new Date(+p[0], +p[1]-1, 1), to = new Date(+p[0], +p[1], 1);
+  $('pReport').innerHTML = '<div class="card noprint"><div class="row" style="align-items:flex-end"><div><label>Paid in month</label><input type="month" id="rpM" value="'+m+'"></div>' +
+    '<button class="btn ghost" id="rpPrint" style="width:auto"><i class="ti ti-printer"></i> Print</button></div></div><div id="rpBody" class="load">Loading…</div>';
+  $('rpM').onchange = function(){ if($('rpM').value){ S.repMonth = $('rpM').value; renderReport(); } };
+  $('rpPrint').onclick = function(){ window.print(); };
+  Promise.all([
+    sb.from('gl_qc_addons').select('*').gte('customer_paid_at', from.toISOString()).lt('customer_paid_at', to.toISOString())
+      .in('comm_status', ['payable','paid']).order('customer_paid_at'),
+    sb.from('gl_qc_addons').select('id,ref,plate,customer_name,agreed_total,confirmed_at').eq('status','confirmed').eq('comm_status','pending').order('confirmed_at')
+  ]).then(function(res){
+    if(res[0].error) throw res[0].error;
+    var rows = res[0].data || [], waiting = res[1].data || [];
+    var by = {}, tot = 0, comm = 0, toPay = [];
+    rows.forEach(function(q){
+      var f = q.finder; by[f] = by[f] || { paid:0, comm:0, n:0, owed:0 };
+      by[f].paid += Number(q.paid_total)||0; by[f].comm += Number(q.comm_amount)||0; by[f].n++;
+      if(q.comm_status === 'payable'){ by[f].owed += Number(q.comm_amount)||0; toPay.push(q.id); }
+      tot += Number(q.paid_total)||0; comm += Number(q.comm_amount)||0;
+    });
+    var h = '<div class="card"><h2 style="color:var(--text)">QC Add-on commission — '+esc(monthLabel(m))+'</h2>' +
+      '<p class="muted" style="margin:-6px 0 12px">Customer paid in '+esc(monthLabel(m))+' · pay on '+esc(payDay(m))+'</p>';
+    if(!rows.length) h += '<div class="load" style="padding:20px">No paid add-ons this month.</div>';
+    else {
+      h += '<div style="overflow-x:auto"><table class="rep"><thead><tr><th>Customer / car</th><th>Services</th><th style="text-align:right">Paid</th><th style="text-align:right">Comm</th></tr></thead><tbody>' +
+        rows.map(function(q){
+          var sv = (q.paid_lines||[]).map(function(l){ return (l.services || l.name) + ' (' + money(l.paid) + ')'; }).join('; ');
+          return '<tr data-id="'+q.id+'" style="cursor:pointer"><td><b>'+esc(q.customer_name||'—')+'</b>'+(q.customer_phone?'<br><span class="muted">'+esc(q.customer_phone)+'</span>':'') +
+            '<br>'+esc(q.plate)+' · '+esc(q.model||'')+'<br><span class="muted">Paid '+esc(new Date(q.customer_paid_at).toLocaleDateString('en-GB',{day:'2-digit',month:'short'}))+' · '+esc(q.ref)+' · '+esc(q.finder)+'</span></td>' +
+            '<td>'+esc(sv)+'</td><td class="n">'+money(q.paid_total)+'</td><td class="n">'+money(q.comm_amount)+'<br>'+(q.comm_status==='paid'?'<span class="pill paid">Paid</span>':'<span class="pill payable">To pay</span>')+'</td></tr>';
+        }).join('') +
+        '</tbody><tfoot><tr><td colspan="2"><b>Total</b></td><td class="n"><b>'+money(tot)+'</b></td><td class="n"><b>'+money(comm)+'</b></td></tr></tfoot></table></div>';
+      h += '<div style="margin-top:14px">' + Object.keys(by).map(function(f){
+        return '<div class="ln" style="font-size:14px;padding:6px 0;border-top:1px solid var(--border)"><span><b>'+esc(f)+'</b> · '+by[f].n+' add-on'+(by[f].n===1?'':'s')+' · '+money(by[f].paid)+'</span><span>'+money(by[f].comm)+(by[f].owed>0?' <small style="color:var(--text2)">('+money(by[f].owed)+' to pay)</small>':'')+'</span></div>';
+      }).join('') + '</div>';
+    }
+    h += '</div>';
+    if(toPay.length) h += '<div class="card noprint"><div class="fld"><label>Payment reference (e.g. bank / cash 15 Dec)</label><input id="rpRef"></div>' +
+      '<button class="btn green" id="rpPay"><i class="ti ti-cash"></i> Mark '+toPay.length+' as commission paid</button></div>';
+    if(waiting.length) h += '<div class="card noprint"><h2>Confirmed, customer not paid yet</h2>' + waiting.map(function(q){
+      return '<div class="ln" style="cursor:pointer" data-id="'+q.id+'"><span>'+esc(q.ref)+' · '+esc(q.plate)+' · '+esc(q.customer_name||'')+'</span><span>'+money(q.agreed_total)+'</span></div>';
+    }).join('') + '<p class="muted" style="margin:8px 0 0">Open each one and tap “Customer paid” once paid, so it lands in the right month.</p></div>';
+    h += '<div class="card noprint"><h2>Manager PIN</h2><div class="row"><input id="npOld" type="password" inputmode="numeric" placeholder="Current PIN"><input id="npNew" type="password" inputmode="numeric" placeholder="New PIN"></div>' +
+      '<button class="btn ghost sm" style="margin-top:8px" id="npGo">Change PIN</button></div>';
+    $('rpBody').className = ''; $('rpBody').innerHTML = h;
+    $('rpBody').querySelectorAll('[data-id]').forEach(function(el){ el.onclick = function(){ openDetail(el.getAttribute('data-id')); }; });
+    if($('rpPay')) $('rpPay').onclick = function(){
+      pinRpc('qc_addon_comm_paid', { p_ids: toPay, p_ref: $('rpRef').value.trim() }, function(d){ toast(d.count + ' marked paid ✓'); renderReport(); });
+    };
+    $('npGo').onclick = function(){
+      sb.rpc('qc_addon_set_pin', { p_old: $('npOld').value.trim(), p_new: $('npNew').value.trim() }).then(function(r){
+        if(r.error){ toast(r.error.message, true); return; }
+        if(!r.data.ok){ toast(reasonText(r.data), true); return; }
+        S.pin = $('npNew').value.trim(); $('npOld').value = ''; $('npNew').value = ''; toast('PIN changed ✓');
+      });
+    };
+  }).catch(function(e){ $('rpBody').innerHTML = 'Could not load: ' + esc(e.message||e); });
+}
+
+/* ---------- boot ---------- */
+function boot(){
+  sb.auth.getSession().then(function(res){
+    var s = res && res.data ? res.data.session : null;
+    if(!s){ location.href = 'gl-hub.html'; return; }
+    S.user = s.user.email;
+    $('boot').className = 'hide'; $('app').className = 'wrap';
+    initNew();
+    var qp = new URLSearchParams(location.search).get('q');
+    if(qp) openDetail(qp);
+  }).catch(function(e){ $('boot').innerHTML = 'Could not load: ' + esc(e.message||e); });
+}
+boot();
+
+})();
+</script>
+</body>
+</html>

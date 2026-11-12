@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Your Car | GrandLab</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.7.0/dist/tabler-icons.min.css">
+<style>
+:root{--bg:#080808;--card:#141414;--card2:#1c1c1c;--gold:#F5C518;--border:#2a2a2a;--text:#f2f2f2;--text2:#9a9a9a;--ok:#37d67a;--red:#ff5c5c}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:15px;padding-bottom:40px}
+.hero{position:relative;aspect-ratio:16/10;background:var(--card2);overflow:hidden;max-width:640px;margin:0 auto}
+.hero img{width:100%;height:100%;object-fit:cover}
+.hero .grad{position:absolute;inset:0;background:linear-gradient(to top,rgba(8,8,8,.96) 0%,rgba(8,8,8,0) 55%)}
+.hero .cap{position:absolute;left:16px;right:16px;bottom:12px}
+.hero .cap b{display:block;font-size:22px;font-weight:800;letter-spacing:.5px}
+.hero .cap span{font-size:13px;color:var(--text2)}
+.brand{position:absolute;top:12px;left:16px;background:rgba(0,0,0,.6);backdrop-filter:blur(6px);border-radius:20px;padding:6px 13px;font-size:11px;font-weight:700;letter-spacing:1.5px;color:var(--gold)}
+.ref{position:absolute;top:12px;right:16px;background:rgba(0,0,0,.6);backdrop-filter:blur(6px);border-radius:20px;padding:6px 13px;font-size:11px;font-weight:700}
+.wrap{padding:14px;max-width:640px;margin:0 auto}
+.intro{font-size:14px;line-height:1.55;color:var(--text2);margin:4px 2px 14px}
+.fnd{border-radius:16px;overflow:hidden;border:1px solid var(--border);margin-bottom:14px;background:var(--card)}
+.fnd .ph{position:relative}
+.fnd img{width:100%;aspect-ratio:4/3;object-fit:cover;display:block;cursor:zoom-in}
+.fnd .no{position:absolute;top:10px;left:10px;background:rgba(0,0,0,.72);color:var(--gold);font-size:11px;font-weight:800;padding:4px 10px;border-radius:14px}
+.fnd .sel{position:absolute;top:10px;right:10px;background:var(--ok);color:#04210f;font-size:11px;font-weight:800;padding:4px 10px;border-radius:14px}
+.fnd .bd{padding:13px 14px}
+.lab{font-size:10px;font-weight:800;letter-spacing:.7px;text-transform:uppercase;margin-bottom:4px}
+.lab.p{color:var(--red)}.lab.s{color:var(--ok)}
+.txt{font-size:14.5px;line-height:1.5}
+.sol{border-top:1px solid var(--border);margin-top:12px;padding-top:12px}
+.ln{display:flex;justify-content:space-between;gap:10px;font-size:13.5px;padding:4px 0;color:var(--text2)}
+.ln span:last-child{color:var(--text);white-space:nowrap}
+.meta{display:flex;justify-content:space-between;align-items:center;margin-top:10px;padding-top:10px;border-top:1px dashed var(--border)}
+.meta .tm{font-size:13px;color:var(--text2)}
+.meta .pr{font-size:19px;font-weight:800;color:var(--gold)}
+.card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:14px;margin-bottom:12px}
+.tot{display:flex;justify-content:space-between;align-items:baseline;font-weight:800}
+.tot span:first-child{font-size:15px}
+.tot span:last-child{font-size:24px;color:var(--gold)}
+.note{background:rgba(245,197,24,.07);border:1px solid rgba(245,197,24,.25);border-radius:12px;padding:12px;font-size:13.5px;line-height:1.5;margin-bottom:12px}
+.foot{font-size:12px;color:var(--text2);line-height:1.6;text-align:center;padding:10px 6px}
+.load{text-align:center;padding:60px 20px;color:var(--text2)}
+.zoom{position:fixed;inset:0;background:#000;z-index:95;display:flex;align-items:center;justify-content:center}
+.zoom img{max-width:100%;max-height:100%}
+</style>
+</head>
+<body>
+<div id="root" class="load"><i class="ti ti-loader-2"></i> Loading…</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script>
+(function(){
+'use strict';
+var SB_URL = 'https://db.grandlab.com.my';
+var SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzkzMDY5NDExLCJleHAiOjE5NTA3NDk0MTF9.IcbPnDCd9p6Z-_FNMvzfg9k6ayX7IpC48zdGacAD_qw';
+// public page: never touch the staff login
+var sb = window.supabase.createClient(SB_URL, SB_KEY, { auth:{ persistSession:false, autoRefreshToken:false, storageKey:'gl_qc_view' } });
+var $ = function(id){ return document.getElementById(id); };
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+function money(n){ return 'RM ' + Number(n||0).toLocaleString('en-MY',{minimumFractionDigits:0,maximumFractionDigits:2}); }
+window.QV_zoom = function(src){ var z = document.createElement('div'); z.className = 'zoom'; z.innerHTML = '<img src="'+esc(src)+'">'; z.onclick = function(){ z.remove(); }; document.body.appendChild(z); };
+
+var t = new URLSearchParams(location.search).get('t') || '';
+if(!t){ $('root').innerHTML = 'Link not complete.'; return; }
+
+sb.rpc('qc_addon_public', { p_token: t }).then(function(r){
+  var d = r.data;
+  if(r.error || !d || d.error){ $('root').innerHTML = 'This link is no longer available.<br><br>Please contact GrandLab Detailing.'; return; }
+  document.title = (d.plate ? d.plate + ' · ' : '') + 'GrandLab';
+  var agreed = Array.isArray(d.agreed) ? d.agreed : [];
+  var items = (d.issues||[]).map(function(it, i){ it.i = i; return it; }).filter(function(it){ return Number(it.price) > 0; });
+  var h = '<div class="hero">' + (d.front_photo ? '<img src="'+esc(d.front_photo)+'">' : '') +
+    '<div class="grad"></div><span class="brand">GRANDLAB DETAILING</span><span class="ref">'+esc(d.ref)+'</span>' +
+    '<div class="cap"><b>'+esc(d.plate)+'</b><span>'+esc([d.model, d.colour].filter(Boolean).join(' · '))+'</span></div></div>';
+  h += '<div class="wrap"><p class="intro">While your car was with us, our QC team spotted '+(items.length===1?'one thing':items.length+' things')+' we can take care of for you. Here is what we found, how we fix it, and the price.</p>';
+  h += items.map(function(it, n){
+    var on = agreed.indexOf(it.i) >= 0;
+    return '<div class="fnd"><div class="ph">'+(it.photo?'<img src="'+esc(it.photo)+'" onclick="QV_zoom(this.src)">':'')+'<span class="no">'+(n+1)+'</span>'+(on?'<span class="sel">✓ SELECTED</span>':'')+'</div>' +
+      '<div class="bd"><div class="lab p">What we found</div><div class="txt">'+esc(it.remark)+'</div>' +
+      '<div class="sol"><div class="lab s">How we fix it</div><div class="txt">'+esc(it.solution || (it.lines||[]).map(function(l){ return l.name; }).join(', '))+'</div>' +
+      ((it.lines||[]).length > 1 ? '<div style="margin-top:8px">' + it.lines.map(function(l){ return '<div class="ln"><span>'+esc(l.name)+'</span><span>'+money(l.price)+'</span></div>'; }).join('') + '</div>' : '') +
+      '<div class="meta"><span class="tm">'+(it.time?'<i class="ti ti-clock"></i> '+esc(it.time):'')+'</span><span class="pr">'+money(it.price)+'</span></div></div></div></div>';
+  }).join('');
+  if(d.note) h += '<div class="note">'+esc(d.note)+'</div>';
+  h += '<div class="card"><div class="tot"><span>'+(agreed.length?'Selected':'Total for everything')+'</span><span>'+money(agreed.length ? d.agreed_total : d.total)+'</span></div>' +
+    (agreed.length && Number(d.agreed_total) !== Number(d.total) ? '<div class="ln" style="margin-top:6px"><span>Total for everything</span><span>'+money(d.total)+'</span></div>' : '') + '</div>';
+  h += '<p class="foot">Choose any one or all of them — just tell our team which ones you would like.<br>Prices are for this car and this visit.</p></div>';
+  $('root').className = ''; $('root').innerHTML = h;
+}).catch(function(){ $('root').innerHTML = 'Could not load. Please check your connection and try again.'; });
+})();
+</script>
+</body>
+</html>
