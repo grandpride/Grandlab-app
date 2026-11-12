@@ -1012,7 +1012,7 @@ function lookupCust(){ clearTimeout(_lt); _lt=setTimeout(_doLookup,450); }
 /* returning badge + referral helpers */
 function jcMarkReturning(){ const b=$('jcRetBadge'); if(b) b.textContent = JC_EXISTING ? '· ✓ Returning' : ''; }
 /* Meta ad campaign codes (pre-filled in the ad's WhatsApp message). Add next month's code here. */
-const JC_CAMPAIGNS=['FF-1888','FF-4888','NEWCAR-1888','NOV-GLOW','DEC-NEWCAR','JAN-FESTIVE'];
+const JC_CAMPAIGNS=['FF-1888','FF-4888','NEWCAR-1888','AX-WRAP','NOV-GLOW','DEC-NEWCAR','JAN-FESTIVE'];
 function onJcLeadSource(){
   const v=$('f_leadsrc').value;
   if(v){ $('f_leadsrc').style.borderColor=''; }
