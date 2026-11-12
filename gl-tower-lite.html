@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<title>Grand Tower</title>
+<title>Grand Garage Lite</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.x/dist/tabler-icons.min.css">
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
@@ -312,7 +312,7 @@ body{overflow-x:hidden}
 <div id="gate" class="gate hide">
   <div class="gate-box">
     <div class="brand" style="text-align:center;font-size:26px">GRAND<span>LAB</span></div>
-    <div style="text-align:center;font-size:11px;color:#9a9a9a;letter-spacing:.25em;margin:4px 0 14px">GRAND TOWER</div>
+    <div style="text-align:center;font-size:11px;color:#9a9a9a;letter-spacing:.25em;margin:4px 0 14px">GRAND GARAGE</div>
     <label>Email</label>
     <input id="lg_email" type="email" autocomplete="username" placeholder="admin@grandpride.com">
     <label>Password</label>
@@ -326,7 +326,7 @@ body{overflow-x:hidden}
   <div id="demoBanner" class="demo-banner hide">DEMO DATA &middot; NOT LIVE</div>
   <div class="hud">
     <div class="hud-top">
-      <div class="brand">GRAND<span>TOWER</span><small>GRANDPRIDE &middot; GRANDLAB</small></div>
+      <div class="brand">GRAND<span>GARAGE</span><small>GRANDPRIDE &middot; GRANDLAB</small></div>
       <div class="hud-btns">
         <a class="hbtn" href="gl-hub.html"><i class="ti ti-arrow-left"></i>Hub</a>
         <button class="hbtn" id="demoBtn" onclick="toggleDemo()">DEMO</button>
@@ -336,12 +336,12 @@ body{overflow-x:hidden}
     <div class="pills">
       <div class="pill"><div class="k">KL time &middot; live</div><div class="v" id="p_time">--:--</div></div>
       <div class="pill"><div class="k">PJ weather</div><div class="v" id="p_wx">--</div></div>
-      <div class="pill tap" onclick="openPeople('in')"><div class="k">In building</div><div class="v" id="p_in">-</div></div>
+      <div class="pill tap" onclick="openPeople('in')"><div class="k">In garage</div><div class="v" id="p_in">-</div></div>
       <div class="pill gold tap" onclick="openRoom('bays')"><div class="k">Cars in bay</div><div class="v" id="p_floor">-</div></div>
       <div class="pill tap" onclick="openRoom('street')"><div class="k">Ready pickup</div><div class="v" id="p_ready">-</div></div>
       <div class="pill gold"><div class="k">GL sales today</div><div class="v" id="p_today">-</div></div>
       <div class="pill"><div class="k">GL sales month</div><div class="v" id="p_month">-</div></div>
-      <div class="pill gpc tap" onclick="openRoom('g_lounge')"><div class="k">GP fleet ready</div><div class="v" id="p_fleet">-</div></div>
+      <div class="pill gpc tap" onclick="openRoom('lounge')"><div class="k">GP fleet ready</div><div class="v" id="p_fleet">-</div></div>
       <div class="pill warn hide" id="p_loose_w" onclick="openRoom('loose')"><div class="k">Loose ends</div><div class="v" id="p_loose">0</div></div>
     </div>
   </div>
@@ -364,7 +364,7 @@ body{overflow-x:hidden}
         </div>
       </div>
       <div class="card">
-        <h3>Floors</h3>
+        <h3>Rooms</h3>
         <div id="floorList"></div>
       </div>
       <div class="card">
@@ -374,8 +374,8 @@ body{overflow-x:hidden}
       <div class="card">
         <h3>How to read it</h3>
         <div class="note">
-          Staff appear when they <b>clock in</b> on the Grandpride attendance app, move to the <b>rest room</b> while on lunch, and leave when they clock out.
-          Cars sit in the <b>Clean Bay</b> (PPF, tint, wrap, coating) or the <b>Wash &amp; Polish Bay</b> from the job card; the coloured tag is the job stage.
+          Staff appear when they <b>clock in</b> on the Grandpride attendance app, sit at the <b>Rest Corner</b> while on lunch, and leave when they clock out.
+          Cars sit in the <b>Car Wash</b>, <b>Polish &amp; Coating</b>, the two <b>PPF Clean Rooms</b> (PPF, wrap, tint) or <b>Final Check</b> on the driveway, from the job card; the coloured tag is the job stage. The <b>Boss Room</b> is upstairs, above the PPF rooms.
           Cars on the street are <b>Ready</b> and not collected. The lounge shows Grandpride supercars that are free to rent.
           Cyan visors are AI agents. <b>Loose ends</b> = unpaid jobs not collected after 3 days.
         </div>
@@ -438,62 +438,63 @@ const STAGES={
   finaltouch:{label:'Final Check',color:'#D97706'}, done:{label:'Ready',color:'#16A34A'}
 };
 
-/* ===== BUILDING LAYOUT (top to bottom). Room widths in each floor add up to 820. ===== */
+/* ===== GARAGE LAYOUT (same rooms as the 3D Grand Garage). Each row is drawn as a strip; room widths in a row add up to 820 (x0 = start). ===== */
 const FLOORS=[
-  {key:'roof',no:'R', co:'sh',label:'ROOF', cls:'roof', rooms:[
-    {key:'roof',name:'Sky Garden',sub:'Rest area',w:820,kind:'roof'}]},
-  {key:'gp4',no:'4', co:'gp',label:'GRANDPRIDE', rooms:[
-    {key:'gp4_office',name:'Management Office',sub:'Grandpride',w:320,kind:'office',wall:'#2a2418'},
-    {key:'gp4_meet',name:'Meeting Room',sub:'Grandpride',w:240,kind:'meet',wall:'#1f2229'},
-    {key:'gp4_rest',name:'Rest Room',sub:'Grandpride',w:260,kind:'rest',wall:'#2c2219'}]},
-  {key:'gp3',no:'3', co:'gp',label:'GRANDPRIDE', rooms:[
-    {key:'gp3_ops',name:'Rental & Chauffeur Ops',sub:'Grandpride',w:480,kind:'ops',wall:'#22252c'},
-    {key:'gp3_studio',name:'Creative Studio',sub:'Grandpride',w:340,kind:'studio',wall:'#1c1c22'}]},
-  {key:'gl2',no:'2', co:'gl',label:'GRANDLAB', rooms:[
-    {key:'gl2_academy',name:'Academy',sub:'Grandlab',w:280,kind:'academy',wall:'#1c2533'},
-    {key:'gl2_meet',name:'Meeting Room',sub:'Grandlab',w:240,kind:'meet',wall:'#1f2229'},
-    {key:'gl2_rest',name:'Rest Room',sub:'Grandlab',w:300,kind:'rest',wall:'#2c2619'}]},
-  {key:'gl1',no:'1', co:'gl',label:'GRANDLAB', rooms:[
-    {key:'gl1_sales',name:'Sales & AI Studio',sub:'Grandlab',w:430,kind:'ai',wall:'#1d2230'},
-    {key:'gl1_ops',name:'QC & Operations',sub:'Grandlab',w:390,kind:'qc',wall:'#2b2618'}]},
-  {key:'g',no:'G', co:'sh',label:'GROUND', cls:'tall', rooms:[
-    {key:'g_lounge',name:'Supercar Lounge',sub:'Grandpride rental',w:230,kind:'lounge',wall:'#141210',ground:'#1a1814'},
-    {key:'g_recep',name:'Reception',sub:'& Waiting',w:150,kind:'recep',wall:'#24221d'},
-    {key:'g_clean',name:'Clean Bay',sub:'PPF · Tint · Coat',w:220,kind:'bay',wall:'#2a2b31',ground:'#3a3d44',max:2},
-    {key:'g_wash',name:'Wash & Polish Bay',sub:'Grandlab',w:220,kind:'bay',wall:'#1f2a36',ground:'#33404d',max:2}]}
+  {key:'f2',no:'2', co:'gp',label:'BOSS', title:'2nd floor', x0:300, rooms:[
+    {key:'boss',name:'Boss Room',sub:'CEO · MD · above the PPF rooms',w:520,kind:'boss',wall:'#2a2418'}]},
+  {key:'gb',no:'G', co:'gp',label:'BACK', title:'Ground floor · back', cls:'tall', rooms:[
+    {key:'office',name:'Office',sub:'Grandpride · AI team',w:300,kind:'ai',wall:'#1d2230'},
+    {key:'recep',name:'Reception',sub:'Front desk',w:130,kind:'recep',wall:'#24221d'},
+    {key:'lounge',name:'Grandpride Lounge',sub:'Supercars',w:290,kind:'lounge',wall:'#141210',ground:'#1a1814'},
+    {key:'rest',name:'Rest Corner',sub:'Breaks',w:100,kind:'restmini',wall:'#2c2619'}]},
+  {key:'gm',no:'G', co:'gl',label:'BAYS', title:'Ground floor · bays', cls:'tall', rooms:[
+    {key:'wash',name:'Car Wash',sub:'3 bays',w:310,kind:'bay',wall:'#1f2a36',ground:'#33404d',max:3},
+    {key:'polish',name:'Polish & Coating',sub:'Polish · Fast lane · Lifter',w:310,kind:'bay',wall:'#2a2533',ground:'#3a3644',max:3},
+    {key:'drive',name:'Driveway',sub:'Final check',w:200,kind:'bay',wall:'#26272b',ground:'#3a3d44',max:2}]},
+  {key:'gf',no:'G', co:'gl',label:'FRONT', title:'Ground floor · front', cls:'tall', rooms:[
+    {key:'waiting',name:'GL Waiting Area',sub:'Customers',w:130,kind:'restmini',wall:'#2a251d'},
+    {key:'prep',name:'Film Prep',sub:'Tint table · PPF cutter · Jimmy',w:170,kind:'prep',wall:'#2b2618'},
+    {key:'ppf1',name:'PPF Clean Room 1',sub:'PPF · Wrap · Tint',w:260,kind:'bay',wall:'#2a2b31',ground:'#3f434b',max:1},
+    {key:'ppf2',name:'PPF Clean Room 2',sub:'PPF · Wrap · Tint',w:260,kind:'bay',wall:'#2a2b31',ground:'#3f434b',max:1}]}
 ];
 const ROOMS={}; FLOORS.forEach(function(f){f.rooms.forEach(function(r){r.floor=f;ROOMS[r.key]=r})});
 
-/* Where each person sits. Name overrides first (lower-case), then gp_staff company + title. */
-const PLACE_BY_NAME={'jimmy kuek':'gl1_ops','alex':'gl1_sales'};
+/* Where each person works. Name overrides first (lower-case), then gp_staff company + title. Same rules as the 3D view. */
+const PLACE_BY_NAME={'jimmy kuek':'prep','jimmy':'prep','alex':'office'};
+const POLISH_TEAM=['soe myo','ahtum','ahtun','bobo'];
 function placeOf(p){
-  var n=(p.name||'').toLowerCase(), t=(p.title||'').toLowerCase(), co=(p.company||'').toLowerCase();
+  var n=String(p.name||'').toLowerCase().trim(), f=n.split(/\s+/)[0], t=String(p.title||'').toLowerCase(), co=String(p.company||'').toLowerCase();
   if(PLACE_BY_NAME[n])return PLACE_BY_NAME[n];
+  if(/\bpa\b|pa -|assistant/.test(t))return 'office';
+  if(/\bceo\b|chief exec|managing director|\bmd\b/.test(t))return 'boss';
+  if(/recept/.test(t))return 'recep';
+  if(p.chauffeur||/chauffeur/.test(t))return 'lounge';
   if(co==='grandlab'){
-    if(/qc|quality/.test(t))return 'gl1_ops';
-    if(/ppf|wrap|tint|film/.test(t))return 'g_clean';
-    if(/detail|wash|polish/.test(t))return 'g_wash';
-    if(/sales|advisor/.test(t))return 'gl1_sales';
-    return 'gl1_ops';
+    if(/qc|quality/.test(t))return 'drive';
+    if(/ppf|wrap|tint|film/.test(t))return 'prep';
+    if(POLISH_TEAM.indexOf(n)>=0||POLISH_TEAM.indexOf(f)>=0||/polish|coat/.test(t))return 'polish';
+    if(/detail|wash|vacuum/.test(t))return 'wash';
+    return 'office';
   }
-  if(/recept/.test(t))return 'g_recep';
-  if(/content|video|creative|design|photo/.test(t))return 'gp3_studio';
-  if(/ceo|director|\bpa\b|pa -|finance|account|hr|admin/.test(t))return 'gp4_office';
-  return 'gp3_ops';
+  return 'office';
 }
-function restOf(p){return (p.company||'').toLowerCase()==='grandlab'?'gl2_rest':'gp4_rest'}
-/* Which ground bay a job belongs to */
-const CLEAN_STAGES=['ppf','wrapping','tinting','coating'], WASH_STAGES=['carwash','vacuum','polish','interior'];
+function isFilm(p){return String(p.company||'').toLowerCase()==='grandlab'&&/ppf|wrap|tint|film/.test(String(p.title||'').toLowerCase())&&!PLACE_BY_NAME[String(p.name||'').toLowerCase().trim()]}
+function restOf(p){return 'rest'}
+/* which work area a job's car goes to */
 function bayOf(j){
-  if(CLEAN_STAGES.indexOf(j.stage)>=0)return 'g_clean';
-  if(WASH_STAGES.indexOf(j.stage)>=0)return 'g_wash';
-  var s=svcOf(j).toLowerCase();
-  if(/maintenance/.test(s))return 'g_wash';
-  if(/ppf|tint|wrap|coat|ceramic|film|gyeon|ax ?film|windscreen|solar/.test(s))return 'g_clean';
-  return 'g_wash';
+  var s=j.stage;
+  if(s==='carwash')return 'wash';
+  if(s==='vacuum'||s==='polish'||s==='coating'||s==='interior')return 'polish';
+  if(s==='ppf'||s==='wrapping'||s==='tinting')return 'clean';
+  if(s==='finaltouch')return 'drive';
+  var t=svcOf(j).toLowerCase();
+  if(/ppf|tint|wrap|film|ax ?film|windscreen|solar/.test(t))return 'clean';
+  if(/coat|ceramic|gyeon|polish|maintenance/.test(t))return 'polish';
+  return 'wash';
 }
+function bayCars(R){return R.wash.cars.concat(R.polish.cars,R.ppf1.cars,R.ppf2.cars,R.drive.cars)}
 
-const CAP={g_wash:'#1d4ed8',g_clean:'#a21caf',gl1_ops:'#d97706',gp3_ops:'#111827'};
+const CAP={wash:'#1d4ed8',polish:'#7c3aed',ppf1:'#a21caf',ppf2:'#a21caf',drive:'#d97706',lounge:'#111827'};
 const DAY_MS=86400000, KL_OFF=8*3600000;
 let DEMO=/[?&]demo=1/.test(location.search);
 let D=null, prev=null, loading=false;
@@ -677,6 +678,13 @@ function decor(r){
     d('counter','left:14px;width:70px'); d('sofa','right:8px;width:52px;--sofa:#3f3f46;bottom:6%'); d('plant','left:4px');
   }else if(k==='bay'){
     d('tube','left:10%;width:30%'); d('tube','left:58%;width:30%'); d('lift','left:12%;width:30%'); d('lift','left:56%;width:30%');
+  }else if(k==='boss'){
+    d('tbl','left:34%;width:36%'); d('desk','left:30px;width:70px'); d('desk','right:30px;width:70px'); d('plant','left:'+(w/2-10)+'px');
+    h+='<div class="dc tag" style="left:38%;color:#c9a24a99">CEO · MD</div>';
+  }else if(k==='restmini'){
+    d('sofa','left:10px;width:'+(w-40)+'px;--sofa:#9a3412'); d('plant','right:8px');
+  }else if(k==='prep'){
+    d('desk','left:14px;width:60px'); d('desk','left:90px;width:60px'); d('plant','right:6px');
   }else if(k==='roof'){
     d('lights',''); d('deck','');
     d('umb','left:90px;background:#F5C518'); d('umb','left:300px;background:#c9a24a'); d('umb','left:560px;background:#F5C518');
@@ -693,7 +701,7 @@ function buildTower(){
   FLOORS.forEach(function(f){
     h+='<div class="floor '+(f.cls||'')+' '+f.co+'"><div class="slab"></div>'+
        '<div class="flag '+f.co+'"><b>'+f.no+'</b><small>'+f.label+'</small></div>';
-    var x=0;
+    var x=f.x0||0;
     f.rooms.forEach(function(r){
       var roof=r.kind==='roof';
       h+='<div class="room" id="rm_'+r.key+'" onclick="openRoom(\''+r.key+'\')" style="left:'+x+'px;width:'+r.w+'px;--wall:'+(r.wall||'#22252c')+';--ground:'+(r.ground||'#2a2c31')+(roof?';border:0':'')+'">'+
@@ -713,7 +721,7 @@ function buildTower(){
 }
 function fit(){
   var wrap=el('stageWrap'), f=el('fit');
-  var w=wrap.clientWidth, natW=920, natH=1290;
+  var w=wrap.clientWidth, natW=920, natH=1188;
   var s=w/natW;
   if(window.innerWidth>=1100){ s=Math.min(s,(window.innerHeight-140)/natH); }
   var minS=0.52, scroll=false;
@@ -751,23 +759,29 @@ function walkerHTML(p,i,n,w,bottom){
 /* group everything by room */
 function layout(){
   var R={}; Object.keys(ROOMS).forEach(function(k){R[k]={people:[],cars:[]}});
-  var counts={in:[],break:[],out:[],leave:[],none:[]};
+  var counts={in:[],break:[],out:[],leave:[],none:[]}, film=[];
   D.people.forEach(function(p){
     var st=p.unknown?'in':stateOf(p); counts[st==='leave'?'leave':st].push(p);
     if(st!=='in'&&st!=='break')return;
-    var room=st==='break'?restOf(p):placeOf(p);
-    if(st==='break'&&R[room].people.length>=4)room='roof';
     if(p.chauffeur&&p.cstatus&&!/ready/i.test(p.cstatus))return; // out on a chauffeur job
+    var room=st==='break'?restOf(p):placeOf(p);
     var gpP=(p.company||'').toLowerCase()!=='grandlab';
-    R[room].people.push({id:p.id,label:first(p.name),name:p.name,title:p.title,gp:gpP,brk:st==='break',sit:st==='break'||/office|meet/.test(ROOMS[room].kind)&&!/ops/.test(ROOMS[room].kind),
-      capc:CAP[room],rec:p.rec,company:p.company,chauffeur:p.chauffeur});
+    var e={id:p.id,label:first(p.name),name:p.name,title:p.title,gp:gpP,brk:st==='break',sit:st==='break'||room==='boss',
+      capc:CAP[room],rec:p.rec,company:p.company,chauffeur:p.chauffeur};
+    if(st!=='break'&&isFilm(p)){film.push(e);return}
+    R[room].people.push(e);
   });
-  R.gl1_sales.people.unshift({id:'mia',label:'MIA',ai:1,off:!(D.mia.last&&Date.now()-D.mia.last<7*DAY_MS)},{id:'glpost',label:'GL Post',ai:1,off:1,sit:1},{id:'tgbot',label:'TG Bot',ai:1,off:1,sit:1});
+  R.office.people.unshift({id:'mia',label:'MIA',ai:1,off:!(D.mia.last&&Date.now()-D.mia.last<7*DAY_MS)});
+  var clean=[], byStart=function(a,b){return startOf(a)-startOf(b)};
   D.jobs.forEach(function(j){
-    if(j.stage==='upcoming'){R.g_recep.cars.push(j);return}
-    R[bayOf(j)].cars.push(j);
+    if(j.stage==='upcoming'){R.recep.cars.push(j);return}
+    var z=bayOf(j); if(z==='clean')clean.push(j); else{j._room=z;R[z].cars.push(j)}
   });
-  R.g_clean.cars.sort(function(a,b){return startOf(a)-startOf(b)}); R.g_wash.cars.sort(function(a,b){return startOf(a)-startOf(b)});
+  clean.sort(byStart).forEach(function(j,i){var k=i===0?'ppf1':i===1?'ppf2':(i%2?'ppf2':'ppf1');j._room=k;R[k].cars.push(j)});
+  ['wash','polish','drive'].forEach(function(k){R[k].cars.sort(byStart)});
+  // film team works where the PPF cars are; with no car in, they wait in Film Prep
+  var fr=['ppf1','ppf2'].filter(function(k){return R[k].cars.length});
+  film.forEach(function(e,i){var k=fr.length?fr[i%fr.length]:'prep';e.capc=CAP[k]||'';R[k].people.push(e)});
   return {R:R,counts:counts};
 }
 
@@ -779,6 +793,7 @@ function render(){
     // cars
     if(r.kind==='bay'){
       var max=r.max||2, gap=(r.w-20)/max;
+      if(max===1)gap=r.w-20;
       box.cars.slice(0,max).forEach(function(j,i){ch+=carHTML(j,10+i*gap+(gap-96)/2,96,(STAGES[j.stage]||{}).label+' · '+since(startOf(j)))});
       if(box.cars.length>max)ch+='<div class="more" style="bottom:auto;top:26px">+'+(box.cars.length-max)+' more</div>';
     }else if(r.kind==='lounge'){
@@ -791,30 +806,24 @@ function render(){
     }
     el('cars_'+k).innerHTML=ch;
     // screens with live numbers
-    if(k==='gl1_sales'){
+    if(k==='office'){
       sc='<div class="dc scr" style="left:70px;top:24px;width:76px;height:40px">MIA<b>'+D.mia.n+'</b>chats today</div>'+
-         '<div class="dc scr gold" style="left:156px;top:24px;width:76px;height:40px">PROMO<b>'+D.mkt.done+'/'+D.mkt.total+'</b>tasks done</div>'+
-         '<div class="dc scr dim" style="left:242px;top:24px;width:76px;height:40px">GL POST<b>--</b>no feed yet</div>';
-    }else if(k==='gl1_ops'){
-      var fin=D.jobs.filter(function(j){return j.stage==='finaltouch'});
-      sc='<div class="dc scr gold" style="left:120px;top:24px;width:80px;height:40px">FINAL CHECK<b>'+fin.length+'</b>waiting</div>'+
-         '<div class="dc scr" style="left:210px;top:24px;width:80px;height:40px">QC PASSED<b>'+D.qcToday+'</b>today</div>';
-    }else if(k==='gp3_ops'){
-      var fr=D.fleet.filter(fleetFree).length, chf=D.people.filter(function(p){return p.chauffeur&&stateOf(p)==='in'}).length;
-      sc='<div class="dc scr gpg" style="left:150px;top:24px;width:84px;height:40px">FLEET READY<b>'+fr+'/'+D.fleet.length+'</b>cars</div>'+
-         '<div class="dc scr gpg" style="left:244px;top:24px;width:84px;height:40px">CHAUFFEURS<b>'+chf+'</b>on standby</div>';
-    }else if(k==='g_recep'){
+         '<div class="dc scr gold" style="left:156px;top:24px;width:76px;height:40px">PROMO<b>'+D.mkt.done+'/'+D.mkt.total+'</b>tasks done</div>';
+    }else if(k==='drive'){
+      sc='<div class="dc scr" style="left:110px;top:24px;width:80px;height:40px">QC PASSED<b>'+D.qcToday+'</b>today</div>';
+    }else if(k==='lounge'){
+      var fr=D.fleet.filter(fleetFree).length;
+      sc+='<div class="dc scr gpg" style="left:196px;top:22px;width:84px;height:40px">FLEET READY<b>'+fr+'/'+D.fleet.length+'</b>cars</div>';
+    }else if(k==='recep'){
       sc='<div class="dc scr gold" style="left:38px;top:30px;width:74px;height:42px">NEXT IN<b style="font-size:11px">'+(D.bookings[0]?hm(Date.parse(D.bookings[0].scheduled_at)):'--')+'</b>'+(box.cars.length?box.cars.length+' expected':'')+'</div>';
-    }else if(k==='gl2_academy'){
-      sc='<div class="dc scr" style="left:180px;top:24px;width:70px;height:36px">ACADEMY<b>'+(D.academyToday||0)+'</b>tests today</div>';
     }
     el('sc_'+k).innerHTML=sc;
     // people
     var ppl=box.people;
-    el('ppl_'+k).innerHTML=ppl.map(function(p,i){return walkerHTML(p,i,ppl.length,r.w,r.kind==='roof'?22:groundY)}).join('');
+    el('ppl_'+k).innerHTML=ppl.map(function(p,i){return walkerHTML(p,i,ppl.length,r.w,groundY)}).join('');
     // lights off when the room is empty (lounge + roof always lit)
     var empty=!ppl.filter(function(p){return !p.ai}).length&&!box.cars.length;
-    el('rm_'+k).classList.toggle('off',empty&&r.kind!=='lounge'&&r.kind!=='roof'&&r.kind!=='ai');
+    el('rm_'+k).classList.toggle('off',empty&&r.kind!=='lounge'&&r.kind!=='ai'&&k!=='boss'&&k!=='waiting');
     // badge
     var n, txt='';
     if(r.kind==='bay'){n=box.cars.length;txt=n+' car'+(n===1?'':'s')}
@@ -834,7 +843,7 @@ function render(){
   // HUD
   var C=L.counts;
   el('p_in').innerHTML=(C.in.length+C.break.length)+(C.break.length?' <small>'+C.break.length+' on break</small>':'');
-  el('p_floor').textContent=R.g_clean.cars.length+R.g_wash.cars.length;
+  el('p_floor').textContent=bayCars(R).length;
   el('p_ready').textContent=D.ready.length;
   el('p_today').textContent=rm(D.today);
   el('p_month').textContent=rm(D.month);
@@ -847,14 +856,14 @@ function render(){
   // floor list
   var fl='';
   FLOORS.forEach(function(f){
-    fl+='<div class="grp '+f.co+'">'+(f.no==='R'?'Rooftop':f.no==='G'?'Ground floor':'Level '+f.no+' · '+cap1(f.label))+'</div>';
+    fl+='<div class="grp '+f.co+'">'+f.title+'</div>';
     f.rooms.forEach(function(r){
       var box=R[r.key], n, sub;
       var who=box.people.filter(function(p){return !p.ai});
       if(r.kind==='bay'){n=box.cars.length;sub=n?box.cars.map(function(j){return j.plate}).join(', '):'Bay clear'}
       else if(r.kind==='lounge'){var s=D.fleet.filter(function(c){return isSuper(c)&&fleetFree(c)});n=s.length;sub=s.slice(0,3).map(function(c){return shortModel(c.model)}).join(', ')||'No supercars free'}
-      else if(r.key==='g_recep'){n=who.length;sub=D.bookings.length?('Next booking '+hm(Date.parse(D.bookings[0].scheduled_at))+' · '+(D.bookings[0].service_name||'')):(box.cars.length?box.cars.length+' expected on job card':'No more bookings today')}
-      else if(r.key==='gl1_sales'){n=who.length;sub='MIA '+D.mia.n+' chats today'+(who.length?' · '+who.map(function(p){return p.label}).join(', '):'')}
+      else if(r.key==='recep'){n=who.length;sub=D.bookings.length?('Next booking '+hm(Date.parse(D.bookings[0].scheduled_at))+' · '+(D.bookings[0].service_name||'')):(box.cars.length?box.cars.length+' expected on job card':'No more bookings today')}
+      else if(r.key==='office'){n=who.length;sub='MIA '+D.mia.n+' chats today'+(who.length?' · '+who.map(function(p){return p.label}).join(', '):'')}
       else{n=who.length;sub=who.length?who.map(function(p){return p.label+(p.brk?' (break)':'')}).join(', '):'Empty'}
       fl+='<div class="frow" onclick="openRoom(\''+r.key+'\')"><div class="no '+f.co+'">'+f.no+'</div><div class="tx"><b>'+esc(r.name)+'</b><span>'+esc(sub)+'</span></div>'+
           '<div class="n'+(n?'':' zero')+'">'+n+'</div></div>';
@@ -910,18 +919,19 @@ function messagesFor(roomKey,p){
     var lo=p.rec&&p.rec.lunchOut; m.push(lo?('On lunch since '+lo):'On break'); m.push('Recharging ☕'); return m;
   }
   var r=ROOMS[roomKey];
-  if(r.kind==='bay'){
+  if(roomKey==='drive'){
+    box.cars.slice(0,3).forEach(function(j){m.push('Final check · '+j.plate)});
+    if(D.qcToday)m.push(D.qcToday+' cars passed QC today');
+  }else if(r.kind==='bay'){
     box.cars.forEach(function(j){m.push(j.plate+' · '+svcOf(j)+' · '+since(startOf(j)))});
     if(!m.length)m.push('Bay clear, ready for the next car');
-  }else if(roomKey==='g_recep'){
+  }else if(roomKey==='recep'){
     D.bookings.slice(0,3).forEach(function(b){m.push('Arriving '+hm(Date.parse(b.scheduled_at))+' · '+(b.service_name||'booking'))});
     D.ready.slice(0,3).forEach(function(j){m.push(j.plate+' is ready, calling the owner')});
     if(!m.length)m.push('Welcome to Grandpride & Grandlab!');
-  }else if(roomKey==='gl1_ops'){
-    D.jobs.filter(function(j){return j.stage==='finaltouch'}).slice(0,3).forEach(function(j){m.push('Final check · '+j.plate)});
-    if(D.qcToday)m.push(D.qcToday+' cars passed QC today');
+  }else if(roomKey==='prep'){
     m.push('Sales today '+rm(D.today));
-  }else if(roomKey==='gp3_ops'){
+  }else if(roomKey==='lounge'){
     if(p.chauffeur)m.push('Ready for the next chauffeur job');
     else m.push(D.fleet.filter(fleetFree).length+' cars ready to rent');
   }
@@ -958,7 +968,7 @@ document.addEventListener('keydown',function(e){if(e.key==='Escape')closeSheet()
 
 function openPeople(kind){
   var C=(window.LY||{}).counts; if(!C)return;
-  var T={in:'In the building',break:'On break',out:'Went home',none:'Not clocked in'};
+  var T={in:'In the garage',break:'On break',out:'Went home',none:'Not clocked in'};
   var list=kind==='in'?C.in.concat(C.break):(kind==='none'?C.none.concat(C.leave):C[kind]);
   var h='<h2>'+T[kind]+' <span>&middot; '+list.length+'</span></h2><div class="sub">From today’s Grandpride attendance.</div>';
   h+=list.length?list.map(function(p){
@@ -975,7 +985,7 @@ function openPeople(kind){
 function openRoom(k){
   var L=window.LY; if(!L)return; var R=L.R, h='';
   if(k==='street'){
-    h='<h2>Street <span>&middot; Ready for pickup</span></h2><div class="sub">Stage Ready, created today, not collected yet.</div>'+
+    h='<h2>Ready pickup <span>&middot; side lane</span></h2><div class="sub">Stage Ready, created today, not collected yet.</div>'+
       (D.ready.length?D.ready.map(function(j){return jobRow(j,'ready '+since(Number(j.ready_at)||startOf(j)))}).join(''):'<div class="empty">No cars waiting.</div>');
     return sheet(h);
   }
@@ -986,13 +996,13 @@ function openRoom(k){
     return sheet(h);
   }
   if(k==='bays'){
-    var all=R.g_clean.cars.concat(R.g_wash.cars);
+    var all=bayCars(R);
     h='<h2>Cars in bay <span>&middot; '+all.length+'</span></h2><div class="sub">Every open job in a work stage.</div>'+
-      (all.length?all.map(function(j){return jobRow(j,(bayOf(j)==='g_clean'?'Clean bay':'Wash bay')+' · '+since(startOf(j)))}).join(''):'<div class="empty">No cars being worked on right now.</div>');
+      (all.length?all.map(function(j){return jobRow(j,((ROOMS[j._room]||{}).name||'Bay')+' · '+since(startOf(j)))}).join(''):'<div class="empty">No cars being worked on right now.</div>');
     return sheet(h);
   }
   var r=ROOMS[k]; if(!r)return; var box=R[k];
-  h='<h2>'+esc(r.name)+' <span>&middot; '+(r.floor.no==='G'?'Ground':r.floor.no==='R'?'Roof':'Level '+r.floor.no)+'</span></h2><div class="sub">'+esc(r.sub||'')+'</div>';
+  h='<h2>'+esc(r.name)+' <span>&middot; '+(r.floor.no==='2'?'2nd floor':'Ground floor')+'</span></h2><div class="sub">'+esc(r.sub||'')+'</div>';
   if(r.kind==='lounge'){
     var sup=D.fleet.filter(isSuper);
     h+=sup.length?sup.map(function(c){return '<div class="job"><div class="dot" style="background:'+(fleetFree(c)?'#c9a24a':'#555')+'"></div><div class="a"><b>'+esc(c.plate)+'</b><span>'+esc(c.model)+'</span></div>'+
@@ -1001,7 +1011,7 @@ function openRoom(k){
     return sheet(h);
   }
   if(r.kind==='bay')h+=box.cars.length?box.cars.map(function(j){return jobRow(j,since(startOf(j)))}).join(''):'<div class="empty">Bay is clear.</div>';
-  if(k==='g_recep'){
+  if(k==='recep'){
     h+=D.bookings.map(function(b){return '<div class="job"><div class="dot" style="background:#9CA3AF"></div><div class="a"><b>'+hm(Date.parse(b.scheduled_at))+'</b>'+
       '<span>'+esc(b.service_name||'Booking')+(b.car_type?' · '+esc(b.car_type):'')+'</span></div><div class="r"><b>App booking</b>'+esc(b.status)+'</div></div>'}).join('');
     h+=box.cars.map(function(j){return jobRow(j,'expected')}).join('');
@@ -1043,7 +1053,7 @@ function demoData(){
     bookings:[{id:'b1',service_name:'Full Front PPF',car_type:'SUV',scheduled_at:new Date(now+70*m).toISOString(),status:'confirmed'}],
     people:[
       P('koko','Koko','Grandlab','PPF / Wrap Installer',IN),P('sadik','Sadik','Grandlab','PPF / Wrap Installer',IN),P('myo','Myo','Grandlab','PPF / Wrap Installer',BRK),
-      P('shahadat','Shahadat','Grandlab','PPF / Wrap Installer',IN),P('zawmin','Zaw Min','Grandlab','Detailer',IN),P('ahtun','Ahtun','Grandlab','Detailer',IN),
+      P('shahadat','Shahadat','Grandlab','PPF / Wrap Installer',IN),P('soemyo','Soe Myo','Grandlab','Detailer',IN),P('ahtun','Ahtun','Grandlab','Detailer',IN),
       P('bobo','Bobo','Grandlab','Detailer',BRK),P('mgthan','Mg Than','Grandlab','Detailer',IN),P('uba','UBah','Grandlab','Detailer',IN),P('jojo','JOJO','Grandlab','Detailer',BRK),
       P('shafiq','Shafiq','Grandlab','QC Person',IN),P('jimmy','Jimmy Kuek','Grandpride','Manager',IN),P('alex','Alex','Grandpride','Business Development Executive',IN),
       P('iqa','Iqa','Grandpride','Receptionist',IN),P('liam','Liam Ong','Grandpride','CEO',IN),P('juinnie','Juinnie Thor','Grandpride','Managing Director',{amIn:'10:02'}),
