@@ -86,15 +86,15 @@
 <div class="wrap">
   <div class="tabs">
     <button class="tab a" id="tabReg"  onclick="setView('reg')">Register</button>
-    <button class="tab"   id="tabMiss" onclick="setView('miss')">Missing email <span class="cnt" id="missCount"></span></button>
+    <button class="tab"   id="tabMiss" onclick="setView('miss')">To send <span class="cnt" id="missCount"></span></button>
   </div>
 
 <div id="viewMiss" style="display:none">
   <div class="card">
-    <h2>Warranties with no email</h2>
+    <h2>Waiting to be sent</h2>
     <div class="hint" style="margin-bottom:12px">
-      These customers cannot be sent their certificate. Add an address and save it —
-      the certificate is emailed once sending is switched on.
+      Warranties that have not reached the customer yet — no email address on file,
+      or saved but never sent. Add the address and it goes out straight away.
     </div>
     <div id="missList"><div class="hint">Loading…</div></div>
   </div>
@@ -282,13 +282,61 @@ async function submitWarranty(){
   });
   $('submitBtn').disabled=false; $('submitBtn').innerHTML='<i class="ti ti-shield-check"></i> Register Warranty';
   if(error){ setMsg('Failed: '+error.message,true); return; }
-  setMsg('✓ Warranty registered — cert '+cert+'. Customer can now look it up by plate.',false);
+
+  /* The warranty is saved. Emailing it is a separate step that must never undo
+     the registration - if Resend is down, the certificate still exists and can
+     be sent again from the Missing email tab. */
+  setMsg('✓ Warranty registered — cert '+cert+'. Sending certificate…',false);
+  const res=await sendCertificate(cert);
+  setMsg(res.ok
+    ? '✓ Warranty registered — cert '+cert+'. '+okMsg(res)
+    : '✓ Warranty registered — cert '+cert+', but the email did not go out: '
+      +failMsg(res)+'. It is waiting in the To send tab — you can send it from there.',
+    !res.ok);
   // reset for next entry
   ['plate','cname','phone','email','model','invoice','salesperson'].forEach(id=>$(id).value='');
   $('product').value=''; $('wyears').value=''; $('expiryPrev').innerHTML=''; $('plateFound').textContent='';
   PHOTOS=[]; renderPhotos();
   window.scrollTo({top:0,behavior:'smooth'});
 }
+
+/* ---------- SENDING THE CERTIFICATE ----------
+   Calls the warranty-email edge function, which draws the warranty and its
+   terms server-side and sends through Resend. The browser never holds the
+   mail key, and the function only answers to the reception login.          */
+const SEND_REASON={
+  no_resend_key:'Email sending is not set up on the server yet',
+  server_not_configured:'Server is missing its database settings',
+  not_allowed:'Not signed in as reception — sign in again',
+  cert_no_required:'No certificate number',
+  not_found:'Certificate not found',
+  no_email:'No email address saved on this warranty',
+  send_failed:'The email provider rejected it',
+  send_error:'Could not reach the email provider',
+  network:'No connection to the server'
+};
+
+async function sendCertificate(certNo){
+  let tok='';
+  try{ const {data}=await sb.auth.getSession(); tok=data?.session?.access_token||''; }catch(e){}
+  if(!tok) return {ok:false,reason:'not_allowed'};
+  try{
+    const r=await fetch(SUPABASE_URL+'/functions/v1/warranty-email',{
+      method:'POST',
+      headers:{ apikey:SUPABASE_ANON, Authorization:'Bearer '+tok, 'Content-Type':'application/json' },
+      body:JSON.stringify({cert_no:certNo})
+    });
+    const out=await r.json().catch(()=>null);
+    if(!r.ok || !out || !out.ok){
+      return {ok:false, reason:(out&&out.reason)||('http_'+r.status), detail:out&&out.detail};
+    }
+    return out;
+  }catch(e){ return {ok:false,reason:'network',detail:String(e)}; }
+}
+
+const okMsg   = (res) => res.already_sent ? 'Already sent earlier'
+                                           : 'Sent to '+(res.sent_to||'customer');
+const failMsg = (res) => SEND_REASON[res.reason] || res.reason || 'Unknown error';
 
 /* ---------- MISSING EMAIL ----------
    Warranties registered before the email field was made required cannot be
@@ -313,11 +361,12 @@ function fmtD(d){
 
 async function loadMissing(){
   $('missList').innerHTML='<div class="hint">Loading…</div>';
-  // every row with no address is stored as NULL - saveEmail below never writes
-  // an empty string, so there is nothing else to match
+  /* Two kinds of unfinished row: no address at all, and an address that has
+     never been sent (a registration where Resend was down, say). Both belong
+     here, or a failed send would vanish with nowhere to retry it from. */
   const {data,error}=await sb.from('gl_warranties')
-    .select('id,cert_no,plate,customer_name,phone,product_name,install_date')
-    .is('email',null)
+    .select('id,cert_no,plate,customer_name,phone,product_name,install_date,email,email_sent_at')
+    .or('email.is.null,email_sent_at.is.null')
     .order('install_date',{ascending:false});
   if(error){ $('missList').innerHTML='<div class="hint" style="color:var(--red)">Could not load: '+esc(error.message)+'</div>'; return; }
   MISSING=data||[];
@@ -328,21 +377,29 @@ function renderMissing(){
   const c=$('missCount');
   c.textContent=MISSING.length; c.classList.toggle('on',MISSING.length>0);
   if(!MISSING.length){
-    $('missList').innerHTML='<div class="hint" style="color:var(--green)">All warranties have an email address.</div>';
+    $('missList').innerHTML='<div class="hint" style="color:var(--green)">Every warranty has been sent.</div>';
     return;
   }
-  $('missList').innerHTML=MISSING.map(w=>`
+  $('missList').innerHTML=MISSING.map(w=>{
+    // an address already on file only needs sending; otherwise ask for one
+    const act = w.email
+      ? `<div class="mact">
+           <input value="${esc(w.email)}" disabled>
+           <button id="bt_${esc(w.id)}" onclick="sendOnly('${esc(w.id)}')">Send</button>
+         </div>`
+      : `<div class="mact">
+           <input id="em_${esc(w.id)}" type="email" inputmode="email" placeholder="name@email.com"
+                  onkeydown="if(event.key==='Enter')saveEmail('${esc(w.id)}')">
+           <button id="bt_${esc(w.id)}" onclick="saveEmail('${esc(w.id)}')">Save &amp; send</button>
+         </div>`;
+    return `
     <div class="mrow" id="mr_${esc(w.id)}">
       <div class="mp">${esc(w.plate||'—')}</div>
       <div class="mm">${esc(w.customer_name||'—')}${w.phone?' · '+esc(w.phone):' · <i>no phone</i>'}<br>
         ${esc(w.product_name||'')} · ${fmtD(w.install_date)} · ${esc(w.cert_no||'')}</div>
-      <div class="mact">
-        <input id="em_${esc(w.id)}" type="email" inputmode="email" placeholder="name@email.com"
-               onkeydown="if(event.key==='Enter')saveEmail('${esc(w.id)}')">
-        <button id="bt_${esc(w.id)}" onclick="saveEmail('${esc(w.id)}')">Save</button>
-      </div>
+      ${act}
       <div class="mnote" id="nt_${esc(w.id)}"></div>
-    </div>`).join('');
+    </div>`;}).join('');
 }
 
 async function saveEmail(id){
@@ -356,10 +413,33 @@ async function saveEmail(id){
   const {error}=await sb.from('gl_warranties').update({email:v}).eq('id',id);
   if(error){ btn.disabled=false; return bad('Could not save: '+error.message); }
 
-  note.style.color='var(--green)'; note.textContent='✓ Saved — '+v;
+  // the address is saved either way - sending is the part that can still fail
   inp.disabled=true; btn.textContent='Saved';
   $('mr_'+id).classList.add('done');
-  // drop it from the count without reloading, so the list keeps its place
+  note.style.color='var(--muted)'; note.textContent='Saved — sending…';
+
+  const row=MISSING.find(w=>String(w.id)===String(id));
+  const res=await sendCertificate(row?row.cert_no:'');
+  note.style.color = res.ok ? 'var(--green)' : 'var(--red)';
+  note.textContent = res.ok ? '✓ Saved — '+okMsg(res)
+                            : 'Saved, but not sent — '+failMsg(res);
+  if(res.ok) dropFromList(id);
+  else { btn.disabled=false; btn.textContent='Retry send'; btn.onclick=()=>sendOnly(id); }
+}
+
+/* An address is already on file - this row only needs the email sending. */
+async function sendOnly(id){
+  const btn=$('bt_'+id), note=$('nt_'+id);
+  btn.disabled=true; note.style.color='var(--muted)'; note.textContent='Sending…';
+  const row=MISSING.find(w=>String(w.id)===String(id));
+  const res=await sendCertificate(row?row.cert_no:'');
+  note.style.color = res.ok ? 'var(--green)' : 'var(--red)';
+  note.textContent = res.ok ? '✓ '+okMsg(res) : 'Not sent — '+failMsg(res);
+  if(res.ok){ btn.textContent='Sent'; $('mr_'+id).classList.add('done'); dropFromList(id); }
+  else { btn.disabled=false; btn.textContent='Retry'; }
+}
+
+function dropFromList(id){
   MISSING=MISSING.filter(w=>String(w.id)!==String(id));
   const c=$('missCount');
   c.textContent=MISSING.length; c.classList.toggle('on',MISSING.length>0);
