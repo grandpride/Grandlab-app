@@ -5922,6 +5922,94 @@ Object.defineProperty(window,'stepIndex',{get:()=>cur,set:v=>{cur=v;}});
     window.addEventListener('load', function(){ fixViewport_(); setTimeout(fixViewport_, 300); });
     if(document.readyState==='complete') setTimeout(fixViewport_, 100);
   }catch(e){}
+/* ---------- SWIPE RIGHT TO GO BACK ----------
+   The app keeps no history stack - every sub-page carries its own back button
+   and decides for itself where back leads. So the gesture presses that button
+   rather than defining "back" a second time here; any page that gains a back
+   button gets the swipe for free, and none of them can drift apart.
+
+   Two rules keep it out of the way of the twelve horizontal carousels:
+   the drag has to start at the left edge, the way iOS does it, and if a
+   carousel under the finger still has room to scroll left, it keeps the swipe.  */
+(function swipeBack(){
+  const EDGE=42;    // how close to the left edge the drag must start
+  const DIST=70;    // how far right before it counts
+  const SLOP=45;    // vertical drift allowed before it is a scroll, not a swipe
+  let x0=0, y0=0, live=false, hint=null;
+
+  function horizScroller(el){
+    for(let n=el; n && n!==document.body; n=n.parentElement){
+      if(n.scrollWidth > n.clientWidth+2){
+        const ox=getComputedStyle(n).overflowX;
+        if(ox==='auto'||ox==='scroll') return n;
+      }
+    }
+    return null;
+  }
+
+  // the visible back button of whatever page is showing
+  function backBtn(){
+    const b=document.querySelector('#appRoot .topbar-app .back');
+    return (b && b.offsetParent!==null) ? b : null;
+  }
+
+  function showHint(){
+    if(!hint){
+      hint=document.createElement('div');
+      hint.style.cssText='position:fixed;left:0;top:50%;z-index:150;pointer-events:none;'+
+        'width:44px;height:44px;margin-top:-22px;border-radius:0 24px 24px 0;'+
+        'background:rgba(245,197,24,.92);color:#080808;font-size:24px;font-weight:900;'+
+        'display:flex;align-items:center;justify-content:center;opacity:0;'+
+        'transform:translateX(-44px);transition:opacity .12s linear';
+      hint.textContent='‹';
+      document.body.appendChild(hint);
+    }
+    return hint;
+  }
+  function moveHint(dx){
+    const h=showHint();
+    const p=Math.max(0,Math.min(1,dx/DIST));
+    h.style.opacity=String(p);
+    h.style.transform='translateX('+(-44+44*p)+'px)';
+  }
+  function hideHint(){ if(hint){ hint.style.opacity='0'; hint.style.transform='translateX(-44px)'; } }
+
+  document.addEventListener('touchstart',function(e){
+    live=false;
+    if(e.touches.length!==1) return;
+    const t=e.touches[0];
+    if(t.clientX>EDGE) return;                                   // not an edge drag
+    const root=document.getElementById('appRoot');
+    if(!root || !root.contains(e.target)) return;                // overlay or chrome
+    if(e.target.closest &&
+       e.target.closest('.pay-sheet-overlay,.sheet-ov,.qr-overlay,input,textarea,select')) return;
+    const sc=horizScroller(e.target);
+    if(sc && sc.scrollLeft>0) return;                            // carousel keeps it
+    if(!backBtn()) return;                                       // nowhere to go back to
+    x0=t.clientX; y0=t.clientY; live=true;
+  },{passive:true});
+
+  document.addEventListener('touchmove',function(e){
+    if(!live) return;
+    const t=e.touches[0];
+    const dx=t.clientX-x0, dy=Math.abs(t.clientY-y0);
+    if(dy>SLOP){ live=false; hideHint(); return; }               // they are scrolling
+    if(dx>12) moveHint(dx);
+  },{passive:true});
+
+  function finish(e){
+    if(!live) return;
+    live=false; hideHint();
+    const t=e.changedTouches && e.changedTouches[0];
+    if(!t) return;
+    if(t.clientX-x0 < DIST) return;
+    if(Math.abs(t.clientY-y0) > SLOP) return;
+    const b=backBtn(); if(b) b.click();
+  }
+  document.addEventListener('touchend',finish,{passive:true});
+  document.addEventListener('touchcancel',function(){ live=false; hideHint(); },{passive:true});
+})();
+
   // TEMP: preview the main page directly (no login)
   if(PREVIEW_HOME){
     await Promise.allSettled([
