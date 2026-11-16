@@ -620,7 +620,7 @@ function renderDetail(){
       '<div class="tot"><span>Quoted total</span><span>'+money(q.total)+'</span></div>' +
       (q.agreed_total != null ? '<div class="tot" style="font-size:14px"><span>Customer agreed</span><span style="font-size:16px">'+money(q.agreed_total)+'</span></div>' : '') +
       (q.paid_total != null ? '<div class="tot" style="font-size:14px"><span>Customer paid</span><span style="font-size:16px;color:var(--ok)">'+money(q.paid_total)+'</span></div>' +
-        '<div class="tot" style="font-size:14px"><span>'+esc(q.finder)+' commission ('+Number(q.comm_pct)+'%)</span><span style="font-size:16px">'+money(q.comm_amount)+'</span></div>' : '') +
+        '<div class="tot" style="font-size:14px"><span>'+esc(q.finder)+' commission ('+Number(q.comm_pct)+'% · monthly tier)</span><span style="font-size:16px">'+money(q.comm_amount)+'</span></div>' : '') +
       (q.job_added_at ? '<p class="muted" style="margin:8px 2px 0">✓ Added to job card '+esc(dOnly(q.job_added_at))+'</p>' : '') +
       (q.comm_paid_at ? '<p class="muted" style="margin:4px 2px 0">✓ Commission paid '+esc(dOnly(q.comm_paid_at))+(q.comm_paid_ref?' · '+esc(q.comm_paid_ref):'')+'</p>' : '') +
       '</div>';
@@ -926,19 +926,19 @@ function openJob(){
 function openPaid(){
   var q = S.cur, today = new Date();
   var iso = today.getFullYear() + '-' + ('0'+(today.getMonth()+1)).slice(-2) + '-' + ('0'+today.getDate()).slice(-2);
-  var h = '<h3>Customer paid</h3><p class="muted">Key what the customer actually paid for each add-on (after any discount). '+esc(q.finder)+' gets '+Number(q.comm_pct)+'%.</p><div style="margin-top:12px">';
+  var h = '<h3>Customer paid</h3><p class="muted">Key what the customer actually paid for each add-on (after any discount). Commission rate is set by '+esc(q.finder)+'\'s total paid add-ons for the month (monthly tier).</p><div style="margin-top:12px">';
   (q.agreed||[]).forEach(function(i){
     var it = q.issues[i]; if(!it) return;
     var prev = (q.paid_lines||[]).filter(function(p){ return p.i === i; })[0];
     h += '<div class="fld"><label>#'+(i+1)+' '+esc(it.solution||it.remark)+' — quoted '+money(it.price)+'</label><input data-pi="'+i+'" inputmode="decimal" value="'+esc(prev?prev.paid:it.price)+'"></div>';
   });
   h += '</div><div class="fld"><label>Date paid</label><input type="date" id="pdDate" value="'+iso+'"></div>' +
-    '<div class="tot"><span>Commission</span><span id="pdComm"></span></div>' +
+    '<div class="tot"><span>Paid total</span><span id="pdComm"></span></div>' +
     '<div class="row" style="margin-top:12px"><button class="btn ghost" id="pdNo">Cancel</button><button class="btn green" id="pdOk">Save</button></div>';
   openOv(h);
   function calc(){
     var t = 0; $('ovBox').querySelectorAll('[data-pi]').forEach(function(el){ t += Number(el.value.replace(/[^0-9.]/g,''))||0; });
-    $('pdComm').textContent = money(Math.round(t * Number(q.comm_pct)) / 100) + ' of ' + money(t);
+    $('pdComm').textContent = money(t);
   }
   $('ovBox').querySelectorAll('[data-pi]').forEach(function(el){ el.oninput = calc; });
   calc();
@@ -952,7 +952,7 @@ function openPaid(){
     });
     if(over){ toast('Paid cannot be more than quoted', true); return; }
     pinRpc('qc_addon_paid', { p_id: q.id, p_paid: paid, p_date: $('pdDate').value || null }, function(d){
-      closeOv(); toast('Saved ✓ commission ' + money(d.comm)); reload();
+      closeOv(); toast('Saved ✓ ' + Number(d.rate) + '% tier this month · ' + money(d.comm)); reload();
     });
   };
 }
@@ -974,6 +974,20 @@ function openVoid(){
 function prevMonth(){ var d = new Date(); d.setDate(1); d.setMonth(d.getMonth()-1); return d.getFullYear() + '-' + ('0'+(d.getMonth()+1)).slice(-2); }
 function monthLabel(m){ var p = m.split('-'); return new Date(+p[0], +p[1]-1, 1).toLocaleDateString('en-GB',{month:'long',year:'numeric'}); }
 function payDay(m){ var p = m.split('-'); return new Date(+p[0], +p[1], 15).toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'}); }
+function tierText(t){
+  t = Array.isArray(t) ? t : []; var lo = 0;
+  return t.map(function(x){ var s = x.upto == null ? 'above ' + money(lo) : (lo ? money(lo) + '–' : 'up to ') + money(x.upto); lo = x.upto; return s + ' = ' + x.rate + '%'; }).join(' · ');
+}
+function tierNext(t, total){
+  t = Array.isArray(t) ? t : [];
+  for(var i = 0; i < t.length; i++){
+    if(t[i].upto == null || total <= Number(t[i].upto)){
+      if(t[i].upto == null || !t[i+1]) return null;
+      return { need: Math.round((Number(t[i].upto) + 0.01 - total) * 100) / 100, rate: t[i+1].rate };
+    }
+  }
+  return null;
+}
 function renderReport(){
   if(!S.repMonth) S.repMonth = prevMonth();
   var m = S.repMonth, p = m.split('-');
@@ -985,10 +999,12 @@ function renderReport(){
   Promise.all([
     sb.from('gl_qc_addons').select('*').gte('customer_paid_at', from.toISOString()).lt('customer_paid_at', to.toISOString())
       .in('comm_status', ['payable','paid']).order('customer_paid_at'),
-    sb.from('gl_qc_addons').select('id,ref,plate,customer_name,agreed_total,confirmed_at').eq('status','confirmed').eq('comm_status','pending').order('confirmed_at')
+    sb.from('gl_qc_addons').select('id,ref,plate,customer_name,agreed_total,confirmed_at').eq('status','confirmed').eq('comm_status','pending').order('confirmed_at'),
+    sb.rpc('qc_addon_month', { p_month: m })
   ]).then(function(res){
     if(res[0].error) throw res[0].error;
     var rows = res[0].data || [], waiting = res[1].data || [];
+    var sum = (res[2] && !res[2].error && res[2].data) ? res[2].data : { finders: [], tiers: [] };
     var by = {}, tot = 0, comm = 0, toPay = [];
     rows.forEach(function(q){
       var f = q.finder; by[f] = by[f] || { paid:0, comm:0, n:0, owed:0 };
@@ -1008,11 +1024,15 @@ function renderReport(){
             '<td>'+esc(sv)+'</td><td class="n">'+money(q.paid_total)+'</td><td class="n">'+money(q.comm_amount)+'<br>'+(q.comm_status==='paid'?'<span class="pill paid">Paid</span>':'<span class="pill payable">To pay</span>')+'</td></tr>';
         }).join('') +
         '</tbody><tfoot><tr><td colspan="2"><b>Total</b></td><td class="n"><b>'+money(tot)+'</b></td><td class="n"><b>'+money(comm)+'</b></td></tr></tfoot></table></div>';
-      h += '<div style="margin-top:14px">' + Object.keys(by).map(function(f){
-        return '<div class="ln" style="font-size:14px;padding:6px 0;border-top:1px solid var(--border)"><span><b>'+esc(f)+'</b> · '+by[f].n+' add-on'+(by[f].n===1?'':'s')+' · '+money(by[f].paid)+'</span><span>'+money(by[f].comm)+(by[f].owed>0?' <small style="color:var(--text2)">('+money(by[f].owed)+' to pay)</small>':'')+'</span></div>';
+      h += '<div style="margin-top:14px">' + (sum.finders||[]).map(function(f){
+        var nxt = tierNext(sum.tiers, Number(f.total));
+        return '<div style="padding:10px 0;border-top:1px solid var(--border)">' +
+          '<div class="ln" style="font-size:14px"><span><b>'+esc(f.finder)+'</b> · '+f.count+' add-on'+(f.count===1?'':'s')+' · '+money(f.total)+'</span><span style="font-size:16px">'+money(f.comm)+'</span></div>' +
+          '<div class="muted">Tier '+Number(f.rate)+'% on the whole '+money(f.total)+(nxt?' · '+money(nxt.need)+' more to reach '+nxt.rate+'%':'')+
+          (Number(f.owed)>0?' · <b style="color:var(--gold)">'+money(f.owed)+' to pay</b>':'')+(Number(f.paid_out)>0?' · '+money(f.paid_out)+' paid':'')+'</div></div>';
       }).join('') + '</div>';
     }
-    h += '</div>';
+    h += '<p class="muted" style="margin:12px 0 0">Tier (whole month amount): '+tierText(sum.tiers)+'</p></div>';
     if(toPay.length) h += '<div class="card noprint"><div class="fld"><label>Payment reference (e.g. bank / cash 15 Dec)</label><input id="rpRef"></div>' +
       '<button class="btn green" id="rpPay"><i class="ti ti-cash"></i> Mark '+toPay.length+' as commission paid</button></div>';
     if(waiting.length) h += '<div class="card noprint"><h2>Confirmed, customer not paid yet</h2>' + waiting.map(function(q){
