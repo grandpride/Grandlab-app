@@ -1065,6 +1065,7 @@ function boot(){
     initNew();
     var qp = new URLSearchParams(location.search).get('q');
     if(qp) openDetail(qp);
+    else if(new URLSearchParams(location.search).get('tab') === 'report') setTab('report');
   }).catch(function(e){ $('boot').innerHTML = 'Could not load: ' + esc(e.message||e); });
 }
 boot();
