@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Commission | Grandlab</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.7.0/dist/tabler-icons.min.css">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+:root{--bg:#FFFFFF;--card:#FFFFFF;--card2:#F6F7F8;--gold:#F5C518;--text:#111111;--text2:#5F6368;--border:#E3E5E8;--gold-ink:#8A6D00;--ok:#137a3d;--warn:#b25c00}
+html,body{background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:var(--text)}
+.app{max-width:640px;margin:0 auto;min-height:100dvh;padding:0 18px 40px}
+.top{display:flex;align-items:center;gap:12px;padding:22px 0 6px}
+.back{width:38px;height:38px;border-radius:12px;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;color:var(--text2);text-decoration:none;font-size:19px;flex-shrink:0}
+.ttl{font-weight:900;font-size:24px;letter-spacing:.5px}
+.ttl span{color:var(--gold-ink)}
+.sub{font-size:13px;color:var(--text2);margin:2px 0 6px;line-height:1.5}
+.sect{font-size:11px;font-weight:800;letter-spacing:.18em;color:var(--gold-ink);text-transform:uppercase;margin:24px 4px 10px;display:flex;align-items:center;gap:10px}
+.sect:after{content:"";flex:1;height:1px;background:var(--border)}
+.cat{display:flex;gap:14px;align-items:flex-start;background:var(--card);border:1px solid var(--border);border-radius:18px;padding:16px;margin-bottom:12px;text-decoration:none;color:var(--text);transition:.15s}
+.cat:hover{border-color:var(--gold-ink)}
+.cat:active{transform:scale(.99)}
+.cat .ic{width:46px;height:46px;border-radius:12px;background:var(--card2);display:flex;align-items:center;justify-content:center;font-size:24px;color:var(--gold-ink);flex-shrink:0}
+.cat .bd{flex:1;min-width:0}
+.cat .t{font-weight:800;font-size:16px;display:flex;align-items:center;gap:8px}
+.cat .who{font-size:12px;color:var(--text2);margin-top:2px;line-height:1.4}
+.cat .st{margin-top:10px;font-size:13px;line-height:1.55}
+.cat .st b{font-weight:800}
+.cat .go{color:var(--text2);font-size:20px;align-self:center}
+.cat.soon{opacity:.6}
+.pill{display:inline-block;font-size:10px;font-weight:800;letter-spacing:.04em;padding:3px 8px;border-radius:20px;text-transform:uppercase;background:var(--card2);color:var(--text2)}
+.pill.due{background:#FFF4CC;color:var(--gold-ink)}
+.pill.ok{background:#E3F5EA;color:var(--ok)}
+.num{font-weight:800;color:var(--text)}
+.muted{color:var(--text2)}
+.steps{background:var(--card2);border-radius:16px;padding:14px 16px;font-size:13px;line-height:1.7;color:var(--text2)}
+.steps b{color:var(--text)}
+.load{color:var(--text2);font-size:12px}
+</style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script>
+/* ===== GRANDLAB ACCESS GUARD — needs the 'commission' app in Staff Manager.
+   admin@grandpride.com always has full access. */
+(function(){
+  var APP_KEY = 'commission';
+  var GP_URL = 'https://gpdb.grandlab.com.my';
+  var GP_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzkzMDY5NDExLCJleHAiOjE5NTA3NDk0MTF9.ql0qv5ycO4qPDfzLZDdZvjMBqWJMxDRwS8m8HZxUuss';
+  var MASTER = ['admin@grandpride.com'];
+  function deny(msg){
+    document.documentElement.innerHTML =
+      '<body style="background:#fff;color:#111;font-family:-apple-system,Segoe UI,sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;text-align:center">' +
+      '<div style="max-width:340px;padding:26px;border:1px solid #E3E5E8;border-radius:16px">' +
+      '<div style="font-size:34px">&#128274;</div><div style="font-weight:900;font-size:17px;margin:10px 0;color:#8A6D00">NO ACCESS</div>' +
+      '<div style="font-size:13px;color:#5F6368;line-height:1.5">' + msg + '</div>' +
+      '<a href="gl-hub.html" style="display:block;margin-top:18px;background:#F5C518;color:#000;padding:12px;border-radius:10px;font-weight:800;text-decoration:none">BACK TO HUB</a></div></body>';
+  }
+  (async function(){
+    try{
+      var gl = supabase.createClient('https://db.grandlab.com.my', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzkzMDY5NDExLCJleHAiOjE5NTA3NDk0MTF9.IcbPnDCd9p6Z-_FNMvzfg9k6ayX7IpC48zdGacAD_qw',
+        {auth:{persistSession:true,autoRefreshToken:true,storageKey:'gl_auth'}});
+      var s = await gl.auth.getSession();
+      if(!s.data.session) return;
+      var email = (s.data.session.user.email||'').toLowerCase();
+      if(MASTER.indexOf(email) >= 0) return;
+      var gp = supabase.createClient(GP_URL, GP_ANON, {auth:{persistSession:false,storageKey:'gp_read'}});
+      var r = await gp.from('gp_staff').select('name,apps').ilike('email', email).maybeSingle();
+      if(r.error || !r.data){ deny('This login is not in the staff list. Ask the manager to add you.'); return; }
+      var apps = r.data.apps;
+      if(typeof apps === 'string'){ try{ apps = JSON.parse(apps); }catch(e){ apps = []; } }
+      if(!Array.isArray(apps)) apps = [];
+      if(apps.indexOf(APP_KEY) < 0) deny('Hi ' + (r.data.name||'') + ', you do not have access to Commission.<br><br>Ask the manager to enable it in Staff Manager.');
+    }catch(e){ /* if the check itself fails, do not lock anyone out */ }
+  })();
+})();
+</script>
+</head>
+<body>
+<div class="app">
+  <div class="top">
+    <a class="back" href="gl-hub.html"><i class="ti ti-arrow-left"></i></a>
+    <div>
+      <div class="ttl">COMMI<span>SSION</span></div>
+    </div>
+  </div>
+  <p class="sub">Every commission to pay, in one place. Open a category to check the detail, then pay and mark it paid there.</p>
+
+  <div class="sect">Pay out</div>
+
+  <a class="cat" href="gl-commission.html">
+    <div class="ic"><i class="ti ti-cash"></i></div>
+    <div class="bd">
+      <div class="t">Film Commission</div>
+      <div class="who">PPF, wrap &amp; tint installers &middot; per job, split by staff</div>
+      <div class="st" id="stFilm"><span class="load">Loading…</span></div>
+    </div>
+    <i class="ti ti-chevron-right go"></i>
+  </a>
+
+  <a class="cat" href="gl-sa.html">
+    <div class="ic"><i class="ti ti-user-dollar"></i></div>
+    <div class="bd">
+      <div class="t">Sales Advisor Commission</div>
+      <div class="who">Grandlab advisors &middot; monthly personal sales &amp; commission chart</div>
+      <div class="st" id="stSa"><span class="load">Loading…</span></div>
+    </div>
+    <i class="ti ti-chevron-right go"></i>
+  </a>
+
+  <a class="cat" href="gl-qc-addon.html?tab=report">
+    <div class="ic"><i class="ti ti-zoom-money"></i></div>
+    <div class="bd">
+      <div class="t">QC Add-on Commission</div>
+      <div class="who">Shafiq (QC) &middot; extra work found &amp; sold &middot; monthly tier 5 / 10 / 15% &middot; manager PIN</div>
+      <div class="st" id="stQc"><span class="load">Loading…</span></div>
+    </div>
+    <i class="ti ti-chevron-right go"></i>
+  </a>
+
+  <a class="cat" href="gl-sa-admin.html">
+    <div class="ic"><i class="ti ti-briefcase"></i></div>
+    <div class="bd">
+      <div class="t">Partner SA Commission</div>
+      <div class="who">Workshop &amp; showroom advisors &middot; paid after the customer pays Grandlab</div>
+      <div class="st" id="stPartner"><span class="load">Loading…</span></div>
+    </div>
+    <i class="ti ti-chevron-right go"></i>
+  </a>
+
+  <div class="cat soon">
+    <div class="ic"><i class="ti ti-sparkles"></i></div>
+    <div class="bd">
+      <div class="t">Cleanliness Team Incentive <span class="pill">Dec 2026</span></div>
+      <div class="who">Wash &amp; detailing team + PPF room team &middot; Closing Check tiers &middot; in the Grandpride Employee app</div>
+      <div class="st muted">First month closes end of December. Payout per person (after absent days) is shown when the manager closes the month.</div>
+    </div>
+  </div>
+
+  <div class="sect">How to pay</div>
+  <div class="steps">
+    <b>1.</b> Open each category with something due.<br>
+    <b>2.</b> Check the list (customer, car, service, amount).<br>
+    <b>3.</b> Pay the staff, then mark it <b>paid</b> inside that category so it drops off this page.
+  </div>
+</div>
+
+<script>
+(function(){
+'use strict';
+var sb = window.supabase.createClient('https://db.grandlab.com.my',
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzkzMDY5NDExLCJleHAiOjE5NTA3NDk0MTF9.IcbPnDCd9p6Z-_FNMvzfg9k6ayX7IpC48zdGacAD_qw',
+  { auth:{ storageKey:'gl_auth', persistSession:true, autoRefreshToken:true } });
+var $ = function(id){ return document.getElementById(id); };
+function money(n){ return 'RM ' + Number(n||0).toLocaleString('en-MY',{minimumFractionDigits:0,maximumFractionDigits:2}); }
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+function ym(d){ return d.getFullYear() + '-' + ('0'+(d.getMonth()+1)).slice(-2); }
+function mName(m){ var p = m.split('-'); return new Date(+p[0], +p[1]-1, 1).toLocaleDateString('en-GB',{month:'short',year:'numeric'}); }
+function fail(id){ $(id).innerHTML = '<span class="muted">Could not load — open to check</span>'; }
+var now = new Date(), thisM = ym(now), last = new Date(now.getFullYear(), now.getMonth()-1, 1), lastM = ym(last);
+
+sb.auth.getSession().then(function(res){
+  if(!res || !res.data || !res.data.session){ location.href = 'gl-hub.html'; return; }
+  loadFilm(); loadSa(); loadQc(); loadPartner();
+});
+
+/* Film: pending = to approve, approved = to pay, hold */
+function loadFilm(){
+  sb.from('gl_comm_orders').select('status,payout_pool').in('status',['pending','approved','hold']).then(function(r){
+    if(r.error) return fail('stFilm');
+    var c = { pending:[0,0], approved:[0,0], hold:[0,0] };
+    (r.data||[]).forEach(function(x){ var k = c[x.status]; if(k){ k[0]++; k[1] += Number(x.payout_pool)||0; } });
+    var out = [];
+    if(c.approved[0]) out.push('<span class="pill due">To pay</span> <b>' + c.approved[0] + '</b> approved · <span class="num">' + money(c.approved[1]) + '</span>');
+    if(c.pending[0]) out.push('<span class="pill">To approve</span> ' + c.pending[0] + ' order' + (c.pending[0]===1?'':'s') + ' · ' + money(c.pending[1]));
+    if(c.hold[0]) out.push('<span class="pill">On hold</span> ' + c.hold[0]);
+    $('stFilm').innerHTML = out.length ? out.join('<br>') : '<span class="pill ok">Clear</span> <span class="muted">Nothing waiting</span>';
+  }, function(){ fail('stFilm'); });
+}
+
+/* Sales advisor: count of paid jobs with an advisor last month (commission is worked out inside the app) */
+function loadSa(){
+  var from = new Date(last.getFullYear(), last.getMonth(), 1).toISOString(), to = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+  sb.from('gl_payments').select('attendee,voided').gte('paid_at', from).lt('paid_at', to).not('attendee','is',null).then(function(r){
+    if(r.error) return fail('stSa');
+    var by = {}; (r.data||[]).forEach(function(x){ if(x.voided) return; var a = String(x.attendee||'').trim(); if(a) by[a] = (by[a]||0) + 1; });
+    var names = Object.keys(by);
+    $('stSa').innerHTML = names.length
+      ? '<span class="pill due">' + esc(mName(lastM)) + '</span> ' + names.length + ' advisor' + (names.length===1?'':'s') + ' · ' + names.map(esc).join(', ') + '<br><span class="muted">Open to see each advisor\'s commission.</span>'
+      : '<span class="muted">No advisor sales in ' + esc(mName(lastM)) + '</span>';
+  }, function(){ fail('stSa'); });
+}
+
+/* QC add-on: last month (pay on the 15th) + this month so far */
+function loadQc(){
+  Promise.all([ sb.rpc('qc_addon_month', { p_month: lastM }), sb.rpc('qc_addon_month', { p_month: thisM }) ]).then(function(res){
+    if(res[0].error || res[1].error) return fail('stQc');
+    function line(d, m, isLast){
+      var f = (d && d.finders) || [];
+      if(!f.length) return '<span class="muted">' + esc(mName(m)) + ': nothing paid by customers yet</span>';
+      return f.map(function(x){
+        var owed = Number(x.owed)||0;
+        return (isLast ? (owed > 0 ? '<span class="pill due">Pay 15th</span> ' : '<span class="pill ok">Paid</span> ') : '<span class="pill">So far</span> ') +
+          esc(mName(m)) + ' · <b>' + esc(x.finder) + '</b> ' + money(x.total) + ' sold → tier ' + Number(x.rate) + '% = <span class="num">' + money(x.comm) + '</span>' +
+          (isLast && owed > 0 ? ' · <b>' + money(owed) + ' to pay</b>' : '');
+      }).join('<br>');
+    }
+    $('stQc').innerHTML = line(res[0].data, lastM, true) + '<br>' + line(res[1].data, thisM, false);
+  }, function(){ fail('stQc'); });
+}
+
+/* Partner SA: deals where the customer has paid and commission is waiting */
+function loadPartner(){
+  sb.from('gl_sa_comm_ledger').select('comm_status,comm_amount,status').then(function(r){
+    if(r.error) return fail('stPartner');
+    var pay = 0, n = 0, wait = 0;
+    (r.data||[]).forEach(function(x){
+      if(x.comm_status === 'payable'){ n++; pay += Number(x.comm_amount)||0; }
+      else if(x.status === 'confirmed' && x.comm_status === 'pending') wait++;
+    });
+    $('stPartner').innerHTML = (n ? '<span class="pill due">To pay</span> <b>' + n + '</b> deal' + (n===1?'':'s') + ' · <span class="num">' + money(pay) + '</span>' : '<span class="pill ok">Clear</span> <span class="muted">Nothing to pay out</span>') +
+      (wait ? '<br><span class="muted">' + wait + ' confirmed deal' + (wait===1?'':'s') + ' waiting for the customer to pay</span>' : '');
+  }, function(){ fail('stPartner'); });
+}
+})();
+</script>
+</body>
+</html>
