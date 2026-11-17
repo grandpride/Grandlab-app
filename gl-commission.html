@@ -470,10 +470,11 @@ function renderManualPick(q){
   }).slice(0,60);
   box.innerHTML=
    '<button class="btn btn2" style="margin-bottom:12px" onclick="loadNew()">&#8592; BACK TO LIST</button>'+
+   '<button class="btn" style="margin-bottom:12px" onclick="openNoJob()">+ KEY IN MANUALLY &mdash; NO JOB CARD</button>'+
    '<div class="card"><div class="sec">PICK A JOB</div>'+
      '<div class="hint">Recent jobs below. Type 3+ letters of a plate, name or car to search the last 6 months.</div>'+
      '<input id="mq" placeholder="Search plate, model or customer" '+
-       'style="width:100%;margin:10px 0;padding:10px;border-radius:10px;border:1px solid #333;background:#F6F7F8;color:#eee;font-family:inherit">'+
+       'style="width:100%;margin:10px 0;">'+
      (rows.length?rows.map(function(x,i){
        return '<div class="jrow" data-mi="'+i+'">'+
          '<div class="pl">'+esc(x.plate||'-')+'</div>'+
@@ -503,8 +504,8 @@ function openManualService(job){
          (s.price?'<div class="sub2">sold at '+rm(s.price)+'</div>':'')+'</div></div>';
      }).join(''):'<div class="empty">This job has no service lines</div>')+
      '<div style="margin-top:12px"><div class="sub2" style="margin-bottom:6px">Or enter manually</div>'+
-       '<input id="msvc" placeholder="Service name" style="width:100%;padding:10px;border-radius:10px;border:1px solid #333;background:#F6F7F8;color:#eee;font-family:inherit">'+
-       '<input id="mamt" type="number" step="0.01" placeholder="Commission base amount (RM)" style="width:100%;margin-top:8px;padding:10px;border-radius:10px;border:1px solid #333;background:#F6F7F8;color:#eee;font-family:inherit">'+
+       '<input id="msvc" placeholder="Service name" style="width:100%;">'+
+       '<input id="mamt" type="number" step="0.01" placeholder="Commission base amount (RM)" style="width:100%;margin-top:8px;">'+
        '<button class="btn" style="margin-top:10px" onclick="startManual(\'\',0)">CONTINUE</button>'+
      '</div>'+
    '</div>';
@@ -534,6 +535,93 @@ function startManual(){
        amount:amt,target_hours:found.target_hours||8}
     : {category:'MANUAL',brand:'',package:'',amount:amt,target_hours:8};
   openForm(job,{name:nm,rate:rate});
+}
+
+/* ---------- key in manually: no job card at all ----------
+   Builds a synthetic job (id MAN-xxxx) so the form, the split, the approval
+   flow and the PDF all work unchanged. gl_comm_orders has no foreign key to
+   gl_jobs and already stores plate and model of its own, so nothing in the
+   database has to change. The pending list falls back to gl_walkin by plate
+   for the customer name. */
+function njCats_(){ var o={},a=[]; RATES.forEach(function(r){ if(r.category&&!o[r.category]){o[r.category]=1;a.push(r.category);} }); return a.sort(); }
+function njBrandOf_(r){ return r.brand || r.service_match || '(no brand)'; }
+function njOpts_(list,sel){
+  return '<option value="">-</option>'+list.map(function(v){
+    return '<option value="'+esc(v)+'"'+(v===sel?' selected':'')+'>'+esc(v)+'</option>'; }).join('');
+}
+function openNoJob(){
+  el('v_new').innerHTML=
+   '<button class="btn btn2" style="margin-bottom:12px" onclick="openManualPick()">&#8592; BACK</button>'+
+   '<div class="card"><div class="sec">KEY IN MANUALLY</div>'+
+     '<div class="hint">For a car with no job card. The plate and model are saved on the commission order itself.</div>'+
+     '<div style="margin-top:12px"><label class="sub2">Car plate</label>'+
+       '<input id="nj_plate" placeholder="WXY 1234" style="text-transform:uppercase;margin-top:4px"></div>'+
+     '<div style="margin-top:10px"><label class="sub2">Model</label>'+
+       '<input id="nj_model" placeholder="Toyota Yaris Cross" style="margin-top:4px"></div>'+
+     '<div style="margin-top:10px"><label class="sub2">Vehicle</label>'+
+       '<select id="nj_type" onchange="njPkgList()" style="margin-top:4px">'+
+         '<option value="car">Car</option><option value="bike">Motorcycle</option></select></div>'+
+     '<div style="margin-top:10px"><label class="sub2">Category</label>'+
+       '<select id="nj_cat" onchange="njBrandList()" style="margin-top:4px">'+njOpts_(njCats_(),'')+'</select></div>'+
+     '<div style="margin-top:10px"><label class="sub2">Brand</label>'+
+       '<select id="nj_brand" onchange="njPkgList()" style="margin-top:4px">'+njOpts_([],'')+'</select></div>'+
+     '<div style="margin-top:10px"><label class="sub2">Package</label>'+
+       '<select id="nj_pkg" onchange="njPick()" style="margin-top:4px">'+njOpts_([],'')+'</select></div>'+
+     '<div style="display:flex;justify-content:space-between;margin-top:14px;font-weight:900">'+
+       '<span>BASE COMMISSION</span><span class="tot" id="nj_amt">RM0.00</span></div>'+
+     '<div style="margin-top:12px"><label class="sub2">Service name (shown on the order)</label>'+
+       '<input id="nj_name" placeholder="Pick a package above" style="margin-top:4px"></div>'+
+     '<button class="btn" style="margin-top:14px" onclick="startNoJob()">CONTINUE</button>'+
+   '</div>';
+}
+function njBrandList(){
+  var cat=el('nj_cat').value, o={}, a=[];
+  RATES.forEach(function(r){ if(r.category!==cat)return; var b=njBrandOf_(r); if(!o[b]){o[b]=1;a.push(b);} });
+  el('nj_brand').innerHTML=njOpts_(a.sort(),'');
+  el('nj_pkg').innerHTML=njOpts_([],''); njPick();
+}
+function njPkgList(){
+  var cat=el('nj_cat').value, br=el('nj_brand').value, bike=el('nj_type').value==='bike';
+  var o={}, a=[];
+  RATES.forEach(function(r){
+    if(r.category!==cat||njBrandOf_(r)!==br||!r.package)return;
+    var isB=String(r.package).indexOf('bike')>=0;
+    if(bike!==isB)return;
+    if(!o[r.package]){o[r.package]=1;a.push(r.package);}
+  });
+  el('nj_pkg').innerHTML=njOpts_(a.sort(),''); njPick();
+}
+function njRate_(){
+  var cat=el('nj_cat').value, br=el('nj_brand').value, pk=el('nj_pkg').value;
+  if(!cat||!br||!pk)return null;
+  return RATES.filter(function(r){
+    return r.category===cat&&njBrandOf_(r)===br&&r.package===pk; })[0]||null;
+}
+function njPick(){
+  var r=njRate_();
+  el('nj_amt').textContent=rm(r?r.amount:0);
+  var nmEl=el('nj_name');
+  if(r && !nmEl.getAttribute('data-touched')){
+    nmEl.value = r.service_match || ((r.brand||'')+' '+String(r.package).replace(/_/g,' ')).toUpperCase().trim();
+  }
+  nmEl.oninput=function(){ this.setAttribute('data-touched','1'); };
+}
+function startNoJob(){
+  var plate=(el('nj_plate').value||'').trim().toUpperCase();
+  var model=(el('nj_model').value||'').trim();
+  var bike=el('nj_type').value==='bike';
+  var nm=(el('nj_name').value||'').trim();
+  var r=njRate_();
+  if(!plate){toast('Enter the car plate');return}
+  if(!model){toast('Enter the model');return}
+  if(!r){toast('Pick category, brand and package');return}
+  if(!nm){toast('Enter the service name');return}
+  var job={ id:'MAN-'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),
+            plate:plate, model:model,
+            car_type:(bike?'Motorcycle':''), services:[] };
+  openForm(job,{ name:nm, rate:{ category:r.category, brand:r.brand, package:r.package,
+                                 amount:Number(r.amount)||0,
+                                 target_hours:Number(r.target_hours)||8 } });
 }
 
 // ---------- FORM ----------
