@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>SSPay · Setup guide for today</title>
+<meta name="description" content="SSPay: a simple money setup for UK residents living in Malaysia.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  color-scheme:dark;
+  --font:-apple-system,BlinkMacSystemFont,"SF Pro Text","Inter","Helvetica Neue",Helvetica,Arial,sans-serif;
+  --font-display:-apple-system,BlinkMacSystemFont,"SF Pro Display","Inter","Helvetica Neue",Helvetica,Arial,sans-serif;
+  --bg:#000;--bg-alt:#101011;--surface:#1d1d1f;--surface-2:#2a2a2d;--surface-3:#333336;
+  --ink:#f5f5f7;--ink-2:#a1a1a6;--ink-3:#86868b;--hair:#424245;--hair-soft:#2c2c2e;
+  --link:#2997ff;--focus:#2997ff;--gold:#5fd4c8;--gold-2:#a7ece4;
+  --ok:#30d158;--warn:#ffd60a;--bad:#ff453a;
+  --w:min(1260px,87.5%);--w-text:980px;--pad:160px;--gap:20px;
+  --ease-standard:cubic-bezier(.4,0,.6,1);--ease-out:cubic-bezier(0,0,.2,1);--ease-hover:cubic-bezier(0,0,.5,1);
+  --gn-h:44px;--ln-h:52px;
+}
+@media (max-width:1068px){:root{--w-text:692px;--pad:128px}}
+@media (max-width:734px){:root{--w-text:87.5%;--pad:96px}}
+*,*::before,*::after{box-sizing:border-box}
+html{scroll-padding-top:calc(var(--ln-h) + 8px);scroll-behavior:smooth;-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font);font-size:17px;line-height:1.4705882353;letter-spacing:-.022em;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;font-synthesis:none;min-width:320px}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:50;background:var(--bg)}
+h1,h2,h3,h4,p,ul,ol,dl,dd,figure{margin:0;padding:0}ul,ol{list-style:none}
+a{color:inherit;text-decoration:none}
+button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer}
+strong{font-weight:600;color:var(--ink)}
+h1,h2,h3,.headline,.sec-title{text-wrap:balance;font-family:var(--font-display)}p{text-wrap:pretty}
+:focus-visible{outline:2px solid var(--focus);outline-offset:3px;border-radius:4px}
+.wrap{width:var(--w);margin-inline:auto}.wrap--text{width:min(var(--w-text),87.5%);margin-inline:auto}
+.more{display:inline-flex;align-items:center;gap:.3em;color:var(--link);line-height:1.23536}
+.more:hover{text-decoration:underline;text-underline-offset:.15em}
+.more svg{width:.45em;height:.8em;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+sup.fn{font-size:.6em;line-height:0;vertical-align:super;margin-left:.1em;font-weight:400;letter-spacing:0}
+sup.fn a{color:inherit}
+
+.eyebrow{color:var(--ink-3);font-size:21px;line-height:1.19048;font-weight:600;letter-spacing:.011em;margin-bottom:14px}
+.sec-title{font-size:48px;line-height:1.08349;font-weight:600;letter-spacing:-.003em}
+.lede{color:var(--ink-2);font-size:21px;line-height:1.38105;letter-spacing:.011em}.lede strong{color:var(--ink)}
+.small{font-size:14px;line-height:1.42859;letter-spacing:-.016em;color:var(--ink-3)}
+.grad{background:linear-gradient(90deg,#f5f5f7 0%,#f5f5f7 40%,#a7ece4 78%,#5fd4c8 100%);-webkit-background-clip:text;background-clip:text;color:transparent;padding-bottom:.06em;margin-bottom:-.06em}
+@media (max-width:1068px){.sec-title{font-size:40px;line-height:1.1;letter-spacing:0}}
+@media (max-width:734px){.sec-title{font-size:32px;line-height:1.125;letter-spacing:.004em}.eyebrow{font-size:19px;line-height:1.21053;letter-spacing:.012em}.lede{font-size:19px;line-height:1.4211;letter-spacing:.012em}}
+
+.sec{padding-block:var(--pad);overflow:clip}.sec--alt{background:var(--bg-alt)}
+.sec-head{display:flex;align-items:flex-end;justify-content:space-between;gap:24px;margin-bottom:48px}
+.sec-head > div{max-width:780px;display:grid;gap:16px}
+@media (max-width:734px){.sec-head{flex-direction:column;align-items:flex-start;gap:16px;margin-bottom:32px}}
+@supports (animation-timeline:view()){@media (prefers-reduced-motion:no-preference){
+  [data-rise]{animation:rise linear both;animation-timeline:view();animation-range:entry 0% entry 45%}
+  @keyframes rise{from{transform:translateY(30px)}to{transform:none}}}}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:12px 22px;border-radius:980px;background:var(--ink);color:#000;font-size:17px;line-height:1.17648;white-space:nowrap;transition:background-color .2s var(--ease-standard)}
+.btn:hover{background:#fff}
+.btn--ghost{background:transparent;color:var(--ink);box-shadow:inset 0 0 0 1px var(--hair)}.btn--ghost:hover{background:var(--surface-2)}
+.btn--gold{background:var(--gold);color:#1d1d1f}.btn--gold:hover{background:var(--gold-2)}
+.btn--reduced{position:relative;min-height:0;padding:4px 11px;font-size:12px;line-height:1.33337;letter-spacing:-.01em}
+.btn--reduced::after{content:"";position:absolute;inset:-8px -4px}
+
+.gn{position:relative;z-index:40;height:var(--gn-h);background:rgba(22,22,23,.8);-webkit-backdrop-filter:saturate(180%) blur(20px);backdrop-filter:saturate(180%) blur(20px)}
+.gn__bar{display:flex;align-items:center;gap:8px;max-width:1024px;height:100%;margin:0 auto;padding:0 22px}
+.gn__logo{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:rgba(255,255,255,.88)}
+.gn__logo i{width:8px;height:8px;border-radius:50%;background:var(--gold);box-shadow:0 0 10px var(--gold)}
+.gn__list{flex:1;display:flex;justify-content:flex-end;gap:22px}
+.gn__link{font-size:12px;letter-spacing:-.01em;color:rgba(255,255,255,.8);line-height:var(--gn-h);transition:color .32s var(--ease-standard)}.gn__link:hover{color:#fff}
+@media (max-width:833px){:root{--gn-h:48px}.gn__bar{padding:0 16px}.gn__list{display:none}}
+
+.ln{position:sticky;top:env(safe-area-inset-top,0px);z-index:30;height:var(--ln-h);background:rgba(22,22,23,.8);-webkit-backdrop-filter:saturate(180%) blur(20px);backdrop-filter:saturate(180%) blur(20px);box-shadow:inset 0 -1px 0 rgba(255,255,255,.16)}
+.ln__bar{display:flex;align-items:center;width:var(--w);max-width:980px;height:100%;margin:0 auto}
+.ln__title{margin-right:auto;font-family:var(--font-display);font-size:21px;line-height:1.14286;font-weight:600;letter-spacing:.011em}
+.ln__menu{display:flex;align-items:center}.ln__tabs{display:flex;align-items:center;margin-right:12px}
+.ln__tab{position:relative;display:block;margin-left:24px;padding:16px 0;font-size:12px;line-height:1.33337;letter-spacing:-.01em;opacity:.8;transition:opacity .24s var(--ease-standard)}
+.ln__tab:hover,.ln__tab[aria-current="true"]{opacity:1}
+.ln__tab[aria-current="true"]::after{content:"";position:absolute;left:0;right:0;bottom:0;height:1px;background:var(--ink)}
+.ln__toggle{display:none}.ln__cta{margin-left:12px}
+@media (max-width:833px){:root{--ln-h:48px}
+  .ln__title{font-size:19px;line-height:1.21053;letter-spacing:.012em}
+  .ln__toggle{display:grid;place-items:center;width:44px;height:44px;margin-right:4px}
+  .ln__toggle svg{width:12px;height:8px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;transition:transform .32s var(--ease-standard)}
+  .ln.is-open .ln__toggle svg{transform:rotate(180deg)}
+  .ln__menu{position:absolute;top:var(--ln-h);left:0;right:0;display:block;background:rgba(22,22,23,.97);box-shadow:inset 0 -1px 0 rgba(255,255,255,.16);clip-path:inset(0 0 100% 0);visibility:hidden;transition:clip-path .32s var(--ease-standard),visibility 0s linear .32s}
+  .ln.is-open .ln__menu{clip-path:inset(0 0 0 0);visibility:visible;transition:clip-path .32s var(--ease-standard)}
+  .ln__tabs{display:block;width:var(--w);margin:0 auto;padding:4px 0 16px}
+  .ln__tab{margin:0;padding:12px 0;font-size:14px;line-height:1.42859;border-bottom:1px solid var(--hair)}
+  .ln__tabs li:last-child .ln__tab{border-bottom:0}.ln__tab[aria-current="true"]::after{display:none}.ln__tab[aria-current="true"]{color:var(--ink-3)}
+  .ln__cta{margin-left:0}}
+
+.hero{padding-block:72px 96px;overflow:clip}
+.hero__stage{position:relative;height:clamp(360px,44vw,560px);border-radius:28px;overflow:hidden;background:radial-gradient(70% 90% at 50% 100%,rgba(95,212,200,.18),rgba(95,212,200,0) 60%),#0a0a0b;box-shadow:inset 0 0 0 1px var(--hair-soft)}
+.hero__stage svg{position:absolute;inset:0;width:100%;height:100%}
+.hero__stage .art-m{display:none}
+.hero__row{display:flex;align-items:flex-end;justify-content:space-between;gap:40px;padding-top:48px}
+.hero__name{font-family:var(--font-display);font-size:28px;line-height:1.14286;font-weight:600;letter-spacing:.007em;margin-bottom:4px}
+.hero__title{font-size:96px;line-height:1.04167;font-weight:600;letter-spacing:-.015em}
+.hero__badge{margin-top:14px;color:var(--gold);font-size:21px;line-height:1.19048;font-weight:600;letter-spacing:.011em}
+.hero__buy{display:flex;flex-direction:column;align-items:flex-end;gap:18px;text-align:right;flex:none;max-width:380px}.hero__buy p{color:var(--ink-2)}
+.hero__ctas{display:flex;align-items:center;gap:22px;flex-wrap:wrap;justify-content:flex-end}
+@media (max-width:1068px){.hero__row{flex-direction:column;align-items:flex-start;gap:28px;padding-top:40px}.hero__buy{align-items:flex-start;text-align:left;max-width:none}.hero__ctas{justify-content:flex-start}.hero__title{font-size:80px;line-height:1.05}.hero__name{font-size:24px}}
+@media (max-width:734px){.hero{padding-block:40px 64px}.hero__stage{border-radius:22px;height:420px}.hero__stage .art-d{display:none}.hero__stage .art-m{display:block}.hero__title{font-size:52px;line-height:1.07143;letter-spacing:-.005em}.hero__name{font-size:21px}.hero__badge{font-size:17px;line-height:1.23536;letter-spacing:-.022em}}
+
+.tile{position:relative;border-radius:28px;overflow:hidden;background:var(--surface);padding:40px 36px 44px}
+.sec--alt .tile{background:#1a1a1c}
+.tile__icon{width:36px;height:36px;color:var(--gold);margin-bottom:28px}
+.tile__icon svg{width:100%;height:100%;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+.tile__title{font-family:var(--font-display);font-size:24px;line-height:1.16667;font-weight:600;letter-spacing:.009em;margin-bottom:10px}
+.tile p{color:var(--ink-2)}.tile p+p{margin-top:.8em}
+.tile__label{font-size:14px;font-weight:600;letter-spacing:-.016em;margin-bottom:8px;color:var(--gold)}
+@media (hover:hover){.tile.lift{transition:transform .3s var(--ease-hover)}.tile.lift:hover{transform:scale(1.0161)}}
+.duo{display:grid;grid-template-columns:1fr 1fr;gap:var(--gap)}.trio{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--gap)}
+@media (max-width:1068px){.trio{grid-template-columns:1fr 1fr;gap:16px}.tile{padding:32px 28px 36px}.tile__title{font-size:21px;line-height:1.19048;letter-spacing:.011em}}
+@media (max-width:734px){.duo,.trio{grid-template-columns:1fr}.tile{border-radius:22px;padding:28px 28px 32px}.tile__icon{margin-bottom:20px}}
+
+/* calculator */
+.calc{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:var(--gap)}
+.field{display:grid;gap:10px;padding:22px 0;border-bottom:1px solid var(--hair)}
+.field:first-child{padding-top:0}.field:last-child{border-bottom:0;padding-bottom:0}
+.field__top{display:flex;justify-content:space-between;align-items:baseline;gap:16px}
+.field label{font-weight:600}
+.field output{font-family:var(--font-display);font-size:24px;font-weight:600;font-variant-numeric:tabular-nums;color:var(--gold)}
+.field .small{margin-top:-2px}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:28px;background:transparent;margin:0}
+input[type=range]::-webkit-slider-runnable-track{height:4px;border-radius:2px;background:linear-gradient(90deg,var(--gold) var(--p,50%),var(--surface-3) var(--p,50%))}
+input[type=range]::-moz-range-track{height:4px;border-radius:2px;background:var(--surface-3)}
+input[type=range]::-moz-range-progress{height:4px;border-radius:2px;background:var(--gold)}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:24px;height:24px;margin-top:-10px;border-radius:50%;background:var(--ink);box-shadow:0 1px 4px rgba(0,0,0,.5)}
+input[type=range]::-moz-range-thumb{width:24px;height:24px;border:0;border-radius:50%;background:var(--ink)}
+.result{display:flex;flex-direction:column;justify-content:center;text-align:center;background:linear-gradient(135deg,rgba(95,212,200,.16),rgba(95,212,200,.02) 60%),var(--surface)}
+.result__label{font-weight:600}
+.result__value{margin:8px 0 4px;font-family:var(--font-display);font-size:72px;line-height:1.05;font-weight:600;letter-spacing:-.01em;font-variant-numeric:tabular-nums;background:linear-gradient(90deg,#f5f5f7,#5fd4c8);-webkit-background-clip:text;background-clip:text;color:transparent}
+.result__sub{color:var(--ink-2)}
+.result .btn{align-self:center;margin-top:28px}
+@media (max-width:1068px){.result__value{font-size:56px}}
+@media (max-width:734px){.calc{grid-template-columns:1fr}.result__value{font-size:48px}}
+
+/* steps */
+.steps{counter-reset:s;border-top:1px solid var(--hair)}
+.step{display:grid;grid-template-columns:72px minmax(0,1fr);gap:24px;padding:28px 0;border-bottom:1px solid var(--hair)}
+.step::before{counter-increment:s;content:counter(s);display:grid;place-items:center;width:44px;height:44px;border-radius:50%;background:var(--surface-2);color:var(--gold);font-family:var(--font-display);font-size:21px;font-weight:600}
+.step h3{font-size:21px;line-height:1.19048;font-weight:600;letter-spacing:.011em;margin-bottom:6px}
+.step p{color:var(--ink-2);max-width:720px}
+.steps__cta{display:flex;align-items:center;gap:24px;flex-wrap:wrap;margin-top:40px}
+@media (max-width:734px){.step{grid-template-columns:52px minmax(0,1fr);gap:12px}.step h3{font-size:19px}}
+
+.faq{border-top:1px solid var(--hair)}.faq details{border-bottom:1px solid var(--hair)}
+.faq summary{list-style:none;cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:24px;padding:24px 0;font-family:var(--font-display);font-size:21px;line-height:1.19048;font-weight:600;letter-spacing:.011em}
+.faq summary::-webkit-details-marker{display:none}
+.faq summary::after{content:"";flex:none;width:18px;height:18px;background:linear-gradient(currentColor,currentColor) center/100% 1.6px no-repeat,linear-gradient(currentColor,currentColor) center/1.6px 100% no-repeat;color:var(--ink-3);transition:transform .32s var(--ease-standard)}
+.faq details[open] summary::after{transform:rotate(45deg)}
+.faq .body{padding:0 48px 28px 0;color:var(--ink-2);max-width:760px}
+@supports (interpolate-size:allow-keywords){.faq{interpolate-size:allow-keywords}.faq details::details-content{height:0;overflow:clip;transition:height .4s var(--ease-standard),content-visibility .4s allow-discrete}.faq details[open]::details-content{height:auto}}
+@media (max-width:734px){.faq summary{font-size:17px;line-height:1.23536;letter-spacing:-.022em;padding:20px 0}.faq .body{padding-right:0}}
+
+.note-gold{margin-top:48px;display:grid;grid-template-columns:auto minmax(0,1fr);gap:20px;align-items:start;padding:28px 32px;border-radius:22px;background:var(--surface)}
+.note-gold p{color:var(--ink-2)}
+.note-gold svg{width:28px;height:28px;fill:none;stroke:var(--gold);stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+@media (max-width:734px){.note-gold{padding:24px;grid-template-columns:1fr;gap:12px}}
+
+.closer{text-align:center;background:radial-gradient(60% 52% at 50% 60%,rgba(95,212,200,.22),rgba(95,212,200,0) 72%),var(--bg)}
+.closer__title{font-size:96px;line-height:1.04167;font-weight:600;letter-spacing:-.015em;background:linear-gradient(180deg,#f5f5f7 30%,#5fd4c8 100%);-webkit-background-clip:text;background-clip:text;color:transparent;padding-bottom:.06em;margin-bottom:-.06em}
+.closer .lede{max-width:640px;margin:24px auto 0}
+.closer__cta{display:flex;justify-content:center;align-items:center;gap:28px;margin-top:40px;flex-wrap:wrap}
+@media (max-width:1068px){.closer__title{font-size:80px;line-height:1.05}}@media (max-width:734px){.closer__title{font-size:48px;line-height:1.08349}}
+
+.gf{background:var(--bg-alt);color:var(--ink-3);font-size:12px;line-height:1.33337;letter-spacing:-.01em}
+.gf__wrap{max-width:980px;margin:0 auto;padding:0 22px 21px}
+.gf__notes{list-style:decimal;padding:17px 0 11px 1.2em;border-bottom:1px solid var(--hair)}
+.gf__notes li{padding-left:.2em;margin-bottom:.8em}.gf__notes li:target{color:var(--ink)}
+.gf__notes a{color:rgba(255,255,255,.72);text-decoration:underline}
+.gf__legal{display:flex;flex-wrap:wrap;gap:8px 30px;padding-top:16px}
+@media (max-width:833px){.gf__wrap{padding-inline:16px}}
+
+@media (prefers-reduced-motion:no-preference){.pulse{stroke-dasharray:4 10;animation:flow 1.6s linear infinite}@keyframes flow{to{stroke-dashoffset:-28}}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <radialGradient id="orbGbp" cx="50%" cy="35%" r="65%"><stop offset="0" stop-color="#e9eef7"/><stop offset=".55" stop-color="#8fa6c8"/><stop offset="1" stop-color="#2b3850"/></radialGradient>
+    <radialGradient id="orbMyr" cx="50%" cy="35%" r="65%"><stop offset="0" stop-color="#d9f7f3"/><stop offset=".55" stop-color="#5fd4c8"/><stop offset="1" stop-color="#1f5b55"/></radialGradient>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="28"/></filter>
+  </defs>
+</svg>
+
+<header class="gn"><nav class="gn__bar" aria-label="SSPay">
+  <a class="gn__logo" href="index.html"><i></i>SSPay</a>
+  <ul class="gn__list">
+    <li><a class="gn__link" href="#cost">The hidden cost</a></li>
+    <li><a class="gn__link" href="#calc">Calculator</a></li>
+    <li><a class="gn__link" href="#setup">Setup</a></li>
+    <li><a class="gn__link" href="#faq">FAQ</a></li>
+  </ul>
+</nav></header>
+
+<nav class="ln" id="localnav" aria-label="Sections"><div class="ln__bar">
+  <a class="ln__title" href="#overview">Setup guide</a>
+  <button class="ln__toggle" aria-expanded="false" aria-controls="lnMenu" aria-label="Sections"><svg viewBox="0 0 12 8"><path d="M1 1.5l5 5 5-5"/></svg></button>
+  <div class="ln__menu" id="lnMenu"><ul class="ln__tabs">
+    <li><a class="ln__tab" href="#overview" aria-current="true">Overview</a></li>
+    <li><a class="ln__tab" href="#cost">Hidden cost</a></li>
+    <li><a class="ln__tab" href="#calc">Calculator</a></li>
+    <li><a class="ln__tab" href="#setup">Setup</a></li>
+    <li><a class="ln__tab" href="#faq">FAQ</a></li>
+  </ul></div>
+  <a class="btn btn--reduced ln__cta js-partner" href="#setup" target="_blank" rel="sponsored noopener">Get set up</a>
+</div></nav>
+
+<main>
+<section class="hero" id="overview"><div class="wrap">
+  <div class="hero__stage" aria-hidden="true">
+    <svg class="art-d" viewBox="0 0 1200 560" preserveAspectRatio="xMidYMid slice">
+      <circle cx="380" cy="270" r="120" fill="#8fa6c8" opacity=".35" filter="url(#glow)"/>
+      <circle cx="820" cy="270" r="120" fill="#5fd4c8" opacity=".45" filter="url(#glow)"/>
+      <path class="pulse" d="M480 250 C 560 160, 640 160, 720 250" fill="none" stroke="#5fd4c8" stroke-width="2"/>
+      <path class="pulse" d="M720 300 C 640 390, 560 390, 480 300" fill="none" stroke="#8fa6c8" stroke-width="2" opacity=".6"/>
+      <circle cx="380" cy="270" r="96" fill="url(#orbGbp)"/>
+      <circle cx="820" cy="270" r="96" fill="url(#orbMyr)"/>
+      <text x="380" y="300" text-anchor="middle" font-family="-apple-system,Inter,sans-serif" font-size="88" font-weight="600" fill="#0a0a0b">£</text>
+      <text x="820" y="294" text-anchor="middle" font-family="-apple-system,Inter,sans-serif" font-size="58" font-weight="600" fill="#0a0a0b">RM</text>
+      <text x="600" y="470" text-anchor="middle" font-family="-apple-system,Inter,sans-serif" font-size="18" fill="#86868b" letter-spacing="2">LONDON · KUALA LUMPUR</text>
+    </svg>
+    <svg class="art-m" viewBox="0 0 390 420" preserveAspectRatio="xMidYMid slice">
+      <circle cx="195" cy="120" r="80" fill="#8fa6c8" opacity=".35" filter="url(#glow)"/>
+      <circle cx="195" cy="300" r="80" fill="#5fd4c8" opacity=".45" filter="url(#glow)"/>
+      <path class="pulse" d="M160 175 C 130 210, 130 220, 160 245" fill="none" stroke="#5fd4c8" stroke-width="2"/>
+      <path class="pulse" d="M230 245 C 260 220, 260 210, 230 175" fill="none" stroke="#8fa6c8" stroke-width="2" opacity=".6"/>
+      <circle cx="195" cy="120" r="64" fill="url(#orbGbp)"/>
+      <circle cx="195" cy="300" r="64" fill="url(#orbMyr)"/>
+      <text x="195" y="142" text-anchor="middle" font-family="-apple-system,Inter,sans-serif" font-size="60" font-weight="600" fill="#0a0a0b">£</text>
+      <text x="195" y="316" text-anchor="middle" font-family="-apple-system,Inter,sans-serif" font-size="40" font-weight="600" fill="#0a0a0b">RM</text>
+    </svg>
+  </div>
+  <div class="hero__row">
+    <div>
+      <p class="hero__name">SSPay</p>
+      <h1 class="hero__title grad">Spend ringgit.<br>Keep your pounds.</h1>
+      <p class="hero__badge">What to use until SSPay launches.</p>
+    </div>
+    <div class="hero__buy">
+      <p>Your UK card adds a fee every time you pay in ringgit. We'll show you what it costs and how to stop paying it.</p>
+      <div class="hero__ctas">
+        <a class="btn js-partner" href="#setup" target="_blank" rel="sponsored noopener">Get set up</a>
+        <a class="more" href="#calc">See what you're losing <svg viewBox="0 0 6 10"><path d="M1 1l4 4-4 4"/></svg></a>
+      </div>
+    </div>
+  </div>
+</div></section>
+
+<section class="sec sec--alt" id="cost"><div class="wrap">
+  <div class="sec-head" data-rise><div>
+    <p class="eyebrow">The hidden cost</p>
+    <h2 class="sec-title">Small fees. Every single day.</h2>
+    <p class="lede">Most UK bank cards weren't built for living abroad. Three charges add up fast.</p>
+  </div></div>
+  <div class="trio">
+    <div class="tile lift" data-rise>
+      <div class="tile__icon"><svg viewBox="0 0 36 36"><rect x="4" y="9" width="28" height="19" rx="3"/><path d="M4 15h28M9 23h6"/></svg></div>
+      <p class="tile__label">Card payments</p>
+      <h3 class="tile__title">A foreign transaction fee.</h3>
+      <p>Many UK cards add around 2–4% to every payment in ringgit.<sup class="fn"><a href="#fn-1">1</a></sup> It hides inside the exchange rate, so you rarely see it.</p>
+    </div>
+    <div class="tile lift" data-rise>
+      <div class="tile__icon"><svg viewBox="0 0 36 36"><rect x="7" y="4" width="22" height="28" rx="3"/><path d="M12 11h12M14 26h8M18 15v7M15 19l3 3 3-3"/></svg></div>
+      <p class="tile__label">Cash</p>
+      <h3 class="tile__title">ATM charges, twice.</h3>
+      <p>Your UK bank can charge a cash fee, and the Malaysian ATM can add its own on top.</p>
+    </div>
+    <div class="tile lift" data-rise>
+      <div class="tile__icon"><svg viewBox="0 0 36 36"><circle cx="18" cy="18" r="13"/><path d="M18 11v7l5 3"/></svg></div>
+      <p class="tile__label">At the till</p>
+      <h3 class="tile__title">"Pay in pounds?"</h3>
+      <p>When a terminal offers to charge you in GBP, it usually sets its own rate. Always choose ringgit.</p>
+    </div>
+  </div>
+</div></section>
+
+<section class="sec" id="calc"><div class="wrap">
+  <div class="sec-head" data-rise><div>
+    <p class="eyebrow">Calculator</p>
+    <h2 class="sec-title">See your yearly cost.</h2>
+    <p class="lede">Move the sliders to match your spending. Check your bank's foreign transaction fee in its tariff or app.</p>
+  </div></div>
+  <div class="calc">
+    <div class="tile" data-rise>
+      <div class="field">
+        <div class="field__top"><label for="spend">Card spending each month</label><output id="spendOut" for="spend">£1,500</output></div>
+        <input type="range" id="spend" min="100" max="10000" step="100" value="1500">
+      </div>
+      <div class="field">
+        <div class="field__top"><label for="fee">Your card's foreign fee</label><output id="feeOut" for="fee">3%</output></div>
+        <input type="range" id="fee" min="0" max="5" step="0.25" value="3">
+      </div>
+      <div class="field">
+        <div class="field__top"><label for="atm">ATM withdrawals each month</label><output id="atmOut" for="atm">4</output></div>
+        <input type="range" id="atm" min="0" max="20" step="1" value="4">
+      </div>
+      <div class="field">
+        <div class="field__top"><label for="atmFee">Fee per withdrawal</label><output id="atmFeeOut" for="atmFee">£1.50</output></div>
+        <input type="range" id="atmFee" min="0" max="6" step="0.5" value="1.5">
+        <p class="small">Set these to your own bank's numbers. Nothing you enter leaves this page.</p>
+      </div>
+    </div>
+    <div class="tile result" data-rise aria-live="polite">
+      <p class="result__label">You could be paying</p>
+      <p class="result__value" id="yearOut">£612</p>
+      <p class="result__sub">a year in fees, about <strong id="monthOut">£51</strong> a month.</p>
+      <a class="btn btn--gold js-partner" href="#setup" target="_blank" rel="sponsored noopener">Cut this down</a>
+    </div>
+  </div>
+</div></section>
+
+<section class="sec sec--alt" id="setup"><div class="wrap">
+  <div class="sec-head" data-rise><div>
+    <p class="eyebrow">The setup we recommend</p>
+    <h2 class="sec-title">Four steps. One afternoon.</h2>
+    <p class="lede">Keep your UK bank for UK bills. Use a multi-currency account for everything in Malaysia.</p>
+  </div></div>
+  <ol class="steps">
+    <li class="step" data-rise><div><h3>Open a multi-currency account.</h3><p>Sign up through our partner link. You'll need your passport and a UK address or your Malaysian address.</p></div></li>
+    <li class="step" data-rise><div><h3>Move pounds across when you need them.</h3><p>Top up from your UK bank in GBP, then convert to MYR at the provider's rate with its fee shown upfront.</p></div></li>
+    <li class="step" data-rise><div><h3>Add the card to Apple Pay or Google Pay.</h3><p>Pay by phone across Malaysia. Keep the physical card for ATMs and places that don't take contactless.</p></div></li>
+    <li class="step" data-rise><div><h3>Always pay in ringgit.</h3><p>If a terminal or ATM asks whether to charge you in pounds, say no.</p></div></li>
+  </ol>
+  <div class="steps__cta">
+    <a class="btn js-partner" href="#setup" target="_blank" rel="sponsored noopener">Open your account</a>
+    <span class="small">Partner link. We may earn a referral fee at no cost to you.<sup class="fn"><a href="#fn-2">2</a></sup></span>
+  </div>
+  <div class="note-gold" data-rise>
+    <svg viewBox="0 0 28 28"><circle cx="14" cy="14" r="11"/><path d="M14 9v6M14 19h.01"/></svg>
+    <p><strong>SSPay never holds your money.</strong> Your account is with the provider, which is regulated in its own countries. Check its terms and regulatory status before you sign up.</p>
+  </div>
+</div></section>
+
+
+<section class="sec" id="faq"><div class="wrap--text">
+  <div class="sec-head" data-rise><div>
+    <p class="eyebrow">Questions</p>
+    <h2 class="sec-title">Good to know.</h2>
+  </div></div>
+  <div class="faq">
+    <details><summary>Is SSPay a bank or money changer?</summary><div class="body"><p>No. SSPay is a guide and setup service. We don't hold money, exchange currency or issue cards. We point you to a licensed provider and help with the setup.</p></div></details>
+    <details><summary>Do you earn anything from the link?</summary><div class="body"><p>Yes. The provider may pay us a referral fee when you sign up and make your first transfer. It doesn't change your price.</p></div></details>
+    <details><summary>Should I close my UK bank account?</summary><div class="body"><p>Usually not. Keep it for your pension, salary, direct debits and UK bills. Use the multi-currency account for spending in Malaysia.</p></div></details>
+    <details><summary>Is this financial advice?</summary><div class="body"><p>No. This page is general information. Your situation may differ, so check the details with the provider or a qualified adviser.</p></div></details>
+    <details><summary>Will there be an SSPay card?</summary><div class="body"><p>We're looking into a card made for our UK customers. Message us on WhatsApp to hear first when it's ready.</p></div></details>
+  </div>
+</div></section>
+
+<section class="sec closer" id="contact"><div class="wrap">
+  <h2 class="closer__title">Stop paying the gap.</h2>
+  <p class="lede">Set up in an afternoon. Ask us anything on WhatsApp.</p>
+  <div class="closer__cta">
+    <a class="btn js-partner" href="#setup" target="_blank" rel="sponsored noopener">Get set up</a>
+    <a class="more js-wa" href="#contact" target="_blank" rel="noopener">Chat on WhatsApp <svg viewBox="0 0 6 10"><path d="M1 1l4 4-4 4"/></svg></a>
+  </div>
+</div></section>
+</main>
+
+<footer class="gf"><div class="gf__wrap">
+  <ol class="gf__notes">
+    <li id="fn-1">Foreign transaction fees vary by bank and card. Some UK cards charge nothing. Check your own bank's tariff.</li>
+    <li id="fn-2">SSPay takes part in the provider's affiliate programme and may receive a fee when you sign up through our links. SSPay does not provide payment, remittance or currency exchange services and is not a financial adviser.</li>
+  </ol>
+  <div class="gf__legal">
+    <span>SSPay · Malaysia</span>
+    <span>General information only. Not financial advice.</span>
+  </div>
+</div></footer>
+
+<script>
+/* ===== EDIT THESE TWO LINES ===== */
+const CONFIG = {
+  partnerUrl: "https://wise.com/",   // replace with your Wise affiliate link once approved
+  whatsapp: ""                        // SSPay WhatsApp, digits only, e.g. "60123456789"
+};
+/* ================================ */
+
+document.querySelectorAll('.js-partner').forEach(a => { a.href = CONFIG.partnerUrl; });
+const waText = encodeURIComponent("Hi SSPay, I'm a UK resident in Malaysia. I'd like help with my money setup.");
+document.querySelectorAll('.js-wa').forEach(a => {
+  a.href = CONFIG.whatsapp ? `https://wa.me/${CONFIG.whatsapp}?text=${waText}` : `https://wa.me/?text=${waText}`;
+});
+
+/* local nav */
+const ln = document.getElementById('localnav');
+const toggle = ln.querySelector('.ln__toggle');
+toggle.addEventListener('click', () => {
+  const open = ln.classList.toggle('is-open');
+  toggle.setAttribute('aria-expanded', open);
+});
+const tabs = [...ln.querySelectorAll('.ln__tab')];
+tabs.forEach(t => t.addEventListener('click', () => { ln.classList.remove('is-open'); toggle.setAttribute('aria-expanded', false); }));
+const secs = tabs.map(t => document.querySelector(t.getAttribute('href')));
+function spy(){
+  const line = innerHeight * 0.35;
+  let cur = 0;
+  secs.forEach((s, i) => { if (s && s.getBoundingClientRect().top <= line) cur = i; });
+  tabs.forEach((t, i) => t.setAttribute('aria-current', i === cur ? 'true' : 'false'));
+}
+addEventListener('scroll', spy, { passive: true }); spy();
+
+/* calculator */
+const gbp = n => '£' + Math.round(n).toLocaleString('en-GB');
+const $ = id => document.getElementById(id);
+const inputs = ['spend', 'fee', 'atm', 'atmFee'].map($);
+function fill(el){ el.style.setProperty('--p', ((el.value - el.min) / (el.max - el.min) * 100) + '%'); }
+function calc(){
+  const spend = +$('spend').value, fee = +$('fee').value, atm = +$('atm').value, atmFee = +$('atmFee').value;
+  $('spendOut').textContent = gbp(spend);
+  $('feeOut').textContent = parseFloat(fee.toFixed(2)) + '%';
+  $('atmOut').textContent = atm;
+  $('atmFeeOut').textContent = '£' + atmFee.toFixed(2);
+  const month = spend * fee / 100 + atm * atmFee;
+  $('yearOut').textContent = gbp(month * 12);
+  $('monthOut').textContent = gbp(month);
+  inputs.forEach(fill);
+}
+inputs.forEach(el => el.addEventListener('input', calc)); calc();
+</script>
+</body>
+</html>
