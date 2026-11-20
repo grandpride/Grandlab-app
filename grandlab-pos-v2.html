@@ -1496,12 +1496,12 @@ async function startCheckout(job, gross){
   PAY={ gross, discount:0, discountOk:false, discountBy:null, _pendingDisc:0,
         depositUsed:Number(job.dep_amt)||0, packageUsed:false,
         walletUsed:0, pointsUsed:0, voucher:null, spinPrize:null, method:null, quick:null,
-        custWallet:0, custPoints:0, hasProfile:false, pkgList:[], pkgUse:null, pkgUseIdx:null, pkgUseIdxs:[], pkgTarget:{},
+        custWallet:0, custWalletMember:0, custTierExp:null, custPoints:0, hasProfile:false, pkgList:[], pkgUse:null, pkgUseIdx:null, pkgUseIdxs:[], pkgTarget:{},
         memberTier:null, memberLevel:1, memberExpired:false, memberOn:true, memberDisc:0, memberQuote:null,
         split1Method:null, split2Method:null, split1Amt:0 };
   if(job.customer_id){
-    const {data}=await sb.from('gl_profiles').select('wallet,points,sqlacc_code,tier,tier_level').eq('id',job.customer_id).maybeSingle();
-    if(data){ PAY.hasProfile=true; PAY.custWallet=Number(data.wallet)||0; PAY.custPoints=Number(data.points)||0; if(data.sqlacc_code) CUR.sqlacc_code=data.sqlacc_code; }
+    const {data}=await sb.from('gl_profiles').select('wallet,wallet_member,points,sqlacc_code,tier,tier_level,tier_expires_at').eq('id',job.customer_id).maybeSingle();
+    if(data){ PAY.hasProfile=true; PAY.custWallet=Number(data.wallet)||0; PAY.custWalletMember=Number(data.wallet_member)||0; PAY.custTierExp=data.tier_expires_at||null; PAY.custPoints=Number(data.points)||0; if(data.sqlacc_code) CUR.sqlacc_code=data.sqlacc_code; }
   }
   await quoteMember();
   // find SQL Account code from gl_walkin by phone or plate (for export)
@@ -1595,6 +1595,34 @@ async function quoteMember(){
 
 // what the member discount is actually worth on this sale
 function memberDiscAmt(){ return PAY.memberOn ? (Number(PAY.memberDisc)||0) : 0; }
+
+/* Membership runs on a date, not on a balance: a member whose credit is gone
+   keeps every benefit until the day it ends. Showing the date lets staff see
+   that, and spot someone close enough to expiry to be worth renewing. */
+function memberExpiryNote(){
+  if(!PAY.custTierExp) return '';
+  const t=new Date(PAY.custTierExp); if(isNaN(t)) return '';
+  const days=Math.ceil((t-new Date())/86400000);
+  if(days<0) return '';
+  const d=t.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});
+  const warn=days<=30;
+  return ` <span style="color:${warn?'var(--red)':'var(--muted)'}">· ${warn?`${days}d left`:`until ${d}`}</span>`;
+}
+
+/* Credit comes in two kinds. Member credit expires with the membership and is
+   always spent first, so staff can tell the customer which part is at risk. */
+function creditSplitNote(){
+  const m=Number(PAY.custWalletMember)||0;
+  const topup=Math.max(0,(Number(PAY.custWallet)||0)-m);
+  if(m<=0) return '';
+  let s=` <span style="color:var(--muted);font-size:11px">${RM(m)} member`;
+  if(PAY.custTierExp){
+    const t=new Date(PAY.custTierExp);
+    if(!isNaN(t)) s+=`, exp ${t.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})}`;
+  }
+  if(topup>0) s+=` · ${RM(topup)} top-up`;
+  return s+'</span>';
+}
 
 function toggleMemberDisc(){ PAY.memberOn=!PAY.memberOn; clampPayments(); renderCheckout(); }
 
@@ -1810,7 +1838,7 @@ function renderCheckout(){
     <div class="co-head">
       <div>
         <div class="co-name">${esc(titleCase(_name))}${_typeChip} <i class="ti ti-edit" style="font-size:14px;color:var(--gold-deep);cursor:pointer;margin-left:4px" onclick="openEditCust()" title="Edit customer details"></i></div>
-        <div class="co-sub">${esc(titleCase(CUR.model||'—'))} · ${esc(CUR.plate||'—')}${PAY.memberTier?` · <b style="color:var(--gold)">${esc(PAY.memberTier)} member</b>${PAY.memberExpired?' <span style="color:var(--red)">(expired)</span>':''}`:(CUR.hasProfile||PAY.hasProfile?' · app member':'')}</div>
+        <div class="co-sub">${esc(titleCase(CUR.model||'—'))} · ${esc(CUR.plate||'—')}${PAY.memberTier?` · <b style="color:var(--gold)">${esc(PAY.memberTier)} member</b>${PAY.memberExpired?' <span style="color:var(--red)">(expired)</span>':memberExpiryNote()}`:(CUR.hasProfile||PAY.hasProfile?' · app member':'')}</div>
       </div>
       <button class="btn-mini" onclick="clearCheckout()"><i class="ti ti-x"></i></button>
     </div>
@@ -1879,7 +1907,7 @@ function renderCheckout(){
     </span></div>`:''}
     ${PAY.hasProfile?`
     <div class="adj">
-      <span class="lab"><i class="ti ti-wallet"></i> App credit (${RM(PAY.custWallet)})</span>
+      <span class="lab"><i class="ti ti-wallet"></i> App credit (${RM(PAY.custWallet)})${creditSplitNote()}</span>
       <div class="ctrl"><input id="walInp" type="number" inputmode="decimal" value="${PAY.walletUsed||''}" placeholder="0.00" onchange="onWallet()" ${PAY.custWallet<=0?'disabled':''}></div>
     </div>
     <div class="adj">
@@ -2373,8 +2401,8 @@ async function pickCust(r){
   CUR.customer_id=r.profile?r.id:null;
   CUR.sqlacc_code=r.sqlacc_code||'';
   if(r.profile){
-    const {data}=await sb.from('gl_profiles').select('wallet,points,sqlacc_code,tier,tier_level').eq('id',r.id).maybeSingle();
-    if(data){ PAY.hasProfile=true; PAY.custWallet=Number(data.wallet)||0; PAY.custPoints=Number(data.points)||0; if(data.sqlacc_code) CUR.sqlacc_code=data.sqlacc_code; }
+    const {data}=await sb.from('gl_profiles').select('wallet,wallet_member,points,sqlacc_code,tier,tier_level,tier_expires_at').eq('id',r.id).maybeSingle();
+    if(data){ PAY.hasProfile=true; PAY.custWallet=Number(data.wallet)||0; PAY.custWalletMember=Number(data.wallet_member)||0; PAY.custTierExp=data.tier_expires_at||null; PAY.custPoints=Number(data.points)||0; if(data.sqlacc_code) CUR.sqlacc_code=data.sqlacc_code; }
   }
   // pull car details from gl_walkin by plate (model for display, car_type for size-price match)
   if(CUR.plate){
