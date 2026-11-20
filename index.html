@@ -223,7 +223,14 @@
     background-size:cover;background-position:center;background-repeat:no-repeat;pointer-events:none;}
   #appBgLayer.show{display:block;}
   #appBgLayer::after{content:"";position:absolute;inset:0;background:rgba(0,0,0,var(--app-bg-dark,.55));}
-  #appRoot{position:fixed;top:0;left:0;right:0;bottom:0;max-width:440px;margin:0 auto;overflow:hidden;
+  /* height is the measured viewport, not just bottom:0. Coming back from the
+     in-app browser (DOKU), iOS resolves a fixed bottom:0 against a stale,
+     shorter layout viewport and leaves a black band under the nav. fixViewport_
+     writes the real innerHeight to --app-vh on every return; with top and height
+     both set, the over-constrained bottom is ignored and this wins. 100dvh is
+     the fallback before the first measurement. */
+  #appRoot{position:fixed;top:0;left:0;right:0;bottom:0;height:var(--app-vh,100dvh);
+    max-width:440px;margin:0 auto;overflow:hidden;
     background:radial-gradient(120% 80% at 50% 0%, #161410 0%, #0d0d0c 40%, #080808 100%);
     display:none;flex-direction:column;z-index:20;}
   #appRoot.show{display:flex;}
@@ -3178,10 +3185,12 @@ async function openMembership(){
     return {key, name:(db&&db.name)||styleName, card,
             ben, price:(db&&db.price_label)||null};
   };
+  // Silver (tier 3) is deliberately absent - the admin marks it "not used" and
+  // the price list has no Silver. Do not add it back without a row in
+  // gl_membership_tiers, or it shows stale placeholder benefits.
   const tiers=[
     mk(1,STYLE.memTier1,STYLE.memCard1,STYLE.memBenefits1),
     mk(2,STYLE.memTier2,STYLE.memCard2,STYLE.memBenefits2),
-    mk(3,STYLE.memTier3,STYLE.memCard3,STYLE.memBenefits3),
     mk(4,STYLE.memTier4,STYLE.memCard4,STYLE.memBenefits4),
     mk(5,STYLE.memTier5,STYLE.memCard5,STYLE.memBenefits5)
   ];
