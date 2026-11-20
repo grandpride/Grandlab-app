@@ -259,6 +259,12 @@
   .wbc-label{font-size:12px;color:var(--muted);}
   .wbc-amt{font-size:32px;font-weight:800;margin-top:4px;}
   .wbc-foot{display:flex;justify-content:space-between;margin-top:20px;font-size:12px;color:var(--muted);}
+  .foc-note{background:rgba(245,197,24,.10);border:1px solid var(--gold-line);border-radius:12px;
+    padding:12px 14px;margin:0 0 12px;text-align:left;}
+  .foc-note-t{font-weight:800;color:var(--yellow);font-size:14px;}
+  .foc-note-s{font-size:12px;color:var(--muted);margin-top:3px;line-height:1.5;}
+  .foc-note-btn{margin-top:10px;width:100%;padding:10px;border:none;border-radius:10px;
+    background:var(--yellow);color:#000;font-weight:800;font-size:13px;cursor:pointer;font-family:inherit;}
   .freesvc{background:var(--card,#141414);border:1px solid #2a2a2a;border-radius:12px;padding:12px 14px;
     margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;gap:10px;cursor:pointer;}
   .freesvc-t{font-weight:800;color:var(--yellow);}
@@ -4430,6 +4436,28 @@ function _dateNext(){
   closeDateSheet();
   openPaymentSheet();
 }
+/* A customer about to pay for something they already have free is the one
+   mistake here that costs them money and costs us their trust. Match the
+   chosen service against their unused membership perks and say so. */
+function focForService(s){
+  if(!s) return null;
+  const nm=String(s.name||'').trim().toLowerCase();
+  const sid=s.id!=null?String(s.id):null;
+  return memberFreeSvcs().find(p=>
+    (sid && p.service_id!=null && String(p.service_id)===sid) ||
+    String(p.service_name||'').trim().toLowerCase()===nm) || null;
+}
+function focNoticeHtml(s){
+  const p=focForService(s);
+  if(!p) return '';
+  const left=Number(p.total_uses)-Number(p.used_uses);
+  return `<div class="foc-note">
+    <div class="foc-note-t">You already have ${left} free ${esc(p.service_name)}</div>
+    <div class="foc-note-s">Included with your ${esc(PROFILE?.tier||'membership')}. Show the barcode at the outlet instead of paying.</div>
+    <button class="foc-note-btn" type="button" onclick="openFreeSvc('${esc(String(p.id))}')">Show my free one</button>
+  </div>`;
+}
+
 function openPaymentSheet(){
   const gross = svcDetailPrice();
   const s = SVC_SEL.service;
@@ -4448,16 +4476,25 @@ function openPaymentSheet(){
     <div class="pay-sheet">
       <div class="pay-sheet-handle"></div>
       <div class="pay-sheet-title">Choose payment</div>
+      ${focNoticeHtml(s)}
       ${grossLine}
       ${rebateLine}
       <div class="pay-sheet-amt">Total: RM${money(amt)}</div>
       ${(()=>{
         const bal=Number(PROFILE?.wallet||0);
+        const mem=Number(PROFILE?.wallet_member||0);
         const enough=bal>=amt;
+        // One balance, not two buttons. Member credit is spent first because it
+        // is the half with an expiry date - the server does this, so the note
+        // only tells the customer what is already happening.
+        const memNote = (enough && mem>0)
+          ? `<div class="pay-opt-sub" style="color:var(--yellow)">RM${money(Math.min(mem,amt))} member credit used first</div>`
+          : '';
         return `<button class="pay-opt" ${enough?'':'disabled style="opacity:.5"'} onclick="${enough?"doCheckout('wallet')":''}">
           <div class="pay-opt-ic">💰</div>
           <div><div class="pay-opt-nm">Pay with ${esc(STYLE.walletName||'G Wallet')}</div>
-          <div class="pay-opt-sub">${enough?('Balance: RM'+money(bal)):('Not enough — balance RM'+money(bal))}</div></div>
+          <div class="pay-opt-sub">${enough?('Balance: RM'+money(bal)):('Not enough — balance RM'+money(bal))}</div>
+          ${memNote}</div>
         </button>`;
       })()}
       ${online?`<button class="pay-opt" onclick="doCheckout('senangpay')">
@@ -5520,9 +5557,10 @@ function freeSvcHtml(){
       </div>`;
     }).join('')+`</div>`;
 }
-/* Staff deduct a use at the counter, not the customer: letting someone burn a
-   use from their own phone would lose the service if it were tapped early or
-   by accident. So this shows what the team needs to see, and nothing more. */
+/* The customer shows this barcode and reception scans it into POS, which calls
+   gl_redeem_package and takes exactly one use. Deducting stays staff-side on
+   purpose: a use burned from the customer's own phone by a stray tap is a
+   service they paid for and never got. */
 function openFreeSvc(pkgId){
   const p=(PACKAGES||[]).find(x=>String(x.id)===String(pkgId));
   if(!p) return;
@@ -5533,13 +5571,17 @@ function openFreeSvc(pkgId){
     <div class="sheet">
       <div class="sheet-handle"></div>
       <div class="sheet-title">${esc(p.service_name||'Service')}</div>
-      <div class="app-sub" style="text-align:center;margin:0 0 14px;font-size:13px">
+      <div class="app-sub" style="text-align:center;margin:0 0 4px;font-size:13px">
         ${left} of ${p.total_uses} left &middot; included with your ${esc(PROFILE?.tier||'membership')}
       </div>
-      <div class="gl-install-steps">
-        <div>Show this screen to our team when you arrive and they will apply it to your bill.</div>
-        <div style="margin-top:8px;color:var(--muted)">${esc(PROFILE?.name||'')} &middot; ${esc(PROFILE?.phone||'')}</div>
-      </div>
+      ${p.barcode?`
+        <div class="pkg-barcode">${barcodeSvg(p.barcode)}</div>
+        <div class="pkg-barcode-num">${esc(p.barcode)}</div>
+        <div class="pkg-barcode-hint">Show this to our staff to redeem one use</div>`
+      :`<div class="gl-install-steps" style="margin-top:12px">
+          <div>Show this screen to our team and they will apply it to your bill.</div>
+          <div style="margin-top:8px;color:var(--muted)">${esc(PROFILE?.name||'')} &middot; ${esc(PROFILE?.phone||'')}</div>
+        </div>`}
       <button class="sheet-cancel" type="button">Close</button>
     </div>`;
   ov.querySelector('.sheet-cancel').addEventListener('click',()=>{ try{ ov.remove(); }catch(e){} });
