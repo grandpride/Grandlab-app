@@ -1497,11 +1497,13 @@ async function startCheckout(job, gross){
         depositUsed:Number(job.dep_amt)||0, packageUsed:false,
         walletUsed:0, pointsUsed:0, voucher:null, spinPrize:null, method:null, quick:null,
         custWallet:0, custPoints:0, hasProfile:false, pkgList:[], pkgUse:null, pkgUseIdx:null, pkgUseIdxs:[], pkgTarget:{},
+        memberTier:null, memberLevel:1, memberExpired:false, memberOn:true, memberDisc:0, memberQuote:null,
         split1Method:null, split2Method:null, split1Amt:0 };
   if(job.customer_id){
-    const {data}=await sb.from('gl_profiles').select('wallet,points,sqlacc_code').eq('id',job.customer_id).maybeSingle();
+    const {data}=await sb.from('gl_profiles').select('wallet,points,sqlacc_code,tier,tier_level').eq('id',job.customer_id).maybeSingle();
     if(data){ PAY.hasProfile=true; PAY.custWallet=Number(data.wallet)||0; PAY.custPoints=Number(data.points)||0; if(data.sqlacc_code) CUR.sqlacc_code=data.sqlacc_code; }
   }
+  await quoteMember();
   // find SQL Account code from gl_walkin by phone or plate (for export)
   if(!CUR.sqlacc_code){
     const ph=(job.hp||job.phone||'').trim(), pl=(job.plate||'').trim();
@@ -1563,11 +1565,51 @@ async function loadCheckoutPackages(job){
                 -(String(a.vehicle_label||'').toUpperCase().replace(/\s+/g,'')===P));
 }
 
+/* ---------- MEMBER PRICING ----------
+   The server decides which lines may take the member discount and how much it
+   comes to. A cart line is only {desc, price} - it carries no section or
+   package type - so the rule has to match the description back to the
+   catalogue, and gl_member_quote does that in one place rather than here.
+   It also means the rule can be corrected without redeploying this file.
+
+   Reception can switch the discount off per sale; a wrong automatic answer is
+   therefore always visible and correctable before the money moves.          */
+async function quoteMember(){
+  PAY.memberTier=null; PAY.memberLevel=1; PAY.memberExpired=false;
+  PAY.memberDisc=0; PAY.memberQuote=null;
+  const cust=(CUR&&CUR.customer_id)||null;   // never throw here - it would block the sale
+  if(!cust) return;
+  const lines=(jobServices(CUR)||[]).map(x=>({desc:svcDesc(x), price:svcPrice(x)}));
+  try{
+    const {data,error}=await sb.rpc('gl_member_quote',{p_customer:cust,p_lines:lines});
+    if(error) throw error;
+    const q=Array.isArray(data)?data[0]:data;
+    if(!q||!q.is_member) return;
+    PAY.memberQuote=q;
+    PAY.memberTier=q.tier||null;
+    PAY.memberLevel=Number(q.tier_level)||1;
+    PAY.memberExpired=!!q.expired;
+    PAY.memberDisc=PAY.memberExpired?0:(Number(q.discount)||0);
+  }catch(e){ console.warn('member quote failed', e); }   // never block a sale
+}
+
+// what the member discount is actually worth on this sale
+function memberDiscAmt(){ return PAY.memberOn ? (Number(PAY.memberDisc)||0) : 0; }
+
+function toggleMemberDisc(){ PAY.memberOn=!PAY.memberOn; clampPayments(); renderCheckout(); }
+
+/* Lines changed, so the discount has to be re-quoted before the totals are
+   shown again - otherwise it would be 20% of the previous basket. */
+function requote(){
+  quoteMember().then(()=>{ clampPayments(); renderCheckout(); })
+               .catch(()=>{ clampPayments(); renderCheckout(); });
+}
+
 function netDue(){
   // A package/voucher visit covers ONLY the service it matches (by name),
   // not the whole order. Any other services stay payable by cash/tng/etc.
   let pkgCover=pkgCoverAmount_();   // 0 when no package is toggled on
-  let n=PAY.gross - pkgCover - PAY.discount - PAY.depositUsed - PAY.walletUsed - (PAY.pointsUsed*POINTS_RATE) - (PAY.voucher?Number(PAY.voucher.value||0):0) - (PAY.spinPrize?Number(PAY.spinPrize._discount||0):0);
+  let n=PAY.gross - pkgCover - memberDiscAmt() - PAY.discount - PAY.depositUsed - PAY.walletUsed - (PAY.pointsUsed*POINTS_RATE) - (PAY.voucher?Number(PAY.voucher.value||0):0) - (PAY.spinPrize?Number(PAY.spinPrize._discount||0):0);
   return Math.max(0, Math.round(n*100)/100);
 }
 
@@ -1768,7 +1810,7 @@ function renderCheckout(){
     <div class="co-head">
       <div>
         <div class="co-name">${esc(titleCase(_name))}${_typeChip} <i class="ti ti-edit" style="font-size:14px;color:var(--gold-deep);cursor:pointer;margin-left:4px" onclick="openEditCust()" title="Edit customer details"></i></div>
-        <div class="co-sub">${esc(titleCase(CUR.model||'—'))} · ${esc(CUR.plate||'—')}${CUR.hasProfile||PAY.hasProfile?' · app member':''}</div>
+        <div class="co-sub">${esc(titleCase(CUR.model||'—'))} · ${esc(CUR.plate||'—')}${PAY.memberTier?` · <b style="color:var(--gold)">${esc(PAY.memberTier)} member</b>${PAY.memberExpired?' <span style="color:var(--red)">(expired)</span>':''}`:(CUR.hasProfile||PAY.hasProfile?' · app member':'')}</div>
       </div>
       <button class="btn-mini" onclick="clearCheckout()"><i class="ti ti-x"></i></button>
     </div>
@@ -1820,6 +1862,21 @@ function renderCheckout(){
       <input id="pinInp" type="password" inputmode="numeric" placeholder="••••••" oninput="checkPin()"></div>
     </div>
 
+    ${(PAY.memberTier && !PAY.memberExpired && PAY.memberDisc>0)?`
+    <div class="adj">
+      <span class="lab"><i class="ti ti-discount-2"></i> ${esc(PAY.memberTier)} ${PAY.memberQuote&&PAY.memberQuote.disc_services||20}% off retail
+        <span style="color:var(--muted);font-size:11px">(on ${RM(PAY.memberQuote&&PAY.memberQuote.eligible_total||0)} of ${RM(PAY.gross)})</span></span>
+      <div class="ctrl">
+        <button class="btn-mini" onclick="toggleMemberDisc()"
+          style="${PAY.memberOn?'background:var(--gold);color:#111':''}">
+          ${PAY.memberOn?'ON −'+RM(PAY.memberDisc):'OFF'}
+        </button>
+      </div>
+    </div>`:''}
+    ${(PAY.memberTier && !PAY.memberExpired && PAY.memberDisc<=0 && PAY.gross>0)?`
+    <div class="adj"><span class="lab" style="color:var(--muted)">
+      <i class="ti ti-info-circle"></i> No member discount — nothing in this order is retail priced
+    </span></div>`:''}
     ${PAY.hasProfile?`
     <div class="adj">
       <span class="lab"><i class="ti ti-wallet"></i> App credit (${RM(PAY.custWallet)})</span>
@@ -1873,6 +1930,7 @@ function renderCheckout(){
 
     <div class="totals">
       <div class="row"><span>Subtotal</span><span>${RM(PAY.gross)}</span></div>
+      ${memberDiscAmt()>0?`<div class="row"><span>${esc(PAY.memberTier||'Member')} discount</span><span class="rd">−${RM(memberDiscAmt())}</span></div>`:''}
       ${PAY.discount>0?`<div class="row"><span>Discount</span><span class="rd">−${RM(PAY.discount)}</span></div>`:''}
       ${PAY.voucher&&PAY.voucher.value?`<div class="row"><span>Voucher</span><span class="rd">−${RM(PAY.voucher.value)}</span></div>`:''}
       ${PAY.spinPrize&&PAY.spinPrize._discount?`<div class="row"><span>🎡 ${esc(PAY.spinPrize.prize_label||'Spin prize')}</span><span class="rd">−${RM(PAY.spinPrize._discount)}</span></div>`:''}
@@ -1934,13 +1992,26 @@ function checkPin(){
 }
 function onWallet(){
   let v=parseFloat($('walInp').value)||0;
-  v=Math.min(v, PAY.custWallet, PAY.gross);
+  // cap at what is actually owed once the member discount is off the top -
+  // otherwise RM1000 of credit goes against an RM800 bill and the customer
+  // loses the difference
+  v=Math.min(v, PAY.custWallet, Math.max(0, PAY.gross - memberDiscAmt()));
   PAY.walletUsed=Math.max(0,Math.round(v*100)/100); renderCheckout();
+}
+
+/* The member discount changes what is owed, so credit and points already
+   entered have to be pulled back down to the new figure. */
+function clampPayments(){
+  const payable=Math.max(0, PAY.gross - memberDiscAmt() - PAY.discount - PAY.depositUsed);
+  if(PAY.walletUsed>payable) PAY.walletUsed=Math.round(payable*100)/100;
+  const left=Math.max(0, payable - PAY.walletUsed);
+  const maxPts=Math.ceil(left/POINTS_RATE);
+  if(PAY.pointsUsed>maxPts) PAY.pointsUsed=Math.max(0,maxPts);
 }
 function onPoints(){
   let v=parseInt($('ptsInp').value)||0;
   v=Math.min(v, PAY.custPoints);
-  const maxByDue=Math.ceil((PAY.gross-PAY.discount-PAY.depositUsed-PAY.walletUsed)/POINTS_RATE);
+  const maxByDue=Math.ceil((PAY.gross-memberDiscAmt()-PAY.discount-PAY.depositUsed-PAY.walletUsed)/POINTS_RATE);
   v=Math.max(0,Math.min(v,maxByDue));
   PAY.pointsUsed=v; renderCheckout();
 }
@@ -2109,14 +2180,14 @@ function _addLine(desc,price,svc){
   arr.push(line);
   CUR.services=arr;
   PAY.gross=arr.reduce((s,x)=>s+svcPrice(x),0);
-  renderCheckout();
+  requote();
 }
 function rmItem(i){
   const arr=jobServices(CUR);
   if(i<0||i>=arr.length) return;
   arr.splice(i,1); CUR.services=arr;
   PAY.gross=arr.reduce((s,x)=>s+svcPrice(x),0);
-  renderCheckout();
+  requote();
 }
 
 /* Edit the amount of a service/product line in checkout. Prompts for a new
@@ -2133,7 +2204,7 @@ function editItemPrice(i){
   arr[i].amount=v;           // keep both fields in sync (svcPrice reads either)
   CUR.services=arr;
   PAY.gross=arr.reduce((s,x)=>s+svcPrice(x),0);
-  renderCheckout();
+  requote();
 }
 
 /* ---------- voucher / package redeem (by barcode) ---------- */
@@ -2302,7 +2373,7 @@ async function pickCust(r){
   CUR.customer_id=r.profile?r.id:null;
   CUR.sqlacc_code=r.sqlacc_code||'';
   if(r.profile){
-    const {data}=await sb.from('gl_profiles').select('wallet,points,sqlacc_code').eq('id',r.id).maybeSingle();
+    const {data}=await sb.from('gl_profiles').select('wallet,points,sqlacc_code,tier,tier_level').eq('id',r.id).maybeSingle();
     if(data){ PAY.hasProfile=true; PAY.custWallet=Number(data.wallet)||0; PAY.custPoints=Number(data.points)||0; if(data.sqlacc_code) CUR.sqlacc_code=data.sqlacc_code; }
   }
   // pull car details from gl_walkin by plate (model for display, car_type for size-price match)
@@ -2475,6 +2546,7 @@ async function confirmPay(){
       pkg_used_id: PAID_PKG_IDS.length?PAID_PKG_IDS[0]:null,
       pkg_used_ids: PAID_PKG_IDS.length?PAID_PKG_IDS:null,
       wallet_used:PAY.walletUsed, points_used:PAY.pointsUsed, points_value:PAY.pointsUsed*POINTS_RATE,
+      member_disc:memberDiscAmt()||null, member_tier:memberDiscAmt()>0?(PAY.memberTier||null):null,
       voucher_code:PAY.voucher?PAY.voucher.barcode:null, voucher_value:PAY.voucher?Number(PAY.voucher.value||0):0,
       net_paid:net, method:methodLabel, taken_by:ME,
       attendee:CUR.attendee||null,
@@ -2653,6 +2725,7 @@ function buildReceipt(invoice, net){
   if(PAY.discount>0) r+=`\nDiscount: −${RM(PAY.discount)}`;
   if(PAY.voucher&&PAY.voucher.value>0) r+=`\nVoucher: −${RM(PAY.voucher.value)}`;
   if(PAY.depositUsed>0) r+=`\nDeposit: −${RM(PAY.depositUsed)}`;
+  if(memberDiscAmt()>0) r+=`\n${PAY.memberTier||'Member'} discount: −${RM(memberDiscAmt())}`;
   if(PAY.walletUsed>0) r+=`\nApp credit: −${RM(PAY.walletUsed)}`;
   if(PAY.pointsUsed>0) r+=`\nPoints (${PAY.pointsUsed}): −${RM(PAY.pointsUsed*POINTS_RATE)}`;
   r+=`\n*Paid: ${RM(net)}* (${methodDisplay()})\n\nThank you! 🚗✨`;
@@ -2726,12 +2799,13 @@ function openReceipt(invoice, net){
       <div class="rc-words">${esc(numToWords(net))}</div>
       <div class="rc-totbox"><span>Total (RM)</span><b>${net.toFixed(2)}</b></div>
     </div>
-    ${(PAY.discount>0||PAY.depositUsed>0||PAY.walletUsed>0||PAY.pointsUsed>0||(PAY.voucher&&PAY.voucher.value>0))?`
+    ${(memberDiscAmt()>0||PAY.discount>0||PAY.depositUsed>0||PAY.walletUsed>0||PAY.pointsUsed>0||(PAY.voucher&&PAY.voucher.value>0))?`
     <div class="rc-adj">
       <div>Subtotal: ${RM(PAY.gross)}</div>
       ${PAY.discount>0?`<div>Discount: −${RM(PAY.discount)}</div>`:''}
       ${PAY.voucher&&PAY.voucher.value>0?`<div>Voucher: −${RM(PAY.voucher.value)}</div>`:''}
       ${PAY.depositUsed>0?`<div>Deposit: −${RM(PAY.depositUsed)}</div>`:''}
+      ${memberDiscAmt()>0?`<div>${esc(PAY.memberTier||'Member')} discount: −${RM(memberDiscAmt())}</div>`:''}
       ${PAY.walletUsed>0?`<div>App credit: −${RM(PAY.walletUsed)}</div>`:''}
       ${PAY.pointsUsed>0?`<div>Points: −${RM(PAY.pointsUsed*POINTS_RATE)}</div>`:''}
       <div><b>Paid by ${esc(methodDisplay())}: ${RM(net)}</b></div>
