@@ -3266,7 +3266,8 @@ async function openMembership(){
     const ben = (db && Array.isArray(db.benefits) && db.benefits.length)
       ? db.benefits.join('\n') : styleBen;
     return {key, name:(db&&db.name)||styleName, card,
-            ben, price:(db&&db.price_label)||null};
+            ben, price:(db&&db.price_label)||null,
+            amount:Number((db&&db.price)||0)};
   };
   // Silver (tier 3) is deliberately absent - the admin marks it "not used" and
   // the price list has no Silver. Do not add it back without a row in
@@ -3287,7 +3288,18 @@ async function openMembership(){
     if(t.key===1) return `<div class="mem-current-tag">\u2713 This is your default plan \u2014 free, no subscription needed</div>`;
     if(t.key===userTier) return `<div class="mem-current-tag">\u2713 Your current plan</div>`;
     const price = t.price ? `<div style="text-align:center;margin-top:14px;font-size:18px;font-weight:800;color:var(--gold)">${esc(t.price)}</div>` : '';
-    return price+`<button class="btn btn-primary" style="margin-top:${t.price?'10':'16'}px" onclick="subscribeTier(${active},'${esc((t.name||'').replace(/'/g,"\\'"))}')">${esc(STYLE.memSubscribeBtn||'Subscribe Now')}</button>`;
+    const nm = esc((t.name||'').replace(/'/g,"\\'"));
+    // Only top-up credit can start a membership; credit that already came from
+    // a membership cannot buy another one, which is why wallet_member is taken
+    // off the balance before comparing.
+    const avail = Math.max(0, Number(PROFILE?.wallet||0) - Number(PROFILE?.wallet_member||0));
+    const canUseCredit = t.amount>0 && avail >= t.amount;
+    const payBtn = `<button class="btn btn-primary" style="margin-top:${t.price?'10':'16'}px" onclick="subscribeTier(${active},'${nm}')">${esc(STYLE.memSubscribeBtn||'Subscribe Now')}</button>`;
+    if(!canUseCredit) return price+payBtn;
+    return price+
+      `<button class="btn btn-primary" style="margin-top:${t.price?'10':'16'}px" onclick="subscribeWithCredit(${active},'${nm}')">Use my credit (RM${t.amount.toLocaleString()})</button>`+
+      `<div class="app-sub" style="text-align:center;margin-top:8px;font-size:12px">You have RM${avail.toLocaleString()} credit available</div>`+
+      `<button class="btn" style="margin-top:10px;background:var(--surface);color:var(--text)" onclick="subscribeTier(${active},'${nm}')">Pay online instead</button>`;
   };
   const benHtml=(t)=>{
     const benList=(t.ben||'').split(/\\n|\r?\n/).filter(b=>b&&b.trim()).map(b=>`<div class="mem-benefit"><span class="mem-tick">✓</span><span>${esc(b)}</span></div>`).join('');
@@ -3362,6 +3374,29 @@ async function openMembership(){
    order_ref. Nothing is granted here - the /doku/notify callback calls
    gl_grant_membership once the payment is confirmed, so a customer who closes
    the browser mid-payment, or replays the return URL, gets nothing. */
+/* Starting a membership from credit already in the wallet. Nothing is
+   deducted: that money was paid at top-up time, so the credit simply becomes
+   membership credit and takes on the membership's expiry. The server enforces
+   all of it (gl_subscribe_with_credit) - this only asks. */
+async function subscribeWithCredit(tierKey, tierName){
+  if(IS_GUEST || !SESSION?.user?.id){ toast("Sign in to subscribe"); return; }
+  try{
+    const r=await fetch(`${SUPA_URL}/rest/v1/rpc/gl_subscribe_with_credit`,
+      {method:"POST",headers:authHeaders(),body:JSON.stringify({p_tier:Number(tierKey)})});
+    const txt=await r.text();
+    let d=null; try{ d=JSON.parse(txt); }catch(e){}
+    if(!r.ok || !d || !d.ok){
+      const msg=(d&&(d.message||d.hint))||'';
+      toast(msg ? msg.replace(/^.*?:\s*/,'') : "Couldn't start the membership");
+      return;
+    }
+    try{ await fetchProfile(); }catch(e){}
+    MEM_TIERS=null;                       // re-read so the card shows the new tier
+    toast(`${tierName} membership active ✓`);
+    try{ await openMembership(); }catch(e){}
+  }catch(e){ console.error('subscribeWithCredit',e); toast('Error — try again'); }
+}
+
 async function subscribeTier(tierKey, tierName){
   if(IS_GUEST){ toast("Sign in to subscribe"); return; }
   if(!SESSION?.user?.id){ toast("Sign in to subscribe"); return; }
