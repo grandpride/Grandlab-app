@@ -6351,10 +6351,14 @@ Object.defineProperty(window,'stepIndex',{get:()=>cur,set:v=>{cur=v;}});
     return null;
   }
 
-  // the visible back button of whatever page is showing
+  // The visible back button of whatever page is showing. Most pages use
+  // .topbar-app .back, but not all - Rewards has its own header with
+  // .rewards-back - so match any of them and take the first one on screen,
+  // otherwise the swipe silently does nothing on those pages.
   function backBtn(){
-    const b=document.querySelector('#appRoot .topbar-app .back');
-    return (b && b.offsetParent!==null) ? b : null;
+    const els=document.querySelectorAll('#appRoot .back, #appRoot .rewards-back');
+    for(const b of els){ if(b.offsetParent!==null) return b; }
+    return null;
   }
 
   function showHint(){
