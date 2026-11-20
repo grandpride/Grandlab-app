@@ -3243,6 +3243,35 @@ async function openMembership(){
     tab.onclick=()=>{ active=+tab.dataset.tier; paint(); };
   });
   paint();
+
+  /* Swipe the card sideways to move between tiers, as well as tapping a tab.
+     Swipe left = next tier (Bronze -> Gold -> Platinum), right = previous.
+     The card sits well clear of the 42px left edge the back-swipe watches, so
+     the two never fight; a mostly-vertical drag is left alone as a page scroll. */
+  (function tierSwipe(){
+    const card=appRoot.querySelector('.mem-card');
+    if(!card) return;
+    const DIST=45, SLOP=40;
+    let x0=0, y0=0, on=false;
+    card.addEventListener('touchstart',function(e){
+      if(e.touches.length!==1){ on=false; return; }
+      x0=e.touches[0].clientX; y0=e.touches[0].clientY; on=true;
+    },{passive:true});
+    card.addEventListener('touchmove',function(e){
+      if(!on || e.touches.length!==1) return;
+      if(Math.abs(e.touches[0].clientY-y0)>SLOP) on=false;   // vertical: let it scroll
+    },{passive:true});
+    card.addEventListener('touchend',function(e){
+      if(!on) return; on=false;
+      const t=e.changedTouches && e.changedTouches[0]; if(!t) return;
+      const dx=t.clientX-x0;
+      if(Math.abs(dx)<DIST) return;
+      const i=tiers.findIndex(x=>x.key===active); if(i<0) return;
+      const j=(dx<0)? i+1 : i-1;
+      if(j<0 || j>=tiers.length) return;
+      active=tiers[j].key; paint();
+    },{passive:true});
+  })();
 }
 
 /* Buying a membership follows exactly the path a wallet top-up already takes:
