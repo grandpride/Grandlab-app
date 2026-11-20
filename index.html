@@ -1012,6 +1012,9 @@
   .sheet-ic{font-size:18px;width:26px;text-align:center;}
   .sheet-cancel{width:100%;margin-top:12px;padding:14px;border-radius:14px;border:none;background:var(--surface);
     color:var(--text);font-size:15px;font-weight:700;cursor:pointer;}
+  .gl-install-steps{background:var(--surface);border-radius:14px;padding:14px 16px;
+    font-size:13.5px;line-height:1.85;color:var(--text);}
+  .gl-install-steps b{color:var(--gold);}
   .oh-row{display:flex;justify-content:space-between;font-size:13px;padding:6px 0;border-bottom:1px solid var(--line);}
   .oh-row:last-child{border-bottom:none;}
   .oh-row span:first-child{color:var(--muted);font-weight:600;}
@@ -1535,6 +1538,86 @@ function setIcon(rel,href){
   if(!l){l=document.createElement('link');l.rel=rel;document.head.appendChild(l);}
   l.href=href;
 }
+
+/* ---------- ADD TO HOME SCREEN ----------
+   Customers arrive from a WhatsApp link, which opens a browser tab. Installed,
+   the app gets its own icon and no browser chrome - and payment works properly,
+   because an installed app hands DOKU to Safari instead of rendering it in a
+   webview that shows nothing. Android can raise the real install dialog; iOS
+   Safari has no install API at all, so there we can only show the steps. */
+let DEFERRED_INSTALL=null;
+try{
+  window.addEventListener('beforeinstallprompt',function(e){
+    e.preventDefault(); DEFERRED_INSTALL=e;
+  });
+}catch(e){}
+
+function isStandalone_(){
+  try{
+    return (window.navigator.standalone===true) ||
+      (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
+  }catch(e){ return false; }
+}
+function isIOS_(){
+  try{
+    return /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+      (navigator.platform==='MacIntel' && navigator.maxTouchPoints>1);
+  }catch(e){ return false; }
+}
+function installDismissed_(){
+  try{
+    const t=Number(localStorage.getItem('gl_install_dismissed')||0);
+    return t>0 && (Date.now()-t) < 7*24*3600*1000;   // ask again after a week
+  }catch(e){ return false; }   // private window: just show it
+}
+
+function showInstallSheet(force){
+  if(isStandalone_()) return;                       // already installed
+  if(!force && installDismissed_()) return;
+  if(document.querySelector('.gl-install-sheet')) return;
+
+  const how = DEFERRED_INSTALL
+    ? `<button class="btn btn-primary" id="glInstallGo">Add to Home Screen</button>`
+    : isIOS_()
+      ? `<div class="gl-install-steps">
+           <div><b>1.</b> Tap the Share button in Safari &#x2191;</div>
+           <div><b>2.</b> Scroll down to <b>Add to Home Screen</b></div>
+           <div><b>3.</b> Tap <b>Add</b></div>
+         </div>`
+      : `<div class="gl-install-steps">
+           <div>Open your browser menu and choose <b>Add to Home screen</b> (or <b>Install app</b>).</div>
+         </div>`;
+
+  const ov=document.createElement('div');
+  ov.className='sheet-ov gl-install-sheet';
+  ov.innerHTML=`
+    <div class="sheet">
+      <div class="sheet-handle"></div>
+      <div class="sheet-title">Install Grandlab on your phone</div>
+      <div class="app-sub" style="text-align:center;margin:0 0 14px;font-size:13px">
+        Your member card, credit and bookings in one tap &mdash; no browser needed.
+      </div>
+      ${how}
+      <button class="sheet-cancel" type="button" id="glInstallNo">Not now</button>
+    </div>`;
+
+  const go=ov.querySelector('#glInstallGo');
+  if(go) go.addEventListener('click',function(){
+    const p=DEFERRED_INSTALL; DEFERRED_INSTALL=null;
+    try{ ov.remove(); }catch(e){}
+    try{ if(p) p.prompt(); }catch(e){}
+  });
+  ov.querySelector('#glInstallNo').addEventListener('click',function(){
+    try{ localStorage.setItem('gl_install_dismissed', String(Date.now())); }catch(e){}
+    try{ ov.remove(); }catch(e){}
+  });
+  document.body.appendChild(ov);
+}
+try{
+  window.addEventListener('load',function(){
+    setTimeout(function(){ try{ showInstallSheet(false); }catch(e){} }, 2500);
+  });
+}catch(e){}
 
 /* ---------- Supabase REST helpers (no SDK needed) ---------- */
 async function fetchSlides(){
