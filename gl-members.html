@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Grandlab Members</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{--bg:#FFFFFF;--card:#FFFFFF;--card2:#F6F7F8;--gold:#F5C518;--gold-ink:#8A6D00;
+      --text:#111111;--text2:#5F6368;--border:#E3E5E8;--red:#C0392B;--green:#157347;
+      --amber:#9A6700;--sel:#FFF8E1;--head:#EEF0F2}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);
+     font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-size:13px}
+.hide{display:none !important}
+.bar{display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid var(--border);
+     background:var(--card2);position:sticky;top:0;z-index:30;flex-wrap:wrap}
+.bar .ttl{font-weight:900;font-size:15px;white-space:nowrap}
+.bar .ttl span{color:var(--gold-ink)}
+.back{color:var(--text2);text-decoration:none;font-size:12.5px;white-space:nowrap}
+.grow{flex:1;min-width:80px}
+input{padding:7px 9px;border:1px solid var(--border);border-radius:7px;background:var(--card);
+     color:var(--text);font-family:inherit;font-size:13px;width:100%}
+input:focus{outline:none;border-color:var(--gold-ink)}
+.btn{background:var(--gold);color:#000;border:none;border-radius:7px;padding:7px 13px;font-size:12.5px;
+     font-weight:800;cursor:pointer;font-family:inherit;white-space:nowrap;text-decoration:none;display:inline-block}
+.btn2{background:var(--card);color:var(--text);border:1px solid var(--border)}
+.btn-wa{background:#25D366;color:#fff}
+.btn-xs{padding:4px 9px;font-size:11.5px;border-radius:6px}
+
+.tabs{display:flex;gap:0;border-bottom:1px solid var(--border);background:var(--card2)}
+.tab{padding:9px 16px;font-size:12.5px;font-weight:800;color:var(--text2);cursor:pointer;
+     border-bottom:2px solid transparent;white-space:nowrap}
+.tab.on{color:var(--text);border-bottom-color:var(--gold);background:var(--card)}
+.tab .n{display:inline-block;background:var(--border);color:var(--text2);border-radius:9px;
+        padding:0 6px;font-size:10.5px;margin-left:5px;vertical-align:1px}
+.tab.on .n{background:var(--gold);color:#000}
+
+.gridwrap{overflow-x:auto}
+table.grid{border-collapse:collapse;table-layout:fixed;min-width:900px;width:100%;font-size:12.5px}
+table.grid th,table.grid td{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+table.grid thead th{background:var(--head);text-align:left;font-weight:800;font-size:11px;
+     text-transform:uppercase;letter-spacing:.03em;color:var(--text2);padding:6px 8px;
+     border-bottom:1px solid var(--border)}
+table.grid tbody td{padding:6px 8px;border-bottom:1px solid var(--border)}
+table.grid tbody tr:nth-child(even){background:#FAFBFC}
+.nm{font-weight:700}
+.sub{color:var(--text2);font-size:11px}
+.num{text-align:right;font-variant-numeric:tabular-nums}
+.tier{display:inline-block;background:var(--gold);color:#000;border-radius:4px;padding:0 6px;
+      font-size:11px;font-weight:800}
+.soon{color:var(--red);font-weight:800}
+.ok{color:var(--text2)}
+.empty{color:var(--text2);text-align:center;padding:34px 12px}
+.status{color:var(--text2);font-size:12px;padding:7px 12px}
+.err{color:var(--red)}
+.note{background:#FFF8E1;border-bottom:1px solid #E8D48A;padding:8px 12px;font-size:12px;color:#6b5600}
+
+.gate{position:fixed;inset:0;background:var(--bg);z-index:60;display:flex;align-items:center;
+      justify-content:center;padding:18px}
+.gate.hide{display:none !important}
+.gate .inner{max-width:330px;width:100%;border:1px solid var(--border);border-radius:12px;padding:18px}
+.gate h1{font-size:19px;font-weight:900;margin:0 0 3px}
+.gate h1 span{color:var(--gold-ink)}
+.gate .sub{color:var(--text2);font-size:12px}
+.gate label{display:block;font-size:11px;font-weight:800;text-transform:uppercase;color:var(--text2);margin:10px 0 4px}
+@media(max-width:880px){ table.grid{min-width:720px} }
+</style>
+</head>
+<body>
+
+<div class="gate" id="gate"><div class="inner">
+  <h1>GRAND<span>LAB</span></h1>
+  <div class="sub">Members — staff sign in</div>
+  <label>Email</label><input id="email" type="email" autocomplete="username">
+  <label>Password</label><input id="pass" type="password" autocomplete="current-password">
+  <button class="btn" style="width:100%;margin-top:12px;padding:11px" onclick="doLogin()">SIGN IN</button>
+  <div id="loginErr" class="status err"></div>
+</div></div>
+
+<div id="main" class="hide">
+  <div class="bar">
+    <a class="back" href="gl-hub.html">&#8592; Hub</a>
+    <div class="ttl">GRAND<span>LAB</span> MEMBERS</div>
+    <div class="grow"><input id="q" placeholder="Search name or phone…" autocomplete="off"></div>
+    <button class="btn btn2" onclick="load()">Refresh</button>
+  </div>
+
+  <div class="tabs">
+    <div class="tab on" id="tabActive" onclick="switchTab('active')">Active members<span class="n" id="nActive">0</span></div>
+    <div class="tab" id="tabWaiting" onclick="switchTab('waiting')">Waiting to sign up<span class="n" id="nWaiting">0</span></div>
+  </div>
+
+  <div id="waitNote" class="note hide">
+    These customers have paid but have no app account yet, so their credit is parked.
+    It lands automatically the moment they sign up with this phone number &mdash; nothing to do here.
+  </div>
+
+  <div class="gridwrap">
+    <table class="grid">
+      <thead><tr id="hrow"></tr></thead>
+      <tbody id="rows"></tbody>
+    </table>
+  </div>
+  <div id="statusLine" class="status"></div>
+  <div id="emptyBox" class="empty hide"></div>
+</div>
+
+<script>
+const SUPABASE_URL="https://db.grandlab.com.my";
+const SUPABASE_ANON="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzkzMDY5NDExLCJleHAiOjE5NTA3NDk0MTF9.IcbPnDCd9p6Z-_FNMvzfg9k6ayX7IpC48zdGacAD_qw";
+const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON,
+      {auth:{persistSession:true,autoRefreshToken:true,storageKey:'gl_auth'}});
+const $=id=>document.getElementById(id);
+const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const RM=n=>'RM'+(Math.round((Number(n)||0)*100)/100).toLocaleString('en-MY',{minimumFractionDigits:2,maximumFractionDigits:2});
+const dmy=s=>{ if(!s) return ''; const d=new Date(s); return isNaN(d)?'':d.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}); };
+const daysLeft=s=>{ if(!s) return null; const d=new Date(s); return isNaN(d)?null:Math.ceil((d-new Date())/86400000); };
+
+let TAB='active', ACTIVE=[], WAITING=[];
+
+/* Columns differ per tab: an active member has a profile and a balance, a
+   waiting one has only a phone number and the invoice that paid for it. */
+const COLS={
+  active:[
+    {t:'Member',  w:'200px', get:r=>`<div class="nm">${esc(r.name||'(no name)')}</div><div class="sub">${esc(r.phone||'')}</div>`},
+    {t:'Tier',    w:'90px',  get:r=>r.tier?`<span class="tier">${esc(r.tier)}</span>`:''},
+    {t:'Member credit', w:'115px', cls:'num', get:r=>RM(r.wallet_member)},
+    {t:'Top-up credit', w:'115px', cls:'num', get:r=>RM(Math.max(0,(Number(r.wallet)||0)-(Number(r.wallet_member)||0)))},
+    {t:'Total',   w:'110px', cls:'num', get:r=>`<b>${RM(r.wallet)}</b>`},
+    {t:'Expires', w:'170px', get:r=>{
+        const d=daysLeft(r.tier_expires_at);
+        if(d===null) return '';
+        if(d<0)   return `<span class="soon">expired ${dmy(r.tier_expires_at)}</span>`;
+        if(d<=30) return `<span class="soon">${d}d left &middot; ${dmy(r.tier_expires_at)}</span>`;
+        return `<span class="ok">${dmy(r.tier_expires_at)}</span>`;
+      }},
+    {t:'',        w:'86px',  get:r=>r.phone?`<a class="btn btn-wa btn-xs" target="_blank" rel="noopener"
+        href="https://wa.me/${esc(String(r.phone).replace(/[^0-9]/g,''))}">WhatsApp</a>`:''}
+  ],
+  waiting:[
+    {t:'Phone',   w:'150px', get:r=>`<div class="nm">${esc(r.display_phone||r.phone_key||'')}</div>`},
+    {t:'Tier',    w:'90px',  get:r=>r.tier_name?`<span class="tier">${esc(r.tier_name)}</span>`:String(r.tier_level||'')},
+    {t:'Paid',    w:'110px', cls:'num', get:r=>RM(r.paid)},
+    {t:'Invoice', w:'160px', get:r=>esc(r.invoice_no||'')},
+    {t:'Sold on', w:'130px', get:r=>dmy(r.created_at)},
+    {t:'Waiting', w:'110px', get:r=>{
+        const d=Math.floor((new Date()-new Date(r.created_at))/86400000);
+        return isNaN(d)?'':`<span class="${d>=14?'soon':'ok'}">${d} day${d===1?'':'s'}</span>`;
+      }},
+    {t:'',        w:'86px',  get:r=>r.display_phone?`<a class="btn btn-wa btn-xs" target="_blank" rel="noopener"
+        href="https://wa.me/${esc(String(r.display_phone).replace(/[^0-9]/g,''))}">WhatsApp</a>`:''}
+  ]
+};
+
+function switchTab(t){
+  TAB=t;
+  $('tabActive').classList.toggle('on', t==='active');
+  $('tabWaiting').classList.toggle('on', t==='waiting');
+  $('waitNote').classList.toggle('hide', t!=='waiting');
+  render();
+}
+
+function render(){
+  const cols=COLS[TAB];
+  $('hrow').innerHTML=cols.map(c=>`<th style="width:${c.w}">${esc(c.t)}</th>`).join('');
+  const q=($('q').value||'').trim().toLowerCase();
+  let rows=(TAB==='active'?ACTIVE:WAITING);
+  if(q){
+    rows=rows.filter(r=>{
+      const hay=[r.name,r.phone,r.display_phone,r.phone_key,r.invoice_no,r.tier,r.tier_name]
+        .map(x=>String(x==null?'':x).toLowerCase()).join(' ');
+      return hay.includes(q);
+    });
+  }
+  $('rows').innerHTML=rows.map(r=>'<tr>'+cols.map(c=>
+    `<td class="${c.cls||''}">${c.get(r)}</td>`).join('')+'</tr>').join('');
+  const empty=rows.length===0;
+  $('emptyBox').classList.toggle('hide',!empty);
+  $('emptyBox').textContent = empty
+    ? (TAB==='active' ? 'No members yet.' : 'Nobody waiting — every paid membership has been claimed.')
+    : '';
+  $('statusLine').textContent = empty ? '' : `${rows.length} shown`;
+}
+
+async function load(){
+  $('statusLine').textContent='Loading…';
+  try{
+    const [{data:profs,error:e1},{data:pend,error:e2},{data:tiers}] = await Promise.all([
+      sb.from('gl_profiles')
+        .select('id,name,phone,wallet,wallet_member,tier,tier_level,tier_expires_at')
+        .gt('tier_level',1).order('tier_expires_at',{ascending:true}).limit(500),
+      sb.from('gl_membership_pending')
+        .select('*').is('applied_at',null).order('created_at',{ascending:true}).limit(500),
+      sb.from('gl_membership_tiers').select('tier_level,name')
+    ]);
+    if(e1) throw e1;
+    if(e2) throw e2;
+    const byLevel={}; (tiers||[]).forEach(t=>{ byLevel[Number(t.tier_level)]=t.name; });
+
+    ACTIVE=(profs||[]);
+    // the pending row stores a normalised key (no 60/0 prefix) - show it dialable
+    WAITING=(pend||[]).map(r=>({...r,
+      tier_name: byLevel[Number(r.tier_level)]||null,
+      display_phone: r.phone_key ? ('60'+String(r.phone_key)) : ''}));
+
+    $('nActive').textContent=ACTIVE.length;
+    $('nWaiting').textContent=WAITING.length;
+    render();
+  }catch(e){
+    $('statusLine').innerHTML='<span class="err">Could not load: '+esc(e.message||e)+'</span>';
+  }
+}
+
+async function boot(){
+  const {data}=await sb.auth.getSession();
+  if(data&&data.session){ $('gate').classList.add('hide'); $('main').classList.remove('hide'); load(); }
+  else $('gate').classList.remove('hide');
+}
+async function doLogin(){
+  const email=$('email').value.trim(), pass=$('pass').value;
+  if(!email||!pass){ $('loginErr').textContent='Enter email and password.'; return; }
+  $('loginErr').textContent='Signing in…';
+  let res;
+  try{ res=await sb.auth.signInWithPassword({email,password:pass}); }
+  catch(e){ $('loginErr').textContent='Network error: '+(e.message||e); return; }
+  if(res.error){ $('loginErr').textContent='Login failed: '+res.error.message; return; }
+  $('loginErr').textContent=''; $('gate').classList.add('hide');
+  $('main').classList.remove('hide'); load();
+}
+$('pass').addEventListener('keydown',e=>{ if(e.key==='Enter') doLogin(); });
+$('q').addEventListener('input',render);
+boot();
+</script>
+</body>
+</html>
