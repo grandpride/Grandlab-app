@@ -3149,12 +3149,41 @@ function fmtDateTime(iso){ if(!iso) return ''; try{ const d=new Date(iso);
 }catch(e){ return iso; } }
 function fmtDate(iso){ if(!iso) return ''; try{ return new Date(iso).toLocaleDateString('en-MY',{day:'2-digit',month:'short',year:'numeric'}); }catch(e){ return iso; } }
 
-function openMembership(){
+/* Tier configuration lives in gl_membership_tiers - the same row POS reads to
+   work out the member discount. The app showed STYLE.memBenefits2 ("5% off
+   services"), which had already drifted away from the real Bronze deal; a
+   customer reading one number while the till charges another is worse than no
+   screen at all. STYLE still supplies the card artwork and the tier name when
+   a tier has no row yet. */
+let MEM_TIERS=null;
+async function fetchMemberTiers(){
+  if(MEM_TIERS) return MEM_TIERS;
+  try{
+    const r=await fetch(`${SUPA_URL}/rest/v1/gl_membership_tiers?select=*&active=eq.true`,
+      {headers:authHeaders()});
+    MEM_TIERS = r.ok ? (await r.json()||[]) : [];
+  }catch(e){ MEM_TIERS=[]; }
+  return MEM_TIERS;
+}
+
+async function openMembership(){
+  await fetchMemberTiers();
+  const byLevel={};
+  (MEM_TIERS||[]).forEach(t=>{ byLevel[Number(t.tier_level)]=t; });
+  // a configured tier's own benefits win; STYLE is the fallback
+  const mk=(key,styleName,card,styleBen)=>{
+    const db=byLevel[key];
+    const ben = (db && Array.isArray(db.benefits) && db.benefits.length)
+      ? db.benefits.join('\n') : styleBen;
+    return {key, name:(db&&db.name)||styleName, card,
+            ben, price:(db&&db.price_label)||null};
+  };
   const tiers=[
-    {key:1,name:STYLE.memTier1,card:STYLE.memCard1,ben:STYLE.memBenefits1},
-    {key:2,name:STYLE.memTier2,card:STYLE.memCard2,ben:STYLE.memBenefits2},
-    {key:4,name:STYLE.memTier4,card:STYLE.memCard4,ben:STYLE.memBenefits4},
-    {key:5,name:STYLE.memTier5,card:STYLE.memCard5,ben:STYLE.memBenefits5}
+    mk(1,STYLE.memTier1,STYLE.memCard1,STYLE.memBenefits1),
+    mk(2,STYLE.memTier2,STYLE.memCard2,STYLE.memBenefits2),
+    mk(3,STYLE.memTier3,STYLE.memCard3,STYLE.memBenefits3),
+    mk(4,STYLE.memTier4,STYLE.memCard4,STYLE.memBenefits4),
+    mk(5,STYLE.memTier5,STYLE.memCard5,STYLE.memBenefits5)
   ];
   let active=1;
   const userTier = PROFILE?.tier_level || 1; // 1 = non-member by default
@@ -3165,10 +3194,11 @@ function openMembership(){
   const ctaHtml=(t)=>{
     if(t.key===1) return `<div class="mem-current-tag">\u2713 This is your default plan \u2014 free, no subscription needed</div>`;
     if(t.key===userTier) return `<div class="mem-current-tag">\u2713 Your current plan</div>`;
-    return `<button class="btn btn-primary" style="margin-top:16px" onclick="subscribeTier(${active},'${esc((t.name||'').replace(/'/g,"\\'"))}')">${esc(STYLE.memSubscribeBtn||'Subscribe Now')}</button>`;
+    const price = t.price ? `<div style="text-align:center;margin-top:14px;font-size:18px;font-weight:800;color:var(--gold)">${esc(t.price)}</div>` : '';
+    return price+`<button class="btn btn-primary" style="margin-top:${t.price?'10':'16'}px" onclick="subscribeTier(${active},'${esc((t.name||'').replace(/'/g,"\\'"))}')">${esc(STYLE.memSubscribeBtn||'Subscribe Now')}</button>`;
   };
   const benHtml=(t)=>{
-    const benList=(t.ben||'').split('\\n').filter(Boolean).map(b=>`<div class="mem-benefit"><span class="mem-tick">✓</span><span>${esc(b)}</span></div>`).join('');
+    const benList=(t.ben||'').split(/\\n|\r?\n/).filter(b=>b&&b.trim()).map(b=>`<div class="mem-benefit"><span class="mem-tick">✓</span><span>${esc(b)}</span></div>`).join('');
     return benList||'<div class="app-sub">No benefits listed.</div>';
   };
 
