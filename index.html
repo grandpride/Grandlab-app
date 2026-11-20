@@ -4459,7 +4459,45 @@ async function afterOrderCreated(orderRef){
 // app state when the customer returns (see handlePayReturn + visibilitychange).
 function openPaymentUrl(url){
   try{ sessionStorage.setItem('gl_pay_pending','1'); }catch(e){}
-  try{ window.location.href=url; }catch(e){ window.location.href=url; }
+  let standalone=false;
+  try{
+    standalone=(window.navigator.standalone===true)||
+      (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
+  }catch(e){}
+  // In a browser tab, navigating this window works fine and costs no extra tap.
+  if(!standalone){ try{ window.location.href=url; }catch(e){} return; }
+  // Installed app: navigating lands DOKU inside the PWA's own webview, where its
+  // checkout page renders blank (verified 2026-11-20 — the identical link renders
+  // correctly in Safari and in desktop Chrome). Only a real anchor hands it to
+  // Safari, and the tap has to be the customer's own: iOS drops the gesture
+  // across the awaits that fetched this URL, so a synthetic click is blocked.
+  showPayHandoff_(url);
+}
+
+/* The one extra tap exists because iOS requires it — see openPaymentUrl. */
+function showPayHandoff_(url){
+  try{ document.querySelectorAll('.gl-pay-handoff').forEach(n=>n.remove()); }catch(e){}
+  const ov=document.createElement('div');
+  ov.className='sheet-ov gl-pay-handoff';
+  ov.innerHTML=`
+    <div class="sheet">
+      <div class="sheet-handle"></div>
+      <div class="sheet-title">Your payment page is ready</div>
+      <a class="btn btn-primary" id="glPayGo" target="_blank" rel="noopener"
+         style="text-decoration:none">Continue to payment →</a>
+      <div class="app-sub" style="text-align:center;margin-top:10px;font-size:12px">
+        Opens in your browser. Come back here when you're done.
+      </div>
+      <button class="sheet-cancel" type="button">Cancel</button>
+    </div>`;
+  const a=ov.querySelector('#glPayGo');
+  a.href=url;  // set as a property, never interpolated into the HTML above
+  a.addEventListener('click',function(){ setTimeout(function(){ try{ ov.remove(); }catch(e){} },400); });
+  ov.querySelector('.sheet-cancel').addEventListener('click',function(){
+    try{ sessionStorage.removeItem('gl_pay_pending'); }catch(e){}
+    try{ ov.remove(); }catch(e){}
+  });
+  document.body.appendChild(ov);
 }
 
 async function handlePayReturn(){
