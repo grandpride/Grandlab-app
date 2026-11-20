@@ -3236,10 +3236,52 @@ async function openMembership(){
   paint();
 }
 
-function subscribeTier(tierKey, tierName){
-  // subscription/payment not yet wired — confirm intent and record interest
+/* Buying a membership follows exactly the path a wallet top-up already takes:
+   write a pending gl_orders row carrying who and which tier, then hand DOKU the
+   order_ref. Nothing is granted here - the /doku/notify callback calls
+   gl_grant_membership once the payment is confirmed, so a customer who closes
+   the browser mid-payment, or replays the return URL, gets nothing. */
+async function subscribeTier(tierKey, tierName){
   if(IS_GUEST){ toast("Sign in to subscribe"); return; }
-  toast(`${tierName} subscription — payment coming soon`);
+  if(!SESSION?.user?.id){ toast("Sign in to subscribe"); return; }
+
+  const tiers=await fetchMemberTiers();
+  const t=(tiers||[]).find(x=>Number(x.tier_level)===Number(tierKey));
+  if(!t){ toast('That plan is not available yet'); return; }
+  const price=Number(t.price||0);
+  if(!(price>=2)){ toast('This plan has no price set — please ask our team'); return; }
+
+  if(Number(PROFILE?.tier_level||1) === Number(tierKey)){
+    if(!confirm(`You are already ${tierName}.\n\nPay RM${price.toFixed(2)} again to extend for another ${t.months||12} months?`)) return;
+  } else if(!confirm(`${tierName} membership\n\nRM${price.toFixed(2)} for ${t.months||12} months.\n\nContinue to payment?`)){
+    return;
+  }
+
+  const orderRef='MB'+Date.now().toString(36).toUpperCase()+Math.random().toString(36).slice(2,5).toUpperCase();
+  try{
+    const o=await fetch(`${SUPA_URL}/rest/v1/gl_orders`,{method:"POST",headers:authHeaders(),
+      body:JSON.stringify({owner_id:SESSION.user.id, service_name:tierName+' Membership',
+        note:tierName+' membership — '+(t.months||12)+' months',
+        amount:price, order_ref:orderRef, payment_method:'doku',
+        payment_status:'unpaid', status:'membership', tier_level:Number(tierKey)})});
+    if(!o.ok){ toast("Couldn't start the order"); return; }
+
+    toast('Opening payment…');
+    const pr=await fetch(`${SENANGPAY_FN}/create`,{method:"POST",
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+SUPA_ANON,'apikey':SUPA_ANON},
+      body:JSON.stringify({order_ref:orderRef, amount:price, name:(PROFILE?.name||'Customer'),
+        email:(SESSION?.user?.email||''), phone:(PROFILE?.phone||''),
+        detail:'Grandlab '+tierName+' Membership'})});
+    if(pr.ok){
+      const d=await pr.json();
+      if(d.pay_url){ openPaymentUrl(d.pay_url); return; }
+      const em=(d.doku_response&&(d.doku_response.error_messages||d.doku_response.message))||d.error||'unknown';
+      alert('Payment error:\n'+JSON.stringify(em));
+    } else {
+      const txt=await pr.text(); alert('Payment failed ('+pr.status+'):\n'+txt);
+    }
+    toast("Couldn't open payment");
+  }catch(e){ console.error('subscribeTier',e); toast('Error — try again'); }
 }
 
 function openNotifications(){
