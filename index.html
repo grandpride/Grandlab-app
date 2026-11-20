@@ -259,6 +259,17 @@
   .wbc-label{font-size:12px;color:var(--muted);}
   .wbc-amt{font-size:32px;font-weight:800;margin-top:4px;}
   .wbc-foot{display:flex;justify-content:space-between;margin-top:20px;font-size:12px;color:var(--muted);}
+  .freesvc{background:var(--card,#141414);border:1px solid #2a2a2a;border-radius:12px;padding:12px 14px;
+    margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;gap:10px;cursor:pointer;}
+  .freesvc-t{font-weight:800;color:var(--yellow);}
+  .freesvc-s{font-size:12px;color:var(--muted);margin-top:2px;}
+  .freesvc-n{text-align:right;white-space:nowrap;}
+  .freesvc-n b{font-size:19px;color:var(--text);}
+  .freesvc-n span{display:block;font-size:11px;color:var(--muted);}
+  .wbc-split{margin-top:10px;display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted);}
+  .wbc-dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:7px;vertical-align:1px;}
+  .wbc-dot-m{background:var(--yellow);}
+  .wbc-dot-t{background:#6b6b6b;}
   .wallet-actions{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:18px;}
   .wa{display:flex;flex-direction:column;align-items:center;gap:7px;cursor:pointer;}
   .wa-ic{min-width:54px;height:auto;border-radius:14px;background:transparent;border:none;
@@ -1014,7 +1025,7 @@
     color:var(--text);font-size:15px;font-weight:700;cursor:pointer;}
   .gl-install-steps{background:var(--surface);border-radius:14px;padding:14px 16px;
     font-size:13.5px;line-height:1.85;color:var(--text);}
-  .gl-install-steps b{color:var(--gold);}
+  .gl-install-steps b{color:var(--yellow);}
   .oh-row{display:flex;justify-content:space-between;font-size:13px;padding:6px 0;border-bottom:1px solid var(--line);}
   .oh-row:last-child{border-bottom:none;}
   .oh-row span:first-child{color:var(--muted);font-weight:600;}
@@ -3037,6 +3048,25 @@ function openMyVehicles(){
     </div>`;
 }
 
+/* The balance is one number the customer can spend, but part of it can be
+   membership credit that ends with the membership. Showing the split here is
+   the only place they can find that out before it matters. */
+function creditSplitRow(p){
+  const total=Number(p&&p.wallet||0);
+  const mem=Number(p&&p.wallet_member||0);
+  if(mem<=0 || total<=0) return '';
+  const topup=Math.max(0,total-mem);
+  let exp='';
+  if(p.tier_expires_at){
+    const d=new Date(p.tier_expires_at);
+    if(!isNaN(d)) exp=' · until '+d.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});
+  }
+  return `<div class="wbc-split">
+    <div><span class="wbc-dot wbc-dot-m"></span>RM ${fmtRM(mem)} member credit${exp}</div>
+    ${topup>0?`<div><span class="wbc-dot wbc-dot-t"></span>RM ${fmtRM(topup)} top-up credit · no expiry</div>`:''}
+  </div>`;
+}
+
 /* ---------- My Packages (car-centric: cars → car detail) ---------- */
 async function openMyPackages(){
   if(IS_GUEST){ toast('Sign in to view packages'); return; }
@@ -3287,7 +3317,7 @@ async function openMembership(){
   const ctaHtml=(t)=>{
     if(t.key===1) return `<div class="mem-current-tag">\u2713 This is your default plan \u2014 free, no subscription needed</div>`;
     if(t.key===userTier) return `<div class="mem-current-tag">\u2713 Your current plan</div>`;
-    const price = t.price ? `<div style="text-align:center;margin-top:14px;font-size:18px;font-weight:800;color:var(--gold)">${esc(t.price)}</div>` : '';
+    const price = t.price ? `<div style="text-align:center;margin-top:14px;font-size:18px;font-weight:800;color:var(--yellow)">${esc(t.price)}</div>` : '';
     const nm = esc((t.name||'').replace(/'/g,"\\'"));
     // Only top-up credit can start a membership; credit that already came from
     // a membership cannot buy another one, which is why wallet_member is taken
@@ -5110,6 +5140,7 @@ async function renderWallet(){
       <div class="wallet-balance-card">
         <div class="wbc-label">${esc(STYLE.walletName||'G Wallet')} Balance</div>
         <div class="wbc-amt">RM ${fmtRM(p.wallet)}</div>
+        ${creditSplitRow(p)}
         <div class="wbc-foot">
           <span>${esc(p.name||'Member')}</span>
           <span>${esc(STYLE.walletJoinedLabel||'Joined since')} ${joined}</span>
@@ -5466,6 +5497,55 @@ async function runAppSpin(){
   },6600);
 }
 
+/* Complimentary services that came with a membership. They deliberately carry
+   no vehicle, so that they work on any of the customer's cars - which is also
+   why My Packages, which lists packages under a car, never showed them. */
+function memberFreeSvcs(){
+  return (PACKAGES||[]).filter(p=>
+    (p.pkg_type==='membership' || p.source==='membership') &&
+    p.status==='active' && Number(p.used_uses) < Number(p.total_uses));
+}
+function freeSvcHtml(){
+  const list=memberFreeSvcs();
+  if(!list.length) return '';
+  return `<div class="sec-title" style="margin-top:14px">🎁 Member Free Services</div>
+    <div style="padding:0 16px">`+list.map(p=>{
+      const left=Number(p.total_uses)-Number(p.used_uses);
+      return `<div class="freesvc" onclick="openFreeSvc('${esc(String(p.id))}')">
+        <div>
+          <div class="freesvc-t">${esc(p.service_name||'Service')}</div>
+          <div class="freesvc-s">Use on any of your cars</div>
+        </div>
+        <div class="freesvc-n"><b>${left}</b><span>/ ${p.total_uses} left</span></div>
+      </div>`;
+    }).join('')+`</div>`;
+}
+/* Staff deduct a use at the counter, not the customer: letting someone burn a
+   use from their own phone would lose the service if it were tapped early or
+   by accident. So this shows what the team needs to see, and nothing more. */
+function openFreeSvc(pkgId){
+  const p=(PACKAGES||[]).find(x=>String(x.id)===String(pkgId));
+  if(!p) return;
+  const left=Number(p.total_uses)-Number(p.used_uses);
+  const ov=document.createElement('div');
+  ov.className='sheet-ov';
+  ov.innerHTML=`
+    <div class="sheet">
+      <div class="sheet-handle"></div>
+      <div class="sheet-title">${esc(p.service_name||'Service')}</div>
+      <div class="app-sub" style="text-align:center;margin:0 0 14px;font-size:13px">
+        ${left} of ${p.total_uses} left &middot; included with your ${esc(PROFILE?.tier||'membership')}
+      </div>
+      <div class="gl-install-steps">
+        <div>Show this screen to our team when you arrive and they will apply it to your bill.</div>
+        <div style="margin-top:8px;color:var(--muted)">${esc(PROFILE?.name||'')} &middot; ${esc(PROFILE?.phone||'')}</div>
+      </div>
+      <button class="sheet-cancel" type="button">Close</button>
+    </div>`;
+  ov.querySelector('.sheet-cancel').addEventListener('click',()=>{ try{ ov.remove(); }catch(e){} });
+  document.body.appendChild(ov);
+}
+
 async function renderRewards(){
   const p=PROFILE||{};
   const coins = p.points||0;
@@ -5479,7 +5559,9 @@ async function renderRewards(){
   // catalogue data, safe to keep for the session; fetch the two together
   await Promise.allSettled([
     (!REWARDS.length)  ? fetchRewards()  : Promise.resolve(),
-    (!SERVICES.length) ? fetchServices() : Promise.resolve()
+    (!SERVICES.length) ? fetchServices() : Promise.resolve(),
+    // membership free services live here now, so they have to be loaded
+    (_uid && !PACKAGES.length) ? fetchPackages() : Promise.resolve()
   ]);
   const svcById=(id)=>SERVICES.find(s=>String(s.id)===String(id));
   const cardHtml=(r)=>{
@@ -5541,6 +5623,8 @@ async function renderRewards(){
         <div class="earn-row"><span class="earn-ic">📅</span> Daily check-in</div>
         <div class="earn-row"><span class="earn-ic">🎡</span> Free spin every 2 weeks</div>
       </div>
+
+      ${freeSvcHtml()}
 
       ${spinHtml}
 
