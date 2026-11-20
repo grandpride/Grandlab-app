@@ -119,6 +119,51 @@ const daysLeft=s=>{ if(!s) return null; const d=new Date(s); return isNaN(d)?nul
 
 let TAB='active', ACTIVE=[], WAITING=[];
 
+const APP_URL="https://app.grandlab.com.my/";
+
+/* wa.me carries the draft into WhatsApp Web already typed, so staff only press
+   send. Keep these short and in Jimmy's own voice - a long tidy paragraph is
+   exactly what makes a customer feel they are talking to a machine. */
+function waLink(phone, text){
+  const n=String(phone||'').replace(/[^0-9]/g,'');
+  if(!n) return '';
+  return `https://wa.me/${n}?text=${encodeURIComponent(text)}`;
+}
+function waWaiting(r){
+  const tier=r.tier_name||'Grandlab';
+  return `Hi, Grandlab here.
+
+Your ${tier} membership is ready to activate. Just install our app and sign up using this same number — your RM${Number(r.paid||0).toLocaleString()} credit and free services will be inside straight away.
+
+${APP_URL}
+
+Takes about a minute. Any problem just tell us.`;
+}
+function waActive(r){
+  const tier=r.tier||'membership';
+  // names are stored upper-case; "Hi LEONG" reads like shouting
+  const raw=(r.name||'').trim().split(/\s+/)[0]||'';
+  const nm=raw?raw.charAt(0).toUpperCase()+raw.slice(1).toLowerCase():'';
+  const hi=nm?`Hi ${nm}, Grandlab here.`:`Hi, Grandlab here.`;
+  const d=daysLeft(r.tier_expires_at);
+  const when=dmy(r.tier_expires_at);
+  if(d!==null && d<0){
+    return `${hi}
+
+Your ${tier} membership ended on ${when}. If you want to continue, we can set it up again anytime — just let us know.`;
+  }
+  if(d!==null && d<=30){
+    return `${hi}
+
+Your ${tier} membership ends on ${when}. If you renew before that, your leftover credit and any unused services carry forward.
+
+Want us to arrange it for you?`;
+  }
+  return `${hi}
+
+Your ${tier} member credit now RM${Number(r.wallet_member||0).toLocaleString()}, valid until ${when}.`;
+}
+
 /* Columns differ per tab: an active member has a profile and a balance, a
    waiting one has only a phone number and the invoice that paid for it. */
 const COLS={
@@ -135,8 +180,8 @@ const COLS={
         if(d<=30) return `<span class="soon">${d}d left &middot; ${dmy(r.tier_expires_at)}</span>`;
         return `<span class="ok">${dmy(r.tier_expires_at)}</span>`;
       }},
-    {t:'',        w:'86px',  get:r=>r.phone?`<a class="btn btn-wa btn-xs" target="_blank" rel="noopener"
-        href="https://wa.me/${esc(String(r.phone).replace(/[^0-9]/g,''))}">WhatsApp</a>`:''}
+    {t:'',        w:'86px',  get:r=>{ const h=waLink(r.phone, waActive(r));
+        return h?`<a class="btn btn-wa btn-xs" target="_blank" rel="noopener" href="${esc(h)}">WhatsApp</a>`:''; }}
   ],
   waiting:[
     {t:'Phone',   w:'150px', get:r=>`<div class="nm">${esc(r.display_phone||r.phone_key||'')}</div>`},
@@ -148,8 +193,8 @@ const COLS={
         const d=Math.floor((new Date()-new Date(r.created_at))/86400000);
         return isNaN(d)?'':`<span class="${d>=14?'soon':'ok'}">${d} day${d===1?'':'s'}</span>`;
       }},
-    {t:'',        w:'86px',  get:r=>r.display_phone?`<a class="btn btn-wa btn-xs" target="_blank" rel="noopener"
-        href="https://wa.me/${esc(String(r.display_phone).replace(/[^0-9]/g,''))}">WhatsApp</a>`:''}
+    {t:'',        w:'86px',  get:r=>{ const h=waLink(r.display_phone, waWaiting(r));
+        return h?`<a class="btn btn-wa btn-xs" target="_blank" rel="noopener" href="${esc(h)}">WhatsApp</a>`:''; }}
   ]
 };
 
