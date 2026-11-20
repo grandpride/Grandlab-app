@@ -5977,11 +5977,26 @@ Object.defineProperty(window,'stepIndex',{get:()=>cur,set:v=>{cur=v;}});
       }
     });
     window.addEventListener('orientationchange', function(){ setTimeout(fixViewport_, 100); });
+    // visualViewport settles a frame or two after innerHeight does on return.
+    if(window.visualViewport){
+      window.visualViewport.addEventListener('resize', function(){ setTimeout(fixViewport_, 0); });
+    }
   }catch(e){}
   function fixViewport_(){
     try{
-      const h=window.innerHeight;
+      let h=window.innerHeight;
       if(!h) return;
+      // iOS standalone PWA: after returning from an external page (DOKU checkout)
+      // innerHeight can come back stale/short, and the short value is exactly what
+      // leaves the black band under the nav. In standalone the layout viewport is
+      // always the full screen, so never let --app-vh fall below it. Browser-tab
+      // mode is untouched (clientHeight there can sit under the Safari toolbar).
+      try{
+        const standalone=(window.navigator.standalone===true)||
+          (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
+        if(standalone) h=Math.max(h, document.documentElement.clientHeight||0);
+      }catch(e){}
+      h=Math.round(h);
       document.documentElement.style.setProperty('--app-vh', h + 'px');
       // appRoot is anchored top:0/bottom:0 so it self-fills; just nudge a reflow.
       const root=document.getElementById('appRoot');
