@@ -74,6 +74,9 @@ table.grid tbody tr:hover{background:var(--sel)}
 .fields .vl{padding:4px 10px;border-bottom:1px solid var(--border);display:flex;align-items:center;min-height:32px}
 .note{background:#FFF8E1;border-bottom:1px solid #E8D48A;padding:7px 10px;font-size:12px;color:#6b5600}
 .hint{color:var(--text2);font-size:11.5px;padding:7px 10px}
+.mv-extra{border-top:1px dashed var(--line,#e2e2e2);margin-top:6px;padding-bottom:6px}
+.mv-extra .hint{padding:8px 10px 4px}
+.mv-row{padding:5px 10px;font-size:13px}
 
 /* vehicle card */
 .veh{border-bottom:1px solid var(--border);padding:11px 10px}
@@ -339,7 +342,7 @@ function show(v){ $('browse').classList.toggle('hide',v!=='browse');
 function backToList(){ show('browse'); }
 async function openCust(k){
   CUR=ROWS.find(r=>r.cust_key===k); if(!CUR) return;
-  EDIT=false; VEH=[]; MEMBER=null; MEMPKG=[];
+  EDIT=false; VEH=[]; MEMBER=null; MEMPKG=[]; MEMVEH=[];
   const plates=(CUR.cars||[]).map(c=>c.plate).filter(Boolean);
   drawCust(true);
   const jobs=[loadMember(CUR.phone||'', plates)];
@@ -354,13 +357,39 @@ async function openCust(k){
    The customer record and the app account are different rows, joined only by
    phone. Reception works in here during a job, so the credit and the free
    services have to be visible here, not only on the Members page. */
-let MEMBER=null, MEMPKG=[];
+let MEMBER=null, MEMPKG=[], MEMVEH=[];
 const phoneKey=p=>String(p||'').replace(/[^0-9]/g,'').replace(/^(60|0)/,'');
 
-const MEMBER_COLS='id,name,phone,wallet,wallet_member,points,tier,tier_level,tier_expires_at';
+const MEMBER_COLS='id,name,phone,email,wallet,wallet_member,points,tier,tier_level,tier_expires_at';
+
+/* The shop record and the app account hold different things. A customer who
+   signed up in the app put their email and their cars there, and those never
+   reach gl_walkin — so the card showed "—" and one car while the app had
+   three. Where the shop record is blank, show what the app account knows and
+   label it, rather than leaving reception to go and look it up elsewhere. */
+function emailCell(r){
+  if(r.email) return esc(r.email);
+  if(MEMBER&&MEMBER.email) return esc(MEMBER.email)+' <span class="hint">· from app account</span>';
+  return '—';
+}
+/* Cars on the app account that have no shop record yet. */
+function memberOnlyCars(){
+  if(!MEMVEH.length) return [];
+  const have=new Set((VEH||[]).map(v=>String(v.plate||'').toUpperCase()));
+  return MEMVEH.filter(v=>v.plate&&!have.has(String(v.plate).toUpperCase()));
+}
+function memberOnlyCarsHtml(){
+  const extra=memberOnlyCars();
+  if(!extra.length) return '';
+  return '<div class="mv-extra"><div class="hint">On their app account, no shop record yet — '+
+    'a job card will create one:</div>'+
+    extra.map(v=>'<div class="mv-row"><b>'+esc(v.plate)+'</b>'+
+      (v.model?' <span class="hint">'+esc(v.model)+'</span>':'')+'</div>').join('')+
+    '</div>';
+}
 
 async function loadMember(phone, plates){
-  MEMBER=null; MEMPKG=[];
+  MEMBER=null; MEMPKG=[]; MEMVEH=[];
   try{
     const key=phoneKey(phone);
     if(key.length>=7){
@@ -392,6 +421,9 @@ async function loadMember(phone, plates){
       .select('id,service_name,total_uses,used_uses,status,barcode,pkg_type,source')
       .eq('owner_id',MEMBER.id).eq('status','active').limit(50);
     MEMPKG=(pk||[]).filter(p=>p.pkg_type==='membership'||p.source==='membership');
+    const {data:mv}=await sb.from('gl_vehicles')
+      .select('plate,model').eq('owner_id',MEMBER.id).limit(20);
+    MEMVEH=mv||[];
   }catch(e){ /* never block the customer card */ }
 }
 
@@ -522,15 +554,15 @@ function drawCust(loading){
          fRow('Customer name', ed?inp('e_name',r.name):('<b>'+esc(r.name||'—')+'</b>'))+
          fRow('SQL Acc code',  ed?inp('e_code',r.sqlacc_code,'e.g. C4553'):esc(r.sqlacc_code||'—'))+
          fRow('Phone',         ed?inp('e_phone',r.phone):esc(r.phone||'—'))+
-         fRow('Email',         ed?inp('e_email',r.email,'name@email.com'):esc(r.email||'—'))+
+         fRow('Email',         ed?inp('e_email',r.email,'name@email.com'):emailCell(r))+
          fRow('Total visits',  String(r.visits||0))+
          fRow('Last service',  esc(r.last_service||'—'))+
          fRow('Package uses left','<b class="pkg">'+(r.pkg_left||0)+'</b>')+
          fRow('Records merged', String(r.rows_merged))+
        '</div></div>'+
      memberBoxHtml()+
-     '<div class="box"><div class="bt">Vehicles ('+r.car_count+') · service history, packages &amp; QR label</div>'+
-       vehHtml+'</div>'+
+     '<div class="box"><div class="bt">Vehicles ('+(Number(r.car_count||0)+memberOnlyCars().length)+') · service history, packages &amp; QR label</div>'+
+       vehHtml+memberOnlyCarsHtml()+'</div>'+
      '<div id="msg" class="status"></div>'+
    '</div>';
   show('maintain');
