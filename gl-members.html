@@ -54,6 +54,12 @@ table.grid tbody tr:nth-child(even){background:#FAFBFC}
       font-size:11px;font-weight:800}
 .soon{color:var(--red);font-weight:800}
 .ok{color:var(--text2)}
+.sev{display:inline-block;border-radius:4px;padding:0 6px;font-size:10.5px;font-weight:800;
+  text-transform:uppercase;letter-spacing:.04em}
+.sev-high{background:var(--red,#C62828);color:#fff}
+.sev-warn{background:#FFE08A;color:#6b5600}
+.allgood{color:#1B7F3B;text-align:center;padding:34px 12px;font-weight:700}
+.tab.has-issues .n{background:var(--red,#C62828);color:#fff}
 .empty{color:var(--text2);text-align:center;padding:34px 12px}
 .status{color:var(--text2);font-size:12px;padding:7px 12px}
 .err{color:var(--red)}
@@ -92,6 +98,7 @@ table.grid tbody tr:nth-child(even){background:#FAFBFC}
   <div class="tabs">
     <div class="tab on" id="tabActive" onclick="switchTab('active')">Active members<span class="n" id="nActive">0</span></div>
     <div class="tab" id="tabWaiting" onclick="switchTab('waiting')">Waiting to sign up<span class="n" id="nWaiting">0</span></div>
+    <div class="tab" id="tabIssues" onclick="switchTab('issues')">Issues<span class="n" id="nIssues">0</span></div>
   </div>
 
   <div id="waitNote" class="note hide">
@@ -120,7 +127,7 @@ const RM=n=>'RM'+(Math.round((Number(n)||0)*100)/100).toLocaleString('en-MY',{mi
 const dmy=s=>{ if(!s) return ''; const d=new Date(s); return isNaN(d)?'':d.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}); };
 const daysLeft=s=>{ if(!s) return null; const d=new Date(s); return isNaN(d)?null:Math.ceil((d-new Date())/86400000); };
 
-let TAB='active', ACTIVE=[], WAITING=[];
+let TAB='active', ACTIVE=[], WAITING=[], ISSUES=[];
 
 const APP_URL="https://app.grandlab.com.my/";
 
@@ -198,6 +205,15 @@ const COLS={
       }},
     {t:'',        w:'86px',  get:r=>{ const h=waLink(r.display_phone, waWaiting(r));
         return h?`<a class="btn btn-wa btn-xs" target="_blank" rel="noopener" href="${esc(h)}">WhatsApp</a>`:''; }}
+  ],
+  /* A checklist, not a messaging screen - the other two tabs already carry the
+     WhatsApp buttons. This one answers "is anything wrong right now". */
+  issues:[
+    {t:'',        w:'74px',  get:r=>`<span class="sev sev-${r.severity==='high'?'high':'warn'}">${
+                                      esc(r.severity==='high'?'fix':'check')}</span>`},
+    {t:'Problem', w:'150px', get:r=>`<div class="nm">${esc(r.kind||'')}</div>`},
+    {t:'Who',     w:'190px', get:r=>`<div class="nm">${esc(r.who||'')}</div><div class="sub">${esc(r.phone||'')}</div>`},
+    {t:'Detail',  w:'420px', get:r=>esc(r.detail||'')}
   ]
 };
 
@@ -205,6 +221,7 @@ function switchTab(t){
   TAB=t;
   $('tabActive').classList.toggle('on', t==='active');
   $('tabWaiting').classList.toggle('on', t==='waiting');
+  $('tabIssues').classList.toggle('on', t==='issues');
   $('waitNote').classList.toggle('hide', t!=='waiting');
   render();
 }
@@ -213,10 +230,11 @@ function render(){
   const cols=COLS[TAB];
   $('hrow').innerHTML=cols.map(c=>`<th style="width:${c.w}">${esc(c.t)}</th>`).join('');
   const q=($('q').value||'').trim().toLowerCase();
-  let rows=(TAB==='active'?ACTIVE:WAITING);
+  let rows=(TAB==='active'?ACTIVE:(TAB==='waiting'?WAITING:ISSUES));
   if(q){
     rows=rows.filter(r=>{
-      const hay=[r.name,r.phone,r.display_phone,r.phone_key,r.invoice_no,r.tier,r.tier_name]
+      const hay=[r.name,r.phone,r.display_phone,r.phone_key,r.invoice_no,r.tier,r.tier_name,
+                 r.who,r.kind,r.detail]
         .map(x=>String(x==null?'':x).toLowerCase()).join(' ');
       return hay.includes(q);
     });
@@ -225,8 +243,11 @@ function render(){
     `<td class="${c.cls||''}">${c.get(r)}</td>`).join('')+'</tr>').join('');
   const empty=rows.length===0;
   $('emptyBox').classList.toggle('hide',!empty);
+  $('emptyBox').className = empty&&TAB==='issues' ? 'allgood' : 'empty'+(empty?'':' hide');
   $('emptyBox').textContent = empty
-    ? (TAB==='active' ? 'No members yet.' : 'Nobody waiting — every paid membership has been claimed.')
+    ? (TAB==='active' ? 'No members yet.'
+      : TAB==='waiting' ? 'Nobody waiting — every paid membership has been claimed.'
+      : '✓ Nothing to fix. Every membership is complete.')
     : '';
   $('statusLine').textContent = empty ? '' : `${rows.length} shown`;
 }
@@ -234,13 +255,16 @@ function render(){
 async function load(){
   $('statusLine').textContent='Loading…';
   try{
-    const [{data:profs,error:e1},{data:pend,error:e2},{data:tiers}] = await Promise.all([
+    const [{data:profs,error:e1},{data:pend,error:e2},{data:tiers},{data:iss}] = await Promise.all([
       sb.from('gl_profiles')
         .select('id,name,phone,wallet,wallet_member,tier,tier_level,tier_expires_at')
         .gt('tier_level',1).order('tier_expires_at',{ascending:true}).limit(500),
       sb.from('gl_membership_pending')
         .select('*').is('applied_at',null).order('created_at',{ascending:true}).limit(500),
-      sb.from('gl_membership_tiers').select('tier_level,name')
+      sb.from('gl_membership_tiers').select('tier_level,name'),
+      /* Staff-only, read-only. Anything wrong with a membership shows up here
+         so nobody has to open customers one at a time looking for it. */
+      sb.rpc('gl_member_issues')
     ]);
     if(e1) throw e1;
     if(e2) throw e2;
@@ -252,8 +276,13 @@ async function load(){
       tier_name: byLevel[Number(r.tier_level)]||null,
       display_phone: r.phone_key ? ('60'+String(r.phone_key)) : ''}));
 
+    ISSUES=(iss||[]).slice().sort((a,b)=>
+      (a.sort_key-b.sort_key)||String(a.kind||'').localeCompare(String(b.kind||'')));
+
     $('nActive').textContent=ACTIVE.length;
     $('nWaiting').textContent=WAITING.length;
+    $('nIssues').textContent=ISSUES.length;
+    $('tabIssues').classList.toggle('has-issues', ISSUES.length>0);
     render();
   }catch(e){
     $('statusLine').innerHTML='<span class="err">Could not load: '+esc(e.message||e)+'</span>';
