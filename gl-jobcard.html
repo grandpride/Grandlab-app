@@ -1123,10 +1123,23 @@ async function _doLookup(){
   }
 }
 
-/* Fill the walk-in form from a gl_walkin record (no profile yet). */
+/* 0169618299 / 60169618299 / +60169618299 all reduce to the same core. */
+function phoneCore_(p){
+  return String(p||'').replace(/[^0-9]/g,'').replace(/^60/,'').replace(/^0/,'');
+}
+
+/* Fill the walk-in form from a gl_walkin record.
+   A walk-in row must never erase an app account already matched: that drops
+   the tier and the customer_id, and the member then cannot spend their credit
+   at POS. A customer exists in both places whenever a car has not been moved
+   onto their account yet, so keep the profile when it is the same person. */
 function fillFromWalkin_(wk){
-  foundProfile=null; // walk-in has no profile id; job saves details in fields
-  $('custFound').innerHTML=`<span style="color:#16A34A">✓ ${esc(wk.name||'')}</span> <span style="color:var(--text3)">(walk-in)</span>`;
+  const same = foundProfile && wk.phone &&
+               phoneCore_(foundProfile.phone) === phoneCore_(wk.phone);
+  if(!same) foundProfile=null;
+  $('custFound').innerHTML = foundProfile
+    ? `<span style="color:#16A34A">✓ ${esc(foundProfile.name||wk.name||'')}</span>${foundProfile.tier?' · '+esc(foundProfile.tier):''}`
+    : `<span style="color:#16A34A">✓ ${esc(wk.name||'')}</span> <span style="color:var(--text3)">(walk-in)</span>`;
   if(wk.name && !$('f_name').value) $('f_name').value=wk.name;
   if(wk.phone){ const ph=wk.phone.replace(/^\+/,''); if(!$('f_hp').value)$('f_hp').value=ph; $('f_hp2').value=ph; }
   if(wk.plate && !$('f_plate').value) $('f_plate').value=wk.plate;
@@ -1236,6 +1249,19 @@ async function _doPlateLookup(){
     // not in profiles — check gl_walkin by plate
     const {data:wk}=await sb.from('gl_walkin').select('*').ilike('plate',plate).limit(1).maybeSingle();
     if(wk){
+      // The car is only moved onto the app account when the customer finishes
+      // signing up, so a plate that is still only a walk-in row tells us
+      // nothing about membership. Check the phone before calling this a
+      // walk-in, or a paying member loses their tier and their credit.
+      const core=phoneCore_(wk.phone);
+      if(core.length>=7){
+        try{
+          const {data:profs}=await sb.from('gl_profiles')
+            .select('id,name,phone,email,tier').ilike('phone','%'+core).limit(5);
+          const hit=(profs||[]).find(p=>phoneCore_(p.phone)===core)||null;
+          if(hit) foundProfile=hit;      // fillFromWalkin_ keeps a matching one
+        }catch(e){}
+      }
       fillFromWalkin_(wk);
       // fillFromWalkin_ only fills blanks, which is right for a first lookup but
       // wrong here: changing the plate means a different car, so the model and
