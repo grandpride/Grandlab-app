@@ -1805,8 +1805,31 @@ async function fetchProfile(){
   }catch(e){}
   return PROFILE;
 }
-async function saveProfile(fields){
+/* Two signups have now been blocked by different server-side causes, and both
+   times the screen only said "try again" while the real reason went to a console
+   nobody can open on a phone. Keep the last reason so the screen can show it. */
+let LAST_SAVE_ERR='';
+function saveErrText_(status, txt){
+  let m='';
+  try{ const j=JSON.parse(txt); m=j.message||j.details||j.hint||''; }catch(e){ m=String(txt||'').slice(0,160); }
+  if(!m) m='HTTP '+status;
+  // Order matters: a permission problem also arrives as 403, and telling the
+  // customer their session expired would send them to re-login for nothing.
+  if(/permission denied/i.test(m))
+    return 'Your account is not allowed to save that — tell our team.';
+  if(/duplicate key/i.test(m)&&/phone/i.test(m))
+    return 'This phone number is already on another account — tell our team.';
+  if(/duplicate key/i.test(m)&&/referral_code/i.test(m))
+    return 'Referral code clash — tap Continue once more.';
+  if(/JWT|token|expired/i.test(m) || status===401)
+    return 'Your session expired — close the app and open it again.';
+  if(status===403) return 'Not allowed to save that — tell our team.';
+  return "Couldn't save: "+m.replace(/[{}"]/g,'').slice(0,120);
+}
+
+async function saveProfile(fields, _retried){
   if(!SESSION?.user?.id) return false;
+  if(!_retried) LAST_SAVE_ERR='';
   // upsert: insert the row (with id = auth user id) or update if it exists
   try{
     const body=Object.assign({id:SESSION.user.id}, fields);
@@ -1839,6 +1862,14 @@ async function saveProfile(fields){
       return true; }
     // log the real reason for debugging
     const txt=await r.text(); console.error('saveProfile failed', r.status, txt);
+    // A customer can only read their own row, so uniqueRefCode cannot actually
+    // see anyone else's code and a clash only surfaces here. Pick another once.
+    if(!_retried && fields && fields.referral_code &&
+       /duplicate key/i.test(txt) && /referral_code/i.test(txt)){
+      const next=Object.assign({}, fields, {referral_code: await uniqueRefCode(fields.name||'GL')});
+      return await saveProfile(next, true);
+    }
+    LAST_SAVE_ERR=saveErrText_(r.status, txt);
   }catch(e){ console.error('saveProfile error', e); }
   return false;
 }
@@ -6110,7 +6141,7 @@ function openEditProfile(){
     const fields={name,phone:document.getElementById('ep-phone').value.trim(),email,
       birthday:document.getElementById('ep-bday').value||null, gender:window._epGender||null};
     if(await saveProfile(fields)){ toast('Saved ✓'); renderAccount(); }
-    else document.getElementById('ep-err').textContent="Couldn't save — try again.";
+    else document.getElementById('ep-err').textContent=LAST_SAVE_ERR||"Couldn't save — try again.";
   };
 }
 function pickGender(g){
@@ -6143,7 +6174,7 @@ async function saveAccount(){
   const fields={name:document.getElementById('acc-name').value.trim(),
     email:document.getElementById('acc-email').value.trim(),
     phone:document.getElementById('acc-phone').value.trim()};
-  if(await saveProfile(fields)) toast("Saved ✓"); else toast("Couldn't save");
+  if(await saveProfile(fields)) toast("Saved ✓"); else toast(LAST_SAVE_ERR||"Couldn't save");
 }
 
 /* Profile setup (new user, after OTP) */
@@ -6195,7 +6226,7 @@ function renderProfileSetup(){
       }catch(e){}
     }
     if(ok){ toast("Welcome to Grandlab ✓"); enterApp('home'); }
-    else err.textContent="Couldn't save — try again.";
+    else err.textContent=LAST_SAVE_ERR||"Couldn't save — try again.";
   };
 }
 
