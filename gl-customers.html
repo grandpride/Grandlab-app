@@ -50,6 +50,9 @@ table.grid tbody tr:hover{background:var(--sel)}
     border-radius:4px;padding:0 5px;font-size:11.5px;font-weight:700;color:#000;margin-right:3px}
 .num{text-align:right;font-variant-numeric:tabular-nums}
 .pkg{color:var(--gold-ink);font-weight:800}
+.tier{display:inline-block;background:var(--gold);color:#000;border-radius:4px;padding:0 7px;
+      font-size:11.5px;font-weight:800;vertical-align:1px}
+.soon{color:var(--red);font-weight:800}
 .due-over{color:var(--red);font-weight:800}
 .due-soon{color:var(--amber);font-weight:800}
 .due-ok{color:var(--text2)}
@@ -333,15 +336,82 @@ function show(v){ $('browse').classList.toggle('hide',v!=='browse');
 function backToList(){ show('browse'); }
 async function openCust(k){
   CUR=ROWS.find(r=>r.cust_key===k); if(!CUR) return;
-  EDIT=false; VEH=[];
+  EDIT=false; VEH=[]; MEMBER=null; MEMPKG=[];
   const plates=(CUR.cars||[]).map(c=>c.plate).filter(Boolean);
   drawCust(true);
+  const jobs=[loadMember(CUR.phone||'')];
   if(plates.length){
-    const {data}=await sb.rpc('gl_customer_detail',{p_plates:plates,p_phone:CUR.phone||''});
-    VEH=data||[];
+    jobs.push(sb.rpc('gl_customer_detail',{p_plates:plates,p_phone:CUR.phone||''})
+      .then(({data})=>{ VEH=data||[]; }));
   }
+  await Promise.allSettled(jobs);
   drawCust(false);
 }
+/* ---------- membership (app account) ----------
+   The customer record and the app account are different rows, joined only by
+   phone. Reception works in here during a job, so the credit and the free
+   services have to be visible here, not only on the Members page. */
+let MEMBER=null, MEMPKG=[];
+const phoneKey=p=>String(p||'').replace(/[^0-9]/g,'').replace(/^(60|0)/,'');
+
+async function loadMember(phone){
+  MEMBER=null; MEMPKG=[];
+  const key=phoneKey(phone);
+  if(key.length<7) return;
+  try{
+    const {data}=await sb.from('gl_profiles')
+      .select('id,name,phone,wallet,wallet_member,points,tier,tier_level,tier_expires_at')
+      .ilike('phone','%'+key)          // server-side; never fetch-all
+      .limit(2);
+    if(!data||!data.length) return;
+    MEMBER=data[0];
+    const {data:pk}=await sb.from('gl_packages')
+      .select('id,service_name,total_uses,used_uses,status,barcode,pkg_type,source')
+      .eq('owner_id',MEMBER.id).eq('status','active').limit(50);
+    MEMPKG=(pk||[]).filter(p=>p.pkg_type==='membership'||p.source==='membership');
+  }catch(e){ /* never block the customer card */ }
+}
+
+function memberBoxHtml(){
+  if(!MEMBER) return '<div class="box"><div class="bt">Membership</div>'+
+    '<div class="hint">No app account found for this phone number.</div></div>';
+
+  const total=Number(MEMBER.wallet||0), mem=Number(MEMBER.wallet_member||0);
+  const topup=Math.max(0,total-mem);
+  const lvl=Number(MEMBER.tier_level||1);
+  const exp=MEMBER.tier_expires_at?new Date(MEMBER.tier_expires_at):null;
+  const days=exp?Math.ceil((exp-new Date())/86400000):null;
+  const expTxt=exp?exp.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}):'';
+
+  let status;
+  if(lvl<=1 || !MEMBER.tier) status='<span class="sub">Not a member</span>';
+  else if(days!==null && days<0) status='<span class="tier" style="background:var(--red);color:#fff">'+
+    esc(MEMBER.tier)+'</span> <span class="soon">expired '+expTxt+'</span>';
+  else status='<span class="tier">'+esc(MEMBER.tier)+'</span> '+
+    (days!==null?('<span class="'+(days<=30?'soon':'sub')+'">'+
+      (days<=30?(days+' days left · '):'until ')+expTxt+'</span>'):'');
+
+  const svc=MEMPKG.length
+    ? MEMPKG.map(p=>{ const left=Number(p.total_uses)-Number(p.used_uses);
+        return '<div class="pkline" style="cursor:default">'+esc(p.service_name)+
+               ' · <b>'+left+'</b> of '+p.total_uses+' left'+
+               (p.barcode?(' · <span class="sub">'+esc(p.barcode)+'</span>'):'')+'</div>'; }).join('')
+    : '<span class="sub">None</span>';
+
+  return '<div class="box"><div class="bt">Membership &amp; credit</div><div class="fields">'+
+    fRow('Status', status)+
+    fRow('Total credit','<b class="pkg">'+money(total)+'</b>')+
+    fRow('Member credit', mem>0
+        ? (money(mem)+(expTxt?' <span class="sub">· expires '+expTxt+'</span>':''))
+        : '<span class="sub">—</span>')+
+    fRow('Top-up credit', topup>0
+        ? (money(topup)+' <span class="sub">· no expiry</span>')
+        : '<span class="sub">—</span>')+
+    fRow('G Coin', String(MEMBER.points||0))+
+    fRow('Free services', svc)+
+  '</div></div>';
+}
+
 function fRow(lb,html){ return '<div class="lb">'+lb+'</div><div class="vl">'+html+'</div>'; }
 function inp(id,v,ph){ return '<input id="'+id+'" value="'+esc(v||'')+'" placeholder="'+esc(ph||'')+'">'; }
 const money=v=>(v==null||v==='')?'':('RM'+Number(v).toFixed(2));
@@ -435,6 +505,7 @@ function drawCust(loading){
          fRow('Package uses left','<b class="pkg">'+(r.pkg_left||0)+'</b>')+
          fRow('Records merged', String(r.rows_merged))+
        '</div></div>'+
+     memberBoxHtml()+
      '<div class="box"><div class="bt">Vehicles ('+r.car_count+') · service history, packages &amp; QR label</div>'+
        vehHtml+'</div>'+
      '<div id="msg" class="status"></div>'+
