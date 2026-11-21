@@ -265,6 +265,9 @@
   .foc-note-s{font-size:12px;color:var(--muted);margin-top:3px;line-height:1.5;}
   .foc-note-btn{margin-top:10px;width:100%;padding:10px;border:none;border-radius:10px;
     background:var(--yellow);color:#000;font-weight:800;font-size:13px;cursor:pointer;font-family:inherit;}
+  .phone-row{display:flex;gap:8px;align-items:stretch;}
+  .phone-cc{flex:0 0 108px;min-width:0;}
+  .phone-num{flex:1 1 auto;min-width:0;}
   .freesvc{background:var(--card,#141414);border:1px solid #2a2a2a;border-radius:12px;padding:12px 14px;
     margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;gap:10px;cursor:pointer;}
   .freesvc-t{font-weight:800;color:var(--yellow);}
@@ -1805,6 +1808,47 @@ async function fetchProfile(){
   }catch(e){}
   return PROFILE;
 }
+/* ---------- phone entry ----------
+   The number is stored as digits with no "+", matching what the sign-up stores
+   in auth.users. That matters: gl_profiles.phone is UNIQUE on the raw string,
+   so "+60123297881" and "60123297881" count as two different numbers. */
+const DIAL_CODES=[
+  {code:'60', label:'🇲🇾 +60'},
+  {code:'65', label:'🇸🇬 +65'},
+  {code:'86', label:'🇨🇳 +86'}
+];
+/* Split a stored number into dial code + the rest, so the picker opens on the
+   right country however the number was saved before. */
+function splitPhone_(raw){
+  let d=String(raw||'').replace(/[^0-9]/g,'');
+  for(const c of DIAL_CODES){
+    if(d.startsWith(c.code)) return {code:c.code, rest:d.slice(c.code.length)};
+  }
+  if(d.startsWith('0')) d=d.slice(1);     // local 01x... form
+  return {code:'60', rest:d};             // default Malaysia
+}
+function phoneFieldHtml(id, raw, label){
+  const p=splitPhone_(raw);
+  const opts=DIAL_CODES.map(c=>
+    `<option value="${c.code}"${c.code===p.code?' selected':''}>${c.label}</option>`).join('');
+  return `<div class="field"><label>${label}</label>
+    <div class="phone-row">
+      <select id="${id}-cc" class="phone-cc">${opts}</select>
+      <input id="${id}" class="phone-num" inputmode="numeric" autocomplete="tel-national"
+             value="${esc(p.rest)}" placeholder="12 345 6789">
+    </div></div>`;
+}
+/* Read a phone field back as storable digits. Strips a leading 0 and a repeated
+   dial code, so pasting the whole number still produces one clean value. */
+function readPhone_(id){
+  const cc=(document.getElementById(id+'-cc')||{}).value||'60';
+  let n=String((document.getElementById(id)||{}).value||'').replace(/[^0-9]/g,'');
+  while(n.startsWith('0')) n=n.slice(1);
+  if(n.startsWith(cc)) n=n.slice(cc.length);
+  while(n.startsWith('0')) n=n.slice(1);
+  return n ? (cc+n) : '';
+}
+
 /* Two signups have now been blocked by different server-side causes, and both
    times the screen only said "try again" while the real reason went to a console
    nobody can open on a phone. Keep the last reason so the screen can show it. */
@@ -6121,7 +6165,7 @@ function openEditProfile(){
     <div class="topbar-app"><button class="back" onclick="routeTab('account')">‹</button><div class="ttl">Edit Profile</div></div>
     <div class="app-scroll" style="padding-top:18px">
       <div class="field"><label>Full Name *</label><input id="ep-name" value="${esc(p.name||'')}"></div>
-      <div class="field"><label>Phone No *</label><input id="ep-phone" value="${esc(p.phone||'')}"></div>
+      ${phoneFieldHtml('ep-phone', p.phone||'', 'Phone No *')}
       <div class="field"><label>Email Address *</label><input id="ep-email" type="email" value="${esc(p.email||'')}"></div>
       <div class="field"><label>Birthday *</label><input id="ep-bday" type="date" value="${esc(p.birthday||'')}"></div>
       <div class="field"><label>Gender *</label>
@@ -6138,7 +6182,7 @@ function openEditProfile(){
     const name=document.getElementById('ep-name').value.trim();
     const email=document.getElementById('ep-email').value.trim();
     if(!name){document.getElementById('ep-err').textContent="Name is required.";return;}
-    const fields={name,phone:document.getElementById('ep-phone').value.trim(),email,
+    const fields={name,phone:readPhone_('ep-phone'),email,
       birthday:document.getElementById('ep-bday').value||null, gender:window._epGender||null};
     if(await saveProfile(fields)){ toast('Saved ✓'); renderAccount(); }
     else document.getElementById('ep-err').textContent=LAST_SAVE_ERR||"Couldn't save — try again.";
@@ -6171,9 +6215,12 @@ async function openMaintenance(){
 }
 
 async function saveAccount(){
-  const fields={name:document.getElementById('acc-name').value.trim(),
-    email:document.getElementById('acc-email').value.trim(),
-    phone:document.getElementById('acc-phone').value.trim()};
+  const g=id=>document.getElementById(id);
+  const fields={name:(g('acc-name')||{}).value?.trim()||'',
+    email:(g('acc-email')||{}).value?.trim()||''};
+  // this screen has no phone field; reading one blindly threw, and sending an
+  // empty string would have wiped the number the account signed up with
+  if(g('acc-phone')) fields.phone=readPhone_('acc-phone');
   if(await saveProfile(fields)) toast("Saved ✓"); else toast(LAST_SAVE_ERR||"Couldn't save");
 }
 
@@ -6201,7 +6248,7 @@ function renderProfileSetup(){
       <div class="app-sub" style="${sStyle}">${STYLE.pfSub||'Just a few details to finish setting up.'}</div>
       <div class="field"><label>${STYLE.pfNameLabel||'Name'} *</label><input id="ps-name" placeholder="${STYLE.pfNamePlaceholder||'Your name'}"></div>
       <div class="field"><label>${STYLE.pfEmailLabel||'Email'} *</label><input id="ps-email" type="email" placeholder="${STYLE.pfEmailPlaceholder||'you@email.com'}"></div>
-      <div class="field"><label>${STYLE.pfPhoneLabel||'Mobile'}</label><input id="ps-phone" value="${esc(autoPhone)}"></div>
+      ${phoneFieldHtml('ps-phone', autoPhone, STYLE.pfPhoneLabel||'Mobile')}
       <div class="field"><label>${STYLE.pfRefLabel||'Referral code (optional)'}</label><input id="ps-ref" value="${esc(referralCode||'')}" placeholder="${STYLE.pfRefPlaceholder||"Enter a friend's code"}"></div>
       <div class="helper err" id="ps-err" style="margin-top:10px"></div>
       <button class="btn btn-primary" style="margin-top:18px" id="ps-save">${STYLE.pfBtn||'Continue'}</button>
@@ -6209,7 +6256,7 @@ function renderProfileSetup(){
   document.getElementById('ps-save').onclick=async()=>{
     const name=document.getElementById('ps-name').value.trim();
     const email=document.getElementById('ps-email').value.trim();
-    const phone=document.getElementById('ps-phone').value.trim();
+    const phone=readPhone_('ps-phone');
     const ref=document.getElementById('ps-ref').value.trim().toUpperCase();
     const err=document.getElementById('ps-err');
     if(!name||!email){ err.textContent="Name and email are required."; return; }
