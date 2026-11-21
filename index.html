@@ -265,8 +265,16 @@
   .foc-note-s{font-size:12px;color:var(--muted);margin-top:3px;line-height:1.5;}
   .foc-note-btn{margin-top:10px;width:100%;padding:10px;border:none;border-radius:10px;
     background:var(--yellow);color:#000;font-weight:800;font-size:13px;cursor:pointer;font-family:inherit;}
-  .phone-row{display:flex;gap:8px;align-items:stretch;}
-  .phone-cc{flex:0 0 108px;min-width:0;}
+  .phone-row{display:flex;gap:10px;align-items:center;}
+  /* Looks like the plain "+60" on the login screen (.cc), not a native select:
+     same size and colour as the number beside it, with its own chevron. */
+  .phone-cc{flex:0 0 auto;width:78px;min-width:0;background:none;border:none;outline:none;
+    color:var(--text);font-size:18px;font-weight:600;font-family:inherit;cursor:pointer;
+    -webkit-appearance:none;appearance:none;padding:0 14px 0 0;
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'><path d='M2 4.5L6 8.5L10 4.5' fill='none' stroke='%238a8a8a' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+    background-repeat:no-repeat;background-position:right center;}
+  .phone-cc option{background:var(--surface);color:var(--text);}
+  .phone-cc-div{flex:0 0 1px;width:1px;height:24px;background:var(--line);}
   .phone-num{flex:1 1 auto;min-width:0;}
   .freesvc{background:var(--card,#141414);border:1px solid #2a2a2a;border-radius:12px;padding:12px 14px;
     margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;gap:10px;cursor:pointer;}
@@ -1834,6 +1842,7 @@ function phoneFieldHtml(id, raw, label){
   return `<div class="field"><label>${label}</label>
     <div class="phone-row">
       <select id="${id}-cc" class="phone-cc">${opts}</select>
+      <span class="phone-cc-div"></span>
       <input id="${id}" class="phone-num" inputmode="numeric" autocomplete="tel-national"
              value="${esc(p.rest)}" placeholder="12 345 6789">
     </div></div>`;
