@@ -342,7 +342,7 @@ async function openCust(k){
   EDIT=false; VEH=[]; MEMBER=null; MEMPKG=[];
   const plates=(CUR.cars||[]).map(c=>c.plate).filter(Boolean);
   drawCust(true);
-  const jobs=[loadMember(CUR.phone||'')];
+  const jobs=[loadMember(CUR.phone||'', plates)];
   if(plates.length){
     jobs.push(sb.rpc('gl_customer_detail',{p_plates:plates,p_phone:CUR.phone||''})
       .then(({data})=>{ VEH=data||[]; }));
@@ -357,17 +357,37 @@ async function openCust(k){
 let MEMBER=null, MEMPKG=[];
 const phoneKey=p=>String(p||'').replace(/[^0-9]/g,'').replace(/^(60|0)/,'');
 
-async function loadMember(phone){
+const MEMBER_COLS='id,name,phone,wallet,wallet_member,points,tier,tier_level,tier_expires_at';
+
+async function loadMember(phone, plates){
   MEMBER=null; MEMPKG=[];
-  const key=phoneKey(phone);
-  if(key.length<7) return;
   try{
-    const {data}=await sb.from('gl_profiles')
-      .select('id,name,phone,wallet,wallet_member,points,tier,tier_level,tier_expires_at')
-      .ilike('phone','%'+key)          // server-side; never fetch-all
-      .limit(2);
-    if(!data||!data.length) return;
-    MEMBER=data[0];
+    const key=phoneKey(phone);
+    if(key.length>=7){
+      const {data}=await sb.from('gl_profiles')
+        .select(MEMBER_COLS)
+        .ilike('phone','%'+key)        // server-side; never fetch-all
+        .limit(2);
+      if(data&&data.length) MEMBER=data[0];
+    }
+    /* Fallback: plenty of customer records carry no phone, and the phone match
+       above then finds nothing even though the customer does have an app
+       account. Their cars still point at it, so go plate -> vehicle -> owner,
+       which is the same path gl-platescan uses and is known to work. */
+    if(!MEMBER && plates && plates.length){
+      const up=plates.map(p=>String(p||'').toUpperCase()).filter(Boolean);
+      if(up.length){
+        const {data:vs}=await sb.from('gl_vehicles')
+          .select('owner_id,plate').in('plate',up).limit(10);   // server-side
+        const owner=(vs||[]).map(v=>v.owner_id).find(Boolean);
+        if(owner){
+          const {data:pr}=await sb.from('gl_profiles')
+            .select(MEMBER_COLS).eq('id',owner).limit(1);
+          if(pr&&pr.length) MEMBER=pr[0];
+        }
+      }
+    }
+    if(!MEMBER) return;
     const {data:pk}=await sb.from('gl_packages')
       .select('id,service_name,total_uses,used_uses,status,barcode,pkg_type,source')
       .eq('owner_id',MEMBER.id).eq('status','active').limit(50);

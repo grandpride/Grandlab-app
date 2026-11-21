@@ -1342,6 +1342,7 @@ const STYLE_DEFAULTS = {
   homeCard2Title:"Send gifts", homeCard2Sub:"to friends & loved ones",
   homeShowSubscribe:true, homeShowWallet:true, homeShowHighlights:true, homeShowCards:true,
   homeMemberTier:"Non-Member", homeJoinMemberBtn:"Join Member",
+  homeMemberBtn:"My membership",
   // Membership page
   memTitle:"All Membership Plan",
   memTier1:"Non-Member", memTier2:"Bronze", memTier3:"Silver", memTier4:"Gold", memTier5:"Platinum",
@@ -2666,7 +2667,7 @@ async function renderHome(){
             <div class="ms-value" style="display:flex;align-items:center;gap:6px">${gCoin(20)} ${PROFILE?.points||0}</div>
           </div>
         </div>
-        <div class="join-member-btn" onclick="openMembership()">${esc(STYLE.homeJoinMemberBtn||'Join Member')}</div>
+        ${memberCtaHtml()}
       </div>
 
       <!-- FLASH DEALS -->
@@ -3158,6 +3159,20 @@ function creditSplitRow(p){
     <div><span class="wbc-dot wbc-dot-m"></span>RM ${fmtRM(mem)} member credit${exp}</div>
     ${topup>0?`<div><span class="wbc-dot wbc-dot-t"></span>RM ${fmtRM(topup)} top-up credit · no expiry</div>`:''}
   </div>`;
+}
+
+/* The home CTA used to read "Join Member" for everyone, paid members included.
+   A paid membership is the one carrying an expiry date still in the future —
+   PROFILE.tier alone can be a points tier, so it is not a safe test. */
+function memberCtaHtml(){
+  const raw=PROFILE&&PROFILE.tier_expires_at?new Date(PROFILE.tier_expires_at):null;
+  const exp=(raw&&!isNaN(raw))?raw:null;
+  if(!exp||exp<=new Date())
+    return `<div class="join-member-btn" onclick="openMembership()">${esc(STYLE.homeJoinMemberBtn||'Join Member')}</div>`;
+  const days=Math.ceil((exp-new Date())/86400000);
+  const label=days<=30 ? `Renew membership · ${days}d left`
+                       : (STYLE.homeMemberBtn||'My membership');
+  return `<div class="join-member-btn" onclick="openMembership()">${esc(label)}</div>`;
 }
 
 /* ---------- My Packages (car-centric: cars → car detail) ---------- */
