@@ -2582,6 +2582,16 @@ async function confirmPay(){
       items:JSON.stringify(jobServices(CUR).map(s=>({desc:svcDesc(s),price:svcPrice(s),qty:s.qty||1,code:s.code||''})))
     });
     if(payErr) throw new Error('Payment: '+payErr.message);
+    // A membership sold over the counter must actually make them a member.
+    // Non-fatal like the package creation above: the sale is already recorded,
+    // but staff have to be told if the membership did not take.
+    try{
+      const mem=await grantMembershipsSold_(invoice);
+      if(mem.length) setTimeout(()=>toast('Membership: '+mem.join(' · ')),900);
+    }catch(e){
+      alert('Membership NOT granted: '+(e.message||e)+
+            '\n\nThe payment went through. Quote invoice '+invoice+' to get it fixed.');
+    }
     registerWarranties_(CUR, invoice).catch(e=>console.warn('warranty:',e));
     if(!CUR._walkin){
       await sb.from('gl_jobs').update({status:'paid', payment:methodLabel, collected:true, total:PAY.gross, on_hold:false}).eq('id',CUR.id);
@@ -2593,6 +2603,43 @@ async function confirmPay(){
     alert('Could not complete: '+e.message);
     $('payBtn').disabled=false; $('payBtn').innerHTML='<i class="ti ti-check"></i> Confirm payment';
   }
+}
+
+/* Any sold line that is a membership product (gl_services.grants_tier) turns the
+   customer into a member. Granted by PHONE, not by account id, so it works
+   whether or not they have the app: with an account it lands immediately, and
+   without one it parks against the number and arrives the moment they sign up.
+   The server rejects a payment that does not cover the tier price, which is why
+   the line's own price is passed rather than the order total. */
+async function grantMembershipsSold_(invoice){
+  const phone=CUR.hp||CUR.phone||'';
+  const {data:prods,error}=await sb.from('gl_services')
+    .select('name,grants_tier').not('grants_tier','is',null).eq('active',true);
+  if(error) throw new Error(error.message);
+  if(!prods||!prods.length) return [];
+
+  const tierByName={};
+  prods.forEach(p=>{ tierByName[String(p.name||'').trim().toLowerCase()]=Number(p.grants_tier); });
+
+  const sold=[];
+  (jobServices(CUR)||[]).forEach(s=>{
+    const t=tierByName[String(svcDesc(s)||'').trim().toLowerCase()];
+    if(t) sold.push({name:svcDesc(s), tier:t, price:Number(svcPrice(s))||null});
+  });
+  if(!sold.length) return [];
+  // The grant is keyed by phone, so a membership sold without one cannot be
+  // attached to anybody. Say so rather than failing quietly.
+  if(!phone) throw new Error('no phone number on this sale, so the membership '+
+    'has nobody to attach to — add the number to the job, then tell Claude the invoice');
+
+  const done=[];
+  for(const m of sold){
+    const {data,error:gerr}=await sb.rpc('gl_grant_membership_phone',
+      {p_phone:phone, p_tier:m.tier, p_invoice:invoice, p_paid:m.price});
+    if(gerr) throw new Error(m.name+' — '+gerr.message);
+    done.push(m.name+(data&&data.pending ? ' (waiting for app sign-up)' : ' ✓ active'));
+  }
+  return done;
 }
 
 /* ---------- boss.co close (RM0, no charge, no package deduction) ---------- */
