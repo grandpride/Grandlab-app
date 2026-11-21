@@ -342,10 +342,10 @@ function show(v){ $('browse').classList.toggle('hide',v!=='browse');
 function backToList(){ show('browse'); }
 async function openCust(k){
   CUR=ROWS.find(r=>r.cust_key===k); if(!CUR) return;
-  EDIT=false; VEH=[]; MEMBER=null; MEMPKG=[]; MEMVEH=[];
+  EDIT=false; VEH=[]; MEMBER=null; MEMPKG=[]; MEMVEH=[]; JOBVEH=[];
   const plates=(CUR.cars||[]).map(c=>c.plate).filter(Boolean);
   drawCust(true);
-  const jobs=[loadMember(CUR.phone||'', plates)];
+  const jobs=[loadMember(CUR.phone||'', plates), loadJobCars(CUR.phone||'')];
   if(plates.length){
     jobs.push(sb.rpc('gl_customer_detail',{p_plates:plates,p_phone:CUR.phone||''})
       .then(({data})=>{ VEH=data||[]; }));
@@ -357,7 +357,7 @@ async function openCust(k){
    The customer record and the app account are different rows, joined only by
    phone. Reception works in here during a job, so the credit and the free
    services have to be visible here, not only on the Members page. */
-let MEMBER=null, MEMPKG=[], MEMVEH=[];
+let MEMBER=null, MEMPKG=[], MEMVEH=[], JOBVEH=[];
 const phoneKey=p=>String(p||'').replace(/[^0-9]/g,'').replace(/^(60|0)/,'');
 
 const MEMBER_COLS='id,name,phone,email,wallet,wallet_member,points,tier,tier_level,tier_expires_at';
@@ -372,20 +372,49 @@ function emailCell(r){
   if(MEMBER&&MEMBER.email) return esc(MEMBER.email)+' <span class="hint">· from app account</span>';
   return '—';
 }
-/* Cars on the app account that have no shop record yet. */
+/* Cars this customer has that the walk-in records never captured.
+   gl_customer_detail is built from gl_walkin, and gl_walkin is filled by the
+   Mochi/sheet import — a job card does NOT create a row in it. So a car that
+   only ever came through a job card is invisible here even with years of
+   history behind it. Pull those two sources in and show them. */
 function memberOnlyCars(){
-  if(!MEMVEH.length) return [];
   const have=new Set((VEH||[]).map(v=>String(v.plate||'').toUpperCase()));
-  return MEMVEH.filter(v=>v.plate&&!have.has(String(v.plate).toUpperCase()));
+  const seen=new Set(), out=[];
+  const add=(v,src)=>{
+    const p=String(v.plate||'').toUpperCase();
+    if(!p||have.has(p)||seen.has(p)) return;
+    seen.add(p); out.push({plate:v.plate,model:v.model,src:src});
+  };
+  (JOBVEH||[]).forEach(v=>add(v,'jobs'));   // job history is the stronger claim
+  (MEMVEH||[]).forEach(v=>add(v,'app'));
+  return out;
 }
 function memberOnlyCarsHtml(){
   const extra=memberOnlyCars();
   if(!extra.length) return '';
-  return '<div class="mv-extra"><div class="hint">On their app account, no shop record yet — '+
-    'a job card will create one:</div>'+
+  return '<div class="mv-extra"><div class="hint">Not in the shop&rsquo;s customer records, '+
+    'so there is no service history or QR label for these yet:</div>'+
     extra.map(v=>'<div class="mv-row"><b>'+esc(v.plate)+'</b>'+
-      (v.model?' <span class="hint">'+esc(v.model)+'</span>':'')+'</div>').join('')+
+      (v.model?' <span class="hint">'+esc(v.model)+'</span>':'')+
+      ' <span class="hint">&middot; '+(v.src==='jobs'?'has job cards':'on their app account')+
+      '</span></div>').join('')+
     '</div>';
+}
+/* Plates that reached us only through a job card. gl_jobs.hp holds the phone. */
+async function loadJobCars(phone){
+  JOBVEH=[];
+  const key=phoneKey(phone);
+  if(key.length<7) return;
+  try{
+    const {data}=await sb.from('gl_jobs')
+      .select('plate,model').ilike('hp','%'+key).limit(100);   // server-side
+    const seen=new Set();
+    (data||[]).forEach(j=>{
+      const p=String(j.plate||'').toUpperCase();
+      if(!p||seen.has(p)) return;
+      seen.add(p); JOBVEH.push({plate:j.plate,model:j.model});
+    });
+  }catch(e){ /* never block the customer card */ }
 }
 
 async function loadMember(phone, plates){
