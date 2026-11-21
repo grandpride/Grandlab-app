@@ -82,8 +82,9 @@ html,body{height:100%;background:var(--bg);font-family:-apple-system,BlinkMacSys
 </style>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script>/* backend switch (docs/cf-migration-gl.md): ONLY when localStorage.gl_backend==="cf" load gl-cf-client.js + gl-cf-page.js. Off = nothing else happens. */
-(function(){try{var m=/[?&]backend=(cf|sb)(?:&|$)/.exec(location.search);if(m){if(m[1]==='cf')localStorage.setItem('gl_backend','cf');else localStorage.removeItem('gl_backend');}if(localStorage.getItem('gl_backend')==='cf'){window.GLCF_PAGE_CFG={page:'gl-jobcard'};document.write('<script src="gl-cf-client.js"><\/script><script src="gl-cf-page.js"><\/script>');}}catch(e){}})();</script>
+<script src="gl-backend-config.js"></script>
+<script>/* backend switch (docs/cf-migration-gl.md): ONLY when the switch is on for module "core" (gl-backend-config.js) or this device chose ?backend=cf, load gl-cf-client.js + gl-cf-page.js. Off = nothing else happens. */
+(function(){try{var M='core',on;if(typeof GL_BACKEND_PICK==='function'){on=GL_BACKEND_PICK(M)==='cf';}else{var m=/[?&]backend=(cf|sb)(?:&|$)/.exec(location.search);if(m){if(m[1]==='cf')localStorage.setItem('gl_backend','cf');else localStorage.removeItem('gl_backend');}on=localStorage.getItem('gl_backend')==='cf';}if(on){window.GLCF_PAGE_CFG={page:'gl-jobcard',module:M};document.write('<script src="gl-cf-client.js"><\/script><script src="gl-cf-page.js"><\/script>');}}catch(e){}})();</script>
 <script>
 /* ===== GRANDLAB ACCESS GUARD =====
    Who may open this page is set in the GrandPride Staff Manager (gp_staff.apps).
@@ -384,7 +385,7 @@ html,body{height:100%;background:var(--bg);font-family:-apple-system,BlinkMacSys
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script>/* backend switch: this page loads supabase-js twice; only when gl_backend==="cf" re-apply gl-cf-page.js to the 2nd copy. Off = nothing happens. */try{if(localStorage.getItem('gl_backend')==='cf'&&window.GLCF_PAGE)GLCF_PAGE.rewrap();}catch(e){}</script>
+<script>/* backend switch: this page loads supabase-js again; only when the switch is on (gl-cf-page.js loaded) re-apply it to this copy. Off = nothing happens. */try{if(window.GLCF_PAGE)GLCF_PAGE.rewrap();}catch(e){}</script>
 <script>
 /* ============================================================
    GRANDLAB JOB CARD — Supabase, reception login.

@@ -185,6 +185,9 @@ label{display:block;font-size:11px;color:var(--text2);margin:0 0 5px}
 <div id="printArea"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="gl-backend-config.js"></script>
+<script>/* backend switch (docs/cf-migration-gl.md): ONLY when the switch is on for module "core" (gl-backend-config.js) or this device chose ?backend=cf, load gl-cf-client.js + gl-cf-page.js. Off = nothing else happens. */
+(function(){try{var M='core',on;if(typeof GL_BACKEND_PICK==='function'){on=GL_BACKEND_PICK(M)==='cf';}else{var m=/[?&]backend=(cf|sb)(?:&|$)/.exec(location.search);if(m){if(m[1]==='cf')localStorage.setItem('gl_backend','cf');else localStorage.removeItem('gl_backend');}on=localStorage.getItem('gl_backend')==='cf';}if(on){window.GLCF_PAGE_CFG={page:'gl-sa-admin',module:M,hubLogin:true};document.write('<script src="gl-cf-client.js"><\/script><script src="gl-cf-page.js"><\/script>');}}catch(e){}})();</script>
 <script>
 (function(){
 'use strict';

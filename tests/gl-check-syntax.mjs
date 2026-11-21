@@ -20,7 +20,7 @@ for (const file of files) {
   while ((m = re.exec(src))) {
     const attrs = m[1] || '';
     if (/\bsrc\s*=/.test(attrs)) continue;
-    if (/type\s*=\s*["']?(module|application\/(ld\+)?json|text\/template)/i.test(attrs)) continue;
+    if (/type\s*=\s*["']?(module|importmap|application\/(ld\+)?json|text\/template)/i.test(attrs)) continue;
     i++;
     check(file + ' inline#' + i + ' (line ' + src.slice(0, m.index).split('\n').length + ')', m[2]);
   }

@@ -18,6 +18,9 @@
   a.fallback{display:none;margin-top:4px;color:#F5C518;font-size:14px;font-weight:600;}
   @media (prefers-reduced-motion:reduce){ .spin{animation:none} }
 </style>
+<script src="gl-backend-config.js"></script>
+<script>/* backend switch (docs/cf-migration-gl.md): ONLY when the switch is on for module "core" (gl-backend-config.js) or this device chose ?backend=cf, load gl-cf-client.js + gl-cf-page.js. Off = nothing else happens. */
+(function(){try{var M='core',on;if(typeof GL_BACKEND_PICK==='function'){on=GL_BACKEND_PICK(M)==='cf';}else{var m=/[?&]backend=(cf|sb)(?:&|$)/.exec(location.search);if(m){if(m[1]==='cf')localStorage.setItem('gl_backend','cf');else localStorage.removeItem('gl_backend');}on=localStorage.getItem('gl_backend')==='cf';}if(on){window.GLCF_PAGE_CFG={page:'q',module:M,public:true};document.write('<script src="gl-cf-client.js"><\/script><script src="gl-cf-page.js"><\/script>');}}catch(e){}})();</script>
 </head>
 <body>
 <div class="wrap">
@@ -70,6 +73,7 @@ setTimeout(function(){
 // The staff session is the Supabase session JSON the staff apps persist.
 // Read the token straight out of it - no library, so no CDN to fail.
 function staffToken(){
+  try{if(window.GLCF_PAGE){var glcfT=localStorage.getItem('gl_ba_token');if(glcfT)return glcfT;}}catch(e){} /* backend switch: staff signed in on the new system (off: nothing happens) */
   try{
     const s = JSON.parse(localStorage.getItem('gl_auth') || 'null');
     if(!s) return '';
