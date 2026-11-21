@@ -1108,6 +1108,8 @@
   .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" defer></script>
+<script>/* backend switch (docs/cf-migration-gl.md): ONLY when localStorage.gl_backend==="cf" load gl-cf-client.js + gl-cf-page.js. Off = nothing else happens (except: a login put aside while it was on comes back). */
+(function(){try{var m=/[?&]backend=(cf|sb)(?:&|$)/.exec(location.search);if(m){if(m[1]==='cf')localStorage.setItem('gl_backend','cf');else localStorage.removeItem('gl_backend');}if(localStorage.getItem('gl_backend')==='cf'){window.GLCF_PAGE_CFG={page:'index',customer:true};document.write('<script src="gl-cf-client.js"><\/script><script src="gl-cf-page.js"><\/script>');}else{var s=localStorage.getItem('gl_session_sb');if(s!==null){var c=localStorage.getItem('gl_session');if(!c||c.indexOf('"_cf":true')>=0)localStorage.setItem('gl_session',s);localStorage.removeItem('gl_session_sb');}}}catch(e){}})();</script>
 </head>
 <body>
 <div class="app">
