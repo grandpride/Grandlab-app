@@ -340,7 +340,7 @@
 var SB_URL = "";            // optional hard-code
 var SB_KEY = "";            // optional hard-code
 var BUCKET = "gl-claims";
-var APP_VERSION = "1.4 (shareable PDF)";
+var APP_VERSION = "1.5 (secure login)";
 
 var sb = null;
 var ME = null;
@@ -453,13 +453,13 @@ async function createAdmin(){
   if(pass.length < 6) return toast("Password needs at least 6 characters.", true);
   busy("Creating account…");
   var hash = await sha256hex(pass);
-  var r = await sb.from("gl_claim_users")
-    .insert({ username:user, pass_hash:hash, full_name:name, role:"admin" })
-    .select().single();
+  var r = await sb.rpc("gl_claim_first_admin", { p_username:user, p_hash:hash, p_full_name:name });
   done();
   if(r.error) return toast(r.error.message, true);
-  ME = r.data;
+  if(!r.data || !r.data.length) return toast("Could not create the account.", true);
+  ME = r.data[0];
   localStorage.setItem("glc_me", JSON.stringify(ME));
+  localStorage.setItem("glc_h", hash);
   hide("v-first");
   enterApp();
 }
@@ -470,19 +470,24 @@ async function doLogin(){
   if(!user || !pass) return toast("Enter your username and password.", true);
   busy("Signing in…");
   var hash = await sha256hex(pass);
-  var r = await sb.from("gl_claim_users").select("*").eq("username", user).eq("active", true).limit(1);
+  var r = await sb.rpc("gl_claim_login", { p_username:user, p_hash:hash });
   done();
   if(r.error) return toast(r.error.message, true);
-  if(!r.data || !r.data.length) return toast("No active account with that username.", true);
-  if(r.data[0].pass_hash !== hash) return toast("Wrong password.", true);
+  if(!r.data || !r.data.length) return toast("Wrong username or password.", true);
   ME = r.data[0];
   localStorage.setItem("glc_me", JSON.stringify(ME));
+  localStorage.setItem("glc_h", hash);
   hide("v-login");
   enterApp();
 }
 
+function adminHash(){
+  // hash saved at login (older sessions kept it inside ME)
+  return localStorage.getItem("glc_h") || (ME && ME.pass_hash) || "";
+}
 function logout(){
   localStorage.removeItem("glc_me");
+  localStorage.removeItem("glc_h");
   location.reload();
 }
 
@@ -1068,7 +1073,8 @@ async function addUser(){
   if(pass.length < 6) return toast("Password needs at least 6 characters.", true);
   busy("Creating account…");
   var hash = await sha256hex(pass);
-  var r = await sb.from("gl_claim_users").insert({ username:user, pass_hash:hash, full_name:name, role:$("nuRole").value });
+  var r = await sb.rpc("gl_claim_add_user", { p_admin_id:ME.id, p_admin_hash:adminHash(),
+    p_username:user, p_hash:hash, p_full_name:name, p_role:$("nuRole").value });
   done();
   if(r.error) return toast(r.error.message, true);
   $("nuName").value = ""; $("nuUser").value = ""; $("nuPass").value = "";
@@ -1080,7 +1086,8 @@ async function resetPass(id){
   if(!pass) return;
   if(pass.length < 6) return toast("Too short.", true);
   var hash = await sha256hex(pass);
-  var r = await sb.from("gl_claim_users").update({ pass_hash:hash }).eq("id", id);
+  var r = await sb.rpc("gl_claim_set_password", { p_admin_id:ME.id, p_admin_hash:adminHash(),
+    p_target_id:id, p_new_hash:hash });
   if(r.error) return toast(r.error.message, true);
   toast("Password updated");
 }
