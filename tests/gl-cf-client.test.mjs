@@ -42,6 +42,7 @@ function mockFetch(url, init) {
     ok: r.status >= 200 && r.status < 300, status: r.status, statusText: r.status === 200 ? 'OK' : 'ERR',
     headers: { get: (k) => (k.toLowerCase() in h ? h[k.toLowerCase()] : null) },
     json: () => (r.json === undefined ? Promise.reject(new Error('no body')) : Promise.resolve(r.json)),
+    text: () => Promise.resolve(r.text !== undefined ? r.text : (r.json === undefined ? '' : JSON.stringify(r.json))),
     blob: () => Promise.resolve(r.blob),
   });
 }
@@ -344,11 +345,17 @@ test('realtime: realtimePollMs 0 -> inert stub, CHANNEL_ERROR status, warning', 
 });
 
 /* =================== edge functions =================== */
-test('functions.invoke (gl-ads meta-sync) -> CF_UNSUPPORTED, no request', async () => {
+test('functions.invoke (gl-ads meta-sync) -> POST /gl/api/fn/meta-sync, same body, staff Bearer; JSON data', async () => {
   const sb = signedIn();
+  reply({ ok: true, campaigns: 3 }, 200, { 'content-type': 'application/json' });
   const r = await sb.functions.invoke('meta-sync', { body: { force: true } });
-  assert.equal(calls.length, 0);
-  assert.equal(r.error.code, 'CF_UNSUPPORTED');
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].url, API + '/gl/api/fn/meta-sync');
+  assert.equal(calls[0].init.method, 'POST');
+  assert.equal(calls[0].init.headers.authorization, 'Bearer tok.sig');
+  assert.equal(calls[0].init.headers['content-type'], 'application/json');
+  assert.deepEqual(calls[0].body, { force: true });
+  assert.deepEqual(r, { data: { ok: true, campaigns: 3 }, error: null });
 });
 
 /* =================== storage (gl-claim receipts, bucket gl-claims) =================== */
@@ -551,9 +558,11 @@ test('isAnonRequest', () => {
 /* =================== EVERY call in the wired pages =================== */
 // supabase-js pages: each sb./gl. chain is evaluated against the client with every free variable replaced by a
 // placeholder, and must produce a supported request (exceptions listed in EXPECTED_UNSUPPORTED).
-const SBJS_PAGES = ['gl-claim.html', 'gl-marketing.html', 'gl-ads.html', 'gl-mkt-calendar.html', 'gl-hub-v3.html', 'gl-platescan.html',
-  'gl-jobcard.html', 'gl-staff-appointment-FINAL.html', 'gl-customers.html', 'grandlab-pos-v2.html'];
-const EXPECTED_UNSUPPORTED = ["gl-ads.html: sb.functions.invoke('meta-sync',{body:{force:true}})"];
+// every page with supabase-js and the switch (docs/cf-migration-gl.md "Which pages follow the switch")
+const SBJS_PAGES = fs.readdirSync(ROOT).filter((f) => /\.html$/.test(f)).concat(['GLboard/gl-board.html'])
+  .filter((f) => { const s = fs.readFileSync(path.join(ROOT, f), 'utf8'); return /supabase-js@2/.test(s) && /gl-backend-config\.js/.test(s); }).sort();
+// checker artifact only: the column is a variable here (the placeholder is not a string); the real shape is tested below
+const EXPECTED_UNSUPPORTED = ["gl-inspect.html: sb.from('gl_walkin').select('name,phone,plate,model,car_type,visit_count,last_service').ilike(field,'%'+q+'%').order('visit_count',{ascending:false,nullsFirst:false}).limit(8)"];
 
 function chainAt(src, i) {
   let j = i, depth = 0, inStr = null;
@@ -579,7 +588,9 @@ function extractChains(file) {
   while ((m = re.exec(src))) { if (/[\w$.]$/.test(src.slice(0, m.index))) continue; out.push(chainAt(src, m.index)); }
   return out;
 }
-const PASS = new Set(['sb', 'gl', 'undefined', 'NaN', 'Infinity', 'Object', 'Array', 'Math', 'Date', 'JSON', 'String', 'Number', 'Boolean', 'Set', 'Map',
+// new Date(<placeholder>) would be an invalid date: use a fixed one instead
+class SafeDate extends Date { constructor(...a) { super(...a); if (isNaN(this.getTime())) return new Date('2026-11-21T02:00:00Z'); } }
+const PASS = new Set(['sb', 'gl', 'undefined', 'NaN', 'Infinity', 'Object', 'Array', 'Math', 'JSON', 'String', 'Number', 'Boolean', 'Set', 'Map',
   'Promise', 'encodeURIComponent', 'parseInt', 'parseFloat', 'isNaN', 'console', 'RegExp', 'Error']);
 function magic() {
   const f = function () {};
@@ -600,11 +611,11 @@ function magic() {
 }
 function evalChain(chain, client) {
   const M = magic();
-  const scope = new Proxy({}, { has: (t, k) => typeof k === 'string' && !PASS.has(k), get: (t, k) => (k === Symbol.unscopables ? undefined : M), set: () => true });
+  const scope = new Proxy({}, { has: (t, k) => typeof k === 'string' && !PASS.has(k), get: (t, k) => (k === Symbol.unscopables ? undefined : (k === 'Date' ? SafeDate : M)), set: () => true });
   // eslint-disable-next-line no-new-func
   return new Function('sb', 'gl', '__s', 'with(__s){ return (' + chain + '); }')(client, client, scope);
 }
-test('every supabase-js call in the 10 wired staff pages builds a supported request', async () => {
+test('every supabase-js call in every switched page builds a supported request', async () => {
   const unsupported = [];
   let total = 0;
   for (const file of SBJS_PAGES) {
@@ -635,7 +646,7 @@ test('every supabase-js call in the 10 wired staff pages builds a supported requ
   console.log('[gl-cf-client test] ' + total + ' supabase-js calls in ' + SBJS_PAGES.length + ' pages checked; not supported: ' + unsupported.join(' | '));
 });
 test('the page-call checker itself catches unsupported shapes (negative control)', async () => {
-  for (const chain of ["sb.from('gl_jobs').select('*').contains('tags',['a'])", "sb.from('gl_jobs').select('id, gl_walkin(id)')", "sb.from('gl_jobs').select('*').or('a.eq.1').or('b.eq.2')", "sb.from('gl_jobs').select('*').not('a','eq',1)"]) {
+  for (const chain of ["sb.from('gl_jobs').select('*').contains('tags',['a'])", "sb.from('gl_jobs').select('id, gl_walkin(id)')", "sb.from('gl_jobs').select('*').or('a.eq.1').or('b.eq.2').limit(5)", "sb.from('gl_jobs').select('*').not('a','eq',1)"]) {
     const sb = signedIn();
     const r = await evalChain(chain, sb);
     assert.equal(r.error && r.error.code, 'CF_UNSUPPORTED', chain);
@@ -680,3 +691,274 @@ test('index.html auth calls are exactly the ones translated (otp, verify, token 
   const auth = extractFetches('index.html').filter((f) => f.path.startsWith('/auth/v1/')).map((f) => f.method + ' ' + f.path).sort();
   assert.deepEqual(auth, ['POST /auth/v1/otp', 'POST /auth/v1/token?grant_type=password', 'POST /auth/v1/token?grant_type=refresh_token', 'POST /auth/v1/verify']);
 });
+
+/* =================================================================================================
+   Part 2 (all pages): go-live setting per module, edge functions -> /gl/api/fn/*, guest pages,
+   staff REST with a service key, REST or=, 2nd or() in the browser, direct REST in the other pages.
+   ================================================================================================= */
+import vm from 'node:vm';
+
+/* ---------- gl-backend-config.js ---------- */
+function loadConfig(search, settings) {
+  const ls = new Map();
+  const win = { location: { search: search || '' }, localStorage: { getItem: (k) => (ls.has(k) ? ls.get(k) : null), setItem: (k, v) => ls.set(k, String(v)), removeItem: (k) => ls.delete(k) } };
+  win.window = win;
+  vm.runInNewContext(fs.readFileSync(path.join(ROOT, 'gl-backend-config.js'), 'utf8'), win);
+  if (settings) { if (settings.def) win.GL_BACKEND_DEFAULT = settings.def; if (settings.mods) win.GL_BACKEND_MODULES = settings.mods; }
+  return { win, ls, go: (q) => { win.location.search = q || ''; } };
+}
+test('config: ships as the old system for every module (GL_BACKEND_DEFAULT "sb", all modules "sb")', () => {
+  const { win } = loadConfig('');
+  assert.equal(win.GL_BACKEND_DEFAULT, 'sb');
+  assert.deepEqual(JSON.parse(JSON.stringify(win.GL_BACKEND_MODULES)), { core: 'sb', customer: 'sb', marketing: 'sb', claim: 'sb' });
+  for (const m of ['core', 'customer', 'marketing', 'claim', undefined, 'unknown']) assert.equal(win.GL_BACKEND_PICK(m), 'sb', String(m));
+  assert.equal(win.GL_BACKEND_SOURCE('core'), 'default');
+});
+test('config: ?backend=cf is remembered for all modules; ?backend=sb while the module is "sb" just clears it (as before)', () => {
+  const c = loadConfig('?backend=cf');
+  assert.equal(c.win.GL_BACKEND_PICK('core'), 'cf');
+  assert.equal(c.ls.get('gl_backend'), 'cf');
+  c.go(''); assert.equal(c.win.GL_BACKEND_PICK('claim'), 'cf');
+  assert.equal(c.win.GL_BACKEND_SOURCE('claim'), 'device');
+  c.go('?x=1&backend=sb'); assert.equal(c.win.GL_BACKEND_PICK('core'), 'sb');
+  assert.equal(c.ls.has('gl_backend'), false);
+});
+test('config: one module live (claim "cf"): claim pages on the new system, others not; ?backend=sb on a claim page = remembered fallback; ?backend=auto forgets', () => {
+  const c = loadConfig('', { mods: { core: 'sb', customer: 'sb', marketing: 'sb', claim: 'cf' } });
+  assert.equal(c.win.GL_BACKEND_PICK('claim'), 'cf');
+  assert.equal(c.win.GL_BACKEND_PICK('core'), 'sb');
+  assert.equal(c.win.GL_BACKEND_PICK('marketing'), 'sb');
+  assert.equal(c.ls.has('gl_backend'), false, 'nothing stored without a URL choice');
+  c.go('?backend=sb'); assert.equal(c.win.GL_BACKEND_PICK('claim'), 'sb');
+  assert.equal(c.ls.get('gl_backend'), 'sb');
+  c.go(''); assert.equal(c.win.GL_BACKEND_PICK('claim'), 'sb', 'fallback remembered');
+  c.go('?backend=auto'); assert.equal(c.win.GL_BACKEND_PICK('claim'), 'cf');
+  assert.equal(c.ls.has('gl_backend'), false);
+  // ?backend=sb on a page whose module is still "sb" only clears (nobody gets stuck on the old system later)
+  c.go('?backend=cf'); c.win.GL_BACKEND_PICK('core');
+  c.go('?backend=sb'); assert.equal(c.win.GL_BACKEND_PICK('core'), 'sb');
+  assert.equal(c.ls.has('gl_backend'), false);
+});
+test('config: "default" (or a module that is not listed) follows GL_BACKEND_DEFAULT', () => {
+  const c = loadConfig('', { def: 'cf', mods: { core: 'default', customer: 'sb' } });
+  assert.equal(c.win.GL_BACKEND_PICK('core'), 'cf');
+  assert.equal(c.win.GL_BACKEND_PICK('marketing'), 'cf');
+  assert.equal(c.win.GL_BACKEND_PICK(), 'cf');
+  assert.equal(c.win.GL_BACKEND_PICK('customer'), 'sb');
+  assert.equal(c.win.GL_BACKEND_MODULE_SETTING('core'), 'cf');
+  const d = loadConfig('', { def: 'weird' });
+  assert.equal(d.win.GL_BACKEND_PICK('nope'), 'sb', 'anything but "cf" is the old system');
+});
+test('GLCF.enabled(module) / applyUrlSwitch follow gl-backend-config.js when it is loaded (old rule without it)', () => {
+  store.clear();
+  const c = loadConfig('', { mods: { core: 'sb', claim: 'cf' } });
+  const keep = {};
+  for (const k of ['GL_BACKEND_PICK', 'GL_BACKEND_MODULE_SETTING', 'GL_BACKEND_SOURCE', 'GL_BACKEND_MODULES', 'GL_BACKEND_DEFAULT']) { keep[k] = globalThis[k]; globalThis[k] = c.win[k]; }
+  try {
+    // the config reads ITS localStorage; GLCF reads globalThis.localStorage (the test store): same key, same rules
+    assert.equal(GLCF.enabled('claim'), true);
+    assert.equal(GLCF.enabled('core'), false);
+    store.set('gl_backend', 'sb'); assert.equal(GLCF.enabled('claim'), false, 'device fallback wins');
+    store.set('gl_backend', 'cf'); assert.equal(GLCF.enabled('core'), true, 'device choice wins');
+    store.clear();
+    assert.equal(GLCF.applyUrlSwitch('?backend=sb', 'claim'), false); assert.equal(store.get('gl_backend'), 'sb');
+    assert.equal(GLCF.applyUrlSwitch('?backend=auto', 'claim'), true); assert.equal(store.has('gl_backend'), false);
+    assert.equal(GLCF.applyUrlSwitch('?backend=sb', 'core'), false); assert.equal(store.has('gl_backend'), false);
+  } finally { for (const k in keep) { if (keep[k] === undefined) delete globalThis[k]; else globalThis[k] = keep[k]; } store.clear(); }
+  assert.equal(GLCF.enabled('claim'), false, 'without the config: old rule (gl_backend === "cf")');
+});
+
+/* ---------- edge functions ---------- */
+test('functions: route table (one place) — every function the pages call has a new route; DOKU create -> doku-create', () => {
+  const R = GLCF.functionRoute;
+  assert.equal(R('doku', 'create'), '/gl/api/fn/doku-create');
+  assert.equal(R('doku-sandbox', 'create'), '/gl/api/fn/doku-create');
+  assert.equal(R('doku', 'notify'), null, 'DOKU webhook is server to server');
+  assert.equal(R('senangpay', 'create'), null);
+  for (const n of ['push-send', 'meta-sync', 'mia', 'agent-desk', 'warranty-email']) assert.equal(R(n), '/gl/api/fn/' + n);
+  assert.equal(R('something-new'), '/gl/api/fn/something-new', 'not listed -> /gl/api/fn/<name>');
+  assert.equal(R('bad name'), null);
+  assert.ok(Object.isFrozen(GLCF.FUNCTION_ROUTES) === false && typeof GLCF.FUNCTION_ROUTES === 'object');
+});
+test('functions: every /functions/v1/<name> and functions.invoke(<name>) in the pages maps to a route (none blocked)', () => {
+  const found = new Set();
+  const files = fs.readdirSync(ROOT).filter((f) => /\.html$/.test(f)).concat(['GLboard/gl-board.html']);
+  for (const f of files) {
+    const src = fs.readFileSync(path.join(ROOT, f), 'utf8');
+    for (const m of src.matchAll(/\/functions\/v1\/([a-z0-9-]+)(\/[a-z]+)?/g)) found.add(f + ' ' + m[1] + (m[2] || ''));
+    for (const m of src.matchAll(/functions\.invoke\(\s*['"]([a-z0-9-]+)['"]/g)) found.add(f + ' ' + m[1]);
+    for (const m of src.matchAll(/\$\{SENANGPAY_FN\}(\/[a-z]+)/g)) found.add(f + ' doku' + m[1]);
+  }
+  const list = [...found].sort();
+  const names = list.map((x) => x.split(' ')[1]);
+  for (const n of ['meta-sync', 'agent-desk', 'inspect', 'mia', 'warranty-email', 'push-send', 'doku', 'doku/create']) assert.ok(names.includes(n), 'missing ' + n + ' in ' + list.join(', '));
+  for (const x of list) {
+    const [file, fn] = x.split(' ');
+    const [name, sub] = fn.split('/');
+    if (name === 'inspect') { assert.ok(GLCF.FUNCTION_LINKS.inspect, x); continue; }   // a share link, not a call
+    if (name === 'doku' && !sub) continue;                                             // the base URL constant
+    assert.ok(GLCF.functionRoute(name, sub), file + ': ' + fn + ' has no route');
+  }
+  console.log('[gl-cf-client test] function calls in pages: ' + list.join(' | '));
+});
+test('functions.invoke: non-2xx -> FunctionsHttpError with the Response as context; text answers stay text', async () => {
+  const sb = signedIn();
+  reply({ error: 'boom' }, 500, { 'content-type': 'application/json' });
+  const r = await sb.functions.invoke('mia', { body: { msg: 'hi' } });
+  assert.equal(r.data, null);
+  assert.equal(r.error.name, 'FunctionsHttpError');
+  assert.equal(r.error.message, 'Edge Function returned a non-2xx status code');
+  assert.equal(r.error.context.status, 500);
+  replies.push({ status: 200, text: 'plain', headers: { 'content-type': 'text/plain' } });
+  const t = await sb.functions.invoke('mia', { body: 'x' });
+  assert.deepEqual(t, { data: 'plain', error: null });
+  assert.equal(calls[1].init.body, 'x');
+});
+test('functions.invoke: not signed in -> error, no request; blocked route -> CF_UNSUPPORTED, no request; network error -> FunctionsFetchError', async () => {
+  const sb = fresh();
+  const a = await sb.functions.invoke('meta-sync', { body: {} });
+  assert.equal(calls.length, 0);
+  assert.equal(a.error.name, 'FunctionsHttpError');
+  assert.equal(a.error.context.status, 401);
+  const s2 = signedIn();
+  const b = await s2.functions.invoke('senangpay', { body: {} });
+  assert.equal(calls.length, 0);
+  assert.equal(b.error.code, 'CF_UNSUPPORTED');
+  const s3 = GLCF.createClient({ apiBase: API, fetch: () => Promise.reject(new TypeError('offline')) }); store.set('gl_ba_token', 't');
+  const c = await s3.functions.invoke('meta-sync');
+  assert.equal(c.error.name, 'FunctionsFetchError');
+});
+test('functions fetch (PWA DOKU): ${SENANGPAY_FN}/create with the ANON key -> /gl/api/fn/doku-create with the CUSTOMER token, same body; apikey not sent', async () => {
+  const c = cust(); store.set('gl_ba_token_cust', 'cust.SIGNED');
+  reply({ url: 'https://pay.doku/abc' }, 200, { 'content-type': 'application/json' });
+  const body = JSON.stringify({ order_ref: 'GL-1', amount: 100 });
+  const r = await GLCF.handleFunctionFetch(c, SB + '/functions/v1/doku/create', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + ANON, apikey: ANON }, body });
+  assert.equal(r.status, 200);
+  assert.deepEqual(await r.json(), { url: 'https://pay.doku/abc' });
+  assert.equal(calls[0].url, API + '/gl/api/fn/doku-create');
+  assert.equal(calls[0].init.headers.authorization, 'Bearer cust.SIGNED');
+  assert.equal(calls[0].init.headers.apikey, undefined);
+  assert.equal(calls[0].init.headers['content-type'], 'application/json');
+  assert.equal(calls[0].init.body, body);
+});
+test('functions fetch: blocked (doku/notify) -> 400 JSON; not signed in -> 401 JSON; both without a request; query string kept', async () => {
+  const c = cust();
+  const a = await GLCF.handleFunctionFetch(c, SB + '/functions/v1/doku/notify', { method: 'POST', body: '{}' });
+  assert.equal(a.status, 400); assert.match((await a.json()).message, /Online payment is not on the new system/);
+  const b = await GLCF.handleFunctionFetch(c, SB + '/functions/v1/agent-desk', { method: 'POST', body: '{}' });
+  assert.equal(b.status, 401);
+  assert.equal(calls.length, 0);
+  const s = signedIn();
+  await GLCF.handleFunctionFetch(s, SB + '/functions/v1/push-send?dry=1', { method: 'POST', headers: { Authorization: 'Bearer svc', apikey: 'svc' }, body: '{"title":"t"}' });
+  assert.equal(calls[0].url, API + '/gl/api/fn/push-send?dry=1');
+  assert.equal(calls[0].init.headers.authorization, 'Bearer tok.sig');
+  assert.equal(GLCF.handleFunctionFetch(s, SB + '/rest/v1/x', {}), null, 'not a function URL');
+});
+test('functionLink: gl-inspect share link -> <api>/gl/public/inspect?t=…; unknown -> null', () => {
+  const s = fresh();
+  assert.equal(GLCF.functionLink(s, 'inspect', '?t=abc'), API + '/gl/public/inspect?t=abc');
+  assert.equal(GLCF.functionLink(s, 'nope', '?t=abc'), null);
+});
+
+/* ---------- guest pages (customer / partner links, kiosks, QR router) ---------- */
+test('guestPublic: no login -> /gl/public/db + /gl/public/rpc WITHOUT a token; with a login -> /gl/api/*', async () => {
+  const g = fresh({ guestPublic: true });
+  await g.rpc('sa_quote_public', { p_token: 'T' });
+  await g.from('gl_spin_prizes').select('*').eq('active', true);
+  assert.equal(calls[0].url, API + '/gl/public/rpc/sa_quote_public');
+  assert.equal(calls[0].init.headers.Authorization, undefined);
+  assert.deepEqual(calls[0].body, { p_token: 'T' });
+  assert.equal(calls[1].url, API + '/gl/public/db');
+  assert.equal(calls[1].init.headers.Authorization, undefined);
+  store.set('gl_ba_token', 'tok.sig'); calls = [];
+  await g.rpc('gl_walkin_find', { p_phone: '6012' });
+  await g.from('gl_walkin').insert({ phone: '6012' });
+  assert.equal(calls[0].url, API + '/gl/api/rpc/gl_walkin_find');
+  assert.equal(calls[1].url, API + '/gl/api/db');
+  assert.equal(calls[1].init.headers.Authorization, 'Bearer tok.sig');
+  const staff = fresh();   // a normal staff page: no login -> /api (401 there shows the "not signed in" bar)
+  await staff.from('gl_jobs').select('*');
+  assert.equal(calls[0].url, API + '/gl/api/db');
+});
+
+/* ---------- direct REST: staff pages that send a service / anon key (grandlab-admin, grandlab-pos) ---------- */
+test('restAuth token: service-key REST call -> /gl/api/db with the STAFF token (not the public route)', async () => {
+  const s = signedIn();
+  const r = await GLCF.handleSupabaseFetch(s, SB + '/rest/v1/gl_services?id=eq.5', { method: 'PATCH', headers: { apikey: 'svc', Authorization: 'Bearer svc', 'Content-Type': 'application/json' }, body: '{"base_price":120}' }, { anon: false });
+  assert.equal(r.status, 204);
+  assert.equal(calls[0].url, API + '/gl/api/db');
+  assert.equal(calls[0].init.headers.Authorization, 'Bearer tok.sig');
+  assert.deepEqual(calls[0].body, { table: 'gl_services', op: 'update', filters: [['id', 'eq', '5']], values: { base_price: 120 } });
+});
+test('REST or=(…): one flat list -> or(), "*" in like/ilike -> "%" (grandlab-pos customer search, grandlab-admin phone lookup)', async () => {
+  const s = signedIn();
+  await GLCF.handleSupabaseFetch(s, SB + '/rest/v1/gl_profiles?select=id,name,phone,points,wallet&or=(name.ilike.*ali*,phone.ilike.*ali*)&limit=10', { headers: { apikey: 'k', Authorization: 'Bearer k' } }, { anon: false });
+  assert.deepEqual(calls[0].body, { table: 'gl_profiles', op: 'select', columns: 'id,name,phone,points,wallet', or: 'name.ilike.%ali%,phone.ilike.%ali%', limit: 10 });
+  calls = [];
+  await GLCF.handleSupabaseFetch(s, SB + '/rest/v1/gl_profiles?or=(phone.eq.%2B60123,phone.eq.60123)&select=id,name,phone', { headers: { apikey: 'k', Authorization: 'Bearer k' } }, { anon: false });
+  assert.equal(calls[0].body.or, 'phone.eq.+60123,phone.eq.60123');
+  calls = [];
+  const bad = await GLCF.handleSupabaseFetch(s, SB + '/rest/v1/gl_x?or=(a.eq.1,and(b.eq.2,c.eq.3))', { headers: {} });
+  assert.equal(bad.status, 400);
+  assert.equal(calls.length, 0);
+});
+
+/* ---------- 2nd or() (gl-quote service list) ---------- */
+test('2nd or() on a plain select: 1st to the server, 2nd applied in the browser (columns added then removed)', async () => {
+  const s = signedIn();
+  reply({ data: [{ id: 1, name: 'A', active: true }, { id: 2, name: 'B', active: false }, { id: 3, name: 'C', active: null }, { id: 4, name: 'D', active: 1 }], error: null });
+  const r = await s.from('gl_services').select('id,name').or('hidden.is.null,hidden.eq.false').or('active.is.null,active.eq.true').order('category');
+  assert.deepEqual(calls[0].body, { table: 'gl_services', op: 'select', columns: 'id,name,active', or: 'hidden.is.null,hidden.eq.false', order: [['category', { ascending: true, nullsFirst: false }]] });
+  assert.deepEqual(r.data, [{ id: 1, name: 'A' }, { id: 3, name: 'C' }, { id: 4, name: 'D' }]);
+  // with a limit / count the browser cannot filter correctly -> refused, no request
+  calls = [];
+  const b = await s.from('gl_services').select('id').or('a.eq.1').or('b.eq.2').limit(5);
+  assert.equal(b.error.code, 'CF_UNSUPPORTED'); assert.equal(calls.length, 0);
+});
+test('gl-inspect walk-in search shape (column from a variable) builds a supported request', async () => {
+  const s = signedIn();
+  await s.from('gl_walkin').select('name,phone,plate,model,car_type,visit_count,last_service').ilike('plate', '%WXX%').order('visit_count', { ascending: false, nullsFirst: false }).limit(8);
+  assert.deepEqual(calls[0].body.filters, [['plate', 'ilike', '%WXX%']]);
+});
+
+/* ---------- every direct REST call in grandlab-pos.html, grandlab-admin.html, q.html ---------- */
+function extractRest(file) {
+  const src = fs.readFileSync(path.join(ROOT, file), 'utf8');
+  const out = [];
+  const take = (re, prefix) => {
+    for (const m of src.matchAll(re)) {
+      let i = m.index + m[0].length, d = 1, q = null; const start = m.index;
+      for (; i < src.length && d > 0; i++) { const c = src[i]; if (q) { if (c === '\\') { i++; continue; } if (c === q) q = null; continue; } if (c === '"' || c === "'" || c === '`') { q = c; continue; } if (c === '(') d++; else if (c === ')') d--; }
+      const call = src.slice(start, i);
+      out.push({ path: prefix + m[1], method: (/method\s*:\s*["'](\w+)["']/.exec(call) || [])[1] || 'GET', prefer: (/Prefer\s*:\s*["']([^"']+)["']/.exec(call) || [])[1] || '', call });
+    }
+  };
+  take(/fetch\(\s*`\$\{SUPA_URL\}(\/(?:rest|storage)\/v1\/[^`]*)`/g, '');
+  take(/\bsb\(\s*`([^`]*)`/g, '/rest/v1/');
+  take(/\bsb\(\s*"([^"]*)"/g, '/rest/v1/');
+  take(/fetch\(\s*SUPA_URL\s*\+\s*'(\/rest\/v1\/[^']*)'/g, '');
+  for (const m of src.matchAll(/fetch\(SUPA_URL\+'\/storage\/v1\/object\/'\+BUCKET\+'\/'\+path/g)) out.push({ path: '/storage/v1/object/${BUCKET}/${path}', method: 'POST', prefer: '', call: m[0] });
+  return out;
+}
+for (const [file, min] of [['grandlab-pos.html', 9], ['grandlab-admin.html', 60], ['q.html', 1]]) {
+  test('every direct REST call in ' + file + ' is translated (staff login)', async () => {
+    const list = extractRest(file);
+    assert.ok(list.length >= min, file + ': found ' + list.length);
+    for (const f of list) {
+      const s = signedIn();
+      const url = SB + f.path.replace(/\$\{[^}]*\}/g, 'x1').replace(/\$\{BUCKET\}/g, 'gl-images');
+      const headers = Object.assign({ apikey: 'svc', Authorization: 'Bearer svc' }, f.prefer ? { Prefer: f.prefer } : {});
+      const init = { method: f.method, headers };
+      if (f.method !== 'GET' && f.method !== 'DELETE') init.body = f.path.startsWith('/storage/') ? { size: 5, type: 'image/png' } : '{"a":1}';
+      if (f.path.startsWith('/storage/')) reply({ data: { path: 'x1', signedUrl: API + '/f?exp=1&sig=2' }, error: null });
+      const r = await GLCF.handleSupabaseFetch(s, url, init, { anon: false });
+      const label = file + ': ' + f.method + ' ' + f.path;
+      assert.ok(r, label);
+      assert.notEqual(r.status, 400, label + ' -> ' + (r.status === 400 ? await r.text() : ''));
+      assert.equal(calls.length, 1, label);
+      assert.ok(/\/gl\/api\/(db|rpc\/|storage\/upload)/.test(calls[0].url), label + ' -> ' + calls[0].url);
+      assert.equal(calls[0].init.headers.Authorization, 'Bearer tok.sig', label);
+    }
+    console.log('[gl-cf-client test] ' + file + ': ' + list.length + ' direct REST calls translated');
+  });
+}

@@ -5,6 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>GrandLab Detailing — Receipt</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="gl-backend-config.js"></script>
+<script>/* backend switch (docs/cf-migration-gl.md): ONLY when the switch is on for module "customer" (gl-backend-config.js) or this device chose ?backend=cf, load gl-cf-client.js + gl-cf-page.js. Off = nothing else happens. */
+(function(){try{var M='customer',on;if(typeof GL_BACKEND_PICK==='function'){on=GL_BACKEND_PICK(M)==='cf';}else{var m=/[?&]backend=(cf|sb)(?:&|$)/.exec(location.search);if(m){if(m[1]==='cf')localStorage.setItem('gl_backend','cf');else localStorage.removeItem('gl_backend');}on=localStorage.getItem('gl_backend')==='cf';}if(on){window.GLCF_PAGE_CFG={page:'receipt',module:M,public:true};document.write('<script src="gl-cf-client.js"><\/script><script src="gl-cf-page.js"><\/script>');}}catch(e){}})();</script>
 <style>
   :root{ --gold:#F5C518; --gold-deep:#C99700; --ink:#080808; --ink2:#4a4a4a; --line:#e7e7e7; --bg:#f5f5f5; }
   *{ box-sizing:border-box; margin:0; padding:0; }

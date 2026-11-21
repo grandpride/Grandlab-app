@@ -18,9 +18,10 @@
      - realtime: client.channel(...).on('postgres_changes', …).subscribe() POLLS (callbacks run every
        realtimePollMs while the page is visible, and when it becomes visible again). Off when realtimePollMs is 0.
 
-   OFF BY DEFAULT. Pages only load this when the switch is on:
-     localStorage.gl_backend === "cf"     (?backend=cf sets it, ?backend=sb clears it)
+   OFF BY DEFAULT. Pages only load this when the switch is on for their module: gl-backend-config.js
+   (go-live words per module) says "cf", or this device chose ?backend=cf (localStorage.gl_backend).
    The small guard <script> in each page loads this file + gl-cf-page.js ONLY when the switch is on.
+   Edge functions: FUNCTION_ROUTES below is the one place that maps them to the new server.
 
    Not supported yet (fail soft: console.warn + {error:{code:"CF_UNSUPPORTED"}}): see GLCF.UNSUPPORTED.
    Plain browser JS, no build step, no CDN.
@@ -39,15 +40,27 @@
   function lsSet(k, v) { try { if (v == null) g.localStorage.removeItem(k); else g.localStorage.setItem(k, v); } catch (e) {} }
 
   /* ---------- switch ---------- */
-  function applyUrlSwitch(search) {
+  // With gl-backend-config.js loaded (go-live setting, per module) the answer follows it: device choice
+  // (?backend=cf|sb, localStorage.gl_backend) first, else the module's setting. Without it: the old rule.
+  function hasConfig() { return typeof g.GL_BACKEND_PICK === 'function' && typeof g.GL_BACKEND_MODULE_SETTING === 'function'; }
+  function applyUrlSwitch(search, mod) {
     try {
       var s = search != null ? search : (g.location && g.location.search) || '';
-      var m = /[?&]backend=(cf|sb)(?:&|$)/.exec(s);
-      if (m) { if (m[1] === 'cf') lsSet(SWITCH_KEY, 'cf'); else lsSet(SWITCH_KEY, null); }
+      var m = /[?&]backend=(cf|sb|auto)(?:&|$)/.exec(s);
+      if (m) {
+        if (m[1] === 'cf') lsSet(SWITCH_KEY, 'cf');
+        else if (m[1] === 'sb' && hasConfig() && g.GL_BACKEND_MODULE_SETTING(mod) === 'cf') lsSet(SWITCH_KEY, 'sb');
+        else if (m[1] !== 'auto' || hasConfig()) lsSet(SWITCH_KEY, null);
+      }
     } catch (e) {}
-    return enabled();
+    return enabled(mod);
   }
-  function enabled() { return lsGet(SWITCH_KEY) === 'cf'; }
+  function enabled(mod) {
+    var v = lsGet(SWITCH_KEY);
+    if (!hasConfig()) return v === 'cf';
+    if (v === 'cf' || v === 'sb') return v === 'cf';
+    try { return g.GL_BACKEND_MODULE_SETTING(mod) === 'cf'; } catch (e) { return false; }
+  }
 
   /* ---------- fail-soft helpers ---------- */
   var warned = {};
@@ -66,15 +79,51 @@
     'realtime: broadcast / presence (send, track); postgres_changes is POLLED (no row payload, no filter)',
     'storage: move, copy, createSignedUploadUrl, uploadToSignedUrl, upload(FormData), list({search} or sortBy other than name asc), download/createSignedUrl with {transform|download}',
     'direct Supabase REST (handleSupabaseFetch): or/and/not.<op> other than not.is, offset without limit, filters on insert, Prefer resolution=ignore-duplicates, GET rpc, Request objects, public storage GETs, /auth/v1 other than otp/verify/token/logout/user',
-    'edge functions: client.functions.invoke(); direct fetch to /functions/v1/* is blocked by gl-cf-page.js',
+    'edge functions: only the routes in GLCF.FUNCTION_ROUTES (POST /gl/api/fn/<name>); a route set to null is blocked',
     'client.schema() (non-public schemas)',
     'embedded selects other than gl_vehicles->gl_profiles(...) and gl_profiles->gl_vehicles(...); nested embeds; aliases "a:b"; "x!inner(..)"; embeds after a write',
     'filters: contains, containedBy, overlaps, textSearch, range*, likeAllOf/AnyOf, not() with any op except "is"',
-    'more than one or() per query; or()/order()/limit() with foreignTable/referencedTable',
+    'more than one or() per query, except on a plain select with no limit/range/count/single/embed (the 2nd+ or() is then applied in the browser); or()/order()/limit() with foreignTable/referencedTable',
     'upsert({ignoreDuplicates:true}); csv(); explain(); geojson()',
     'filters/modifiers chained after rpc()',
     'auth: signUp, OTP by WhatsApp, phone + password, sign-up by email code (shouldCreateUser:true), magic/invite/recovery links, resetPasswordForEmail, updateUser for anything except password, setSession, admin API'
   ];
+
+  /* ---------- edge functions -> new server routes (ONE table: the lead adjusts the paths here) ----------
+     Used by client.functions.invoke(name, {body}) and by gl-cf-page.js for fetch() to <Supabase>/functions/v1/<name>[/<sub>].
+     Key: "<name>/<sub>" (exact) or "<name>". Value: path on the API (POST, same body, Bearer = this page's login),
+     or null = not on the new system (clear error, nothing is sent). A name that is not listed goes to
+     /gl/api/fn/<name>[/<sub>] (FUNCTION_DEFAULT_PREFIX). */
+  var FUNCTION_DEFAULT_PREFIX = '/gl/api/fn/';
+  var FUNCTION_ROUTES = {
+    'doku/create':         '/gl/api/fn/doku-create',   // index.html online payment (DOKU Checkout), customer login
+    'doku-sandbox/create': '/gl/api/fn/doku-create',   // same, while the app pointed at the sandbox function
+    'doku':                null,                       // other doku paths (/notify = DOKU webhook, server to server)
+    'doku-sandbox':        null,
+    'senangpay':           null,                       // superseded by DOKU
+    'push-send':           '/gl/api/fn/push-send',     // grandlab-admin.html, grandlab-notify.html (needs admin/staff login)
+    'meta-sync':           '/gl/api/fn/meta-sync',     // gl-ads.html "Sync now" (functions.invoke)
+    'mia':                 '/gl/api/fn/mia',           // gl-mia.html
+    'agent-desk':          '/gl/api/fn/agent-desk',    // gl-agents.html, gl-tower.html
+    'warranty-email':      '/gl/api/fn/warranty-email' // gl-warranty-admin.html
+  };
+  // Share links that pages BUILD (opened later by people / WhatsApp previews, no login): name -> path on the API.
+  var FUNCTION_LINKS = {
+    'inspect':  '/gl/public/inspect',    // gl-inspect.html "share" link (?t=<token>) -> was <Supabase>/functions/v1/inspect
+    'sa-quote': '/gl/public/sa-quote'    // (not built by a page today; gl-sa-quote links gl-sa-accept.html directly)
+  };
+  // "doku/create" -> "/gl/api/fn/doku-create"; null when blocked
+  function functionRoute(name, sub) {
+    name = String(name || '').replace(/^\/+|\/+$/g, '');
+    sub = String(sub || '').replace(/^\/+|\/+$/g, '');
+    if (!name || !/^[A-Za-z0-9_-]+$/.test(name)) return null;
+    if (sub && Object.prototype.hasOwnProperty.call(FUNCTION_ROUTES, name + '/' + sub)) return FUNCTION_ROUTES[name + '/' + sub];
+    if (Object.prototype.hasOwnProperty.call(FUNCTION_ROUTES, name)) {
+      var r = FUNCTION_ROUTES[name];
+      return r == null ? null : r + (sub ? '/' + sub : '');
+    }
+    return FUNCTION_DEFAULT_PREFIX + name + (sub ? '/' + sub : '');
+  }
 
   /* ---------- Malaysian phone numbers -> E.164 (+60…) ----------
      "012-345 6789" / "0123456789" -> +60123456789 ; "60123456789" -> +60123456789 ;
@@ -397,6 +446,10 @@
 
     // RPCs that must work before login: served at /{tenant}/public/rpc/:name (no token, rate-limited)
     var PUBLIC_RPCS = opts.publicRpcs || [];
+    // guestPublic: pages used without a login (customer / partner links, shop kiosks, TV board): with no login
+    // every data call goes to the public routes (like the anon key today); with a login, to /api as usual.
+    var GUEST_PUBLIC = !!opts.guestPublic;
+    function guest() { return GUEST_PUBLIC && !token(); }
 
     var SIMPLE_OPS = ['eq', 'neq', 'gt', 'gte', 'lt', 'lte', 'like', 'ilike', 'in', 'is'];
     var NOT_OPS = ['is'];   // contract v1: only not.is
@@ -418,6 +471,7 @@
       this._embeds = null;      // [{ rel, cols, local, foreign, one, addedLocal, addedForeign }]
       this._filters = [];
       this._or = null;
+      this._orLocal = [];       // 2nd+ or(): applied to the rows in the browser (see _applyLocalOr)
       this._order = [];
       this._limit = null;
       this._offset = null;
@@ -533,7 +587,7 @@
       o = o || {};
       if (this._rpc) return this._bad('or() after rpc()');
       if (o.foreignTable || o.referencedTable) return this._bad('or() on a foreign table');
-      if (this._or != null) return this._bad('more than one or()');
+      if (this._or != null) { this._orLocal.push(cleanCols(str)); return this; }
       this._or = cleanCols(str);
       return this;
     };
@@ -598,9 +652,63 @@
       return b;
     };
 
+    /* ---- 2nd+ or(): the contract takes one "or" string. gl-quote filters the (small) service list with two:
+       .or('hidden.is.null,hidden.eq.false').or('active.is.null,active.eq.true'). Allowed only on a plain select
+       (no limit/range/count/head/single/embed), so the browser can apply the extra groups to ALL matching rows:
+       the columns they need are added to the select and removed again. Same value rules as PostgREST text. */
+    function parseOrGroup(str) {
+      var out = [];
+      splitTop(str).forEach(function (c) {
+        var m = /^([A-Za-z0-9_]+)\.(not\.)?(eq|neq|gt|gte|lt|lte|like|ilike|in|is)\.([\s\S]*)$/.exec(c);
+        out.push(m ? { col: m[1], not: !!m[2], op: m[3], val: m[4] } : null);
+      });
+      return out;
+    }
+    function localMatch(row, cond) {
+      var v = row ? row[cond.col] : undefined, w = cond.val, r;
+      var sv = v == null ? null : (typeof v === 'boolean' ? String(v) : String(v));
+      var num = function (x) { return x !== null && x !== '' && !isNaN(Number(x)); };
+      var cmp = function () { return (num(sv) && num(w)) ? Number(sv) - Number(w) : (sv < w ? -1 : sv > w ? 1 : 0); };
+      switch (cond.op) {
+        case 'is': r = w === 'null' ? v == null : (w === 'true' ? (v === true || v === 1 || sv === 'true') : (w === 'false' ? (v === false || v === 0 || sv === 'false') : false)); break;
+        case 'eq': r = sv != null && (sv === w || (num(sv) && num(w) && Number(sv) === Number(w)) || (typeof v === 'number' && (w === 'true' || w === 'false') && v === (w === 'true' ? 1 : 0))); break;
+        case 'neq': r = sv != null && !(sv === w || (num(sv) && num(w) && Number(sv) === Number(w))); break;
+        case 'gt': r = sv != null && cmp() > 0; break;
+        case 'gte': r = sv != null && cmp() >= 0; break;
+        case 'lt': r = sv != null && cmp() < 0; break;
+        case 'lte': r = sv != null && cmp() <= 0; break;
+        case 'like': case 'ilike': {
+          var re = new RegExp('^' + w.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/[%*]/g, '[\\s\\S]*').replace(/_/g, '[\\s\\S]') + '$', cond.op === 'ilike' ? 'i' : '');
+          r = sv != null && re.test(sv); break;
+        }
+        case 'in': r = sv != null && w.replace(/^\(|\)$/g, '').split(',').map(function (x) { return x.trim().replace(/^"|"$/g, ''); }).indexOf(sv) >= 0; break;
+        default: r = false;
+      }
+      return cond.not ? (cond.op === 'is' ? !r : (sv != null && !r)) : r;
+    }
+    Q.prototype._prepLocalOr = function () {
+      if (!this._orLocal.length) return;
+      if (this._op !== 'select' || this._head || this._count || this._limit != null || this._offset != null || this._single || this._maybeSingle || this._embeds) {
+        this._bad('more than one or()'); return;
+      }
+      var groups = this._orLocal.map(parseOrGroup);
+      if (groups.some(function (gr) { return gr.some(function (c) { return !c; }); })) { this._bad('more than one or() (2nd one not a flat list of simple conditions)'); return; }
+      var cols = (this._columns || '*').split(','), added = [];
+      if (cols.indexOf('*') < 0) groups.forEach(function (gr) { gr.forEach(function (c) { if (cols.indexOf(c.col) < 0 && added.indexOf(c.col) < 0) added.push(c.col); }); });
+      if (added.length) this._columns = cols.concat(added).join(',');
+      this._localOr = { groups: groups, added: added };
+    };
+    Q.prototype._applyLocalOr = function (r) {
+      var lo = this._localOr;
+      if (!lo || r.error || !Array.isArray(r.data)) return r;
+      r.data = r.data.filter(function (row) { return lo.groups.every(function (gr) { return gr.some(function (c) { return localMatch(row, c); }); }); });
+      if (lo.added.length) r.data.forEach(function (row) { lo.added.forEach(function (c) { delete row[c]; }); });
+      return r;
+    };
+
     // 2nd query per embed: rel rows where foreign IN (keys of the base rows); attach as object/array
     Q.prototype._attachEmbeds = function (r) {
-      var self = this, area = this._anon ? 'public' : 'api';
+      var self = this, area = (this._anon || this._guest) ? 'public' : 'api';
       if (r.error || r.data == null || this._head) return Promise.resolve(r);
       var rows = Array.isArray(r.data) ? r.data : [r.data];
       return this._embeds.reduce(function (p, e) {
@@ -636,19 +744,22 @@
       if (this._promise) return this._promise;
       var self = this;
       var p;
+      if (!this._rpc) this._prepLocalOr();
       if (this._uns.length) {
         var err = unsupportedError(this._uns.join('; ') + (this._rpc ? ' (rpc ' + this._rpc.name + ')' : ' (table ' + this._table + ')'));
         p = Promise.resolve({ data: null, error: err, count: null, status: 0, statusText: '' });
       } else if (this._rpc) {
-        var pub = this._anon || PUBLIC_RPCS.indexOf(this._rpc.name) >= 0;
+        var pub = this._anon || guest() || PUBLIC_RPCS.indexOf(this._rpc.name) >= 0;
         p = postJSON('/rpc/' + encodeURIComponent(this._rpc.name), this._rpc.args || {}, this._signal, pub ? 'public' : 'api').then(function (r) {
           return { data: r.data, error: r.error, count: null, status: r.status, statusText: r.statusText };
         });
       } else if (!this._op) {
         p = Promise.resolve({ data: null, error: { message: 'gl-cf-client: from(' + this._table + ') needs select/insert/update/upsert/delete', code: 'CF_BAD_QUERY', details: null, hint: null }, count: null, status: 0, statusText: '' });
       } else {
-        p = postJSON('/db', this.toJSON(), this._signal, this._anon ? 'public' : 'api');
+        this._guest = guest();
+        p = postJSON('/db', this.toJSON(), this._signal, (this._anon || this._guest) ? 'public' : 'api');
         if (this._embeds) p = p.then(function (r) { return self._attachEmbeds(r); });
+        if (this._localOr) p = p.then(function (r) { return self._applyLocalOr(r); });
       }
       this._promise = p.then(function (r) {
         if (self._throw && r.error) { var e = new Error(r.error.message); e.code = r.error.code; e.details = r.error.details; throw e; }
@@ -883,6 +994,50 @@
       };
     }
 
+    /* ---------- edge functions (FUNCTION_ROUTES) ----------
+       invoke(name, {body, headers, method}) -> POST <api><route>, Bearer = this login. Same results as supabase-js:
+       2xx -> {data: JSON | text | Blob, error:null}; other status -> {data:null, error:{name:'FunctionsHttpError',
+       message:'Edge Function returned a non-2xx status code', context:<Response>}}; network -> FunctionsFetchError. */
+    function functionRequest(route, init) {
+      init = init || {};
+      var headers = {};
+      var src = lowerHeaders(init.headers);
+      Object.keys(src).forEach(function (k) { if (k !== 'authorization' && k !== 'apikey' && k !== 'x-client-info') headers[k] = src[k]; });
+      var t = token(); if (t) headers.authorization = 'Bearer ' + t;
+      var body = init.body;
+      if (body != null && typeof body === 'object' && !(typeof Blob !== 'undefined' && body instanceof Blob) &&
+          !(typeof FormData !== 'undefined' && body instanceof FormData) && !(typeof ArrayBuffer !== 'undefined' && (body instanceof ArrayBuffer || ArrayBuffer.isView(body)))) {
+        body = JSON.stringify(body);
+        if (!headers['content-type']) headers['content-type'] = 'application/json';
+      } else if (typeof body === 'string' && !headers['content-type']) headers['content-type'] = 'text/plain;charset=UTF-8';
+      var req = { method: String(init.method || 'POST').toUpperCase(), headers: headers, credentials: 'omit' };
+      if (body != null && req.method !== 'GET' && req.method !== 'HEAD') req.body = body;
+      if (init.signal) req.signal = init.signal;
+      return Promise.resolve().then(function () { return doFetch(apiBase() + route, req); }).then(function (res) {
+        if (res.status === 401 && t) { setToken(null); cache = null; emit('SIGNED_OUT', null); }
+        return res;
+      });
+    }
+    function invokeFunction(name, o) {
+      o = o || {};
+      var parts = String(name || '').split('/');
+      var route = functionRoute(parts[0], parts.slice(1).join('/'));
+      if (!route) return Promise.resolve({ data: null, error: unsupportedError('functions.invoke("' + name + '")') });
+      if (!token() && route.indexOf('/' + tenant + '/api/') === 0) {
+        return Promise.resolve({ data: null, error: { name: 'FunctionsHttpError', message: 'Not signed in (new backend). Please log in again.', context: mkResponse(401, { message: 'Not signed in' }) } });
+      }
+      return functionRequest(route, { method: o.method, headers: o.headers, body: o.body, signal: o.signal }).then(function (res) {
+        if (!res.ok) return { data: null, error: { name: 'FunctionsHttpError', message: 'Edge Function returned a non-2xx status code', context: res } };
+        var ct = String((res.headers && res.headers.get && res.headers.get('content-type')) || '').split(';')[0].trim();
+        var p = ct === 'application/json' ? res.json() : (ct === 'application/octet-stream' || ct === 'application/pdf' ? res.blob() : res.text());
+        return p.then(function (d) { return { data: d, error: null }; }, function (e) {
+          return { data: null, error: { name: 'FunctionsHttpError', message: String(e && e.message || e), context: res } };
+        });
+      }, function (e) {
+        return { data: null, error: { name: 'FunctionsFetchError', message: 'Failed to send a request to the Edge Function', context: e } };
+      });
+    }
+
     var client = {
       _cf: true,
       tenant: tenant,
@@ -898,8 +1053,9 @@
       removeAllChannels: function () { return Promise.all(channels.slice().map(function (c) { return c.unsubscribe(); })); },
       getChannels: function () { return channels.slice(); },
       storage: { from: bucketApi, cachedSignedUrl: function (bucket, path) { return signed[String(bucket) + '/' + cleanPath(path)] || null; } },
-      functions: { invoke: function (n) { return Promise.resolve({ data: null, error: unsupportedError('functions.invoke("' + n + '")') }); } },
-      apiBase: apiBase
+      functions: { invoke: invokeFunction },
+      apiBase: apiBase,
+      _functionRequest: functionRequest
     };
     return client;
   }
@@ -1068,15 +1224,17 @@
     return restUnsupported(method + ' /auth/v1' + path);
   }
 
-  function handleSupabaseFetch(client, url, init) {
+  function handleSupabaseFetch(client, url, init, hopts) {
     init = init || {};
+    hopts = hopts || {};
     var u;
     try { u = new URL(String(url)); } catch (e) { return null; }
     var path = u.pathname;
     var method = String(init.method || 'GET').toUpperCase();
     var h = lowerHeaders(init.headers);
     var prefer = String(h.prefer || '');
-    var anon = isAnonRequest(init);
+    // hopts.anon: the page glue decides (staff pages that send a service/anon key but mean "the staff login")
+    var anon = hopts.anon != null ? !!hopts.anon : isAnonRequest(init);
 
     if (path.indexOf('/functions/v1/') === 0) return null;   // edge functions: the page glue decides
     if (path.indexOf('/auth/v1/') === 0) return handleAuthFetch(client, u, method, init);
@@ -1125,7 +1283,7 @@
     var tm = /^\/rest\/v1\/([A-Za-z0-9_]+)\/?$/.exec(path);
     if (!tm) return restUnsupported(method + ' ' + path);
     var table = tm[1];
-    var select = null, order = [], limit = null, offset = null, onConflict = null, filters = [], bad = [];
+    var select = null, order = [], limit = null, offset = null, onConflict = null, filters = [], bad = [], orStr = null;
     u.searchParams.forEach(function (v, k) {
       if (k === 'select') select = v;
       else if (k === 'order') {
@@ -1143,6 +1301,15 @@
       else if (k === 'limit') limit = Number(v);
       else if (k === 'offset') offset = Number(v);
       else if (k === 'on_conflict') onConflict = v;
+      else if (k === 'or' && orStr == null) {
+        // one or=(a.op.v,b.op.v): no nested and()/or(); "*" in like/ilike values is PostgREST's "%"
+        var inner = /^\((.*)\)$/.exec(v);
+        if (!inner || /(^|,)\s*(not\.)?(and|or)\(/.test(inner[1])) { bad.push('"or=" param other than one flat list'); return; }
+        orStr = splitTop(inner[1]).map(function (c) {
+          var cm = /^([^.]+)\.(i?like)\.([\s\S]*)$/.exec(c);
+          return cm ? cm[1] + '.' + cm[2] + '.' + cm[3].replace(/\*/g, '%') : c;
+        }).join(',');
+      }
       else if (k === 'or' || k === 'and' || k === 'columns') bad.push('"' + k + '=" param');
       else {
         var fm = /^(not\.)?([a-z]+)\.([\s\S]*)$/.exec(v);
@@ -1174,6 +1341,7 @@
       if (f[1] === 'not.is') q = q.not(f[0], 'is', f[2]);
       else q = q[f[1]](f[0], f[2]);
     });
+    if (orStr != null) q = q.or(orStr);
     order.forEach(function (o) { q = q.order(o[0], o[1]); });
     if (limit != null) { if (offset != null) q = q.range(offset, offset + limit - 1); else q = q.limit(limit); }
     if (kind !== 'select' && wantRows) q = q.select(select || '*');
@@ -1186,8 +1354,42 @@
     });
   }
 
+  /* fetch() to <Supabase>/functions/v1/<name>[/<sub>] (index.html DOKU, gl-agents, gl-tower, gl-mia,
+     gl-warranty-admin, grandlab-admin, grandlab-notify) -> the route in FUNCTION_ROUTES, same method + body,
+     Bearer = this page's login. Returns the server's Response untouched. Blocked (null) -> 400 JSON, no network;
+     no login -> 401 JSON, no network. */
+  function handleFunctionFetch(client, url, init) {
+    init = init || {};
+    var u; try { u = new URL(String(url)); } catch (e) { return null; }
+    var m = /^\/functions\/v1\/([^/?#]+)\/?(.*)$/.exec(u.pathname);
+    if (!m) return null;
+    var name = decodeURIComponent(m[1]), sub = m[2] || '';
+    var route = functionRoute(name, sub);
+    if (!route) {
+      warnOnce('server function "' + name + (sub ? '/' + sub : '') + '"');
+      return Promise.resolve(mkResponse(400, { code: UNSUPPORTED_CODE, error: 'not_on_new_system',
+        message: (name.indexOf('doku') === 0 ? 'Online payment is not on the new system yet. Please choose Pay at outlet, or switch back with ?backend=sb.'
+                                              : 'The server function "' + name + '" is not on the new system yet. Switch back with ?backend=sb.') }));
+    }
+    if (!client.auth.token() && route.indexOf('/' + client.tenant + '/api/') === 0) {
+      return Promise.resolve(mkResponse(401, { code: '401', error: 'not_signed_in', message: 'Not signed in (new backend). Sign in again, or use ?backend=sb' }));
+    }
+    return client._functionRequest(route + u.search, init);
+  }
+  // Share link a page builds for a server function (FUNCTION_LINKS): functionLink(client, 'inspect', '?t=abc')
+  function functionLink(client, name, query) {
+    var p = FUNCTION_LINKS[name];
+    if (!p) return null;
+    return client.apiBase() + p + (query || '');
+  }
+
   var GLCF = {
-    version: '1.0.0',
+    version: '1.1.0',
+    FUNCTION_ROUTES: FUNCTION_ROUTES,
+    FUNCTION_LINKS: FUNCTION_LINKS,
+    functionRoute: functionRoute,
+    handleFunctionFetch: handleFunctionFetch,
+    functionLink: functionLink,
     DEFAULT_API: DEFAULT_API,
     SWITCH_KEY: SWITCH_KEY,
     UNSUPPORTED: UNSUPPORTED,
