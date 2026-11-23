@@ -92,6 +92,13 @@ input:focus{outline:none;border-color:var(--gold-ink)}
 .msg.out{background:#DCF8C6;align-self:flex-end}
 .msg .t{display:block;color:var(--text2);font-size:10px;margin-top:3px}
 .msg.sys{align-self:center;background:transparent;color:var(--text2);font-size:11px;max-width:100%}
+.msg.pending{background:#EFEFEF;align-self:flex-end;color:var(--text2);font-style:italic}
+.reply{display:flex;gap:8px;align-items:flex-end;padding:9px 12px;border-top:1px solid var(--border);background:var(--card2)}
+.reply textarea{flex:1;min-width:0;resize:none;font-family:inherit;font-size:13px;padding:8px 10px;
+  border:1px solid var(--border);border-radius:9px;background:var(--card);color:var(--text)}
+.reply textarea:focus{outline:none;border-color:var(--gold-ink)}
+.replyNote{padding:6px 12px 10px;font-size:11.5px;color:var(--text2);background:var(--card2)}
+.replyNote.err{color:var(--red)}
 /* ---- shell: sidebar + view area ---- */
 .shell{display:flex;align-items:stretch;min-height:calc(100vh - 42px)}
 .side{flex:0 0 184px;border-right:1px solid var(--border);background:var(--card2);padding:8px 0}
@@ -196,6 +203,11 @@ table.t2 tbody tr:hover{background:var(--sel);cursor:pointer}
     </div>
     <div class="rec" id="tRec"></div>
     <div class="thread" id="tThread"></div>
+    <div class="reply" id="tReply">
+      <textarea id="tBox" rows="2" placeholder="Type a reply…"></textarea>
+      <button class="btn" id="tSend" onclick="sendReply()">Send</button>
+    </div>
+    <div class="replyNote" id="tReplyNote"></div>
   </div>
 </div>
 
@@ -458,10 +470,46 @@ async function openThread(jid){
   $('tWa').style.display=w?'':'none'; if(w) $('tWa').href=w;
   $('tRec').innerHTML='<div class="row"><span class="k">Customer</span><span>Looking up…</span></div>';
   $('tThread').innerHTML='<div class="msg sys">Loading…</div>';
+  $('tBox').value=''; $('tReplyNote').textContent=''; $('tReplyNote').className='replyNote';
   loadRecord(CUR.phone);
   loadThread(jid);
 }
 function closeThread(){ $('ov').classList.add('hide'); CUR=null; }
+
+/* ---- replying ----------------------------------------------------------
+   The reply is queued in gl_wa_outbox; the bridge on the shop PC picks it up
+   and sends it through WhatsApp. Nothing is sent from the browser, and the
+   database refuses a reply to a chat that does not exist, so this can only
+   ever answer somebody who messaged first. */
+async function sendReply(){
+  if(!CUR) return;
+  const box=$('tBox'), btn=$('tSend'), note=$('tReplyNote');
+  const body=String(box.value||'').trim();
+  note.className='replyNote';
+  if(!body){ note.textContent='Nothing to send.'; return; }
+  btn.disabled=true; box.disabled=true; note.textContent='Queueing…';
+
+  // show it straight away so reception can see it went somewhere
+  const pend=document.createElement('div');
+  pend.className='msg pending';
+  pend.textContent=body;
+  const t=$('tThread'); t.appendChild(pend); t.scrollTop=t.scrollHeight;
+
+  try{
+    const {error}=await sb.from('gl_wa_outbox')
+      .insert({chat_jid:CUR.chat_jid, phone:CUR.phone||null, body});
+    if(error) throw error;
+    box.value='';
+    pend.textContent=body+'  ·  queued';
+    note.textContent='Queued. The bridge on the shop PC sends it within a minute — it will appear in the thread once WhatsApp confirms.';
+  }catch(e){
+    pend.remove();
+    note.className='replyNote err';
+    note.textContent='Could not queue: '+(e.message||e);
+  }finally{
+    btn.disabled=false; box.disabled=false; box.focus();
+  }
+}
 
 async function loadThread(jid){
   try{

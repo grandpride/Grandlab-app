@@ -304,6 +304,77 @@ async function backfillAll() {
   return { msgs, chats, seen, pages: page };
 }
 
+/* ---------- sending replies ----------
+
+   The board queues a reply in gl_wa_outbox; this sends it. Deliberately
+   narrow, because this is the only part of the system that can make the
+   shop's number say anything:
+
+   - the database already refuses a row whose chat does not exist, so a reply
+     can only ever go to somebody who messaged first. No cold outreach, which
+     is the behaviour that gets numbers banned.
+   - SEND_ENABLED must be on in .env. Off by default, so the bridge keeps
+     working exactly as before until it is deliberately turned on.
+   - a small number per cycle, spaced out, so it can never look like a blast.
+   - a row is claimed before sending, so two bridges cannot send it twice.
+
+   This is also why there is no "send to a phone number" path anywhere in
+   here: the only thing it can do is answer an existing conversation.        */
+
+const SEND_ENABLED = /^(1|true|yes|on)$/i.test(String(ENV.SEND_ENABLED || ''));
+const SEND_MAX_PER_CYCLE = Math.max(1, Number(ENV.SEND_MAX_PER_CYCLE || 8));
+const SEND_GAP_MS = Math.max(1000, Number(ENV.SEND_GAP_SECONDS || 4) * 1000);
+const SEND_MAX_ATTEMPTS = 3;
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+async function sendQueued() {
+  if (!SEND_ENABLED) return { sent: 0, failed: 0 };
+
+  const queued = await api(
+    `gl_wa_outbox?status=eq.queued&attempts=lt.${SEND_MAX_ATTEMPTS}` +
+    `&select=id,chat_jid,phone,body,attempts&order=created_at.asc&limit=${SEND_MAX_PER_CYCLE}`
+  );
+  if (!queued || !queued.length) return { sent: 0, failed: 0 };
+
+  let sent = 0, failed = 0;
+  for (const row of queued) {
+    // claim it: only one bridge can move a row out of 'queued'
+    const claimed = await api(
+      `gl_wa_outbox?id=eq.${row.id}&status=eq.queued`,
+      { method: 'PATCH',
+        body: { status: 'sending', attempts: (row.attempts || 0) + 1 },
+        prefer: 'return=representation' }
+    );
+    if (!Array.isArray(claimed) || !claimed.length) continue;   // someone else took it
+
+    try {
+      const to = row.chat_jid || row.phone;
+      if (!to) throw new Error('no recipient on the row');
+      // throwing, not die(): one bad message must never stop the bridge
+      const r = spawnSync(WACLI, (ACCOUNT ? ['--account', ACCOUNT] : [])
+        .concat(['send', 'text', '--to', String(to), '--message', String(row.body)]),
+        { encoding: 'utf8', maxBuffer: 16 * 1024 * 1024 });
+      if (r.error) throw new Error(r.error.message);
+      if (r.status !== 0) throw new Error(String(r.stderr || 'wacli exited ' + r.status).trim().split('\n')[0]);
+      await api(`gl_wa_outbox?id=eq.${row.id}`, {
+        method: 'PATCH', body: { status: 'sent', sent_at: new Date().toISOString(), error: null }
+      });
+      sent++;
+      log(`sent to ${row.phone || row.chat_jid}`);
+    } catch (e) {
+      const msg = String(e && e.message || e).slice(0, 400);
+      const done = (row.attempts || 0) + 1 >= SEND_MAX_ATTEMPTS;
+      await api(`gl_wa_outbox?id=eq.${row.id}`, {
+        method: 'PATCH', body: { status: done ? 'failed' : 'queued', error: msg }
+      });
+      failed++;
+      log(`could not send to ${row.phone || row.chat_jid}: ${msg}`);
+    }
+    await sleep(SEND_GAP_MS);
+  }
+  return { sent, failed };
+}
+
 /* ---------- commands ---------- */
 
 const cmd = (process.argv[2] || 'run').toLowerCase();
@@ -341,11 +412,15 @@ if (cmd === 'backfill') {
 }
 
 log(`watching — checking every ${POLL}s. Leave this window open. Ctrl+C to stop.`);
+log(SEND_ENABLED
+  ? `replies from the CRM board are ON (max ${SEND_MAX_PER_CYCLE} per cycle, ${SEND_GAP_MS/1000}s apart)`
+  : 'replies from the CRM board are OFF — set SEND_ENABLED=1 in .env to turn them on');
 let fails = 0;
 for (;;) {
   try {
     const r = await cycle(true);
     if (r.msgs || r.chats) log(`${r.msgs} new message(s), ${r.chats} chat(s) updated`);
+    await sendQueued();
     fails = 0;
   } catch (e) {
     fails++;
