@@ -133,6 +133,7 @@ table.t2 td{padding:6px 11px;border-bottom:1px solid var(--border)}
 table.t2 tr:last-child td{border-bottom:none}
 table.t2 tbody tr:hover{background:var(--sel);cursor:pointer}
 .bar2{height:7px;border-radius:4px;background:var(--gold);min-width:2px}
+.buildstamp{color:var(--text2);font-size:10px;padding:12px 14px 6px;opacity:.75}
 .soonbox{background:#FFF8E1;border:1px dashed #E8D48A;border-radius:9px;padding:11px 12px;
   color:#6b5600;font-size:12.5px}
 @media(max-width:860px){
@@ -260,6 +261,11 @@ function LEADS(){
   });
 }
 
+/* Bumped whenever this page changes, and shown at the bottom of the sidebar.
+   GitHub Pages and an installed app both cache hard, so without this there is
+   no way to tell "the fix is not deployed" from "the fix does not work". */
+const BUILD='2026-11-23c';
+
 function drawNav(){
   $('side').innerHTML = NAV.map(n=>{
     if(n.grp) return '<div class="grp">'+esc(n.grp)+'</div>';
@@ -271,7 +277,7 @@ function drawNav(){
        emit go("dash"), and that second double quote closes the attribute. */
     return '<div class="nav'+(VIEW===n.id?' on':'')+"\" onclick=\"go('"+n.id+"')\">"
       +'<span class="ico">'+n.ico+'</span>'+esc(n.label)+pill+'</div>';
-  }).join('');
+  }).join('') + '<div class="buildstamp">build '+BUILD+'</div>';
 }
 
 function go(id){
