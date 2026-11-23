@@ -454,7 +454,7 @@ function LEADS(){
 /* Bumped whenever this page changes, and shown at the bottom of the sidebar.
    GitHub Pages and an installed app both cache hard, so without this there is
    no way to tell "the fix is not deployed" from "the fix does not work". */
-const BUILD='2026-11-23s';
+const BUILD='2026-11-23t';
 
 function drawNav(){
   $('side').innerHTML = NAV.map(n=>{
@@ -620,7 +620,7 @@ function srcChip(jid){
   const k=li.src_kind, lbl=String(li.src_label||'').trim();
   if(!lbl || k==='unknown' || lbl==='Not recorded') return '';
   const short=lbl.length>20?lbl.slice(0,19)+'…':lbl;
-  const tip=(k==='ad'?'Meta advert: ':(k==='tagged'?'Tagged by reception: ':'From the job card: '))
+  const tip=(k==='ad'?'Meta advert: ':(k==='tagged'?'Tagged by reception: ':(k==='code'?'Found in the ad welcome message: ':'From the job card: ')))
     +lbl+(li.campaign?' — '+li.campaign:'');
   return '<span class="chip '+(k==='ad'?'ad':'src')+'" title="'+esc(tip)+'">'
     +(k==='ad'?'&#9872; ':'')+esc(short)+'</span>';
@@ -712,7 +712,7 @@ function adBtnHtml(jid){
   if(li.src_kind==='ad') return '';                      // a real tag from the message: leave it alone
   const j=JSON.stringify(jid).replace(/"/g,'&quot;');
   return '<button class="adbtn" title="Which ad did this customer come from?" onclick="adToggle(event,'+j+')">'
-    +((li.src_kind==='tagged')?'change ad':'+ ad')+'</button>';
+    +((li.src_kind==='tagged'||li.src_kind==='code')?'change ad':'+ ad')+'</button>';
 }
 async function tagAd(ev,jid,code){
   if(ev) ev.stopPropagation();
