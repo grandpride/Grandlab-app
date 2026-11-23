@@ -111,6 +111,20 @@ input:focus{outline:none;border-color:var(--gold-ink)}
   color:var(--blue);margin-bottom:2px}
 .msg .by.byph{color:var(--ink2);font-weight:700;font-style:italic}
 .replyNote.err{color:var(--red)}
+.mia{border-bottom:1px solid var(--border);background:#FFFBEB;padding:8px 12px;max-height:40vh;overflow-y:auto}
+.mia .mh{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:11.5px;color:var(--text2)}
+.mia .mh b{color:var(--text);font-size:12.5px;margin-right:2px}
+.mia .lg{border:1px solid var(--line2);background:var(--card);border-radius:6px;padding:2px 9px;font:inherit;font-size:11.5px;cursor:pointer;color:inherit}
+.mia .lg.on{background:var(--gold);border-color:var(--gold-ink);font-weight:700}
+.mia .sp{flex:1}
+.mia .warn{margin-top:6px;padding:6px 9px;border-radius:7px;background:#FEF2F2;border:1px solid #FECACA;color:#991B1B;font-size:12px}
+.mia .say{margin-top:6px;font-size:12px;color:var(--text2)}
+.mia .why{margin-top:6px;font-size:11.5px;color:var(--text2)}
+.miaopt{display:block;width:100%;text-align:left;border:1px solid var(--line2);background:var(--card);border-radius:8px;padding:7px 10px;margin-top:6px;cursor:pointer;font:inherit;color:inherit}
+.miaopt:hover{border-color:var(--gold-ink)}
+.miaopt .k{display:block;font-size:10.5px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--text2);margin-bottom:2px}
+.miaopt .tx{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden;white-space:pre-wrap;font-size:12.5px;line-height:1.4}
+.miaopt:hover .tx{-webkit-line-clamp:unset}
 /* ---- shell: sidebar + view area ---- */
 .shell{display:flex;align-items:stretch;min-height:calc(100vh - 42px)}
 .side{flex:0 0 184px;border-right:1px solid var(--border);background:var(--card2);padding:8px 0}
@@ -355,6 +369,7 @@ table.t2 tbody tr:hover{background:var(--blue-soft)}
       <button class="btn btn2 btn-xs" onclick="closeThread()">Close</button>
     </div>
     <div class="rec" id="tRec"></div>
+    <div class="mia hide" id="tMia"></div>
     <div class="thread" id="tThread"></div>
     <div class="whois" id="tWhoWrap"></div>
     <div class="reply" id="tReply">
@@ -416,7 +431,7 @@ function LEADS(){
 /* Bumped whenever this page changes, and shown at the bottom of the sidebar.
    GitHub Pages and an installed app both cache hard, so without this there is
    no way to tell "the fix is not deployed" from "the fix does not work". */
-const BUILD='2026-11-23n';
+const BUILD='2026-11-23o';
 
 function drawNav(){
   $('side').innerHTML = NAV.map(n=>{
@@ -536,6 +551,12 @@ function colOf(c){
   const newest=Math.max(lastIn,lastOut);
   if(!newest) return 'quiet';
 
+  /* "Gone quiet" pressed by reception AFTER the customer's last message is
+     believed, even though that message was never answered — otherwise the
+     button looks dead and the card just sits in Needs reply. If the customer
+     writes again afterwards, their new message is newer than the mark and the
+     card comes back to Needs reply by itself. */
+  if(s==='ghost' && c.ghost_at && new Date(c.ghost_at).getTime() >= lastIn) return 'quiet';
   const unanswered = lastIn > lastOut;
   const gone = Date.now()-newest > QUIET_DAYS*86400000;
   /* An open message comes first — paid, ghosted or neither. A customer who
@@ -673,13 +694,16 @@ function cardHtml(c,col){
 async function setChatStatus(ev,jid,st){
   ev.stopPropagation();
   const c=CHATS.find(x=>x.chat_jid===jid); if(!c) return;
-  const was=c.status;
-  c.status=st; OPENMV=''; render();        // move it at once, it feels instant
+  const was=c.status, wasGhost=c.ghost_at;
+  /* The server stamps the moment it was marked quiet; do the same here so the
+     card moves at once and does not wait for a reload to find out. */
+  c.status=st; c.ghost_at=(st==='ghost')?new Date().toISOString():null;
+  OPENMV=''; render();                     // move it at once, it feels instant
   try{
     const {error}=await sb.rpc('gl_crm_set_status',{p_jid:jid,p_status:st});
     if(error) throw error;
   }catch(e){
-    c.status=was; render();                 // put it back rather than lie
+    c.status=was; c.ghost_at=wasGhost; render();   // put it back rather than lie
     $('statusLine').innerHTML='<span class="err">Could not move that chat: '
       +esc(e.message||e)+'</span>';
   }
@@ -746,7 +770,7 @@ async function load(){
   $('statusLine').textContent='Loading…';
   try{
     const {data:chats,error}=await sb.from('gl_wa_chat')
-      .select('chat_jid,phone,name,stage,status,first_in_at,last_in_at,last_out_at,booked_at,paid_at,paid_rm,remark')
+      .select('chat_jid,phone,name,stage,status,ghost_at,first_in_at,last_in_at,last_out_at,booked_at,paid_at,paid_rm,remark')
       .order('last_in_at',{ascending:false,nullsFirst:false})
       .limit(400);
     if(error) throw error;
@@ -815,11 +839,12 @@ async function openThread(jid){
   $('tRec').innerHTML='<div class="row"><span class="k">Customer</span><span>Looking up…</span></div>';
   $('tThread').innerHTML='<div class="msg sys">Loading…</div>';
   $('tBox').value=''; $('tReplyNote').textContent=''; $('tReplyNote').className='replyNote';
+  miaReset();
   drawWho();
   loadRecord(CUR.phone);
   loadThread(jid);
 }
-function closeThread(){ $('ov').classList.add('hide'); CUR=null; }
+function closeThread(){ $('ov').classList.add('hide'); CUR=null; miaReset(); }
 
 /* The strip above the reply box. Two shapes: a free-text name while no staff
    have been set up, and a name + PIN sign-in once they have. */
@@ -837,7 +862,7 @@ function drawWho(){
   if(ME){
     box.innerHTML='Replying as <b style="color:var(--text);font-size:12.5px">'+esc(ME.name)+'</b>'
       +'<button class="mvbtn" onclick="signOutStaff()">Not me</button>'
-      +'<span id="tWhoNote">— every reply goes out as "'+esc(ME.name)+':", and is recorded against '+esc(ME.name)+'.</span>';
+      +'<span id="tWhoNote">— every reply starts with <b>'+esc(ME.name)+':</b> in bold, and is recorded against '+esc(ME.name)+'.</span>';
     return;
   }
   box.innerHTML='Who is replying? '
@@ -852,7 +877,7 @@ function whoNote(){
   const n=$('tWhoNote'); if(!n) return;
   const w=agentName();
   n.textContent = w
-    ? '— every reply goes out as "'+w+':", so the customer knows who answered.'
+    ? '— every reply starts with "'+w+':" in bold, so the customer knows who answered.'
     : '— leave blank to send with no name on the front.';
 }
 async function signInStaff(){
@@ -967,6 +992,150 @@ function withAgent(body){
   return '*'+who+':*\n'+body;
 }
 
+
+/* ---------------------------------------------------------------------------
+   MIA suggestions, above the chat.
+   This calls the same MIA function the advisors already use (gl-mia.html), so
+   nothing new has to be deployed. It sends the last few messages of THIS chat,
+   gets back drafts in English / Bahasa / Chinese, and puts them on buttons.
+   Pressing a button only copies the draft into the reply box. A person reads
+   it, changes it if needed, and presses Send. MIA never sends anything.
+   It asks by itself only when the customer wrote last; otherwise there is a
+   button, so nobody pays for a suggestion nobody wanted.
+   --------------------------------------------------------------------------- */
+const MIA_FN=SUPABASE_URL+'/functions/v1/mia';
+const MIA_CACHE={};          // jid -> {key, out}
+let MIA_STATE=null;          // what is on screen for the open chat
+let MIA_SEQ=0;               // ignore an answer that arrives for a chat we left
+let MIA_FILLED='';           // the last draft we put in the box
+const MIA_LANGS=[['en','EN'],['bm','BM'],['zh','中文']];
+const MIA_OPTS=[['short','Short'],['explain','Explain'],['push','Recommend']];
+
+function miaReset(){
+  MIA_SEQ++; MIA_STATE=null; MIA_FILLED='';
+  const el=$('tMia'); if(el){ el.classList.add('hide'); el.innerHTML=''; }
+}
+function miaGuessLang(txt){
+  const t=String(txt||'');
+  if(/[一-鿿]/.test(t)) return 'zh';
+  if(/\b(boleh|nak|nk|berapa|brp|harga|saya|tak|tidak|ada|macam|kereta|tolong|lah|bila|esok|sila|terima kasih|tq|cuci|kaca|nanti|dah|ye|ya)\b/i.test(t)) return 'bm';
+  return 'en';
+}
+function miaTranscript(rows){
+  const last=rows.slice(-12);
+  return last.map(m=>{
+    const who=senderOf(m);
+    let txt=who&&who.via==='crm'&&who.clean ? who.clean : String(m.body||'').trim();
+    if(!txt){
+      const t=String(m.msg_type||'').toLowerCase();
+      txt = ['voice','audio'].includes(t) ? '[voice note - not transcribed]'
+          : t==='image' ? '[photo]' : t==='video' ? '[video]' : t==='document' ? '[document]' : '';
+    }
+    if(!txt) return '';
+    return (m.direction==='out' ? 'Grandlab: ' : 'Customer: ')+txt;
+  }).filter(Boolean).join('\n');
+}
+function miaOffer(jid,rows){
+  const el=$('tMia'); if(!el) return;
+  const last=rows[rows.length-1];
+  if(!last){ el.classList.add('hide'); return; }
+  const key=jid+'|'+last.wa_ts;
+  const t=String(last.msg_type||'').toLowerCase();
+  const textless = last.direction==='in' && !String(last.body||'').trim();
+  MIA_STATE={jid,rows,key,lang:miaGuessLang(
+      rows.filter(m=>m.direction==='in'&&m.body).slice(-3).map(m=>m.body).join(' ')),out:null,busy:false,err:'',extra:null};
+  el.classList.remove('hide');
+  if(MIA_CACHE[jid]&&MIA_CACHE[jid].key===key){ MIA_STATE.out=MIA_CACHE[jid].out; miaDraw(); return; }
+  if(textless){
+    el.innerHTML='<div class="mh"><b>MIA</b></div><div class="say">Their last message is '
+      +(['voice','audio'].includes(t)?'a voice note':t==='image'?'a photo':'something with no text')
+      +', and MIA cannot hear or see it yet. Listen on the phone first, then ask MIA below.</div>'
+      +'<div class="mh" style="margin-top:6px"><button class="lg" onclick="miaAsk()">Suggest a reply anyway</button></div>';
+    return;
+  }
+  if(last.direction==='in'){ miaAsk(); return; }       // they wrote last: they are waiting on us
+  el.innerHTML='<div class="mh"><b>MIA</b><span>You wrote last.</span><span class="sp"></span>'
+    +'<button class="lg" onclick="miaAsk()">Suggest a follow-up</button></div>';
+}
+async function miaAsk(answer){
+  const st=MIA_STATE; if(!st||st.busy) return;
+  const seq=++MIA_SEQ; st.busy=true; st.err='';
+  const msgs=[{role:'user',content:[{type:'text',text:
+    'This is the WhatsApp chat so far, oldest first. Write what Grandlab should send next.\n\n'+miaTranscript(st.rows)}]}];
+  if(answer && st.extra){
+    msgs.push({role:'assistant',content:[{type:'text',text:st.extra}]});
+    msgs.push({role:'user',content:[{type:'text',text:answer}]});
+  }
+  miaDraw();
+  try{
+    const {data}=await sb.auth.getSession();
+    const token=(data&&data.session&&data.session.access_token)||SUPABASE_ANON;
+    const r=await fetch(MIA_FN,{method:'POST',
+      headers:{'Content-Type':'application/json',apikey:SUPABASE_ANON,Authorization:'Bearer '+token},
+      body:JSON.stringify({mode:'coach',messages:msgs,stage:'auto'})});
+    let out; try{ out=await r.json(); }catch(e){ throw new Error('MIA sent back something unreadable.'); }
+    if(!r.ok||out.error) throw new Error(out.error||('Request failed ('+r.status+')'));
+    if(seq!==MIA_SEQ) return;                    // they moved to another chat meanwhile
+    st.out=out; st.extra=out.text||null;
+    if(out.reply&&out.reply.type==='reply') MIA_CACHE[st.jid]={key:st.key,out};
+  }catch(e){
+    if(seq!==MIA_SEQ) return;
+    st.err=e.message||String(e);
+  }
+  st.busy=false; miaDraw();
+}
+function miaSetLang(l){ if(MIA_STATE){ MIA_STATE.lang=l; miaDraw(); } }
+function miaDraw(){
+  const el=$('tMia'), st=MIA_STATE; if(!el||!st) return;
+  const head=(extra)=>'<div class="mh"><b>MIA suggests</b>'
+    +MIA_LANGS.map(([k,l])=>'<button class="lg'+(st.lang===k?' on':'')+'" onclick="miaSetLang(\''+k+'\')">'+l+'</button>').join('')
+    +'<span class="sp"></span>'+(extra||'')+'</div>';
+  if(st.busy){ el.innerHTML='<div class="mh"><b>MIA</b><span>Reading the chat and working out a reply…</span></div>'; return; }
+  if(st.err){
+    el.innerHTML='<div class="mh"><b>MIA</b><span class="err">Could not get a suggestion: '+esc(st.err)+'</span>'
+      +'<span class="sp"></span><button class="lg" onclick="miaAsk()">Try again</button></div>';
+    return;
+  }
+  const out=st.out, r=out&&out.reply;
+  if(r&&r.type==='clarify'){
+    el.innerHTML=head('')
+      +'<div class="say"><b>MIA needs to know:</b> '+esc(r.question||'')+'</div>'
+      +(r.options||[]).map((o,i)=>'<button class="miaopt" onclick="miaAnswer('+i+')"><span class="tx">'+esc(o)+'</span></button>').join('');
+    return;
+  }
+  if(r&&r.type==='reply'){
+    const set=r[st.lang]||{};
+    const items=MIA_OPTS.filter(([k])=>set[k]);
+    el.innerHTML=head('<button class="lg" onclick="MIA_CACHE[MIA_STATE.jid]=null;miaAsk()" title="Ask MIA again">&#8635;</button>')
+      +(typeof r.handover==='string'&&r.handover.trim()
+          ? '<div class="warn"><b>Check with Jimmy before sending:</b> '+esc(r.handover.trim())+'</div>' : '')
+      +(r.note?'<div class="why">'+esc(r.note)+'</div>':'')
+      +(items.length ? items.map(([k,l])=>'<button class="miaopt" onclick="miaUse(\''+st.lang+'\',\''+k+'\')">'
+          +'<span class="k">'+l+'</span><span class="tx">'+esc(set[k])+'</span></button>').join('')
+        : '<div class="say">No '+esc(st.lang.toUpperCase())+' version this time — try another language above.</div>')
+      +'<div class="why">Press one to copy it into the reply box. Nothing is sent until you press Send.</div>';
+    return;
+  }
+  const raw=(out&&out.text)||'';
+  el.innerHTML=head('')+(raw?'<div class="say" style="white-space:pre-wrap">'+esc(raw)+'</div>'
+    :'<div class="say">MIA had nothing to suggest.</div>');
+}
+function miaAnswer(i){
+  const r=MIA_STATE&&MIA_STATE.out&&MIA_STATE.out.reply;
+  if(r&&r.options&&r.options[i]!=null) miaAsk(String(r.options[i]));
+}
+function miaUse(lang,key){
+  const st=MIA_STATE; const r=st&&st.out&&st.out.reply;
+  const txt=r&&r[lang]&&r[lang][key]; if(!txt) return;
+  const box=$('tBox');
+  const cur=String(box.value||'');
+  box.value = (!cur.trim()||cur===MIA_FILLED) ? txt : cur.replace(/\s+$/,'')+'\n\n'+txt;
+  MIA_FILLED=box.value;
+  $('tReplyNote').className='replyNote';
+  $('tReplyNote').textContent='MIA draft is in the box. Read it, change anything, then press Send.';
+  box.focus();
+}
+
 async function sendReply(){
   if(!CUR) return;
   const box=$('tBox'), btn=$('tSend'), note=$('tReplyNote');
@@ -1021,6 +1190,7 @@ async function loadThread(jid){
         +'<span class="t">'+esc(dmy(m.wa_ts))+'</span></div>';
     }).join('') : '<div class="msg sys">No messages recorded for this chat.</div>';
     const t=$('tThread'); t.scrollTop=t.scrollHeight;
+    if(CUR && CUR.chat_jid===jid) miaOffer(jid,rows);
   }catch(e){
     $('tThread').innerHTML='<div class="msg sys">Could not load messages: '+esc(e.message||e)+'</div>';
   }
