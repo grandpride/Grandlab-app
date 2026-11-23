@@ -257,6 +257,7 @@ table.t2 tbody tr:hover{background:var(--blue-soft)}
       <div id="vDash"    class="pad hide"></div>
       <div id="vLeads"   class="pad hide"></div>
       <div id="vReports" class="pad hide"></div>
+      <div id="vAds"     class="pad hide"></div>
       <div id="vTasks"   class="pad hide"></div>
       <div id="vSoon"    class="pad hide"></div>
 
@@ -295,7 +296,7 @@ const $=id=>document.getElementById(id);
 const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const RM=n=>'RM'+(Math.round((Number(n)||0)*100)/100).toLocaleString('en-MY',{minimumFractionDigits:2,maximumFractionDigits:2});
 
-let CHATS=[], LASTMSG={}, CUR=null, OVER={}, VIEW='pipeline', TASKS=[], MONTHLY=[], LEADINFO={};
+let CHATS=[], LASTMSG={}, CUR=null, OVER={}, VIEW='pipeline', TASKS=[], MONTHLY=[], LEADINFO={}, ADS=[], ADDAYS=30;
 
 const today=()=>new Date().toISOString().slice(0,10);
 /* Due today or already overdue — the only tasks worth putting a number on. */
@@ -313,6 +314,7 @@ const NAV=[
   {id:'contacts', ico:'&#9679;', label:'Customers', href:'gl-customers.html'},
   {id:'members',  ico:'&#9734;', label:'Members',  href:'gl-members.html'},
   {grp:'Business'},
+  {id:'ads',      ico:'&#9670;', label:'Ads'},
   {id:'reports',  ico:'&#9650;', label:'Reports'},
   {id:'calendar', ico:'&#9633;', label:'Booking',   href:'gl-staff-appointment-FINAL.html'},
   {id:'tasks',    ico:'&#10003;', label:'Tasks', count:()=>TASKS.filter(t=>!t.done&&dueSoon(t)).length, hot:true},
@@ -335,7 +337,7 @@ function LEADS(){
 /* Bumped whenever this page changes, and shown at the bottom of the sidebar.
    GitHub Pages and an installed app both cache hard, so without this there is
    no way to tell "the fix is not deployed" from "the fix does not work". */
-const BUILD='2026-11-23e';
+const BUILD='2026-11-23f';
 
 function drawNav(){
   $('side').innerHTML = NAV.map(n=>{
@@ -354,7 +356,7 @@ function drawNav(){
 function go(id){
   VIEW=id;
   const soon=(NAV.find(n=>n.id===id)||{}).soon;
-  for(const v of ['vPipeline','vDash','vLeads','vReports','vTasks','vSoon'])
+  for(const v of ['vPipeline','vDash','vLeads','vReports','vAds','vTasks','vSoon'])
     $(v).classList.add('hide');
   if(soon){
     $('vSoon').classList.remove('hide');
@@ -364,6 +366,7 @@ function go(id){
   else if(id==='leads')     { $('vLeads').classList.remove('hide');   renderLeads(); }
   else if(id==='reports')   { $('vReports').classList.remove('hide'); renderReports(); }
   else if(id==='tasks')     { $('vTasks').classList.remove('hide');   renderTasks(); }
+  else if(id==='ads')       { $('vAds').classList.remove('hide');     renderAds(); }
   else                      { $('vPipeline').classList.remove('hide'); }
   drawNav();
   try{ location.hash=id; }catch(e){}
@@ -525,6 +528,7 @@ async function load(){
     LEADINFO={};
     try{ const {data:li}=await sb.rpc('gl_crm_lead_info');
          (li||[]).forEach(x=>{ LEADINFO[x.chat_jid]=x; }); }catch(e){}
+    try{ const {data:ad}=await sb.rpc('gl_crm_ads',{p_days:ADDAYS}); ADS=ad||[]; }catch(e){ ADS=[]; }
 
     await loadTasks();
     staleCheck();
@@ -534,6 +538,7 @@ async function load(){
     else if(VIEW==='leads') renderLeads();
     else if(VIEW==='reports') renderReports();
     else if(VIEW==='tasks') renderTasks();
+    else if(VIEW==='ads') renderAds();
   }catch(e){
     $('statusLine').innerHTML='<span class="err">Could not load: '+esc(e.message||e)+'</span>';
   }
@@ -888,6 +893,63 @@ function renderLeads(){
      +'Your Meta ads and campaigns are already in the database and the link works &mdash; '
      +'what is missing is the ad tag on the incoming message, which wacli does not hand over. '
      +'Everything else here is worked out from the conversation itself.</div>';
+}
+
+/* ---- Ads ----
+   Straight from the hourly Meta sync, so this is what Meta itself reports -
+   not an estimate. The one number that is ours is "traced": conversations we
+   can tie back to the advert that started them. */
+async function setAdDays(d){
+  ADDAYS=d;
+  try{ const {data}=await sb.rpc('gl_crm_ads',{p_days:d}); ADS=data||[]; }catch(e){}
+  renderAds();
+}
+function renderAds(){
+  const live=ADS.filter(a=>['ACTIVE','LEARNING'].includes(String(a.status||'').toUpperCase()));
+  const spend=ADS.reduce((s,a)=>s+Number(a.spend||0),0);
+  const conv=ADS.reduce((s,a)=>s+Number(a.conversations||0),0);
+  const traced=ADS.reduce((s,a)=>s+Number(a.traced_leads||0),0);
+  const cpc=conv?spend/conv:0;
+  const maxSpend=Math.max(1,...ADS.map(a=>Number(a.spend||0)));
+  const tab=d=>'<span class="fchip'+(ADDAYS===d?' on':'')+'" onclick="setAdDays('+d+')">'+d+' days</span>';
+
+  $('vAds').innerHTML=
+    '<div class="h1">Ads</div>'
+   +'<div class="h1s">Live from your Meta account, synced hourly. '
+     +(ADS.length&&ADS[0].last_day?('Figures to '+esc(dmyShort(ADS[0].last_day))+'.'):'')+'</div>'
+   +'<div class="fchips" style="padding:0 0 12px">'+tab(7)+tab(30)+tab(90)+'</div>'
+   +'<div class="cards">'
+     +kpi(RM(spend),'Spent','last '+ADDAYS+' days','','&#9650;','#FEF3C7')
+     +kpi(conv,'Conversations','Meta’s count','','&#9993;','#EEF3FE')
+     +kpi(cpc?RM(cpc):'—','Cost per conversation','','','&#9878;','#DCFCE7')
+     +kpi(traced,'Traced to a chat', traced<conv?'out of '+conv:'', traced<conv?'lost':'win','&#9872;','#FEE2E2')
+     +kpi(live.length,'Running now','ACTIVE or LEARNING')
+   +'</div>'
+   +'<div class="panel2"><div class="pt">'+ADS.length+' ads &mdash; most spend first</div>'
+   +'<table class="t2"><thead><tr><th>Ad</th><th>Status</th><th>Spend</th><th>Conv.</th>'
+     +'<th>Cost / conv.</th><th>Traced</th><th style="width:20%"></th></tr></thead><tbody>'
+   +(ADS.length?ADS.map(a=>{
+      const st=String(a.status||'').toUpperCase();
+      const dot=st==='ACTIVE'?'#15803D':(st==='LEARNING'?'#2563EB':'#94A3B8');
+      const c=Number(a.conversations||0), sp=Number(a.spend||0);
+      return '<tr>'
+        +'<td><b>'+esc(a.ad_name||'(unnamed)')+'</b>'
+          +(a.campaign?'<div style="color:var(--ink2);font-size:11px">'+esc(a.campaign)+'</div>':'')+'</td>'
+        +'<td><span class="dot" style="display:inline-block;background:'+dot+';margin-right:6px"></span>'
+          +esc(st.replace('ADSET_PAUSED','Paused').replace('ACTIVE','Active').replace('LEARNING','Learning'))+'</td>'
+        +'<td>'+esc(RM(sp))+'</td>'
+        +'<td>'+c+'</td>'
+        +'<td>'+(c?esc(RM(sp/c)):'<span style="color:var(--ink2)">—</span>')+'</td>'
+        +'<td>'+(Number(a.traced_leads)>0?'<b>'+a.traced_leads+'</b>':'<span style="color:var(--ink2)">0</span>')+'</td>'
+        +'<td><div class="bar2" style="width:'+Math.max(2,Math.round(sp/maxSpend*100))+'%"></div></td></tr>';
+    }).join('')
+    :'<tr><td colspan="7" style="padding:20px;text-align:center;color:var(--ink2)">No ad data synced.</td></tr>')
+   +'</tbody></table></div>'
+   +(traced<conv?('<div class="soonbox" style="margin-top:14px"><b>Meta counted '+conv
+     +' conversations; '+traced+' can be traced to the advert that started them.</b> '
+     +'That gap is the missing ad tag on incoming messages, not a problem with these figures &mdash; '
+     +'spend, clicks and conversations come straight from Meta. Close the gap and every one of these '
+     +'rows could show jobs and ringgit earned, not just spent.</div>'):'');
 }
 
 /* ---- Reports ---- */
