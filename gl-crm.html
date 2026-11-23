@@ -292,6 +292,12 @@ table.t2 tbody tr:hover{background:var(--blue-soft)}
 .mvmore{margin-left:auto;border:none;background:none;cursor:pointer;color:var(--ink2);
   font-size:15px;line-height:1;padding:0 2px;font-family:inherit}
 .mvmore:hover{color:var(--blue)}
+.adbtn{border:1px dashed var(--line2);background:none;border-radius:999px;padding:1px 8px;font-size:10.5px;font-weight:700;
+  color:var(--ink2);cursor:pointer;font-family:inherit;line-height:1.6}
+.adbtn:hover{border-color:var(--blue);color:var(--blue)}
+.adpick .mvbtn.cur{background:var(--gold);border-color:var(--gold-ink)}
+.adtag{padding:8px 12px;border-bottom:1px solid var(--border);background:#F8FAFC;font-size:12px;color:var(--text2)}
+.adtag .decide{margin-top:6px;padding-top:0;border-top:none}
 /* --- Ads detail --- */
 .adcard{border:1px solid var(--line2);border-radius:12px;background:#fff;padding:13px 15px;
   margin-bottom:11px;box-shadow:var(--shadow)}
@@ -378,12 +384,14 @@ table.t2 tbody tr:hover{background:var(--blue-soft)}
         <div class="nm" id="tNm"></div>
         <div class="ph" id="tPh" style="color:var(--text2);font-size:11.5px"></div>
       </div>
+      <button class="btn btn2 btn-xs" onclick="toggleThreadAd()" title="Which ad did this customer come from?">Ad</button>
       <button class="btn btn2 btn-xs" onclick="followUp(1)" title="Remind me tomorrow">+1d</button>
       <button class="btn btn2 btn-xs" onclick="followUp(3)" title="Remind me in 3 days">+3d</button>
       <a id="tWa" class="btn btn-wa btn-xs" target="_blank" rel="noopener">WhatsApp</a>
       <button class="btn btn2 btn-xs" onclick="closeThread()">Close</button>
     </div>
     <div class="rec" id="tRec"></div>
+    <div class="adtag hide" id="tAd"></div>
     <div class="mia hide" id="tMia"></div>
     <div class="thread" id="tThread"></div>
     <div class="whois" id="tWhoWrap"></div>
@@ -404,7 +412,7 @@ const $=id=>document.getElementById(id);
 const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const RM=n=>'RM'+(Math.round((Number(n)||0)*100)/100).toLocaleString('en-MY',{minimumFractionDigits:2,maximumFractionDigits:2});
 
-let CHATS=[], LASTMSG={}, CUR=null, OVER={}, VIEW='pipeline', TASKS=[], MONTHLY=[], LEADINFO={}, ADS=[], ADDAYS=30;
+let CHATS=[], LASTMSG={}, CUR=null, OVER={}, VIEW='pipeline', TASKS=[], MONTHLY=[], LEADINFO={}, ADS=[], ADDAYS=30, AD_CODES=[], OPENAD='';
 let STAFF=[], ME=null, STAFF_FROM=null;
 
 const today=()=>new Date().toISOString().slice(0,10);
@@ -446,7 +454,7 @@ function LEADS(){
 /* Bumped whenever this page changes, and shown at the bottom of the sidebar.
    GitHub Pages and an installed app both cache hard, so without this there is
    no way to tell "the fix is not deployed" from "the fix does not work". */
-const BUILD='2026-11-23r';
+const BUILD='2026-11-23s';
 
 function drawNav(){
   $('side').innerHTML = NAV.map(n=>{
@@ -631,7 +639,7 @@ function srcChip(jid){
 let OPENMV='';
 function mvToggle(ev,jid){
   ev.stopPropagation();
-  OPENMV = (OPENMV===jid) ? '' : jid;
+  OPENMV = (OPENMV===jid) ? '' : jid; OPENAD='';
   render();
 }
 function mvPicker(c,col,prompt){
@@ -676,6 +684,67 @@ function msgText(m){
   return '(couldn\u2019t read this one \u2014 a reaction, an edit, or a type the bridge cannot open)';
 }
 
+/* Which ad did this chat come from?
+   WhatsApp's own ad tag never reaches the bridge (wacli does not store it), so
+   reception reads it off the phone and taps it here. It only ever writes the
+   one chat's "source" field, through gl_crm_set_source, and only to a known ad
+   code, "Other ad" or "No ad". A tag that came from the message itself (a real
+   advert id) is never offered for change. */
+function adPicker(jid){
+  const li=LEADINFO[jid]||{};
+  const cur=li.src_kind==='tagged' ? String(li.src_label||'') : '';
+  const j=JSON.stringify(jid).replace(/"/g,'&quot;');
+  const b=(code,lbl,tip)=>'<button class="mvbtn'+(cur===code?' cur':'')+'" title="'+esc(tip||'')
+    +'" onclick="tagAd(event,'+j+',\''+String(code).replace(/'/g,'')+'\')">'+esc(lbl||code)+'</button>';
+  return '<div class="dq" style="width:100%;font-size:11px;font-weight:700;color:var(--ink2)">Which ad is on the phone for this chat?</div>'
+    +AD_CODES.map(a=>b(a.code,a.code,(a.offer||'')+(a.active?'':' (paused)'))).join('')
+    +b('Other ad','Other ad','An ad that is not in this list')
+    +b('No ad','No ad','Came in without an ad')
+    +(cur?b('','Clear','Remove the tag'):'');
+}
+function adToggle(ev,jid){
+  ev.stopPropagation();
+  OPENAD=(OPENAD===jid)?'':jid; OPENMV='';
+  render();
+}
+function adBtnHtml(jid){
+  const li=LEADINFO[jid]||{};
+  if(li.src_kind==='ad') return '';                      // a real tag from the message: leave it alone
+  const j=JSON.stringify(jid).replace(/"/g,'&quot;');
+  return '<button class="adbtn" title="Which ad did this customer come from?" onclick="adToggle(event,'+j+')">'
+    +((li.src_kind==='tagged')?'change ad':'+ ad')+'</button>';
+}
+async function tagAd(ev,jid,code){
+  if(ev) ev.stopPropagation();
+  const prev=LEADINFO[jid]?Object.assign({},LEADINFO[jid]):null;
+  const cur=LEADINFO[jid]||(LEADINFO[jid]={chat_jid:jid});
+  if(code){ cur.src_kind='tagged'; cur.src_label=code; cur.campaign=((AD_CODES.find(a=>a.code===code)||{}).offer)||null; }
+  else{ cur.src_kind='unknown'; cur.src_label='Not recorded'; cur.campaign=null; }
+  OPENAD=''; render(); drawThreadAd();
+  try{
+    const {error}=await sb.rpc('gl_crm_set_source',{p_jid:jid,p_source:code||''});
+    if(error) throw error;
+  }catch(e){
+    if(prev) LEADINFO[jid]=prev; else delete LEADINFO[jid];
+    render(); drawThreadAd();
+    $('statusLine').innerHTML='<span class="err">Could not save the ad: '+esc(e.message||e)+'</span>';
+  }
+}
+/* the same picker in the chat window, opened from the "Ad" button in its header */
+function drawThreadAd(){
+  const el=$('tAd'); if(!el) return;
+  if(!CUR||el.dataset.open!=='1'){ el.classList.add('hide'); el.innerHTML=''; return; }
+  const li=LEADINFO[CUR.chat_jid]||{};
+  if(li.src_kind==='ad'){ el.classList.remove('hide'); el.innerHTML='Came from a Meta ad tag: <b>'+esc(li.src_label||'')+'</b>'; return; }
+  el.classList.remove('hide');
+  el.innerHTML='<div class="decide adpick">'+adPicker(CUR.chat_jid)+'</div>';
+}
+function toggleThreadAd(){
+  const el=$('tAd'); if(!el) return;
+  el.dataset.open = el.dataset.open==='1' ? '0' : '1';
+  drawThreadAd();
+}
+
 function cardHtml(c,col){
   const a=agoTxt(c.last_in_at);
   const st=shortStage(c.stage);
@@ -701,12 +770,14 @@ function cardHtml(c,col){
           ? '<span class="chip rm" title="'+esc('Job dated '+dmyShort(won))+'">'+esc(RM(o.revenue))+'</span>'
           : (s==='paid'&&!won ? '<span class="chip mark" title="Marked won by hand — no job or payment found against this number">marked won</span>'
           : (Number(c.paid_rm)>0?'<span class="chip rm">'+esc(RM(c.paid_rm))+'</span>':'')))
+      +adBtnHtml(c.chat_jid)
       +(light==='new'?'<span class="chip fresh">NEW</span>':'')
       +(s==='closed'?'<span class="chip chk">closed by you</span>':'')
       +'<span class="ago '+a.cls+'">'+a.t+'</span>'
       +(light==='amber'?'':'<button class="mvmore" title="Move this chat" onclick="mvToggle(event,'+j+')">&#8943;</button>')
     +'</div>'
     +(showPicker?mvPicker(c,col,light==='amber'):'')
+    +(OPENAD===c.chat_jid?'<div class="decide adpick" onclick="event.stopPropagation()">'+adPicker(c.chat_jid)+'</div>':'')
     +'</div>';
 }
 
@@ -836,6 +907,7 @@ async function load(){
     try{ const {data:li}=await sb.rpc('gl_crm_lead_info');
          (li||[]).forEach(x=>{ LEADINFO[x.chat_jid]=x; }); }catch(e){}
     try{ const {data:ad}=await sb.rpc('gl_crm_ads',{p_days:ADDAYS}); ADS=ad||[]; }catch(e){ ADS=[]; }
+    try{ const {data:ac,error:ae}=await sb.rpc('gl_crm_ad_codes'); if(!ae&&Array.isArray(ac)) AD_CODES=ac; }catch(e){}
     await loadStaff();
 
     await loadTasks();
@@ -878,6 +950,7 @@ async function openThread(jid){
   $('tThread').innerHTML='<div class="msg sys">Loading…</div>';
   $('tBox').value=''; $('tReplyNote').textContent=''; $('tReplyNote').className='replyNote';
   miaReset();
+  { const ta=$('tAd'); if(ta){ ta.dataset.open='0'; } drawThreadAd(); }
   drawWho();
   loadRecord(CUR.phone);
   loadThread(jid);
