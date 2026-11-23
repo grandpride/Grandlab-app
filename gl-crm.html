@@ -92,6 +92,50 @@ input:focus{outline:none;border-color:var(--gold-ink)}
 .msg.out{background:#DCF8C6;align-self:flex-end}
 .msg .t{display:block;color:var(--text2);font-size:10px;margin-top:3px}
 .msg.sys{align-self:center;background:transparent;color:var(--text2);font-size:11px;max-width:100%}
+/* ---- shell: sidebar + view area ---- */
+.shell{display:flex;align-items:stretch;min-height:calc(100vh - 42px)}
+.side{flex:0 0 184px;border-right:1px solid var(--border);background:var(--card2);padding:8px 0}
+.side .grp{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;
+  color:var(--text2);padding:10px 14px 4px}
+.nav{display:flex;align-items:center;gap:9px;padding:8px 14px;font-size:13px;font-weight:600;
+  color:var(--text);cursor:pointer;border-left:3px solid transparent;text-decoration:none}
+.nav:hover{background:var(--sel)}
+.nav.on{background:var(--card);border-left-color:var(--gold);font-weight:800}
+.nav .ico{width:17px;text-align:center;flex:0 0 17px}
+.nav .pill{margin-left:auto;background:var(--border);color:var(--text2);border-radius:9px;
+  padding:0 6px;font-size:10.5px;font-weight:800}
+.nav .pill.hot{background:var(--red);color:#fff}
+.nav .ext{margin-left:auto;color:var(--text2);font-size:11px}
+.vbody{flex:1;min-width:0;display:flex;flex-direction:column}
+.pad{padding:14px}
+.h1{font-size:16px;font-weight:900;margin:0 0 2px}
+.h1s{color:var(--text2);font-size:12px;margin-bottom:12px}
+.cards{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:14px}
+.kpi{flex:1 1 150px;min-width:150px;border:1px solid var(--border);border-radius:10px;padding:10px 12px;background:var(--card)}
+.kpi .v{font-size:21px;font-weight:900;line-height:1.15}
+.kpi .k{color:var(--text2);font-size:11px;text-transform:uppercase;letter-spacing:.03em;margin-top:2px}
+.kpi .s{color:var(--text2);font-size:11px;margin-top:4px}
+.kpi.win .v{color:var(--green)} .kpi.lost .v{color:var(--red)}
+.panel2{border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:14px;background:var(--card)}
+.panel2 .pt{background:var(--head);padding:7px 11px;font-size:11px;font-weight:800;
+  text-transform:uppercase;letter-spacing:.03em;color:var(--text2)}
+table.t2{width:100%;border-collapse:collapse;font-size:12.5px}
+table.t2 th{text-align:left;font-weight:800;font-size:10.5px;text-transform:uppercase;
+  color:var(--text2);padding:6px 11px;border-bottom:1px solid var(--border)}
+table.t2 td{padding:6px 11px;border-bottom:1px solid var(--border)}
+table.t2 tr:last-child td{border-bottom:none}
+table.t2 tbody tr:hover{background:var(--sel);cursor:pointer}
+.bar2{height:7px;border-radius:4px;background:var(--gold);min-width:2px}
+.soonbox{background:#FFF8E1;border:1px dashed #E8D48A;border-radius:9px;padding:11px 12px;
+  color:#6b5600;font-size:12.5px}
+@media(max-width:860px){
+  .shell{flex-direction:column}
+  .side{flex:0 0 auto;display:flex;overflow-x:auto;border-right:none;border-bottom:1px solid var(--border);padding:0}
+  .side .grp{display:none}
+  .nav{border-left:none;border-bottom:3px solid transparent;white-space:nowrap}
+  .nav.on{border-left-color:transparent;border-bottom-color:var(--gold)}
+  .nav .pill,.nav .ext{margin-left:5px}
+}
 @media(max-width:700px){ .col{flex:0 0 84vw} }
 </style>
 </head>
@@ -119,10 +163,25 @@ input:focus{outline:none;border-color:var(--gold-ink)}
   </div>
 
   <div id="staleNote" class="note hide"></div>
-  <div id="strip" class="strip"></div>
-  <div id="board" class="board"></div>
-  <div id="statusLine" class="status"></div>
-  <div id="emptyBox" class="empty hide"></div>
+
+  <div class="shell">
+    <nav class="side" id="side"></nav>
+    <div class="vbody">
+
+      <div id="vPipeline">
+        <div id="strip" class="strip"></div>
+        <div id="board" class="board"></div>
+        <div id="statusLine" class="status"></div>
+        <div id="emptyBox" class="empty hide"></div>
+      </div>
+
+      <div id="vDash"    class="pad hide"></div>
+      <div id="vLeads"   class="pad hide"></div>
+      <div id="vReports" class="pad hide"></div>
+      <div id="vSoon"    class="pad hide"></div>
+
+    </div>
+  </div>
 </div>
 
 <div id="ov" class="ov hide" onclick="if(event.target===this)closeThread()">
@@ -149,7 +208,67 @@ const $=id=>document.getElementById(id);
 const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const RM=n=>'RM'+(Math.round((Number(n)||0)*100)/100).toLocaleString('en-MY',{minimumFractionDigits:2,maximumFractionDigits:2});
 
-let CHATS=[], LASTMSG={}, CUR=null;
+let CHATS=[], LASTMSG={}, CUR=null, OVER={}, VIEW='pipeline';
+
+/* The sidebar. Contacts and Calendar deliberately open the apps that already
+   own that data rather than showing a second copy of it here - two screens
+   listing customers is two screens that can disagree. */
+const NAV=[
+  {grp:'Conversations'},
+  {id:'dash',     ico:'&#9632;', label:'Dashboard'},
+  {id:'pipeline', ico:'&#9776;', label:'Pipeline', count:()=>countCol('reply'), hot:true},
+  {id:'leads',    ico:'&#9728;', label:'Leads',    count:()=>LEADS().length},
+  {grp:'Customers'},
+  {id:'contacts', ico:'&#9679;', label:'Contacts', href:'gl-customers.html'},
+  {id:'members',  ico:'&#9734;', label:'Members',  href:'gl-members.html'},
+  {grp:'Business'},
+  {id:'reports',  ico:'&#9650;', label:'Reports'},
+  {id:'calendar', ico:'&#9633;', label:'Calendar', href:'gl-staff-appointment-FINAL.html'},
+  {id:'tasks',    ico:'&#10003;', label:'Tasks',   soon:'Follow-ups you can tick off, with a reminder when one is due.'},
+  {id:'autom',    ico:'&#8635;', label:'Automation', soon:'Rules like "nobody replied in 2 hours - tell reception" and "quiet for 7 days - suggest a follow-up".'},
+  {id:'settings', ico:'&#9881;', label:'Settings', soon:'How many days counts as quiet, who gets alerts, and your reply templates.'}
+];
+
+function countCol(key){
+  let n=0; for(const c of CHATS) if(colOf(c)===key) n++;
+  return n;
+}
+/* A lead is someone talking to us who is not already a customer. */
+function LEADS(){
+  return CHATS.filter(c=>{
+    const o=OVER[c.chat_jid]||{};
+    return !o.is_customer && !(o.jobs>0);
+  });
+}
+
+function drawNav(){
+  $('side').innerHTML = NAV.map(n=>{
+    if(n.grp) return '<div class="grp">'+esc(n.grp)+'</div>';
+    if(n.href) return '<a class="nav" href="'+esc(n.href)+'" target="_blank" rel="noopener">'
+      +'<span class="ico">'+n.ico+'</span>'+esc(n.label)+'<span class="ext">&#8599;</span></a>';
+    let pill='';
+    if(n.count){ const v=n.count(); if(v) pill='<span class="pill'+(n.hot?' hot':'')+'">'+v+'</span>'; }
+    return '<div class="nav'+(VIEW===n.id?' on':'')+'" onclick="go('+JSON.stringify(n.id)+')">'
+      +'<span class="ico">'+n.ico+'</span>'+esc(n.label)+pill+'</div>';
+  }).join('');
+}
+
+function go(id){
+  VIEW=id;
+  const soon=(NAV.find(n=>n.id===id)||{}).soon;
+  for(const v of ['vPipeline','vDash','vLeads','vReports','vSoon'])
+    $(v).classList.add('hide');
+  if(soon){
+    $('vSoon').classList.remove('hide');
+    $('vSoon').innerHTML='<div class="h1">'+esc((NAV.find(n=>n.id===id)||{}).label)+'</div>'
+      +'<div class="h1s">Not built yet.</div><div class="soonbox">'+esc(soon)+'</div>';
+  } else if(id==='dash')    { $('vDash').classList.remove('hide');    renderDash(); }
+  else if(id==='leads')     { $('vLeads').classList.remove('hide');   renderLeads(); }
+  else if(id==='reports')   { $('vReports').classList.remove('hide'); renderReports(); }
+  else                      { $('vPipeline').classList.remove('hide'); }
+  drawNav();
+  try{ location.hash=id; }catch(e){}
+}
 
 /* The columns are Jimmy's own vocabulary, already in gl_wa_chat.status -
    talking / waiting / ghost / paid. Inventing new ones would have thrown away
@@ -295,8 +414,21 @@ async function load(){
       .limit(3000);
     (msgs||[]).forEach(m=>{ if(!LASTMSG[m.chat_jid]) LASTMSG[m.chat_jid]=m; });
 
+    /* Who each chat actually is, in Grandlab terms - customer or not, how many
+       jobs, how much spent. One call for all of them; doing it per card would
+       be 390 round trips. Staff-only and read-only on the server side. */
+    OVER={};
+    try{
+      const {data:ov}=await sb.rpc('gl_crm_overview');
+      (ov||[]).forEach(o=>{ OVER[o.chat_jid]=o; });
+    }catch(e){ /* board still works without the enrichment */ }
+
     staleCheck();
     render();
+    drawNav();
+    if(VIEW==='dash') renderDash();
+    else if(VIEW==='leads') renderLeads();
+    else if(VIEW==='reports') renderReports();
   }catch(e){
     $('statusLine').innerHTML='<span class="err">Could not load: '+esc(e.message||e)+'</span>';
   }
@@ -427,10 +559,136 @@ function alertNewReplies(replyList){
   }catch(e){}
 }
 
+/* ---- Dashboard ---- */
+const kpi=(v,k,s,cls)=>'<div class="kpi '+(cls||'')+'"><div class="v">'+esc(v)+'</div>'
+  +'<div class="k">'+esc(k)+'</div>'+(s?'<div class="s">'+esc(s)+'</div>':'')+'</div>';
+
+function renderDash(){
+  const over=Object.values(OVER);
+  const rev=over.reduce((s,o)=>s+(Number(o.revenue)||0),0);
+  const known=over.filter(o=>o.is_customer).length;
+  const leads=LEADS().length;
+  const reply=countCol('reply'), quiet=countCol('quiet');
+  const won=CHATS.filter(c=>String(c.status).toLowerCase()==='paid').length;
+  const oldest=CHATS.filter(c=>colOf(c)==='reply')
+    .reduce((m,c)=>{const t=c.last_in_at?new Date(c.last_in_at).getTime():0; return t&&(!m||t<m)?t:m;},0);
+
+  // the biggest spenders you are talking to
+  const top=over.filter(o=>o.jobs>0).sort((a,b)=>b.revenue-a.revenue).slice(0,8);
+  const maxRev=top.length?Number(top[0].revenue)||1:1;
+
+  $('vDash').innerHTML=
+    '<div class="h1">Dashboard</div>'
+   +'<div class="h1s">Everything below comes from your own WhatsApp, matched to your own customers.</div>'
+   +'<div class="cards">'
+     +kpi(reply,'Needs reply', oldest?('longest waiting '+agoTxt(new Date(oldest).toISOString()).t):'all answered', reply?'lost':'win')
+     +kpi(CHATS.length,'Conversations', known+' are existing customers')
+     +kpi(leads,'New leads','never bought anything yet')
+     +kpi(quiet,'Gone quiet','no word for 14 days+','lost')
+     +kpi(RM(rev),'Revenue behind these chats','all time','win')
+     +kpi(won,'Marked won','by MIA stage','win')
+   +'</div>'
+   +(top.length?('<div class="panel2"><div class="pt">Your biggest customers on WhatsApp</div>'
+     +'<table class="t2"><thead><tr><th>Customer</th><th>Jobs</th><th>Revenue</th><th style="width:34%"></th></tr></thead><tbody>'
+     +top.map(o=>{
+        const c=CHATS.find(x=>x.chat_jid===o.chat_jid)||{};
+        const nm=o.cust_name||c.name||c.phone||'(unknown)';
+        const w=Math.max(2,Math.round(Number(o.revenue)/maxRev*100));
+        return '<tr onclick="openThread('+JSON.stringify(o.chat_jid).replace(/"/g,'&quot;')+')">'
+          +'<td><b>'+esc(nm)+'</b>'+(o.tier?' <span class="chip mem">'+esc(o.tier)+'</span>':'')+'</td>'
+          +'<td>'+esc(o.jobs)+'</td><td>'+esc(RM(o.revenue))+'</td>'
+          +'<td><div class="bar2" style="width:'+w+'%"></div></td></tr>';
+      }).join('')+'</tbody></table></div>'):'')
+   +'<div class="soonbox"><b>Where leads come from is not being recorded.</b> '
+     +'Only 8 of your '+esc(Object.keys(LASTMSG).length?'7,500+':'')+' messages carry an ad source, so "which ad brought this customer" '
+     +'cannot be answered yet. Click-to-WhatsApp ads do send that information on the first message &mdash; '
+     +'it just needs capturing from here on.</div>';
+}
+
+/* ---- Leads: people talking to us who have never bought ---- */
+function renderLeads(){
+  const rows=LEADS().slice().sort((a,b)=>new Date(b.last_in_at||0)-new Date(a.last_in_at||0));
+  const warm=rows.filter(c=>colOf(c)!=='quiet').length;
+  $('vLeads').innerHTML=
+    '<div class="h1">Leads</div>'
+   +'<div class="h1s">Talking to you, but no job and no customer record yet. This is new business.</div>'
+   +'<div class="cards">'
+     +kpi(rows.length,'Total leads')
+     +kpi(warm,'Still warm','active in the last 14 days','win')
+     +kpi(rows.length-warm,'Gone cold','','lost')
+   +'</div>'
+   +'<div class="panel2"><div class="pt">'+rows.length+' leads &mdash; newest first</div>'
+   +'<table class="t2"><thead><tr><th>Who</th><th>Last message</th><th>Stage</th><th>State</th><th>When</th></tr></thead><tbody>'
+   +(rows.length?rows.slice(0,200).map(c=>{
+       const last=LASTMSG[c.chat_jid], col=colOf(c);
+       const label=(COLS.find(x=>x.key===col)||{}).label||col;
+       const a=agoTxt(c.last_in_at||c.last_out_at);
+       const hasName=!!(c.name&&String(c.name).trim());
+       return '<tr onclick="openThread('+JSON.stringify(c.chat_jid).replace(/"/g,'&quot;')+')">'
+         +'<td><b>'+esc(hasName?c.name:(c.phone||'(no number)'))+'</b>'
+           +(hasName?'<div class="sub" style="color:var(--text2);font-size:11px">'+esc(c.phone||'')+'</div>':'')+'</td>'
+         +'<td style="max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'
+           +(last?(last.direction==='out'?'<b>You:</b> ':'')+esc(last.body||'['+(last.msg_type||'media')+']'):'<span style="color:var(--text2)">—</span>')+'</td>'
+         +'<td>'+(c.stage?'<span class="chip stage">'+esc(shortStage(c.stage))+'</span>':'')+'</td>'
+         +'<td>'+esc(label)+'</td>'
+         +'<td class="'+a.cls+'" style="font-weight:800">'+esc(a.t)+'</td></tr>';
+     }).join('')
+     :'<tr><td colspan="5" style="padding:20px;text-align:center;color:var(--text2)">No leads — everyone talking to you is already a customer.</td></tr>')
+   +'</tbody></table></div>'
+   +(rows.length>200?'<div class="h1s">Showing the newest 200.</div>':'');
+}
+
+/* ---- Reports ---- */
+function renderReports(){
+  const over=Object.values(OVER);
+  const withJobs=over.filter(o=>o.jobs>0);
+  const rev=withJobs.reduce((s,o)=>s+(Number(o.revenue)||0),0);
+  const avg=withJobs.length?rev/withJobs.length:0;
+
+  // lead_source as recorded on the jobs themselves
+  const bySrc={};
+  withJobs.forEach(o=>{
+    const keys=(o.lead_sources||'').split(',').map(s=>s.trim()).filter(Boolean);
+    const list=keys.length?keys:['(not recorded)'];
+    list.forEach(k=>{ bySrc[k]=bySrc[k]||{n:0,rm:0}; bySrc[k].n++; bySrc[k].rm+=Number(o.revenue)/list.length; });
+  });
+  const srcRows=Object.entries(bySrc).sort((a,b)=>b[1].rm-a[1].rm);
+  const maxSrc=srcRows.length?srcRows[0][1].rm||1:1;
+
+  // conversations started per month
+  const byMon={};
+  CHATS.forEach(c=>{ const d=c.first_in_at||c.last_in_at; if(!d) return;
+    const k=String(d).slice(0,7); byMon[k]=(byMon[k]||0)+1; });
+  const monRows=Object.entries(byMon).sort((a,b)=>a[0]<b[0]?1:-1).slice(0,8);
+  const maxMon=monRows.reduce((m,r)=>Math.max(m,r[1]),1);
+
+  $('vReports').innerHTML=
+    '<div class="h1">Reports</div>'
+   +'<div class="h1s">What your WhatsApp conversations are actually worth.</div>'
+   +'<div class="cards">'
+     +kpi(RM(rev),'Revenue behind chats','from '+withJobs.length+' paying customers','win')
+     +kpi(RM(avg),'Average per customer')
+     +kpi(Math.round(withJobs.length/Math.max(1,CHATS.length)*100)+'%','Chats that became customers')
+   +'</div>'
+   +'<div class="panel2"><div class="pt">Where that work was recorded as coming from</div>'
+   +'<table class="t2"><thead><tr><th>Lead source</th><th>Customers</th><th>Revenue</th><th style="width:34%"></th></tr></thead><tbody>'
+   +srcRows.map(([k,v])=>'<tr><td>'+esc(k)+'</td><td>'+v.n+'</td><td>'+esc(RM(v.rm))+'</td>'
+      +'<td><div class="bar2" style="width:'+Math.max(2,Math.round(v.rm/maxSrc*100))+'%"></div></td></tr>').join('')
+   +'</tbody></table></div>'
+   +'<div class="panel2"><div class="pt">New conversations per month</div>'
+   +'<table class="t2"><thead><tr><th>Month</th><th>Conversations</th><th style="width:50%"></th></tr></thead><tbody>'
+   +monRows.map(([k,v])=>'<tr><td>'+esc(k)+'</td><td>'+v+'</td>'
+      +'<td><div class="bar2" style="width:'+Math.max(2,Math.round(v/maxMon*100))+'%"></div></td></tr>').join('')
+   +'</tbody></table></div>';
+}
+
 async function boot(){
   try{ ALERTS = localStorage.getItem('gl_crm_alerts')==='1' && Notification.permission==='granted'; }catch(e){}
   setAlertBtn();
   setInterval(()=>{ if(!document.hidden && $('ov').classList.contains('hide')) load(); }, 60000);
+  const want=(location.hash||'').replace('#','');
+  if(NAV.some(n=>n.id===want)) VIEW=want;
+  drawNav(); go(VIEW);
   const {data}=await sb.auth.getSession();
   if(data&&data.session){ $('gate').classList.add('hide'); $('main').classList.remove('hide'); load(); }
   else $('gate').classList.remove('hide');
