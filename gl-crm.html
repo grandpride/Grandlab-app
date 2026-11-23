@@ -99,6 +99,9 @@ input:focus{outline:none;border-color:var(--gold-ink)}
   border:1px solid var(--border);border-radius:9px;background:var(--card);color:var(--text)}
 .reply textarea:focus{outline:none;border-color:var(--gold-ink)}
 .replyNote{padding:6px 12px 10px;font-size:11.5px;color:var(--text2);background:var(--card2)}
+.whois{display:flex;align-items:center;gap:7px;flex-wrap:wrap;padding:8px 12px 0;font-size:11.5px;color:var(--text2);background:var(--card2)}
+.whois input{border:1px solid var(--border);border-radius:6px;padding:3px 8px;font-size:12px;font-family:inherit;font-weight:700;width:120px;background:var(--card);color:inherit}
+#tWhoNote{flex:1 1 180px;min-width:0}
 .replyNote.err{color:var(--red)}
 /* ---- shell: sidebar + view area ---- */
 .shell{display:flex;align-items:stretch;min-height:calc(100vh - 42px)}
@@ -344,6 +347,10 @@ table.t2 tbody tr:hover{background:var(--blue-soft)}
     </div>
     <div class="rec" id="tRec"></div>
     <div class="thread" id="tThread"></div>
+    <div class="whois">Replying as
+      <input id="tWho" placeholder="your name" maxlength="24" autocomplete="off">
+      <span id="tWhoNote">&mdash; your name goes on the front of each reply, so the customer knows who answered.</span>
+    </div>
     <div class="reply" id="tReply">
       <textarea id="tBox" rows="2" placeholder="Type a reply…"></textarea>
       <button class="btn" id="tSend" onclick="sendReply()">Send</button>
@@ -402,7 +409,7 @@ function LEADS(){
 /* Bumped whenever this page changes, and shown at the bottom of the sidebar.
    GitHub Pages and an installed app both cache hard, so without this there is
    no way to tell "the fix is not deployed" from "the fix does not work". */
-const BUILD='2026-11-23j';
+const BUILD='2026-11-23k';
 
 function drawNav(){
   $('side').innerHTML = NAV.map(n=>{
@@ -771,6 +778,10 @@ async function openThread(jid){
   $('tRec').innerHTML='<div class="row"><span class="k">Customer</span><span>Looking up…</span></div>';
   $('tThread').innerHTML='<div class="msg sys">Loading…</div>';
   $('tBox').value=''; $('tReplyNote').textContent=''; $('tReplyNote').className='replyNote';
+  $('tWho').value=agentName();
+  $('tWhoNote').textContent = agentName()
+    ? '— every reply goes out as "'+agentName()+':", so the customer knows who answered.'
+    : '— leave blank to send with no name on the front.';
   loadRecord(CUR.phone);
   loadThread(jid);
 }
@@ -781,12 +792,30 @@ function closeThread(){ $('ov').classList.add('hide'); CUR=null; }
    and sends it through WhatsApp. Nothing is sent from the browser, and the
    database refuses a reply to a chat that does not exist, so this can only
    ever answer somebody who messaged first. */
+/* Who is on reception right now. One WhatsApp number is shared, so the only
+   way the customer can tell Iqa from Alex is if the name is on the message -
+   the same trick ChatsHero uses. Kept per PC, not per customer. */
+function agentName(){
+  try{ return String(localStorage.getItem('gl_crm_agent')||'').trim().slice(0,24); }
+  catch(e){ return ''; }
+}
+function setAgentName(v){
+  try{ localStorage.setItem('gl_crm_agent', String(v||'').trim().slice(0,24)); }catch(e){}
+}
+function withAgent(body){
+  const who=agentName();
+  // don't stack a second name on a reply that already starts with one
+  if(!who || body.toLowerCase().startsWith(who.toLowerCase()+':')) return body;
+  return who+':\n'+body;
+}
+
 async function sendReply(){
   if(!CUR) return;
   const box=$('tBox'), btn=$('tSend'), note=$('tReplyNote');
-  const body=String(box.value||'').trim();
+  const typed=String(box.value||'').trim();
+  const body=withAgent(typed);
   note.className='replyNote';
-  if(!body){ note.textContent='Nothing to send.'; return; }
+  if(!typed){ note.textContent='Nothing to send.'; return; }
   btn.disabled=true; box.disabled=true; note.textContent='Queueing…';
 
   // show it straight away so reception can see it went somewhere
@@ -1460,6 +1489,13 @@ async function doLogin(){
   $('main').classList.remove('hide'); load();
 }
 $('pass').addEventListener('keydown',e=>{ if(e.key==='Enter') doLogin(); });
+$('tWho').addEventListener('input',e=>{
+  setAgentName(e.target.value);
+  const w=agentName();
+  $('tWhoNote').textContent = w
+    ? '— every reply goes out as "'+w+':", so the customer knows who answered.'
+    : '— leave blank to send with no name on the front.';
+});
 $('q').addEventListener('input',render);
 document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeThread(); });
 boot();
