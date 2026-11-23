@@ -138,8 +138,18 @@ function normalise(m) {
 
   /* ChatName, never SenderName. On a message the shop sent, SenderName is the
      shop's own WhatsApp name, and using it would rename the customer's chat to
-     "Grandlab Detailing By Grandpride". */
-  const name = pick(m, 'ChatName', 'chat_name', 'PushName', 'push_name');
+     "Grandlab Detailing By Grandpride".
+
+     When the number is not saved in the phone's contacts, ChatName comes back
+     as the JID itself ("60142890081@s.whatsapp.net"). That is not a name, and
+     because a chat's name is only ever filled in when blank, storing it would
+     leave that rubbish on the card permanently. Leave it empty instead — the
+     board falls back to the phone number, and a real name lands later if the
+     contact is saved or the number matches a Grandlab customer. */
+  const rawName = pick(m, 'ChatName', 'chat_name', 'PushName', 'push_name');
+  const nameStr = rawName == null ? '' : String(rawName).trim();
+  const name = (!nameStr || nameStr.includes('@') || /^\+?\d[\d\s-]*$/.test(nameStr))
+    ? null : nameStr;
 
   return {
     wa_id: String(waId),
