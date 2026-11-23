@@ -203,6 +203,12 @@ table.t2 tbody tr:hover{background:var(--blue-soft)}
 .chartwrap{padding:14px}
 .legend{display:flex;gap:16px;align-items:center;padding:0 14px 10px;font-size:12px;color:var(--ink2)}
 .legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+.fchips{display:flex;flex-wrap:wrap;gap:7px;padding:11px 14px}
+.fchip{border:1px solid var(--line2);border-radius:999px;padding:4px 11px;font-size:12px;cursor:pointer;background:#fff}
+.fchip:hover{border-color:var(--blue);color:var(--blue)}
+.fchip.on{background:var(--blue);border-color:var(--blue);color:#fff}
+.fchip b{font-weight:800;margin-left:3px}
+.chip.ad{background:var(--blue-soft);color:var(--blue)}
 .tip{position:fixed;pointer-events:none;background:#0F172A;color:#fff;font-size:11.5px;
   padding:6px 9px;border-radius:7px;z-index:80;opacity:0;transition:opacity .1s;white-space:nowrap}
 .tip.on{opacity:1}
@@ -289,7 +295,7 @@ const $=id=>document.getElementById(id);
 const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const RM=n=>'RM'+(Math.round((Number(n)||0)*100)/100).toLocaleString('en-MY',{minimumFractionDigits:2,maximumFractionDigits:2});
 
-let CHATS=[], LASTMSG={}, CUR=null, OVER={}, VIEW='pipeline', TASKS=[], MONTHLY=[];
+let CHATS=[], LASTMSG={}, CUR=null, OVER={}, VIEW='pipeline', TASKS=[], MONTHLY=[], LEADINFO={};
 
 const today=()=>new Date().toISOString().slice(0,10);
 /* Due today or already overdue — the only tasks worth putting a number on. */
@@ -329,7 +335,7 @@ function LEADS(){
 /* Bumped whenever this page changes, and shown at the bottom of the sidebar.
    GitHub Pages and an installed app both cache hard, so without this there is
    no way to tell "the fix is not deployed" from "the fix does not work". */
-const BUILD='2026-11-23d';
+const BUILD='2026-11-23e';
 
 function drawNav(){
   $('side').innerHTML = NAV.map(n=>{
@@ -516,6 +522,9 @@ async function load(){
       (ov||[]).forEach(o=>{ OVER[o.chat_jid]=o; });
     }catch(e){ /* board still works without the enrichment */ }
     try{ const {data:mo}=await sb.rpc('gl_crm_monthly'); MONTHLY=mo||[]; }catch(e){ MONTHLY=[]; }
+    LEADINFO={};
+    try{ const {data:li}=await sb.rpc('gl_crm_lead_info');
+         (li||[]).forEach(x=>{ LEADINFO[x.chat_jid]=x; }); }catch(e){}
 
     await loadTasks();
     staleCheck();
@@ -802,37 +811,83 @@ function renderDash(){
      +'it just needs capturing from here on.</div>';
 }
 
-/* ---- Leads: people talking to us who have never bought ---- */
+/* ---- Leads: where they came from, and what they asked about ---- */
+let LEADFILT={src:'', enq:''};
+function setLeadFilt(k,v){ LEADFILT[k]=v; renderLeads(); }
+
 function renderLeads(){
-  const rows=LEADS().slice().sort((a,b)=>new Date(b.last_in_at||0)-new Date(a.last_in_at||0));
+  let rows=LEADS().slice().sort((a,b)=>new Date(b.last_in_at||0)-new Date(a.last_in_at||0));
+  const info=j=>LEADINFO[j]||{};
+
+  // group by where they came from, and by what they want
+  const bySrc={}, byEnq={};
+  rows.forEach(c=>{
+    const i=info(c.chat_jid);
+    const s=i.src_label||'Not recorded'; bySrc[s]=(bySrc[s]||0)+1;
+    const e=i.enquiry||'(not clear)';    byEnq[e]=(byEnq[e]||0)+1;
+  });
+  if(LEADFILT.src) rows=rows.filter(c=>(info(c.chat_jid).src_label||'Not recorded')===LEADFILT.src);
+  if(LEADFILT.enq) rows=rows.filter(c=>(info(c.chat_jid).enquiry||'(not clear)')===LEADFILT.enq);
+
   const warm=rows.filter(c=>colOf(c)!=='quiet').length;
+  const fromAds=rows.filter(c=>info(c.chat_jid).src_kind==='ad').length;
+
+  // the same four stages, but only for leads
+  const counts=COLS.map(x=>({key:x.key,label:x.label,n:rows.filter(c=>colOf(c)===x.key).length}));
+  const maxC=Math.max(1,...counts.map(x=>x.n));
+
+  const chips=(obj,key,cur)=>Object.entries(obj).sort((a,b)=>b[1]-a[1]).map(([k,v])=>
+    '<span class="fchip'+(cur===k?' on':'')+'" onclick="setLeadFilt(\''+key+'\','
+      +JSON.stringify(cur===k?'':k).replace(/"/g,'&quot;')+')">'+esc(k)+' <b>'+v+'</b></span>').join('');
+
   $('vLeads').innerHTML=
     '<div class="h1">Leads</div>'
-   +'<div class="h1s">Talking to you, but no job and no customer record yet. This is new business.</div>'
+   +'<div class="h1s">Talking to you, but no job and no customer record yet &mdash; and where each one came from.</div>'
    +'<div class="cards">'
-     +kpi(rows.length,'Total leads')
-     +kpi(warm,'Still warm','active in the last 14 days','win')
-     +kpi(rows.length-warm,'Gone cold','','lost')
+     +kpi(rows.length,'Leads shown','','','&#9728;','#FEF3C7')
+     +kpi(warm,'Still warm','active in the last 14 days','win','&#9679;','#DCFCE7')
+     +kpi(fromAds,'Traced to an advert', fromAds?'':'ad tagging not captured yet','','&#9650;','#EEF3FE')
    +'</div>'
-   +'<div class="panel2"><div class="pt">'+rows.length+' leads &mdash; newest first</div>'
-   +'<table class="t2"><thead><tr><th>Who</th><th>Last message</th><th>Stage</th><th>State</th><th>When</th></tr></thead><tbody>'
+   +'<div class="panel2" style="margin-bottom:14px"><div class="pt">Lead pipeline</div>'
+     +counts.map(x=>'<div class="stagerow">'
+       +'<span class="dot" style="background:'+STAGE_COLOR[x.key]+'"></span>'
+       +'<span class="lbl">'+esc(x.label)+'</span>'
+       +'<span class="track"><span class="fill" style="width:'+Math.round(x.n/maxC*100)+'%;background:'+STAGE_COLOR[x.key]+'"></span></span>'
+       +'<span class="n">'+x.n+'</span></div>').join('')
+   +'</div>'
+   +'<div class="panel2" style="margin-bottom:14px"><div class="pt">Came from</div>'
+     +'<div class="fchips">'+chips(bySrc,'src',LEADFILT.src)+'</div></div>'
+   +'<div class="panel2" style="margin-bottom:14px"><div class="pt">Asking about</div>'
+     +'<div class="fchips">'+chips(byEnq,'enq',LEADFILT.enq)+'</div></div>'
+   +'<div class="panel2"><div class="pt">'+rows.length+' leads &mdash; newest first'
+     +((LEADFILT.src||LEADFILT.enq)?' <a href="#" onclick="LEADFILT={src:\'\',enq:\'\'};renderLeads();return false" style="float:right;font-weight:700">clear filters</a>':'')
+   +'</div>'
+   +'<table class="t2"><thead><tr><th>Who</th><th>Came from</th><th>Asking about</th><th>Last message</th><th>State</th><th>When</th></tr></thead><tbody>'
    +(rows.length?rows.slice(0,200).map(c=>{
-       const last=LASTMSG[c.chat_jid], col=colOf(c);
+       const last=LASTMSG[c.chat_jid], col=colOf(c), i=info(c.chat_jid);
        const label=(COLS.find(x=>x.key===col)||{}).label||col;
        const a=agoTxt(c.last_in_at||c.last_out_at);
        const hasName=!!(c.name&&String(c.name).trim());
        return '<tr onclick="openThread('+JSON.stringify(c.chat_jid).replace(/"/g,'&quot;')+')">'
          +'<td><b>'+esc(hasName?c.name:(c.phone||'(no number)'))+'</b>'
-           +(hasName?'<div class="sub" style="color:var(--text2);font-size:11px">'+esc(c.phone||'')+'</div>':'')+'</td>'
-         +'<td style="max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'
-           +(last?(last.direction==='out'?'<b>You:</b> ':'')+esc(last.body||'['+(last.msg_type||'media')+']'):'<span style="color:var(--text2)">—</span>')+'</td>'
-         +'<td>'+(c.stage?'<span class="chip stage">'+esc(shortStage(c.stage))+'</span>':'')+'</td>'
+           +(hasName?'<div style="color:var(--ink2);font-size:11px">'+esc(c.phone||'')+'</div>':'')+'</td>'
+         +'<td>'+(i.src_kind==='ad'
+             ? '<span class="chip ad">'+esc(i.src_label||'Advert')+'</span>'
+               +(i.campaign?'<div style="color:var(--ink2);font-size:11px">'+esc(i.campaign)+'</div>':'')
+             : '<span style="color:var(--ink2)">'+esc(i.src_label||'Not recorded')+'</span>')+'</td>'
+         +'<td>'+(i.enquiry?'<span class="chip stage">'+esc(i.enquiry)+'</span>':'<span style="color:var(--ink2)">—</span>')+'</td>'
+         +'<td style="max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'
+           +(last?(last.direction==='out'?'<b>You:</b> ':'')+esc(last.body||'['+(last.msg_type||'media')+']'):'<span style="color:var(--ink2)">—</span>')+'</td>'
          +'<td>'+esc(label)+'</td>'
          +'<td class="'+a.cls+'" style="font-weight:800">'+esc(a.t)+'</td></tr>';
      }).join('')
-     :'<tr><td colspan="5" style="padding:20px;text-align:center;color:var(--text2)">No leads — everyone talking to you is already a customer.</td></tr>')
+     :'<tr><td colspan="6" style="padding:20px;text-align:center;color:var(--ink2)">Nothing matches those filters.</td></tr>')
    +'</tbody></table></div>'
-   +(rows.length>200?'<div class="h1s">Showing the newest 200.</div>':'');
+   +(rows.length>200?'<div class="h1s">Showing the newest 200.</div>':'')
+   +'<div class="soonbox" style="margin-top:14px"><b>Only '+fromAds+' leads trace back to an advert.</b> '
+     +'Your Meta ads and campaigns are already in the database and the link works &mdash; '
+     +'what is missing is the ad tag on the incoming message, which wacli does not hand over. '
+     +'Everything else here is worked out from the conversation itself.</div>';
 }
 
 /* ---- Reports ---- */
