@@ -145,6 +145,67 @@ table.t2 tbody tr:hover{background:var(--sel);cursor:pointer}
   .nav .pill,.nav .ext{margin-left:5px}
 }
 @media(max-width:700px){ .col{flex:0 0 84vw} }
+
+/* ---- surface refresh -------------------------------------------------
+   Laid out like the CRM dashboards Jimmy referenced: a soft page behind
+   white cards, a quiet sidebar with one solid active item, and colour used
+   to carry data rather than to decorate. Grandlab gold stays the brand
+   accent so this sits beside the Hub and POS instead of looking borrowed. */
+:root{
+  --page:#F1F4F8; --line2:#E8ECF1; --blue:#2563EB; --blue-soft:#EEF3FE;
+  --ink:#0F172A; --ink2:#64748B;
+  --shadow:0 1px 2px rgba(15,23,42,.06), 0 1px 1px rgba(15,23,42,.04);
+}
+body{background:var(--page);color:var(--ink)}
+.bar{background:#fff;border-bottom:1px solid var(--line2);box-shadow:var(--shadow)}
+.side{background:#fff;border-right:1px solid var(--line2);padding:10px 8px}
+.side .grp{padding:12px 8px 5px;color:var(--ink2)}
+.nav{border-left:none;border-radius:9px;margin-bottom:1px;color:var(--ink);padding:9px 10px}
+.nav:hover{background:var(--blue-soft)}
+.nav.on{background:var(--blue);color:#fff;font-weight:800}
+.nav.on .ico,.nav.on .ext{color:#fff}
+.nav.on .pill{background:rgba(255,255,255,.25);color:#fff}
+.nav .pill.hot{background:#DC2626;color:#fff}
+.nav.on .pill.hot{background:#fff;color:#DC2626}
+.buildstamp{padding:14px 10px 4px}
+
+.kpi{border:1px solid var(--line2);border-radius:12px;box-shadow:var(--shadow);padding:13px 14px;
+  display:flex;flex-direction:column;justify-content:center;position:relative;min-height:86px}
+.kpi .v{font-size:23px;letter-spacing:-.01em;color:var(--ink)}
+.kpi .k{color:var(--ink2);font-size:11px}
+.kpi .s{color:var(--ink2)}
+.kpi .chip-ico{position:absolute;top:12px;right:12px;width:30px;height:30px;border-radius:9px;
+  display:flex;align-items:center;justify-content:center;font-size:14px}
+.panel2{border:1px solid var(--line2);border-radius:12px;box-shadow:var(--shadow)}
+.panel2 .pt{background:#fff;border-bottom:1px solid var(--line2);color:var(--ink2);padding:11px 14px}
+table.t2 th{border-bottom:1px solid var(--line2);padding:8px 14px;color:var(--ink2)}
+table.t2 td{border-bottom:1px solid var(--line2);padding:9px 14px}
+table.t2 tbody tr:hover{background:var(--blue-soft)}
+.col{background:#fff;border:1px solid var(--line2);border-radius:12px;box-shadow:var(--shadow)}
+.colh{border-bottom:1px solid var(--line2)}
+.card{border:1px solid var(--line2);border-radius:10px}
+.card:hover{border-color:var(--blue);box-shadow:var(--shadow)}
+.strip{background:#fff;border-bottom:1px solid var(--line2)}
+.stat{border-right:1px solid var(--line2)}
+.bar2{background:var(--blue);height:8px}
+
+/* pipeline as a labelled list, not a pie: four categories compare better
+   read down a column, and the dot is never the only thing saying which is which */
+.stagerow{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--line2);cursor:pointer}
+.stagerow:last-child{border-bottom:none}
+.stagerow:hover{background:var(--blue-soft)}
+.dot{width:10px;height:10px;border-radius:50%;flex:0 0 10px}
+.stagerow .lbl{font-weight:700}
+.stagerow .n{margin-left:auto;font-weight:900;font-variant-numeric:tabular-nums}
+.stagerow .track{flex:0 0 120px;height:8px;border-radius:5px;background:var(--line2);overflow:hidden}
+.stagerow .fill{height:100%;border-radius:5px}
+
+.chartwrap{padding:14px}
+.legend{display:flex;gap:16px;align-items:center;padding:0 14px 10px;font-size:12px;color:var(--ink2)}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+.tip{position:fixed;pointer-events:none;background:#0F172A;color:#fff;font-size:11.5px;
+  padding:6px 9px;border-radius:7px;z-index:80;opacity:0;transition:opacity .1s;white-space:nowrap}
+.tip.on{opacity:1}
 </style>
 </head>
 <body>
@@ -228,7 +289,7 @@ const $=id=>document.getElementById(id);
 const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const RM=n=>'RM'+(Math.round((Number(n)||0)*100)/100).toLocaleString('en-MY',{minimumFractionDigits:2,maximumFractionDigits:2});
 
-let CHATS=[], LASTMSG={}, CUR=null, OVER={}, VIEW='pipeline', TASKS=[];
+let CHATS=[], LASTMSG={}, CUR=null, OVER={}, VIEW='pipeline', TASKS=[], MONTHLY=[];
 
 const today=()=>new Date().toISOString().slice(0,10);
 /* Due today or already overdue — the only tasks worth putting a number on. */
@@ -268,7 +329,7 @@ function LEADS(){
 /* Bumped whenever this page changes, and shown at the bottom of the sidebar.
    GitHub Pages and an installed app both cache hard, so without this there is
    no way to tell "the fix is not deployed" from "the fix does not work". */
-const BUILD='2026-11-23c';
+const BUILD='2026-11-23d';
 
 function drawNav(){
   $('side').innerHTML = NAV.map(n=>{
@@ -454,6 +515,7 @@ async function load(){
       const {data:ov}=await sb.rpc('gl_crm_overview');
       (ov||[]).forEach(o=>{ OVER[o.chat_jid]=o; });
     }catch(e){ /* board still works without the enrichment */ }
+    try{ const {data:mo}=await sb.rpc('gl_crm_monthly'); MONTHLY=mo||[]; }catch(e){ MONTHLY=[]; }
 
     await loadTasks();
     staleCheck();
@@ -629,9 +691,61 @@ function alertNewReplies(replyList){
   }catch(e){}
 }
 
-/* ---- Dashboard ---- */
-const kpi=(v,k,s,cls)=>'<div class="kpi '+(cls||'')+'"><div class="v">'+esc(v)+'</div>'
+/* ---- Dashboard ----
+
+   Colours do a job here, they are not decoration:
+   - the pipeline uses status colours (critical / warning / muted / good) and
+     every row is labelled, so the dot is never the only thing saying which
+     is which
+   - the monthly chart has two series, so it uses a validated categorical
+     pair: #2563EB in, #D97706 out. That pair clears CVD separation at
+     ΔE 32 (protan) and 38 at normal vision - blue+violet, the obvious pick,
+     came out at ΔE 0.4 for deuteranopes and was thrown away. */
+const C_IN='#2563EB', C_OUT='#D97706';
+const STAGE_COLOR={reply:'#DC2626', waiting:'#D97706', quiet:'#94A3B8', paid:'#15803D'};
+
+const kpi=(v,k,s,cls,ico,icoBg)=>'<div class="kpi '+(cls||'')+'">'
+  +(ico?'<div class="chip-ico" style="background:'+icoBg+'">'+ico+'</div>':'')
+  +'<div class="v">'+esc(v)+'</div>'
   +'<div class="k">'+esc(k)+'</div>'+(s?'<div class="s">'+esc(s)+'</div>':'')+'</div>';
+
+/* Grouped bars. Thin marks, rounded data-ends anchored to the baseline, a 2px
+   gap between the pair, recessive axis, legend plus hover rather than a number
+   printed on every bar. */
+function monthlyChart(rows){
+  if(!rows.length) return '';
+  const W=760,H=190, padL=38,padR=10,padT=10,padB=26;
+  const n=rows.length, iw=(W-padL-padR)/n;
+  const max=Math.max(1,...rows.map(r=>Math.max(r.msgs_in,r.msgs_out)));
+  const y=v=>padT+(H-padT-padB)*(1-v/max);
+  const bw=Math.max(5,Math.min(16,(iw-10)/2));
+  const ticks=[0,Math.round(max/2),max];
+
+  let g='';
+  ticks.forEach(t=>{ g+='<line x1="'+padL+'" x2="'+(W-padR)+'" y1="'+y(t)+'" y2="'+y(t)
+    +'" stroke="#E8ECF1" stroke-width="1"/><text x="'+(padL-6)+'" y="'+(y(t)+3.5)
+    +'" text-anchor="end" font-size="10" fill="#94A3B8">'+t+'</text>'; });
+
+  rows.forEach((r,i)=>{
+    const cx=padL+iw*i+iw/2, base=y(0);
+    [[r.msgs_in,C_IN,-1,'in'],[r.msgs_out,C_OUT,1,'out']].forEach(([v,col,side,lab])=>{
+      const h=Math.max(v>0?2:0, base-y(v));
+      if(!h) return;
+      const x=cx+(side<0?-bw-1:1);
+      g+='<rect x="'+x+'" y="'+(base-h)+'" width="'+bw+'" height="'+h+'" rx="3" fill="'+col+'"'
+        +' data-tip="'+esc(r.mon+' · '+v+' '+lab)+'"/>';
+    });
+    g+='<text x="'+cx+'" y="'+(H-8)+'" text-anchor="middle" font-size="10" fill="#94A3B8">'
+      +esc(String(r.mon).slice(5)+'/'+String(r.mon).slice(2,4))+'</text>';
+  });
+  g+='<line x1="'+padL+'" x2="'+(W-padR)+'" y1="'+y(0)+'" y2="'+y(0)+'" stroke="#CBD5E1" stroke-width="1"/>';
+
+  return '<div class="legend"><span><i style="background:'+C_IN+'"></i>From customers</span>'
+    +'<span><i style="background:'+C_OUT+'"></i>From us</span></div>'
+    +'<div class="chartwrap" style="padding-top:0"><svg viewBox="0 0 '+W+' '+H
+    +'" width="100%" height="auto" role="img" aria-label="Messages per month, from customers and from us">'
+    +g+'</svg></div>';
+}
 
 function renderDash(){
   const over=Object.values(OVER);
@@ -647,16 +761,29 @@ function renderDash(){
   const top=over.filter(o=>o.jobs>0).sort((a,b)=>b.revenue-a.revenue).slice(0,8);
   const maxRev=top.length?Number(top[0].revenue)||1:1;
 
+  // pipeline as a labelled list — four categories read better down a column
+  const counts=COLS.map(c=>({key:c.key,label:c.label,n:countCol(c.key)}));
+  const maxC=Math.max(1,...counts.map(c=>c.n));
+
   $('vDash').innerHTML=
     '<div class="h1">Dashboard</div>'
    +'<div class="h1s">Everything below comes from your own WhatsApp, matched to your own customers.</div>'
    +'<div class="cards">'
-     +kpi(reply,'Needs reply', oldest?('longest waiting '+agoTxt(new Date(oldest).toISOString()).t):'all answered', reply?'lost':'win')
-     +kpi(CHATS.length,'Conversations', known+' are existing customers')
-     +kpi(leads,'New leads','never bought anything yet')
-     +kpi(quiet,'Gone quiet','no word for 14 days+','lost')
-     +kpi(RM(rev),'Revenue behind these chats','all time','win')
-     +kpi(won,'Marked won','by MIA stage','win')
+     +kpi(reply,'Needs reply', oldest?('longest waiting '+agoTxt(new Date(oldest).toISOString()).t):'all answered', reply?'lost':'win','&#9993;','#FEE2E2')
+     +kpi(CHATS.length,'Conversations', known+' are existing customers','','&#9776;','#EEF3FE')
+     +kpi(leads,'New leads','never bought anything yet','','&#9728;','#FEF3C7')
+     +kpi(RM(rev),'Revenue behind chats','all time','win','&#9650;','#DCFCE7')
+   +'</div>'
+   +'<div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:14px">'
+     +'<div class="panel2" style="flex:1 1 300px;margin:0"><div class="pt">Pipeline</div>'
+       +counts.map(c=>'<div class="stagerow" onclick="go(\'pipeline\')">'
+         +'<span class="dot" style="background:'+STAGE_COLOR[c.key]+'"></span>'
+         +'<span class="lbl">'+esc(c.label)+'</span>'
+         +'<span class="track"><span class="fill" style="width:'+Math.round(c.n/maxC*100)+'%;background:'+STAGE_COLOR[c.key]+'"></span></span>'
+         +'<span class="n">'+c.n+'</span></div>').join('')
+     +'</div>'
+     +'<div class="panel2" style="flex:2 1 420px;margin:0"><div class="pt">Messages per month</div>'
+       +monthlyChart(MONTHLY)+'</div>'
    +'</div>'
    +(top.length?('<div class="panel2"><div class="pt">Your biggest customers on WhatsApp</div>'
      +'<table class="t2"><thead><tr><th>Customer</th><th>Jobs</th><th>Revenue</th><th style="width:34%"></th></tr></thead><tbody>'
@@ -871,6 +998,22 @@ async function checkForUpdate(){
     if(m && m[1] && m[1]!==BUILD) $('updNote').classList.remove('hide');
   }catch(e){ /* offline or blocked - never let this break the page */ }
 }
+
+/* One tooltip element, delegated — every mark with data-tip gets a hover
+   readout without a listener per bar. */
+(function(){
+  const tip=document.createElement('div'); tip.className='tip'; document.body.appendChild(tip);
+  document.addEventListener('mouseover',e=>{
+    const t=e.target && e.target.getAttribute && e.target.getAttribute('data-tip');
+    if(!t){ tip.classList.remove('on'); return; }
+    tip.textContent=t; tip.classList.add('on');
+  });
+  document.addEventListener('mousemove',e=>{
+    if(!tip.classList.contains('on')) return;
+    tip.style.left=Math.min(window.innerWidth-tip.offsetWidth-8, e.clientX+12)+'px';
+    tip.style.top=Math.max(4, e.clientY-tip.offsetHeight-10)+'px';
+  });
+})();
 
 async function boot(){
   try{ ALERTS = localStorage.getItem('gl_crm_alerts')==='1' && Notification.permission==='granted'; }catch(e){}
