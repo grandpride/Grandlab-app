@@ -260,14 +260,18 @@ table.t2 tbody tr:hover{background:var(--blue-soft)}
 .card.lit::before{content:"";position:absolute;inset:0;border-radius:inherit;
   pointer-events:none;z-index:0;opacity:.16}
 .card.lit-red::before{background:#DC2626}
-.card.lit-amber::before{background:#D97706}
+.card.lit-amber::before{background:#EAB308}
+.card.lit-new::before{background:#F97316;opacity:.22}
 .card.lit-red{border-color:#FCA5A5}
-.card.lit-amber{border-color:#FCD34D}
+.card.lit-amber{border-color:#FDE047}
+.card.lit-new{border-color:#FB923C}
+.chip.fresh{background:#F97316;color:#fff;font-weight:800;letter-spacing:.04em}
 @media(prefers-reduced-motion:no-preference){
   .card.lit::before{animation:cardpulse 2.4s ease-in-out infinite}
   .card.lit-amber::before{animation-duration:3.2s}
+  .card.lit-new::before{animation:cardpulse 1.1s ease-in-out infinite}
 }
-@keyframes cardpulse{0%,100%{opacity:.07}50%{opacity:.26}}
+@keyframes cardpulse{0%,100%{opacity:.07}50%{opacity:.32}}
 
 /* Won is a green column, not just a green heading. */
 .col.won{background:#F2FBF5;border-color:#BBF7D0}
@@ -442,7 +446,7 @@ function LEADS(){
 /* Bumped whenever this page changes, and shown at the bottom of the sidebar.
    GitHub Pages and an installed app both cache hard, so without this there is
    no way to tell "the fix is not deployed" from "the fix does not work". */
-const BUILD='2026-11-23q';
+const BUILD='2026-11-23r';
 
 function drawNav(){
   $('side').innerHTML = NAV.map(n=>{
@@ -500,6 +504,7 @@ const QUIET_DAYS=14;
 /* How long a card may sit in "Waiting on them" before it asks reception to
    decide. Jimmy's number. */
 const NUDGE_HOURS=12;
+const NEW_MINUTES=10;
 
 /* "Stage 7 - Gone quiet" -> "Gone quiet". The number is noise on a card. */
 function shortStage(s){
@@ -586,7 +591,12 @@ function colOf(c){
            has to decide whether it is finished or dead
    none  - nothing needed, or reception has already decided */
 function lightOf(c,col){
-  if(col==='reply') return 'red';
+  /* orange = the customer wrote in the last NEW_MINUTES, so a message that has
+     just landed is noticed at a glance; it settles to red once it has waited */
+  if(col==='reply'){
+    const li=c.last_in_at?new Date(c.last_in_at).getTime():0;
+    return (li && Date.now()-li < NEW_MINUTES*60000) ? 'new' : 'red';
+  }
   if(col!=='waiting') return '';
   const out=c.last_out_at?new Date(c.last_out_at).getTime():0;
   if(!out) return '';
@@ -691,6 +701,7 @@ function cardHtml(c,col){
           ? '<span class="chip rm" title="'+esc('Job dated '+dmyShort(won))+'">'+esc(RM(o.revenue))+'</span>'
           : (s==='paid'&&!won ? '<span class="chip mark" title="Marked won by hand — no job or payment found against this number">marked won</span>'
           : (Number(c.paid_rm)>0?'<span class="chip rm">'+esc(RM(c.paid_rm))+'</span>':'')))
+      +(light==='new'?'<span class="chip fresh">NEW</span>':'')
       +(s==='closed'?'<span class="chip chk">closed by you</span>':'')
       +'<span class="ago '+a.cls+'">'+a.t+'</span>'
       +(light==='amber'?'':'<button class="mvmore" title="Move this chat" onclick="mvToggle(event,'+j+')">&#8943;</button>')
