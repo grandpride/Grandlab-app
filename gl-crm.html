@@ -170,6 +170,10 @@ table.t2 tbody tr:hover{background:var(--sel);cursor:pointer}
     <button class="btn btn2" onclick="load()">Refresh</button>
   </div>
 
+  <div id="updNote" class="note hide" style="background:#E7F0FA;border-bottom-color:#A9C8E8;color:#0B5FAE">
+    <b>A newer version is ready.</b> <a href="#" onclick="hardReload();return false"
+      style="color:#0B5FAE;font-weight:800">Click here to load it</a> &mdash; nothing you have typed is sent anywhere yet.
+  </div>
   <div id="staleNote" class="note hide"></div>
 
   <div class="shell">
@@ -848,8 +852,30 @@ async function followUp(days){
   await loadTasks(); drawNav();
 }
 
+/* ---- staying up to date -------------------------------------------------
+   GitHub Pages and an installed app both cache the HTML, so reception can sit
+   on a version from days ago without knowing - which is exactly what happened
+   on 23 Nov, where a fixed sidebar looked broken because the old page was
+   still loaded. So the page checks for itself and offers a reload rather than
+   relying on anyone remembering Ctrl+Shift+R. */
+function hardReload(){
+  const u=location.pathname+'?v='+Date.now()+(location.hash||'');
+  location.replace(u);
+}
+async function checkForUpdate(){
+  try{
+    const r=await fetch(location.pathname+'?cb='+Date.now(), {cache:'no-store'});
+    if(!r.ok) return;
+    const txt=await r.text();
+    const m=/const BUILD='([^']+)'/.exec(txt);
+    if(m && m[1] && m[1]!==BUILD) $('updNote').classList.remove('hide');
+  }catch(e){ /* offline or blocked - never let this break the page */ }
+}
+
 async function boot(){
   try{ ALERTS = localStorage.getItem('gl_crm_alerts')==='1' && Notification.permission==='granted'; }catch(e){}
+  setTimeout(checkForUpdate, 20000);
+  setInterval(checkForUpdate, 15*60000);
   setAlertBtn();
   setInterval(()=>{ if(!document.hidden && $('ov').classList.contains('hide')) load(); }, 60000);
   const want=(location.hash||'').replace('#','');
