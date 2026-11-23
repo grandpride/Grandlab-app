@@ -185,6 +185,7 @@ table.t2 tbody tr:hover{background:var(--sel);cursor:pointer}
       <div id="vDash"    class="pad hide"></div>
       <div id="vLeads"   class="pad hide"></div>
       <div id="vReports" class="pad hide"></div>
+      <div id="vTasks"   class="pad hide"></div>
       <div id="vSoon"    class="pad hide"></div>
 
     </div>
@@ -198,6 +199,8 @@ table.t2 tbody tr:hover{background:var(--sel);cursor:pointer}
         <div class="nm" id="tNm"></div>
         <div class="ph" id="tPh" style="color:var(--text2);font-size:11.5px"></div>
       </div>
+      <button class="btn btn2 btn-xs" onclick="followUp(1)" title="Remind me tomorrow">+1d</button>
+      <button class="btn btn2 btn-xs" onclick="followUp(3)" title="Remind me in 3 days">+3d</button>
       <a id="tWa" class="btn btn-wa btn-xs" target="_blank" rel="noopener">WhatsApp</a>
       <button class="btn btn2 btn-xs" onclick="closeThread()">Close</button>
     </div>
@@ -220,7 +223,11 @@ const $=id=>document.getElementById(id);
 const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const RM=n=>'RM'+(Math.round((Number(n)||0)*100)/100).toLocaleString('en-MY',{minimumFractionDigits:2,maximumFractionDigits:2});
 
-let CHATS=[], LASTMSG={}, CUR=null, OVER={}, VIEW='pipeline';
+let CHATS=[], LASTMSG={}, CUR=null, OVER={}, VIEW='pipeline', TASKS=[];
+
+const today=()=>new Date().toISOString().slice(0,10);
+/* Due today or already overdue — the only tasks worth putting a number on. */
+const dueSoon=t=>!!t.due_on && String(t.due_on)<=today();
 
 /* The sidebar. Contacts and Calendar deliberately open the apps that already
    own that data rather than showing a second copy of it here - two screens
@@ -236,7 +243,7 @@ const NAV=[
   {grp:'Business'},
   {id:'reports',  ico:'&#9650;', label:'Reports'},
   {id:'calendar', ico:'&#9633;', label:'Calendar', href:'gl-staff-appointment-FINAL.html'},
-  {id:'tasks',    ico:'&#10003;', label:'Tasks',   soon:'Follow-ups you can tick off, with a reminder when one is due.'},
+  {id:'tasks',    ico:'&#10003;', label:'Tasks', count:()=>TASKS.filter(t=>!t.done&&dueSoon(t)).length, hot:true},
   {id:'autom',    ico:'&#8635;', label:'Automation', soon:'Rules like "nobody replied in 2 hours - tell reception" and "quiet for 7 days - suggest a follow-up".'},
   {id:'settings', ico:'&#9881;', label:'Settings', soon:'How many days counts as quiet, who gets alerts, and your reply templates.'}
 ];
@@ -268,7 +275,7 @@ function drawNav(){
 function go(id){
   VIEW=id;
   const soon=(NAV.find(n=>n.id===id)||{}).soon;
-  for(const v of ['vPipeline','vDash','vLeads','vReports','vSoon'])
+  for(const v of ['vPipeline','vDash','vLeads','vReports','vTasks','vSoon'])
     $(v).classList.add('hide');
   if(soon){
     $('vSoon').classList.remove('hide');
@@ -277,6 +284,7 @@ function go(id){
   } else if(id==='dash')    { $('vDash').classList.remove('hide');    renderDash(); }
   else if(id==='leads')     { $('vLeads').classList.remove('hide');   renderLeads(); }
   else if(id==='reports')   { $('vReports').classList.remove('hide'); renderReports(); }
+  else if(id==='tasks')     { $('vTasks').classList.remove('hide');   renderTasks(); }
   else                      { $('vPipeline').classList.remove('hide'); }
   drawNav();
   try{ location.hash=id; }catch(e){}
@@ -435,12 +443,14 @@ async function load(){
       (ov||[]).forEach(o=>{ OVER[o.chat_jid]=o; });
     }catch(e){ /* board still works without the enrichment */ }
 
+    await loadTasks();
     staleCheck();
     render();
     drawNav();
     if(VIEW==='dash') renderDash();
     else if(VIEW==='leads') renderLeads();
     else if(VIEW==='reports') renderReports();
+    else if(VIEW==='tasks') renderTasks();
   }catch(e){
     $('statusLine').innerHTML='<span class="err">Could not load: '+esc(e.message||e)+'</span>';
   }
@@ -728,6 +738,106 @@ function renderReports(){
    +monRows.map(([k,v])=>'<tr><td>'+esc(k)+'</td><td>'+v+'</td>'
       +'<td><div class="bar2" style="width:'+Math.max(2,Math.round(v/maxMon*100))+'%"></div></td></tr>').join('')
    +'</tbody></table></div>';
+}
+
+/* ---- Tasks ---- */
+function taskRow(t){
+  const chat=t.chat_jid?CHATS.find(c=>c.chat_jid===t.chat_jid):null;
+  const who=chat?((chat.name&&String(chat.name).trim())?chat.name:(chat.phone||'')):'';
+  const overdue=!t.done && t.due_on && String(t.due_on)<today();
+  const dueToday=!t.done && String(t.due_on)===today();
+  const when=t.due_on
+    ? (overdue?'<span class="soon">'+esc(dmyShort(t.due_on))+' · overdue</span>'
+       : dueToday?'<span style="color:var(--amber);font-weight:800">Today</span>'
+       : esc(dmyShort(t.due_on)))
+    : '<span style="color:var(--text2)">no date</span>';
+  return '<tr>'
+    +'<td style="width:28px"><input type="checkbox" '+(t.done?'checked':'')
+      +' onclick="toggleTask('+t.id+',this.checked)"></td>'
+    +'<td'+(t.done?' style="text-decoration:line-through;color:var(--text2)"':'')+'><b>'+esc(t.title)+'</b>'
+      +(t.notes?'<div class="sub" style="color:var(--text2);font-size:11px">'+esc(t.notes)+'</div>':'')+'</td>'
+    +'<td>'+(chat?'<a href="#" onclick="openThread('+JSON.stringify(t.chat_jid).replace(/"/g,'&quot;')
+        +');return false">'+esc(who)+'</a>':'<span style="color:var(--text2)">—</span>')+'</td>'
+    +'<td>'+when+'</td>'
+    +'<td style="width:30px"><a href="#" title="Delete" style="color:var(--text2);text-decoration:none"'
+      +' onclick="delTask('+t.id+');return false">&times;</a></td>'
+    +'</tr>';
+}
+const dmyShort=s=>{const d=new Date(s);return isNaN(d)?String(s):d.toLocaleDateString('en-GB',{day:'numeric',month:'short'});};
+
+function renderTasks(){
+  const open=TASKS.filter(t=>!t.done), done=TASKS.filter(t=>t.done);
+  const over=open.filter(t=>t.due_on&&String(t.due_on)<today()).length;
+  const tod=open.filter(t=>String(t.due_on)===today()).length;
+  $('vTasks').innerHTML=
+    '<div class="h1">Tasks</div>'
+   +'<div class="h1s">Follow-ups, so a lead that needs chasing next week is not just remembered.</div>'
+   +'<div class="cards">'
+     +kpi(open.length,'Open')
+     +kpi(over,'Overdue','',over?'lost':'')
+     +kpi(tod,'Due today')
+   +'</div>'
+   +'<div class="panel2"><div class="pt">Add a task</div>'
+     +'<div style="display:flex;gap:8px;padding:10px 11px;flex-wrap:wrap">'
+     +'<input id="ntTitle" placeholder="What needs doing?" style="flex:2 1 240px">'
+     +'<input id="ntDue" type="date" style="flex:0 0 150px" value="'+today()+'">'
+     +'<button class="btn" onclick="addTask()">Add</button></div>'
+     +'<div id="ntNote" class="replyNote" style="background:transparent"></div></div>'
+   +'<div class="panel2"><div class="pt">'+open.length+' open</div><table class="t2"><tbody>'
+     +(open.length?open.slice().sort(taskSort).map(taskRow).join('')
+       :'<tr><td style="padding:18px;text-align:center;color:var(--text2)">Nothing outstanding.</td></tr>')
+     +'</tbody></table></div>'
+   +(done.length?'<div class="panel2"><div class="pt">Done ('+done.length+')</div><table class="t2"><tbody>'
+       +done.slice(0,30).map(taskRow).join('')+'</tbody></table></div>':'');
+}
+/* dated first, soonest at the top; undated last */
+function taskSort(a,b){
+  if(!a.due_on && !b.due_on) return b.id-a.id;
+  if(!a.due_on) return 1;
+  if(!b.due_on) return -1;
+  return String(a.due_on)<String(b.due_on)?-1:1;
+}
+
+async function loadTasks(){
+  try{
+    const {data}=await sb.from('gl_crm_task')
+      .select('id,chat_jid,title,due_on,done,done_at,notes')
+      .order('done',{ascending:true}).order('due_on',{ascending:true,nullsFirst:false}).limit(400);
+    TASKS=data||[];
+  }catch(e){ TASKS=[]; }
+}
+async function addTask(){
+  const t=$('ntTitle'), d=$('ntDue'), n=$('ntNote');
+  const title=String(t.value||'').trim();
+  n.className='replyNote'; n.style.background='transparent';
+  if(!title){ n.textContent='Type what needs doing first.'; return; }
+  n.textContent='Adding…';
+  const {error}=await sb.from('gl_crm_task').insert({title, due_on:d.value||null});
+  if(error){ n.className='replyNote err'; n.textContent='Could not add: '+error.message; return; }
+  t.value=''; n.textContent='';
+  await loadTasks(); renderTasks(); drawNav();
+}
+async function toggleTask(id,done){
+  await sb.from('gl_crm_task').update({done, done_at: done?new Date().toISOString():null}).eq('id',id);
+  await loadTasks(); renderTasks(); drawNav();
+}
+async function delTask(id){
+  const t=TASKS.find(x=>x.id===id);
+  if(!confirm('Delete this task?\n\n'+(t?t.title:''))) return;
+  await sb.from('gl_crm_task').delete().eq('id',id);
+  await loadTasks(); renderTasks(); drawNav();
+}
+/* Add a follow-up straight from a conversation, dated a few days out. */
+async function followUp(days){
+  if(!CUR) return;
+  const who=(CUR.name&&String(CUR.name).trim())?CUR.name:(CUR.phone||'this chat');
+  const due=new Date(Date.now()+days*86400000).toISOString().slice(0,10);
+  const note=$('tReplyNote'); note.className='replyNote';
+  const {error}=await sb.from('gl_crm_task')
+    .insert({chat_jid:CUR.chat_jid, title:'Follow up with '+who, due_on:due});
+  if(error){ note.className='replyNote err'; note.textContent='Could not add task: '+error.message; return; }
+  note.textContent='Follow-up added for '+dmyShort(due)+'. It is in Tasks.';
+  await loadTasks(); drawNav();
 }
 
 async function boot(){
