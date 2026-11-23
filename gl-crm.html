@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Grandlab CRM</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="gl-backend-config.js"></script>
+<script>/* backend switch (docs/cf-migration-gl.md): ONLY when the switch is on for module "core" (gl-backend-config.js) or this device chose ?backend=cf, load gl-cf-client.js + gl-cf-page.js. Off = nothing else happens. */
+(function(){try{var M='core',on;if(typeof GL_BACKEND_PICK==='function'){on=GL_BACKEND_PICK(M)==='cf';}else{var m=/[?&]backend=(cf|sb)(?:&|$)/.exec(location.search);if(m){if(m[1]==='cf')localStorage.setItem('gl_backend','cf');else localStorage.removeItem('gl_backend');}on=localStorage.getItem('gl_backend')==='cf';}if(on){window.GLCF_PAGE_CFG={page:'gl-crm',module:M};document.write('<script src="gl-cf-client.js"><\/script><script src="gl-cf-page.js"><\/script>');}}catch(e){}})();</script>
+<style>
+:root{--bg:#FFFFFF;--card:#FFFFFF;--card2:#F6F7F8;--gold:#F5C518;--gold-ink:#8A6D00;
+      --text:#111111;--text2:#5F6368;--border:#E3E5E8;--red:#C0392B;--green:#157347;
+      --amber:#9A6700;--sel:#FFF8E1;--head:#EEF0F2}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);
+     font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-size:13px}
+.hide{display:none !important}
+.bar{display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid var(--border);
+     background:var(--card2);position:sticky;top:0;z-index:30;flex-wrap:wrap}
+.bar .ttl{font-weight:900;font-size:15px;white-space:nowrap}
+.bar .ttl span{color:var(--gold-ink)}
+.back{color:var(--text2);text-decoration:none;font-size:12.5px;white-space:nowrap}
+.grow{flex:1;min-width:80px}
+input{padding:7px 9px;border:1px solid var(--border);border-radius:7px;background:var(--card);
+     color:var(--text);font-family:inherit;font-size:13px;width:100%}
+input:focus{outline:none;border-color:var(--gold-ink)}
+.btn{background:var(--gold);color:#000;border:none;border-radius:7px;padding:7px 13px;font-size:12.5px;
+     font-weight:800;cursor:pointer;font-family:inherit;white-space:nowrap;text-decoration:none;display:inline-block}
+.btn2{background:var(--card);color:var(--text);border:1px solid var(--border)}
+.btn-wa{background:#25D366;color:#fff}
+.btn-xs{padding:4px 9px;font-size:11.5px;border-radius:6px}
+.note{background:#FFF8E1;border-bottom:1px solid #E8D48A;padding:8px 12px;font-size:12px;color:#6b5600}
+.status{color:var(--text2);font-size:12px;padding:7px 12px}
+.err{color:var(--red)}
+.empty{color:var(--text2);text-align:center;padding:34px 12px}
+
+/* ---- money strip ---- */
+.strip{display:flex;gap:0;border-bottom:1px solid var(--border);background:var(--card2);overflow-x:auto}
+.stat{padding:8px 14px;border-right:1px solid var(--border);white-space:nowrap}
+.stat .v{font-weight:900;font-size:15px}
+.stat .k{color:var(--text2);font-size:10.5px;text-transform:uppercase;letter-spacing:.03em}
+.stat.win .v{color:var(--green)}
+.stat.lost .v{color:var(--red)}
+
+/* ---- board ---- */
+.board{display:flex;gap:10px;padding:10px;align-items:flex-start;overflow-x:auto}
+.col{flex:0 0 268px;background:var(--card2);border:1px solid var(--border);border-radius:10px;
+     display:flex;flex-direction:column;max-height:calc(100vh - 190px)}
+.colh{padding:8px 10px;border-bottom:1px solid var(--border);font-weight:800;font-size:11.5px;
+      text-transform:uppercase;letter-spacing:.03em;color:var(--text2);display:flex;gap:6px;align-items:center}
+.colh .n{background:var(--border);color:var(--text2);border-radius:9px;padding:0 6px;font-size:10.5px}
+.colh.c-talking{color:#0B5FAE} .colh.c-waiting{color:var(--amber)}
+.colh.c-ghost{color:var(--red)} .colh.c-paid{color:var(--green)}
+.collist{overflow-y:auto;padding:8px;display:flex;flex-direction:column;gap:7px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:9px;padding:8px 9px;cursor:pointer}
+.card:hover{border-color:var(--gold-ink)}
+.card .nm{font-weight:800;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.card .ph{color:var(--text2);font-size:11px;font-variant-numeric:tabular-nums}
+.card .last{color:var(--text2);font-size:11.5px;margin-top:4px;
+     display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.card .foot{display:flex;gap:6px;align-items:center;margin-top:6px;flex-wrap:wrap}
+.chip{display:inline-block;border-radius:4px;padding:0 6px;font-size:10.5px;font-weight:800;
+      background:var(--border);color:var(--text2)}
+.chip.stage{background:#E7F0FA;color:#0B5FAE}
+.chip.mem{background:var(--gold);color:#000}
+.chip.rm{background:#E6F4EA;color:var(--green)}
+.ago{font-size:10.5px;font-weight:800;margin-left:auto}
+.ago.warm{color:var(--amber)} .ago.cold{color:var(--red)} .ago.ok{color:var(--text2)}
+
+/* ---- thread panel ---- */
+.ov{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:50;display:flex;justify-content:flex-end}
+.ov.hide{display:none !important}
+.panel{background:var(--bg);width:min(560px,100%);height:100%;display:flex;flex-direction:column}
+.ph-head{padding:10px 12px;border-bottom:1px solid var(--border);background:var(--card2);
+         display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.ph-head .nm{font-weight:900;font-size:14px}
+.rec{padding:9px 12px;border-bottom:1px solid var(--border);background:#FAFBFC;font-size:12px}
+.rec .row{display:flex;gap:8px;padding:2px 0}
+.rec .k{color:var(--text2);min-width:92px}
+.thread{flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:7px;background:#F0F2F5}
+.msg{max-width:78%;padding:7px 10px;border-radius:10px;font-size:12.5px;white-space:pre-wrap;word-break:break-word}
+.msg.in{background:var(--card);align-self:flex-start;border:1px solid var(--border)}
+.msg.out{background:#DCF8C6;align-self:flex-end}
+.msg .t{display:block;color:var(--text2);font-size:10px;margin-top:3px}
+.msg.sys{align-self:center;background:transparent;color:var(--text2);font-size:11px;max-width:100%}
+@media(max-width:700px){ .col{flex:0 0 84vw} }
+</style>
+</head>
+<body>
+
+<div class="gate" id="gate" style="position:fixed;inset:0;background:var(--bg);z-index:60;display:flex;align-items:center;justify-content:center;padding:18px">
+  <div style="max-width:330px;width:100%;border:1px solid var(--border);border-radius:12px;padding:18px">
+  <h1 style="font-size:19px;font-weight:900;margin:0 0 3px">GRAND<span style="color:var(--gold-ink)">LAB</span></h1>
+  <div style="color:var(--text2);font-size:12px">CRM — staff sign in</div>
+  <label style="display:block;font-size:11px;font-weight:800;text-transform:uppercase;color:var(--text2);margin:10px 0 4px">Email</label>
+  <input id="email" type="email" autocomplete="username">
+  <label style="display:block;font-size:11px;font-weight:800;text-transform:uppercase;color:var(--text2);margin:10px 0 4px">Password</label>
+  <input id="pass" type="password" autocomplete="current-password">
+  <button class="btn" style="width:100%;margin-top:12px;padding:11px" onclick="doLogin()">SIGN IN</button>
+  <div id="loginErr" class="status err"></div>
+</div></div>
+
+<div id="main" class="hide">
+  <div class="bar">
+    <a class="back" href="gl-hub.html">&#8592; Hub</a>
+    <div class="ttl">GRAND<span>LAB</span> CRM</div>
+    <div class="grow"><input id="q" placeholder="Search name, phone or message…" autocomplete="off"></div>
+    <button class="btn btn2" onclick="load()">Refresh</button>
+  </div>
+
+  <div id="staleNote" class="note hide"></div>
+  <div id="strip" class="strip"></div>
+  <div id="board" class="board"></div>
+  <div id="statusLine" class="status"></div>
+  <div id="emptyBox" class="empty hide"></div>
+</div>
+
+<div id="ov" class="ov hide" onclick="if(event.target===this)closeThread()">
+  <div class="panel">
+    <div class="ph-head">
+      <div class="grow">
+        <div class="nm" id="tNm"></div>
+        <div class="ph" id="tPh" style="color:var(--text2);font-size:11.5px"></div>
+      </div>
+      <a id="tWa" class="btn btn-wa btn-xs" target="_blank" rel="noopener">WhatsApp</a>
+      <button class="btn btn2 btn-xs" onclick="closeThread()">Close</button>
+    </div>
+    <div class="rec" id="tRec"></div>
+    <div class="thread" id="tThread"></div>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL="https://db.grandlab.com.my";
+const SUPABASE_ANON="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzkzMDY5NDExLCJleHAiOjE5NTA3NDk0MTF9.IcbPnDCd9p6Z-_FNMvzfg9k6ayX7IpC48zdGacAD_qw";
+const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON,
+      {auth:{persistSession:true,autoRefreshToken:true,storageKey:'gl_auth'}});
+const $=id=>document.getElementById(id);
+const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const RM=n=>'RM'+(Math.round((Number(n)||0)*100)/100).toLocaleString('en-MY',{minimumFractionDigits:2,maximumFractionDigits:2});
+
+let CHATS=[], LASTMSG={}, CUR=null;
+
+/* The columns are Jimmy's own vocabulary, already in gl_wa_chat.status -
+   talking / waiting / ghost / paid. Inventing new ones would have thrown away
+   the stage flow the bridge has been writing since October. */
+const COLS=[
+  {key:'talking', label:'Talking',    cls:'c-talking'},
+  {key:'waiting', label:'Waiting',    cls:'c-waiting'},
+  {key:'ghost',   label:'Gone quiet', cls:'c-ghost'},
+  {key:'paid',    label:'Won',        cls:'c-paid'}
+];
+
+/* "Stage 7 - Gone quiet" -> "Gone quiet". The number is noise on a card. */
+function shortStage(s){
+  const t=String(s||'').trim();
+  if(!t) return '';
+  const m=t.match(/^Stage\s*\d+\s*[—\-–]\s*(.+)$/i);
+  return m?m[1].trim():t;
+}
+function agoTxt(ts){
+  if(!ts) return {t:'',cls:'ok'};
+  const d=new Date(ts); if(isNaN(d)) return {t:'',cls:'ok'};
+  const mins=Math.floor((Date.now()-d.getTime())/60000);
+  if(mins<1)   return {t:'now',cls:'ok'};
+  if(mins<60)  return {t:mins+'m',cls:mins>=30?'warm':'ok'};
+  const hrs=Math.floor(mins/60);
+  if(hrs<24)   return {t:hrs+'h',cls:hrs>=2?'warm':'ok'};
+  const days=Math.floor(hrs/24);
+  return {t:days+'d',cls:'cold'};
+}
+const dmy=s=>{ if(!s) return ''; const d=new Date(s); return isNaN(d)?'':
+  d.toLocaleDateString('en-GB',{day:'numeric',month:'short'})+' '+
+  d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}); };
+
+function waLink(phone){
+  const d=String(phone||'').replace(/[^0-9]/g,'');
+  return d.length>=9 ? 'https://wa.me/'+d : '';
+}
+function colOf(c){
+  const s=String(c.status||'').toLowerCase();
+  return COLS.some(x=>x.key===s) ? s : 'talking';
+}
+
+function cardHtml(c){
+  const a=agoTxt(c.last_in_at);
+  const st=shortStage(c.stage);
+  const last=LASTMSG[c.chat_jid];
+  return '<div class="card" onclick="openThread('+JSON.stringify(c.chat_jid).replace(/"/g,'&quot;')+')">'
+    +'<div class="nm">'+esc(c.name||c.phone||'(no name)')+'</div>'
+    +'<div class="ph">'+esc(c.phone||'—')+'</div>'
+    +(last?'<div class="last">'+(last.direction==='out'?'<b>You:</b> ':'')+esc(last.body||'['+(last.msg_type||'media')+']')+'</div>':'')
+    +'<div class="foot">'
+      +(st?'<span class="chip stage">'+esc(st)+'</span>':'')
+      +(Number(c.paid_rm)>0?'<span class="chip rm">'+esc(RM(c.paid_rm))+'</span>':'')
+      +'<span class="ago '+a.cls+'">'+a.t+'</span>'
+    +'</div></div>';
+}
+
+function render(){
+  const q=$('q').value.trim().toLowerCase();
+  const rows=CHATS.filter(c=>{
+    if(!q) return true;
+    const last=LASTMSG[c.chat_jid];
+    return [c.name,c.phone,c.stage,c.status,c.remark,last&&last.body]
+      .some(v=>String(v==null?'':v).toLowerCase().includes(q));
+  });
+
+  const by={}; COLS.forEach(x=>by[x.key]=[]);
+  rows.forEach(c=>by[colOf(c)].push(c));
+
+  $('board').innerHTML = COLS.map(x=>{
+    const list=by[x.key];
+    return '<div class="col"><div class="colh '+x.cls+'">'+esc(x.label)
+      +'<span class="n">'+list.length+'</span></div>'
+      +'<div class="collist">'
+      +(list.length?list.map(cardHtml).join(''):'<div class="empty" style="padding:14px;font-size:11.5px">Nothing here</div>')
+      +'</div></div>';
+  }).join('');
+
+  // the money view: what this pipeline actually did
+  const won=rows.filter(c=>String(c.status).toLowerCase()==='paid');
+  const wonRM=won.reduce((s,c)=>s+(Number(c.paid_rm)||0),0);
+  const quiet=rows.filter(c=>['waiting','ghost'].includes(String(c.status).toLowerCase())).length;
+  $('strip').innerHTML=
+     stat(rows.length,'Chats')
+    +stat(won.length,'Won','win')
+    +stat(RM(wonRM),'Revenue tracked','win')
+    +stat(quiet,'Waiting / quiet','lost')
+    +stat(rows.length?Math.round(won.length/rows.length*100)+'%':'—','Close rate');
+
+  $('statusLine').textContent = rows.length ? rows.length+' of '+CHATS.length+' shown' : '';
+  $('emptyBox').classList.toggle('hide', rows.length>0);
+  $('emptyBox').textContent = rows.length ? '' : (CHATS.length ? 'Nothing matches that search.' : 'No WhatsApp chats recorded yet.');
+}
+const stat=(v,k,cls)=>'<div class="stat '+(cls||'')+'"><div class="v">'+esc(v)+'</div><div class="k">'+esc(k)+'</div></div>';
+
+async function load(){
+  $('statusLine').textContent='Loading…';
+  try{
+    const {data:chats,error}=await sb.from('gl_wa_chat')
+      .select('chat_jid,phone,name,stage,status,first_in_at,last_in_at,last_out_at,booked_at,paid_at,paid_rm,remark')
+      .order('last_in_at',{ascending:false,nullsFirst:false})
+      .limit(400);
+    if(error) throw error;
+    CHATS=chats||[];
+
+    /* One query for the preview line on every card, newest first, then keep
+       the first per chat. Cheaper than a query per card. */
+    LASTMSG={};
+    const {data:msgs}=await sb.from('gl_wa_msg')
+      .select('chat_jid,direction,body,msg_type,wa_ts')
+      .order('wa_ts',{ascending:false})
+      .limit(1200);
+    (msgs||[]).forEach(m=>{ if(!LASTMSG[m.chat_jid]) LASTMSG[m.chat_jid]=m; });
+
+    staleCheck();
+    render();
+  }catch(e){
+    $('statusLine').innerHTML='<span class="err">Could not load: '+esc(e.message||e)+'</span>';
+  }
+}
+
+/* The feed is only as fresh as whatever is writing to gl_wa_msg. If that has
+   stopped, the board is a historical record and must say so rather than
+   looking like a live view of a quiet week. */
+function staleCheck(){
+  const latest=CHATS.map(c=>c.last_in_at).filter(Boolean).sort().pop();
+  const n=$('staleNote');
+  if(!latest){ n.classList.add('hide'); return; }
+  const days=Math.floor((Date.now()-new Date(latest).getTime())/86400000);
+  if(days<3){ n.classList.add('hide'); return; }
+  n.classList.remove('hide');
+  n.innerHTML='<b>Not live.</b> The newest message here is '+esc(dmy(latest))+' ('+days
+    +' days ago), so the WhatsApp feed has stopped writing. Everything below is history — '
+    +'new chats are not being recorded until the bridge is reconnected.';
+}
+
+async function openThread(jid){
+  CUR=CHATS.find(c=>c.chat_jid===jid); if(!CUR) return;
+  $('ov').classList.remove('hide');
+  $('tNm').textContent=CUR.name||CUR.phone||'(no name)';
+  $('tPh').textContent=[CUR.phone,shortStage(CUR.stage),CUR.status].filter(Boolean).join(' · ');
+  const w=waLink(CUR.phone);
+  $('tWa').style.display=w?'':'none'; if(w) $('tWa').href=w;
+  $('tRec').innerHTML='<div class="row"><span class="k">Customer</span><span>Looking up…</span></div>';
+  $('tThread').innerHTML='<div class="msg sys">Loading…</div>';
+  loadRecord(CUR.phone);
+  loadThread(jid);
+}
+function closeThread(){ $('ov').classList.add('hide'); CUR=null; }
+
+async function loadThread(jid){
+  try{
+    const {data}=await sb.from('gl_wa_msg')
+      .select('direction,sent_by,msg_type,body,wa_ts')
+      .eq('chat_jid',jid).order('wa_ts',{ascending:true}).limit(500);
+    const rows=data||[];
+    $('tThread').innerHTML = rows.length ? rows.map(m=>{
+      const body=m.body||('['+(m.msg_type||'media')+']');
+      return '<div class="msg '+(m.direction==='out'?'out':'in')+'">'+esc(body)
+        +'<span class="t">'+esc(dmy(m.wa_ts))+(m.sent_by&&m.direction==='out'?' · '+esc(m.sent_by):'')+'</span></div>';
+    }).join('') : '<div class="msg sys">No messages recorded for this chat.</div>';
+    const t=$('tThread'); t.scrollTop=t.scrollHeight;
+  }catch(e){
+    $('tThread').innerHTML='<div class="msg sys">Could not load messages: '+esc(e.message||e)+'</div>';
+  }
+}
+
+/* The whole point of the board: the chat next to what Grandlab already knows
+   about them. Matched on the last 8 digits because phone formats in
+   gl_profiles and gl_walkin are inconsistent. */
+async function loadRecord(phone){
+  const key=String(phone||'').replace(/[^0-9]/g,'').slice(-8);
+  if(key.length<7){ $('tRec').innerHTML='<div class="row"><span class="k">Customer</span><span>No phone on this chat — cannot match.</span></div>'; return; }
+  try{
+    const [{data:prof},{data:walk}]=await Promise.all([
+      sb.from('gl_profiles')
+        .select('name,phone,email,tier,tier_expires_at,wallet,wallet_member,points')
+        .ilike('phone','%'+key).limit(1),
+      sb.from('gl_walkin').select('name,plate,model,last_service,visit_count')
+        .ilike('phone','%'+key).limit(12)
+    ]);
+    const p=(prof||[])[0], cars=walk||[];
+    const row=(k,v)=>'<div class="row"><span class="k">'+esc(k)+'</span><span>'+v+'</span></div>';
+    let h='';
+    if(p){
+      const isMember=p.tier_expires_at&&new Date(p.tier_expires_at)>new Date();
+      h+=row('Customer','<b>'+esc(p.name||'(no name)')+'</b>'
+          +(isMember?' <span class="chip mem">'+esc(p.tier||'Member')+'</span>':''));
+      if(p.email) h+=row('Email',esc(p.email));
+      if(Number(p.wallet)>0) h+=row('Credit', esc(RM(p.wallet))
+          + (Number(p.wallet_member)>0?' <span style="color:var(--text2)">('+esc(RM(p.wallet_member))+' member credit)</span>':''));
+      if(Number(p.points)>0) h+=row('G Coin', esc(p.points));
+    }
+    if(cars.length){
+      h+=row('Cars', cars.map(c=>'<b>'+esc(c.plate||'—')+'</b>'+(c.model?' '+esc(c.model):'')).join('<br>'));
+      const seen=cars.map(c=>c.last_service).filter(Boolean).sort().pop();
+      if(seen) h+=row('Last service', esc(dmy(seen)));
+      const visits=cars.reduce((s,c)=>s+(Number(c.visit_count)||0),0);
+      if(visits) h+=row('Visits', esc(visits));
+    }
+    if(!h) h=row('Customer','Not in Grandlab records yet — new enquiry.');
+    if(CUR&&CUR.remark) h+=row('Note', esc(CUR.remark));
+    h+='<div class="row" style="margin-top:5px"><span class="k"></span><span>'
+      +'<a class="btn btn2 btn-xs" target="_blank" rel="noopener" href="gl-customers.html">Open in GL Customers</a></span></div>';
+    $('tRec').innerHTML=h;
+  }catch(e){
+    $('tRec').innerHTML='<div class="row"><span class="k">Customer</span><span class="err">Lookup failed: '+esc(e.message||e)+'</span></div>';
+  }
+}
+
+async function boot(){
+  const {data}=await sb.auth.getSession();
+  if(data&&data.session){ $('gate').classList.add('hide'); $('main').classList.remove('hide'); load(); }
+  else $('gate').classList.remove('hide');
+}
+async function doLogin(){
+  const email=$('email').value.trim(), pass=$('pass').value;
+  if(!email||!pass){ $('loginErr').textContent='Enter email and password.'; return; }
+  $('loginErr').textContent='Signing in…';
+  let res;
+  try{ res=await sb.auth.signInWithPassword({email,password:pass}); }
+  catch(e){ $('loginErr').textContent='Network error: '+(e.message||e); return; }
+  if(res.error){ $('loginErr').textContent='Login failed: '+res.error.message; return; }
+  $('loginErr').textContent=''; $('gate').classList.add('hide');
+  $('main').classList.remove('hide'); load();
+}
+$('pass').addEventListener('keydown',e=>{ if(e.key==='Enter') doLogin(); });
+$('q').addEventListener('input',render);
+document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeThread(); });
+boot();
+</script>
+</body>
+</html>
