@@ -416,7 +416,7 @@ function LEADS(){
 /* Bumped whenever this page changes, and shown at the bottom of the sidebar.
    GitHub Pages and an installed app both cache hard, so without this there is
    no way to tell "the fix is not deployed" from "the fix does not work". */
-const BUILD='2026-11-23m';
+const BUILD='2026-11-23n';
 
 function drawNav(){
   $('side').innerHTML = NAV.map(n=>{
@@ -931,9 +931,13 @@ function senderOf(m){
   if(!m || m.direction!=='out') return null;
   const body=String(m.body||'');
   for(const st of STAFF){
-    const n=String(st.name||'');
-    if(n && body.toLowerCase().startsWith(n.toLowerCase()+':'))
-      return {name:st.name, via:'crm', clean:body.slice(n.length+1).replace(/^\s*\n/,'')};
+    const n=String(st.name||''); if(!n) continue;
+    const lb=body.toLowerCase(), ln=n.toLowerCase();
+    // bold "*Iqa:*" is what goes out now; plain "Iqa:" is what earlier
+    // replies carry, and both still have to be recognised
+    const cut = lb.startsWith('*'+ln+':*') ? n.length+3
+              : lb.startsWith(ln+':')      ? n.length+1 : 0;
+    if(cut) return {name:st.name, via:'crm', clean:body.slice(cut).replace(/^\s*\n/,'')};
   }
   const t=m.wa_ts?new Date(m.wa_ts).getTime():0;
   if(staffMode() && STAFF_FROM && t && t>=STAFF_FROM)
@@ -954,9 +958,13 @@ function setAgentName(v){
 function replyName(){ return (staffMode() && ME) ? ME.name : agentName(); }
 function withAgent(body){
   const who=replyName();
-  // don't stack a second name on a reply that already starts with one
-  if(!who || body.toLowerCase().startsWith(who.toLowerCase()+':')) return body;
-  return who+':\n'+body;
+  if(!who) return body;
+  const b=body.toLowerCase(), n=who.toLowerCase();
+  // don't stack a second name on a reply that already carries one, in either
+  // the bold or the plain form
+  if(b.startsWith('*'+n+':*') || b.startsWith(n+':')) return body;
+  // asterisks are WhatsApp's own bold, so the customer sees the name stand out
+  return '*'+who+':*\n'+body;
 }
 
 async function sendReply(){
