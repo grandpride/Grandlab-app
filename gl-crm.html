@@ -238,11 +238,11 @@ const NAV=[
   {id:'pipeline', ico:'&#9776;', label:'Pipeline', count:()=>countCol('reply'), hot:true},
   {id:'leads',    ico:'&#9728;', label:'Leads',    count:()=>LEADS().length},
   {grp:'Customers'},
-  {id:'contacts', ico:'&#9679;', label:'Contacts', href:'gl-customers.html'},
+  {id:'contacts', ico:'&#9679;', label:'Customers', href:'gl-customers.html'},
   {id:'members',  ico:'&#9734;', label:'Members',  href:'gl-members.html'},
   {grp:'Business'},
   {id:'reports',  ico:'&#9650;', label:'Reports'},
-  {id:'calendar', ico:'&#9633;', label:'Calendar', href:'gl-staff-appointment-FINAL.html'},
+  {id:'calendar', ico:'&#9633;', label:'Booking',   href:'gl-staff-appointment-FINAL.html'},
   {id:'tasks',    ico:'&#10003;', label:'Tasks', count:()=>TASKS.filter(t=>!t.done&&dueSoon(t)).length, hot:true},
   {id:'autom',    ico:'&#8635;', label:'Automation', soon:'Rules like "nobody replied in 2 hours - tell reception" and "quiet for 7 days - suggest a follow-up".'},
   {id:'settings', ico:'&#9881;', label:'Settings', soon:'How many days counts as quiet, who gets alerts, and your reply templates.'}
@@ -267,7 +267,9 @@ function drawNav(){
       +'<span class="ico">'+n.ico+'</span>'+esc(n.label)+'<span class="ext">&#8599;</span></a>';
     let pill='';
     if(n.count){ const v=n.count(); if(v) pill='<span class="pill'+(n.hot?' hot':'')+'">'+v+'</span>'; }
-    return '<div class="nav'+(VIEW===n.id?' on':'')+'" onclick="go('+JSON.stringify(n.id)+')">'
+    /* Single quotes inside the double-quoted attribute. JSON.stringify would
+       emit go("dash"), and that second double quote closes the attribute. */
+    return '<div class="nav'+(VIEW===n.id?' on':'')+"\" onclick=\"go('"+n.id+"')\">"
       +'<span class="ico">'+n.ico+'</span>'+esc(n.label)+pill+'</div>';
   }).join('');
 }
