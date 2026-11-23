@@ -52,23 +52,23 @@ input:focus{outline:none;border-color:var(--gold-ink)}
 
 /* ---- board ---- */
 .board{display:flex;gap:10px;padding:10px;align-items:flex-start;overflow-x:auto}
-.col{flex:0 0 238px;min-width:0;max-width:238px;background:var(--card2);border:1px solid var(--border);border-radius:10px;
+.col{flex:1 1 238px;min-width:238px;background:var(--card2);border:1px solid var(--border);border-radius:10px;
      display:flex;flex-direction:column;max-height:calc(100vh - 190px)}
-.colh{padding:8px 10px;border-bottom:1px solid var(--border);font-weight:800;font-size:11.5px;
+.colh{padding:10px 12px;border-bottom:1px solid var(--border);font-weight:800;font-size:11.5px;
       text-transform:uppercase;letter-spacing:.03em;color:var(--text2);display:flex;gap:6px;align-items:center}
 .colh .n{background:var(--border);color:var(--text2);border-radius:9px;padding:0 6px;font-size:10.5px}
 .colh.c-reply{color:var(--red)} .colh.c-waiting{color:var(--amber)}
 .colh.c-ghost{color:var(--red)} .colh.c-paid{color:var(--green)}
 .colh.c-closed{color:var(--text2)}
 .collist{overflow-y:auto;padding:8px;display:flex;flex-direction:column;gap:7px}
-.card{background:var(--card);border:1px solid var(--border);border-radius:9px;padding:8px 9px;cursor:pointer}
+.card{background:var(--card);border:1px solid var(--border);border-radius:9px;padding:10px 12px;cursor:pointer}
 .card:hover{border-color:var(--gold-ink)}
-.card .nm{font-weight:800;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.card .ph{color:var(--text2);font-size:11px;font-variant-numeric:tabular-nums}
-.card .last{color:var(--text2);font-size:11.5px;margin-top:4px;
+.card .nm{font-weight:800;font-size:14.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.card .ph{color:var(--text2);font-size:12px;font-variant-numeric:tabular-nums}
+.card .last{color:var(--text2);font-size:12.5px;margin-top:4px;
      display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .card .foot{display:flex;gap:6px;align-items:center;margin-top:6px;flex-wrap:wrap}
-.chip{display:inline-block;border-radius:4px;padding:0 6px;font-size:10.5px;font-weight:800;
+.chip{display:inline-block;border-radius:4px;padding:1px 7px;font-size:11.5px;font-weight:800;
       background:var(--border);color:var(--text2)}
 .chip.stage{background:#E7F0FA;color:#0B5FAE}
 .col.urgent{border-color:var(--red)}
@@ -145,7 +145,7 @@ table.t2 tbody tr:hover{background:var(--sel);cursor:pointer}
   .nav.on{border-left-color:transparent;border-bottom-color:var(--gold)}
   .nav .pill,.nav .ext{margin-left:5px}
 }
-@media(max-width:700px){ .col{flex:0 0 84vw;max-width:84vw} }
+@media(max-width:700px){ .col{flex:0 0 84vw;min-width:84vw;max-width:84vw} }
 
 /* ---- surface refresh -------------------------------------------------
    Laid out like the CRM dashboards Jimmy referenced: a soft page behind
@@ -402,7 +402,7 @@ function LEADS(){
 /* Bumped whenever this page changes, and shown at the bottom of the sidebar.
    GitHub Pages and an installed app both cache hard, so without this there is
    no way to tell "the fix is not deployed" from "the fix does not work". */
-const BUILD='2026-11-23i';
+const BUILD='2026-11-23j';
 
 function drawNav(){
   $('side').innerHTML = NAV.map(n=>{
@@ -918,7 +918,7 @@ function alertNewReplies(replyList){
      ΔE 32 (protan) and 38 at normal vision - blue+violet, the obvious pick,
      came out at ΔE 0.4 for deuteranopes and was thrown away. */
 const C_IN='#2563EB', C_OUT='#D97706';
-const STAGE_COLOR={reply:'#DC2626', waiting:'#D97706', quiet:'#94A3B8', paid:'#15803D'};
+const STAGE_COLOR={reply:'#DC2626', waiting:'#D97706', quiet:'#94A3B8', closed:'#64748B', paid:'#15803D'};
 
 const kpi=(v,k,s,cls,ico,icoBg)=>'<div class="kpi '+(cls||'')+'">'
   +(ico?'<div class="chip-ico" style="background:'+icoBg+'">'+ico+'</div>':'')
