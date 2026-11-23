@@ -14,7 +14,7 @@
   Nothing secret is written to the screen or to any log.
 */
 
-import { execFileSync } from 'node:child_process';
+import { spawnSync } from 'node:child_process';
 import { readFileSync, existsSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -54,26 +54,36 @@ const log = (...a) => console.log(new Date().toLocaleTimeString('en-GB'), ...a);
 
 function wacli(args) {
   const full = (ACCOUNT ? ['--account', ACCOUNT] : []).concat(args);
-  try {
-    return execFileSync(WACLI, full, { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
-  } catch (e) {
-    const err = (e.stderr || e.message || '').toString().trim();
-    if (/ENOENT/.test(err) || e.code === 'ENOENT')
+  // wacli puts the data on stdout and its progress notes on stderr, including
+  // the "repeat with --cursor ..." line used for paging. Both are needed, so
+  // spawnSync rather than execFileSync, which only hands back stdout.
+  const r = spawnSync(WACLI, full, { encoding: 'utf8', maxBuffer: 128 * 1024 * 1024 });
+  if (r.error) {
+    if (r.error.code === 'ENOENT')
       die(`Could not run "${WACLI}". Install wacli, or set WACLI in .env to its full path.`);
-    die('wacli failed:\n  ' + err.split('\n').slice(0, 6).join('\n  '));
+    die('Could not run wacli: ' + r.error.message);
   }
+  if (r.status !== 0)
+    die('wacli failed:\n  ' + String(r.stderr || '').trim().split('\n').slice(0, 6).join('\n  '));
+  return { stdout: r.stdout || '', stderr: r.stderr || '' };
 }
 
-function listMessages(limit) {
-  const raw = wacli(['--json', 'messages', 'list', '--limit', String(limit)]);
+/* Returns { rows, cursor }. The cursor is only announced on stderr, so it is
+   read back out of there rather than from the JSON envelope. */
+function listMessages(limit, cursor) {
+  const args = ['--json', 'messages', 'list', '--limit', String(limit)];
+  if (cursor) args.push('--cursor', cursor);
+  const { stdout, stderr } = wacli(args);
   let j;
-  try { j = JSON.parse(raw); }
+  try { j = JSON.parse(stdout); }
   catch { die('wacli did not return JSON. Run "node gl-wa-bridge.mjs probe" and send Claude the output.'); }
-  // documented envelope is { data: { messages: [...] } }, but accept the obvious variants
+  if (j && j.success === false)
+    die('wacli reported an error: ' + JSON.stringify(j.error || '').slice(0, 300));
   const arr = j?.data?.messages ?? j?.messages ?? j?.data ?? j;
   if (!Array.isArray(arr))
     die('Could not find the message list in wacli output. Run "probe" and send Claude the output.');
-  return arr;
+  const m = /--cursor\s+(\S+)/.exec(stderr || '');
+  return { rows: arr, cursor: m ? m[1] : null };
 }
 
 /* ---------- turning a wacli message into a Grandlab row ----------
@@ -97,21 +107,39 @@ function toIso(v) {
 }
 
 function normalise(m) {
-  const waId = pick(m, 'id', 'ID', 'message_id', 'messageId', 'key.id');
-  const jid  = pick(m, 'chat_jid', 'chatJid', 'chat', 'chat.jid', 'jid', 'key.remoteJid', 'conversation');
+  // Confirmed against real wacli v0.26.1 output (probe, 23 Nov 2026): the keys
+  // are PascalCase. Lower-case variants are kept as a fallback in case a later
+  // version renames them.
+  const waId = pick(m, 'MsgID', 'id', 'message_id', 'key.id');
+  const jid  = pick(m, 'ChatJID', 'chat_jid', 'jid', 'key.remoteJid');
   if (!waId || !jid) return null;
 
   const jidStr = String(jid);
   // 1:1 customer chats only. Groups, channels and status broadcasts are not leads.
   if (!/@s\.whatsapp\.net$|@lid$/.test(jidStr)) return null;
 
-  const fromMe = !!(pick(m, 'from_me', 'fromMe', 'is_from_me', 'key.fromMe') ?? false);
+  const fromMe = !!(pick(m, 'FromMe', 'from_me', 'key.fromMe') ?? false);
+
+  /* Text is the message. MediaCaption is the caption on a photo or document.
+     DisplayText is a UI placeholder — for a plain media message it is the
+     literal "(message)", which is noise, so it is only used when it says
+     something real. */
+  const display = String(pick(m, 'DisplayText') ?? '').trim();
   const body = String(
-    pick(m, 'text', 'Text', 'body', 'message', 'caption', 'MediaCaption', 'content') ?? ''
+    pick(m, 'Text', 'text', 'MediaCaption', 'caption', 'body') ??
+    (display && display !== '(message)' ? display : '') ?? ''
   );
-  const type = String(pick(m, 'type', 'msg_type', 'messageType', 'kind') ?? 'text').toLowerCase();
-  const ts = toIso(pick(m, 'timestamp', 'ts', 'wa_ts', 'sent_at', 'time', 'date')) || new Date().toISOString();
-  const name = pick(m, 'push_name', 'pushName', 'sender_name', 'senderName', 'chat_name', 'chatName', 'name', 'contact.name');
+
+  // MediaType is "" for a normal text message.
+  const media = String(pick(m, 'MediaType', 'type', 'msg_type') ?? '').toLowerCase();
+  const type = ['image', 'video', 'audio', 'document', 'sticker'].includes(media) ? media : 'text';
+
+  const ts = toIso(pick(m, 'Timestamp', 'timestamp', 'wa_ts')) || new Date().toISOString();
+
+  /* ChatName, never SenderName. On a message the shop sent, SenderName is the
+     shop's own WhatsApp name, and using it would rename the customer's chat to
+     "Grandlab Detailing By Grandpride". */
+  const name = pick(m, 'ChatName', 'chat_name', 'PushName', 'push_name');
 
   return {
     wa_id: String(waId),
@@ -120,7 +148,7 @@ function normalise(m) {
     name: name ? String(name) : null,
     direction: fromMe ? 'out' : 'in',
     sent_by: fromMe ? 'phone' : 'customer',
-    msg_type: ['text', 'image', 'video', 'audio', 'document', 'sticker'].includes(type) ? type : 'text',
+    msg_type: type,
     body,
     wa_ts: ts
   };
@@ -230,7 +258,7 @@ let WATERMARK = null;
 const OVERLAP_MS = 5 * 60 * 1000;
 
 async function cycle(useWatermark) {
-  const raw = listMessages(BATCH);
+  const { rows: raw } = listMessages(BATCH);
   let rows = raw.map(normalise).filter(Boolean);
   const newest = rows.reduce((m, r) => (!m || r.wa_ts > m ? r.wa_ts : m), null);
 
@@ -245,6 +273,27 @@ async function cycle(useWatermark) {
   return { msgs, chats, seen: raw.length };
 }
 
+/* Backfill walks the whole local archive page by page, so the board starts
+   with the real history rather than only the most recent few hundred. */
+async function backfillAll() {
+  let cursor = null, page = 0, seen = 0, msgs = 0, chats = 0;
+  const MAX_PAGES = Number(ENV.MAX_PAGES || 200);
+  for (;;) {
+    const r = listMessages(BATCH, cursor);
+    page++; seen += r.rows.length;
+    const rows = r.rows.map(normalise).filter(Boolean);
+    if (rows.length) {
+      const got = await push(rows);
+      msgs += got.msgs; chats += got.chats;
+    }
+    log(`page ${page}: read ${r.rows.length}, kept ${rows.length}, ${msgs} new so far`);
+    if (!r.cursor || !r.rows.length) break;
+    if (page >= MAX_PAGES) { log(`stopping at ${MAX_PAGES} pages — raise MAX_PAGES in .env to go further`); break; }
+    cursor = r.cursor;
+  }
+  return { msgs, chats, seen, pages: page };
+}
+
 /* ---------- commands ---------- */
 
 const cmd = (process.argv[2] || 'run').toLowerCase();
@@ -252,17 +301,20 @@ const cmd = (process.argv[2] || 'run').toLowerCase();
 if (cmd === 'probe') {
   // Print exactly what wacli gives back, so the field mapping above can be
   // confirmed instead of assumed. Message text is cut short on purpose.
-  const raw = wacli(['--json', 'messages', 'list', '--limit', '3']);
-  let j; try { j = JSON.parse(raw); } catch { console.log(raw.slice(0, 4000)); process.exit(0); }
+  const { stdout, stderr } = wacli(['--json', 'messages', 'list', '--limit', '5']);
+  let j; try { j = JSON.parse(stdout); } catch { console.log(String(stdout).slice(0, 4000)); process.exit(0); }
   const arr = j?.data?.messages ?? j?.messages ?? j?.data ?? j;
-  const sample = Array.isArray(arr) ? arr.slice(0, 2) : arr;
+  const list = Array.isArray(arr) ? arr : [];
   console.log('\nTop-level keys:', Object.keys(j || {}).join(', ') || '(none)');
+  console.log('More pages available:', /--cursor\s+\S+/.test(stderr || '') ? 'yes' : 'no');
   console.log('\nFirst messages as wacli returns them:\n');
-  console.log(JSON.stringify(sample, (k, v) =>
+  console.log(JSON.stringify(list.slice(0, 2), (k, v) =>
     typeof v === 'string' && v.length > 120 ? v.slice(0, 120) + '…' : v, 2));
   console.log('\nHow this bridge reads them:\n');
-  console.log(JSON.stringify((Array.isArray(arr) ? arr.slice(0, 2) : []).map(normalise), null, 2));
-  console.log('\nSend the above to Claude to pin the mapping down exactly.\n');
+  console.log(JSON.stringify(list.slice(0, 4).map(normalise), null, 2));
+  const ok = list.map(normalise).filter(Boolean).length;
+  console.log(`\nMapped ${ok} of ${list.length} (groups and status broadcasts are skipped on purpose).`);
+  console.log(ok ? 'Mapping looks good.\n' : 'Nothing mapped — send this to Claude.\n');
   process.exit(0);
 }
 
@@ -272,8 +324,8 @@ await login();
 log('signed in to Grandlab');
 
 if (cmd === 'backfill') {
-  const r = await cycle(false);
-  log(`read ${r.seen} messages from wacli → ${r.msgs} new, ${r.chats} chats updated`);
+  const r = await backfillAll();
+  log(`finished: ${r.pages} page(s), ${r.seen} messages read → ${r.msgs} new, ${r.chats} chats updated`);
   log('done. Open the CRM board to see them.');
   process.exit(0);
 }
