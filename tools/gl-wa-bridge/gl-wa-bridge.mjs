@@ -457,10 +457,22 @@ await login();
 log('signed in to Grandlab');
 
 if (cmd === 'backfill') {
-  log('syncing from WhatsApp first…');
+  /* A one-shot sync, but never an open-ended one. Some versions of wacli keep
+     running here, and a backfill that hangs forever looks identical to a
+     broken install. If it has not finished in time, carry on and import what
+     is already in the local store - "run" keeps a live sync going anyway, so
+     nothing is lost by not waiting. */
+  const SYNC_WAIT = Math.max(15, Number(ENV.SYNC_TIMEOUT_SECONDS || 90));
+  log(`syncing from WhatsApp first (up to ${SYNC_WAIT}s)…`);
   const sy = spawnSync(WACLI, (ACCOUNT ? ['--account', ACCOUNT] : []).concat(['sync']),
-                       { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
-  if (sy.status !== 0) log('sync warning: ' + String(sy.stderr || '').trim().split('\n')[0]);
+                       { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024,
+                         timeout: SYNC_WAIT * 1000, killSignal: 'SIGKILL' });
+  if (sy.error && sy.error.code === 'ETIMEDOUT')
+    log('sync still running after the wait — importing what is here already; the live sync in "run" will catch the rest');
+  else if (sy.status !== 0)
+    log('sync warning: ' + String(sy.stderr || '').trim().split('\n')[0]);
+  else
+    log('sync done');
   const r = await backfillAll();
   log(`finished: ${r.pages} page(s), ${r.seen} messages read → ${r.msgs} new, ${r.chats} chats updated`);
   log('done. Open the CRM board to see them.');
