@@ -52,13 +52,14 @@ input:focus{outline:none;border-color:var(--gold-ink)}
 
 /* ---- board ---- */
 .board{display:flex;gap:10px;padding:10px;align-items:flex-start;overflow-x:auto}
-.col{flex:0 0 268px;background:var(--card2);border:1px solid var(--border);border-radius:10px;
+.col{flex:0 0 238px;min-width:0;max-width:238px;background:var(--card2);border:1px solid var(--border);border-radius:10px;
      display:flex;flex-direction:column;max-height:calc(100vh - 190px)}
 .colh{padding:8px 10px;border-bottom:1px solid var(--border);font-weight:800;font-size:11.5px;
       text-transform:uppercase;letter-spacing:.03em;color:var(--text2);display:flex;gap:6px;align-items:center}
 .colh .n{background:var(--border);color:var(--text2);border-radius:9px;padding:0 6px;font-size:10.5px}
 .colh.c-reply{color:var(--red)} .colh.c-waiting{color:var(--amber)}
 .colh.c-ghost{color:var(--red)} .colh.c-paid{color:var(--green)}
+.colh.c-closed{color:var(--text2)}
 .collist{overflow-y:auto;padding:8px;display:flex;flex-direction:column;gap:7px}
 .card{background:var(--card);border:1px solid var(--border);border-radius:9px;padding:8px 9px;cursor:pointer}
 .card:hover{border-color:var(--gold-ink)}
@@ -144,7 +145,7 @@ table.t2 tbody tr:hover{background:var(--sel);cursor:pointer}
   .nav.on{border-left-color:transparent;border-bottom-color:var(--gold)}
   .nav .pill,.nav .ext{margin-left:5px}
 }
-@media(max-width:700px){ .col{flex:0 0 84vw} }
+@media(max-width:700px){ .col{flex:0 0 84vw;max-width:84vw} }
 
 /* ---- surface refresh -------------------------------------------------
    Laid out like the CRM dashboards Jimmy referenced: a soft page behind
@@ -209,6 +210,70 @@ table.t2 tbody tr:hover{background:var(--blue-soft)}
 .fchip.on{background:var(--blue);border-color:var(--blue);color:#fff}
 .fchip b{font-weight:800;margin-left:3px}
 .chip.ad{background:var(--blue-soft);color:var(--blue)}
+.chip.src{background:#EEF1F5;color:#5A6472}
+.chip.mark{background:#EDE9FE;color:#5B21B6}
+.chip.chk{background:#EEF1F5;color:#5A6472}
+
+/* --- Pipeline lights ---------------------------------------------------
+   A light, not a flash. One soft tinted overlay fading in and out behind the
+   card's text, so it is noticeable across the room without making the words
+   hard to read. Nothing moves and nothing resizes. The overlay is a separate
+   layer so only its opacity animates. Switched off entirely for anyone whose
+   system asks for reduced motion - the tint stays, the pulsing stops. */
+.card{position:relative;overflow-wrap:anywhere}
+.card>*{position:relative;z-index:1}
+.card.lit::before{content:"";position:absolute;inset:0;border-radius:inherit;
+  pointer-events:none;z-index:0;opacity:.16}
+.card.lit-red::before{background:#DC2626}
+.card.lit-amber::before{background:#D97706}
+.card.lit-red{border-color:#FCA5A5}
+.card.lit-amber{border-color:#FCD34D}
+@media(prefers-reduced-motion:no-preference){
+  .card.lit::before{animation:cardpulse 2.4s ease-in-out infinite}
+  .card.lit-amber::before{animation-duration:3.2s}
+}
+@keyframes cardpulse{0%,100%{opacity:.07}50%{opacity:.26}}
+
+/* Won is a green column, not just a green heading. */
+.col.won{background:#F2FBF5;border-color:#BBF7D0}
+.col.won .colh{background:#DCFCE7;border-bottom-color:#BBF7D0;color:#15803D}
+.col.won .card{border-color:#CBEBD6}
+
+/* The decide prompt and the move picker */
+.decide{margin-top:8px;padding-top:8px;border-top:1px dashed var(--line2);
+  display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.decide .dq{font-size:11px;color:var(--ink2);font-weight:700;width:100%;margin-bottom:2px}
+.mvbtn{border:1px solid var(--line2);background:#fff;border-radius:999px;
+  padding:3px 9px;font-size:11px;font-weight:700;cursor:pointer;color:var(--ink);
+  font-family:inherit;line-height:1.5}
+.mvbtn:hover{border-color:var(--blue);color:var(--blue)}
+.mvbtn.gw:hover{border-color:#15803D;color:#15803D}
+.mvbtn.gq:hover{border-color:#D97706;color:#92400E}
+.mvbtn.gx:hover{border-color:#B91C1C;color:#B91C1C}
+.mvmore{margin-left:auto;border:none;background:none;cursor:pointer;color:var(--ink2);
+  font-size:15px;line-height:1;padding:0 2px;font-family:inherit}
+.mvmore:hover{color:var(--blue)}
+/* --- Ads detail --- */
+.adcard{border:1px solid var(--line2);border-radius:12px;background:#fff;padding:13px 15px;
+  margin-bottom:11px;box-shadow:var(--shadow)}
+.adcard .ah{display:flex;align-items:flex-start;gap:9px;flex-wrap:wrap}
+.adcard .an{font-weight:800;font-size:13.5px;min-width:0;flex:1 1 220px}
+.adcard .ac{color:var(--ink2);font-size:11.5px;font-weight:500;margin-top:2px}
+.verd{border-radius:999px;padding:3px 11px;font-size:11px;font-weight:800;white-space:nowrap}
+.v-keep{background:#DCFCE7;color:#15803D}
+.v-watch{background:#FEF3C7;color:#92400E}
+.v-stop{background:#FEE2E2;color:#B91C1C}
+.v-early{background:#EEF1F5;color:#5A6472}
+.mgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(104px,1fr));gap:9px;margin-top:11px}
+.mcell{min-width:0}
+.mcell .ml{font-size:10px;text-transform:uppercase;letter-spacing:.4px;color:var(--ink2);font-weight:700}
+.mcell .mv{font-size:15px;font-weight:800;margin-top:2px;line-height:1.2}
+.mcell .ms{font-size:10.5px;color:var(--ink2);margin-top:1px}
+.mv .up{color:#B91C1C}.mv .dn{color:#15803D}
+.why{margin-top:11px;padding-top:10px;border-top:1px solid var(--line2);
+  font-size:12px;color:var(--ink2);line-height:1.5}
+.why b{color:var(--ink)}
+.flagw{color:#92400E;font-weight:700}
 .tip{position:fixed;pointer-events:none;background:#0F172A;color:#fff;font-size:11.5px;
   padding:6px 9px;border-radius:7px;z-index:80;opacity:0;transition:opacity .1s;white-space:nowrap}
 .tip.on{opacity:1}
@@ -337,7 +402,7 @@ function LEADS(){
 /* Bumped whenever this page changes, and shown at the bottom of the sidebar.
    GitHub Pages and an installed app both cache hard, so without this there is
    no way to tell "the fix is not deployed" from "the fix does not work". */
-const BUILD='2026-11-23f';
+const BUILD='2026-11-23i';
 
 function drawNav(){
   $('side').innerHTML = NAV.map(n=>{
@@ -375,13 +440,25 @@ function go(id){
 /* The columns are Jimmy's own vocabulary, already in gl_wa_chat.status -
    talking / waiting / ghost / paid. Inventing new ones would have thrown away
    the stage flow the bridge has been writing since October. */
+/* Each column means exactly one thing, and only one.
+     Needs reply    they wrote last and nobody has answered
+     Waiting on them  you answered; it is their turn
+     Gone quiet     they stopped replying and nothing came back
+     Closed         finished, no sale - reception decided that, it is not a guess
+     Won            money: a job or payment dated on or after the chat started
+   "Gone quiet" and "Closed" used to be the same pile, which made the board lie
+   about how many leads were actually lost. They are separate now. */
 const COLS=[
-  {key:'reply',   label:'Needs reply', cls:'c-reply'},
+  {key:'reply',   label:'Needs reply',     cls:'c-reply'},
   {key:'waiting', label:'Waiting on them', cls:'c-waiting'},
-  {key:'quiet',   label:'Gone quiet',  cls:'c-ghost'},
-  {key:'paid',    label:'Won',         cls:'c-paid'}
+  {key:'quiet',   label:'Gone quiet',      cls:'c-ghost'},
+  {key:'closed',  label:'Closed, no sale', cls:'c-closed'},
+  {key:'paid',    label:'Won',             cls:'c-paid'}
 ];
 const QUIET_DAYS=14;
+/* How long a card may sit in "Waiting on them" before it asks reception to
+   decide. Jimmy's number. */
+const NUDGE_HOURS=12;
 
 /* "Stage 7 - Gone quiet" -> "Gone quiet". The number is noise on a card. */
 function shortStage(s){
@@ -417,35 +494,152 @@ function waLink(phone){
    the question reception actually has — "who is waiting on me right now" —
    and it is true for every chat, including the hundreds nobody ever staged.
    The stage chip still shows on the card, so nothing MIA recorded is lost. */
+/* Did this conversation turn into money?
+   Nobody has to mark it. A chat counts as won when the number has a job or
+   payment dated on or after the day the conversation started. An old job does
+   NOT count: a regular who last paid two years ago and texts in today is a
+   live enquiry, not a win. One day of slack because a walk-in is sometimes
+   written up the day before the chat lands.
+   Returns the job date so the card can show it, or null. */
+function wonAt(c){
+  const o=OVER[c.chat_jid]||{};
+  if(!(Number(o.jobs)>0) || !o.last_job) return null;
+  const start=c.first_in_at||c.last_in_at;
+  if(!start) return null;
+  const job=new Date(String(o.last_job)+'T23:59:59').getTime();
+  if(!job) return null;
+  return job >= new Date(start).getTime()-86400000 ? o.last_job : null;
+}
+
 function colOf(c){
   const s=String(c.status||'').toLowerCase();
-  if(s==='paid') return 'paid';
+  if(s==='paid')   return 'paid';     // reception marked it won by hand
+  if(s==='closed') return 'closed';   // reception marked it finished, no sale
 
   const lastIn =c.last_in_at ? new Date(c.last_in_at).getTime() : 0;
   const lastOut=c.last_out_at? new Date(c.last_out_at).getTime(): 0;
   const newest=Math.max(lastIn,lastOut);
   if(!newest) return 'quiet';
 
+  const unanswered = lastIn > lastOut;
+  const gone = Date.now()-newest > QUIET_DAYS*86400000;
+  /* An open message comes first — paid, ghosted or neither. A customer who
+     has bought, or who went quiet months ago and has just written in, still
+     has to be answered, and that is the whole point of this board. */
+  if(unanswered && !gone) return 'reply';
+  if(wonAt(c)) return 'paid';
   if(s==='ghost') return 'quiet';
-  if(Date.now()-newest > QUIET_DAYS*86400000) return 'quiet';
-  return lastIn > lastOut ? 'reply' : 'waiting';
+  if(gone) return 'quiet';
+  return 'waiting';
 }
 
-function cardHtml(c){
+/* Which light, if any, this card shows.
+   red   - they are waiting on you, right now
+   amber - you answered and they have said nothing for NUDGE_HOURS, so reception
+           has to decide whether it is finished or dead
+   none  - nothing needed, or reception has already decided */
+function lightOf(c,col){
+  if(col==='reply') return 'red';
+  if(col!=='waiting') return '';
+  const out=c.last_out_at?new Date(c.last_out_at).getTime():0;
+  if(!out) return '';
+  return (Date.now()-out > NUDGE_HOURS*3600000) ? 'amber' : '';
+}
+
+/* Where the enquiry came from, as a chip on the card.
+   Blue = a real Meta advert tag carried by the message itself. Grey = weaker:
+   either reception tagged the chat by hand, or the lead source typed on the
+   job card. Nothing at all rather than dress a guess up as attribution. */
+function srcChip(jid){
+  const li=LEADINFO[jid]; if(!li) return '';
+  const k=li.src_kind, lbl=String(li.src_label||'').trim();
+  if(!lbl || k==='unknown' || lbl==='Not recorded') return '';
+  const short=lbl.length>20?lbl.slice(0,19)+'…':lbl;
+  const tip=(k==='ad'?'Meta advert: ':(k==='tagged'?'Tagged by reception: ':'From the job card: '))
+    +lbl+(li.campaign?' — '+li.campaign:'');
+  return '<span class="chip '+(k==='ad'?'ad':'src')+'" title="'+esc(tip)+'">'
+    +(k==='ad'?'&#9872; ':'')+esc(short)+'</span>';
+}
+
+/* The move picker. Four real destinations, because each one is a status the
+   database will actually accept and keep:
+     Won     status 'paid'   - reception says money came in
+     Closed  status 'closed' - finished, no sale
+     Quiet   status 'ghost'  - they stopped replying
+     Active  status 'talking'- clear the override, go back to being worked out
+             from the messages themselves
+   "Needs reply" and "Waiting on them" are not choices here on purpose: they
+   are read off who wrote last, so forcing one would only go stale the next
+   time anybody sends a message. "Active" is how you get back into them. */
+let OPENMV='';
+function mvToggle(ev,jid){
+  ev.stopPropagation();
+  OPENMV = (OPENMV===jid) ? '' : jid;
+  render();
+}
+function mvPicker(c,col,prompt){
+  const j=JSON.stringify(c.chat_jid).replace(/"/g,'&quot;');
+  const b=(cls,st,lbl,tip)=>'<button class="mvbtn '+cls+'" title="'+esc(tip)
+    +'" onclick="setChatStatus(event,'+j+',\''+st+'\')">'+lbl+'</button>';
+  const opts=
+     (col!=='paid'  ? b('gw','paid','Won','Money came in from this conversation') : '')
+    +(col!=='closed'? b('','closed','Done','Finished, no sale — stop the light, keep the chat') : '')
+    +(col!=='quiet' ? b('gq','ghost','Gone quiet','They stopped replying') : '')
+    +b('gx','talking','Active','Clear the mark and work it out from the messages again');
+  if(!prompt) return '<div class="decide">'+opts+'</div>';
+  return '<div class="decide"><div class="dq">No reply in over '+NUDGE_HOURS
+    +' hours &mdash; is this done, or gone quiet?</div>'+opts+'</div>';
+}
+
+function cardHtml(c,col){
   const a=agoTxt(c.last_in_at);
   const st=shortStage(c.stage);
   const last=LASTMSG[c.chat_jid];
+  const o=OVER[c.chat_jid]||{};
+  const won=wonAt(c);
+  const s=String(c.status||'').toLowerCase();
+  const light=lightOf(c,col);
   // No name means an unsaved contact. Show the number once, not twice.
   const hasName=!!(c.name&&String(c.name).trim());
-  return '<div class="card" onclick="openThread('+JSON.stringify(c.chat_jid).replace(/"/g,'&quot;')+')">'
+  const enq=LEADINFO[c.chat_jid]&&LEADINFO[c.chat_jid].enquiry;
+  const j=JSON.stringify(c.chat_jid).replace(/"/g,'&quot;');
+  // The amber card asks outright. Any other card keeps the picker behind "…".
+  const showPicker = light==='amber' || OPENMV===c.chat_jid;
+  return '<div class="card'+(light?' lit lit-'+light:'')+'" onclick="openThread('+j+')">'
     +'<div class="nm">'+esc(hasName?c.name:(c.phone||'(no number)'))+'</div>'
     +(hasName?'<div class="ph">'+esc(c.phone||'—')+'</div>':'')
     +(last?'<div class="last">'+(last.direction==='out'?'<b>You:</b> ':'')+esc(last.body||'['+(last.msg_type||'media')+']')+'</div>':'')
     +'<div class="foot">'
-      +(st?'<span class="chip stage">'+esc(st)+'</span>':'')
-      +(Number(c.paid_rm)>0?'<span class="chip rm">'+esc(RM(c.paid_rm))+'</span>':'')
+      +srcChip(c.chat_jid)
+      +(enq?'<span class="chip stage">'+esc(enq)+'</span>':(st?'<span class="chip stage">'+esc(st)+'</span>':''))
+      +(won&&Number(o.revenue)>0
+          ? '<span class="chip rm" title="'+esc('Job dated '+dmyShort(won))+'">'+esc(RM(o.revenue))+'</span>'
+          : (s==='paid'&&!won ? '<span class="chip mark" title="Marked won by hand — no job or payment found against this number">marked won</span>'
+          : (Number(c.paid_rm)>0?'<span class="chip rm">'+esc(RM(c.paid_rm))+'</span>':'')))
+      +(s==='closed'?'<span class="chip chk">closed by you</span>':'')
       +'<span class="ago '+a.cls+'">'+a.t+'</span>'
-    +'</div></div>';
+      +(light==='amber'?'':'<button class="mvmore" title="Move this chat" onclick="mvToggle(event,'+j+')">&#8943;</button>')
+    +'</div>'
+    +(showPicker?mvPicker(c,col,light==='amber'):'')
+    +'</div>';
+}
+
+/* One row, one column, and only ever the status column — see
+   gl_crm_set_status in the database. Nothing is deleted and no message is
+   sent. The card moves as soon as the server confirms. */
+async function setChatStatus(ev,jid,st){
+  ev.stopPropagation();
+  const c=CHATS.find(x=>x.chat_jid===jid); if(!c) return;
+  const was=c.status;
+  c.status=st; OPENMV=''; render();        // move it at once, it feels instant
+  try{
+    const {error}=await sb.rpc('gl_crm_set_status',{p_jid:jid,p_status:st});
+    if(error) throw error;
+  }catch(e){
+    c.status=was; render();                 // put it back rather than lie
+    $('statusLine').innerHTML='<span class="err">Could not move that chat: '
+      +esc(e.message||e)+'</span>';
+  }
 }
 
 function render(){
@@ -466,10 +660,11 @@ function render(){
 
   $('board').innerHTML = COLS.map(x=>{
     const list=by[x.key];
-    return '<div class="col"><div class="colh '+x.cls+'">'+esc(x.label)
+    return '<div class="col'+(x.key==='paid'?' won':'')+'">'
+      +'<div class="colh '+x.cls+'">'+esc(x.label)
       +'<span class="n">'+list.length+'</span></div>'
       +'<div class="collist">'
-      +(list.length?list.map(cardHtml).join(''):'<div class="empty" style="padding:14px;font-size:11.5px">Nothing here</div>')
+      +(list.length?list.map(c=>cardHtml(c,x.key)).join(''):'<div class="empty" style="padding:14px;font-size:11.5px">Nothing here</div>')
       +'</div></div>';
   }).join('');
 
@@ -478,7 +673,14 @@ function render(){
      contact ever messaged - suppliers, staff, wrong numbers - so it reads as
      a terrible number that means nothing. "Needs reply" is the one that costs
      money today, so that is what goes first. */
-  const wonRM=by.paid.reduce((s,c)=>s+(Number(c.paid_rm)||0),0);
+  /* Real money behind the Won column: the job total where we found one, and
+     the old paid_rm field only as a fallback. A chat marked won by hand with
+     no job against it adds nothing — a figure invented here would be worse
+     than a smaller true one. */
+  const wonRM=by.paid.reduce((s,c)=>{
+    const rev=Number((OVER[c.chat_jid]||{}).revenue)||0;
+    return s + (wonAt(c)&&rev ? rev : (Number(c.paid_rm)||0));
+  },0);
   const oldest=by.reply.reduce((m,c)=>{
     const t=c.last_in_at?new Date(c.last_in_at).getTime():0;
     return t&&(!m||t<m)?t:m; },0);
@@ -757,7 +959,8 @@ function monthlyChart(rows){
   return '<div class="legend"><span><i style="background:'+C_IN+'"></i>From customers</span>'
     +'<span><i style="background:'+C_OUT+'"></i>From us</span></div>'
     +'<div class="chartwrap" style="padding-top:0"><svg viewBox="0 0 '+W+' '+H
-    +'" width="100%" height="auto" role="img" aria-label="Messages per month, from customers and from us">'
+    +'" style="width:100%;height:auto;display:block" role="img"'
+    +' aria-label="Messages per month, from customers and from us">'
     +g+'</svg></div>';
 }
 
@@ -899,57 +1102,157 @@ function renderLeads(){
    Straight from the hourly Meta sync, so this is what Meta itself reports -
    not an estimate. The one number that is ours is "traced": conversations we
    can tie back to the advert that started them. */
+/* Money earned from the chats we can actually tie to this advert.
+   Only the tagged ones — see the note under the table. */
+function adMoney(adId){
+  let rm=0, won=0, chats=0;
+  if(!adId) return {rm:0,won:0,chats:0};
+  for(const c of CHATS){
+    const li=LEADINFO[c.chat_jid];
+    if(!li || String(li.ad_id||'')!==String(adId)) continue;
+    chats++;
+    const w=wonAt(c);
+    if(w){ won++; rm+=Number((OVER[c.chat_jid]||{}).revenue)||0; }
+  }
+  return {rm,won,chats};
+}
+
+/* The verdict. Rules, not a hunch, and the card says which rule fired.
+   Built only on figures that hold up: spend, results, cost per result and its
+   movement across the two halves of the window, and CTR. Reach is shown but
+   never judged on — see the note at the bottom of the view. */
+function verdict(a, avgCpr){
+  const sp=Number(a.spend||0), cv=Number(a.conversations||0);
+  const days=Number(a.days_running||0);
+  const cpr=cv?sp/cv:null;
+  const nowC=Number(a.conv_now||0), prevC=Number(a.conv_prev||0);
+  const cNow=nowC?Number(a.spend_now||0)/nowC:null;
+  const cPrev=prevC?Number(a.spend_prev||0)/prevC:null;
+  const st=String(a.status||'').toUpperCase();
+
+  if(!['ACTIVE','LEARNING'].includes(st))
+    return {k:'early',t:'Paused',why:'Not running. Figures below are what it did while it was on.'};
+  if(sp<=0)
+    return {k:'early',t:'No spend',why:'Live but it has not spent anything in this window. Either the ad set is off or it is losing every auction — worth a look in Ads Manager.'};
+  if(sp>=150 && cv===0)
+    return {k:'stop',t:'Stop',why:'<b>'+RM(sp)+' spent and not one conversation.</b> Nothing here is working — turn it off or rewrite it.'};
+  if(days<4)
+    return {k:'early',t:'Too early',why:'Only '+days+' day'+(days===1?'':'s')+' of spend. Leave it alone until it has about a week.'};
+  if(cNow!=null && cPrev!=null && cNow > cPrev*1.3)
+    return {k:'watch',t:'Slowing',why:'<b>Cost per enquiry has risen from '+RM(cPrev)+' to '+RM(cNow)+'</b> between the first and second half of this window. Same money is buying fewer enquiries — refresh the creative or the offer.'};
+  if(cNow!=null && cPrev!=null && cNow < cPrev*0.8)
+    return {k:'keep',t:'Improving',why:'<b>Cost per enquiry has fallen from '+RM(cPrev)+' to '+RM(cNow)+'.</b> It is getting cheaper, not dearer. Leave it running; this is the one to put more behind.'};
+  if(cpr!=null && avgCpr && cpr <= avgCpr*0.85)
+    return {k:'keep',t:'Keep',why:'<b>'+RM(cpr)+' an enquiry against your '+RM(avgCpr)+' average.</b> Cheaper than the rest of your account. Steady — leave it.'};
+  if(cpr!=null && avgCpr && cpr >= avgCpr*1.5)
+    return {k:'watch',t:'Review',why:'<b>'+RM(cpr)+' an enquiry against your '+RM(avgCpr)+' average</b> — half as efficient as the rest. Worth rewriting before it eats more budget.'};
+  const rel = (cpr!=null && avgCpr) ? cpr/avgCpr : null;
+  if(rel!=null && rel>1.15)
+    return {k:'watch',t:'Dearer than most',why:'<b>'+RM(cpr)+' an enquiry against your '+RM(avgCpr)
+      +' average</b> — about '+Math.round((rel-1)*100)+'% more. Not bad enough to stop, but this is the first one to rewrite if you want cheaper enquiries.'};
+  return {k:'keep',t:'Steady',why:'Holding at '+(cpr!=null?RM(cpr):'—')+' an enquiry, in line with your '+(avgCpr?RM(avgCpr):'—')+' average. Nothing to change.'};
+}
+
 async function setAdDays(d){
   ADDAYS=d;
+  $('vAds').innerHTML='<div class="h1">Ads</div><div class="h1s">Loading '+d+' days…</div>';
   try{ const {data}=await sb.rpc('gl_crm_ads',{p_days:d}); ADS=data||[]; }catch(e){}
   renderAds();
 }
+
 function renderAds(){
+  const num=v=>Number(v||0);
   const live=ADS.filter(a=>['ACTIVE','LEARNING'].includes(String(a.status||'').toUpperCase()));
-  const spend=ADS.reduce((s,a)=>s+Number(a.spend||0),0);
-  const conv=ADS.reduce((s,a)=>s+Number(a.conversations||0),0);
-  const traced=ADS.reduce((s,a)=>s+Number(a.traced_leads||0),0);
-  const cpc=conv?spend/conv:0;
-  const maxSpend=Math.max(1,...ADS.map(a=>Number(a.spend||0)));
+  const spend=ADS.reduce((s,a)=>s+num(a.spend),0);
+  const conv=ADS.reduce((s,a)=>s+num(a.conversations),0);
+  const traced=ADS.reduce((s,a)=>s+num(a.traced_leads),0);
+  const imps=ADS.reduce((s,a)=>s+num(a.impressions),0);
+  const clicks=ADS.reduce((s,a)=>s+num(a.clicks),0);
+  const avgCpr=conv?spend/conv:0;
   const tab=d=>'<span class="fchip'+(ADDAYS===d?' on':'')+'" onclick="setAdDays('+d+')">'+d+' days</span>';
+
+  const sorted=ADS.slice().sort((a,b)=>num(b.spend)-num(a.spend));
+  let dodgyReach=0;
+
+  const cards=sorted.map(a=>{
+    const sp=num(a.spend), cv=num(a.conversations), im=num(a.impressions),
+          rc=num(a.reach), ck=num(a.clicks), days=num(a.days_running);
+    const cpr=cv?sp/cv:null;
+    const ctr=im?ck/im*100:null;
+    const cpm=im?sp/im*1000:null;
+    const nowC=num(a.conv_now), prevC=num(a.conv_prev);
+    const cNow=nowC?num(a.spend_now)/nowC:null;
+    const cPrev=prevC?num(a.spend_prev)/prevC:null;
+    const v=verdict(a,avgCpr);
+    const st=String(a.status||'').toUpperCase();
+    const dot=st==='ACTIVE'?'#15803D':(st==='LEARNING'?'#2563EB':'#94A3B8');
+    const money=adMoney(a.ad_id);
+    const freq=rc?im/rc:null;
+    const reachOdd = freq!=null && freq>5;
+    if(reachOdd) dodgyReach++;
+
+    let trend='<span style="color:var(--ink2)">—</span>';
+    if(cNow!=null&&cPrev!=null){
+      const up=cNow>cPrev;
+      const pc=Math.round(Math.abs(cNow-cPrev)/cPrev*100);
+      trend='<span class="'+(up?'up':'dn')+'">'+(up?'&#9650;':'&#9660;')+' '+pc+'%</span>';
+    } else if(cNow!=null) trend='<span style="font-size:12px;color:var(--ink2)">new</span>';
+
+    const cell=(l,val,sub)=>'<div class="mcell"><div class="ml">'+l+'</div>'
+      +'<div class="mv">'+val+'</div>'+(sub?'<div class="ms">'+sub+'</div>':'')+'</div>';
+
+    return '<div class="adcard">'
+      +'<div class="ah">'
+        +'<div class="an"><span class="dot" style="display:inline-block;background:'+dot+';margin-right:7px"></span>'
+          +esc(a.ad_name||'(unnamed)')
+          +(a.campaign?'<div class="ac">'+esc(a.campaign)+'</div>':'')+'</div>'
+        +'<span class="verd v-'+v.k+'">'+esc(v.t)+'</span>'
+      +'</div>'
+      +'<div class="mgrid">'
+        +cell('Spent',esc(RM(sp)),days?days+' day'+(days===1?'':'s')+' of spend':'')
+        +cell('Results',String(cv),'conversations')
+        +cell('Cost / result',cpr!=null?esc(RM(cpr)):'—',
+              avgCpr?('avg '+RM(avgCpr)):'')
+        +cell('Trend',trend, cPrev!=null?(RM(cPrev)+' &rarr; '+(cNow!=null?RM(cNow):'—')):'first period')
+        +cell('Impressions',im.toLocaleString(), cpm!=null?(RM(cpm)+' per 1,000'):'')
+        +cell('Clicks',ck.toLocaleString(), ctr!=null?(ctr.toFixed(2)+'% CTR'):'')
+        +cell('Reach',rc?rc.toLocaleString():'—',
+              reachOdd?'<span class="flagw">looks wrong</span>':(freq!=null?freq.toFixed(1)+'&times; each':''))
+        +cell('Daily budget','<span style="font-size:12px;color:var(--ink2);font-weight:600">not synced</span>','')
+        +cell('Traced chats',String(num(a.traced_leads)),
+              money.won?(money.won+' won &middot; '+RM(money.rm)):'')
+      +'</div>'
+      +'<div class="why">'+v.why+'</div>'
+      +'</div>';
+  }).join('');
 
   $('vAds').innerHTML=
     '<div class="h1">Ads</div>'
-   +'<div class="h1s">Live from your Meta account, synced hourly. '
-     +(ADS.length&&ADS[0].last_day?('Figures to '+esc(dmyShort(ADS[0].last_day))+'.'):'')+'</div>'
+   +'<div class="h1s">Straight from your Meta account, synced hourly. '
+     +(ADS.length&&ADS[0].last_day?('Figures to '+esc(dmyShort(ADS[0].last_day))+'. '):'')
+     +'The verdict on each advert is worked out here, and every card says which rule it used.</div>'
    +'<div class="fchips" style="padding:0 0 12px">'+tab(7)+tab(30)+tab(90)+'</div>'
    +'<div class="cards">'
      +kpi(RM(spend),'Spent','last '+ADDAYS+' days','','&#9650;','#FEF3C7')
-     +kpi(conv,'Conversations','Meta’s count','','&#9993;','#EEF3FE')
-     +kpi(cpc?RM(cpc):'—','Cost per conversation','','','&#9878;','#DCFCE7')
-     +kpi(traced,'Traced to a chat', traced<conv?'out of '+conv:'', traced<conv?'lost':'win','&#9872;','#FEE2E2')
-     +kpi(live.length,'Running now','ACTIVE or LEARNING')
+     +kpi(conv,'Results','conversations Meta counted','','&#9993;','#EEF3FE')
+     +kpi(avgCpr?RM(avgCpr):'—','Cost per result','your account average','','&#9878;','#DCFCE7')
+     +kpi(imps?(clicks/imps*100).toFixed(2)+'%':'—','CTR',clicks.toLocaleString()+' clicks of '+imps.toLocaleString())
+     +kpi(live.length,'Running now','of '+ADS.length+' with figures')
    +'</div>'
-   +'<div class="panel2"><div class="pt">'+ADS.length+' ads &mdash; most spend first</div>'
-   +'<table class="t2"><thead><tr><th>Ad</th><th>Status</th><th>Spend</th><th>Conv.</th>'
-     +'<th>Cost / conv.</th><th>Traced</th><th style="width:20%"></th></tr></thead><tbody>'
-   +(ADS.length?ADS.map(a=>{
-      const st=String(a.status||'').toUpperCase();
-      const dot=st==='ACTIVE'?'#15803D':(st==='LEARNING'?'#2563EB':'#94A3B8');
-      const c=Number(a.conversations||0), sp=Number(a.spend||0);
-      return '<tr>'
-        +'<td><b>'+esc(a.ad_name||'(unnamed)')+'</b>'
-          +(a.campaign?'<div style="color:var(--ink2);font-size:11px">'+esc(a.campaign)+'</div>':'')+'</td>'
-        +'<td><span class="dot" style="display:inline-block;background:'+dot+';margin-right:6px"></span>'
-          +esc(st.replace('ADSET_PAUSED','Paused').replace('ACTIVE','Active').replace('LEARNING','Learning'))+'</td>'
-        +'<td>'+esc(RM(sp))+'</td>'
-        +'<td>'+c+'</td>'
-        +'<td>'+(c?esc(RM(sp/c)):'<span style="color:var(--ink2)">—</span>')+'</td>'
-        +'<td>'+(Number(a.traced_leads)>0?'<b>'+a.traced_leads+'</b>':'<span style="color:var(--ink2)">0</span>')+'</td>'
-        +'<td><div class="bar2" style="width:'+Math.max(2,Math.round(sp/maxSpend*100))+'%"></div></td></tr>';
-    }).join('')
-    :'<tr><td colspan="7" style="padding:20px;text-align:center;color:var(--ink2)">No ad data synced.</td></tr>')
-   +'</tbody></table></div>'
-   +(traced<conv?('<div class="soonbox" style="margin-top:14px"><b>Meta counted '+conv
-     +' conversations; '+traced+' can be traced to the advert that started them.</b> '
-     +'That gap is the missing ad tag on incoming messages, not a problem with these figures &mdash; '
-     +'spend, clicks and conversations come straight from Meta. Close the gap and every one of these '
-     +'rows could show jobs and ringgit earned, not just spent.</div>'):'');
+   +(ADS.length?cards
+     :'<div class="panel2"><div style="padding:22px;text-align:center;color:var(--ink2)">No ad figures synced yet.</div></div>')
+   +'<div class="soonbox" style="margin-top:4px">'
+     +'<b>Two things on this page are not solid, so read them as such.</b><br>'
+     +'&bull; <b>Daily budget is missing.</b> The hourly sync pulls each advert but not the ad set it sits in, '
+       +'and the budget lives on the ad set. Every card says &ldquo;not synced&rdquo; rather than showing a guess. '
+       +'One change to the sync function fixes it &mdash; it is a deploy, so it needs you.<br>'
+     +'&bull; <b>Reach is unreliable.</b> '+(dodgyReach?dodgyReach+' of the adverts below report':'Some rows report')
+       +' more than five views per person, a few far more, which cannot be right. '
+       +'Reach is shown but no verdict is based on it, so none of the advice above leans on a bad number.<br>'
+     +'&bull; <b>'+traced+' of '+conv+' conversations can be traced</b> back to the advert that started them. '
+       +'That is the missing click-to-WhatsApp tag on incoming messages, not a problem with the spend figures. '
+       +'Until it is closed, &ldquo;traced chats&rdquo; and the ringgit beside it are a floor, not the total.'
+   +'</div>';
 }
 
 /* ---- Reports ---- */
