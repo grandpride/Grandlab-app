@@ -17,6 +17,7 @@
 import { spawnSync, spawn } from 'node:child_process';
 import { readFileSync, existsSync, appendFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
+import { createTelegram } from './gl-wa-telegram.mjs';
 import { fileURLToPath } from 'node:url';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -427,6 +428,28 @@ async function sendQueued() {
   return { sent, failed };
 }
 
+/* ---------- MIA + Telegram cards (off unless TELEGRAM_TOKEN is set) ----------
+   Asks the same MIA function the CRM uses. Nothing here can send: approved
+   drafts go through gl_wa_outbox and sendQueued() above, with all its limits. */
+
+async function miaCall(messages, retry = true) {
+  const r = await fetch(`${SUPABASE_URL}/functions/v1/mia`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', apikey: ANON, Authorization: `Bearer ${TOKEN}` },
+    body: JSON.stringify({ mode: 'coach', messages, stage: 'auto' }),
+    signal: AbortSignal.timeout(90000)
+  });
+  if (r.status === 401 && retry) { await login(); return miaCall(messages, false); }
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok || j.error) throw new Error(j.error || ('MIA request failed (' + r.status + ')'));
+  return j;
+}
+const TG = createTelegram({
+  env: ENV, api, log, miaCall,
+  stateFile: join(HERE, 'telegram-state.json'),
+  crmUrl: ENV.CRM_URL || 'https://app.grandlab.com.my/gl-crm.html'
+});
+
 /* ---------- commands ---------- */
 
 const cmd = (process.argv[2] || 'run').toLowerCase();
@@ -480,6 +503,7 @@ if (cmd === 'backfill') {
 }
 
 startSync();
+TG.start();
 process.on('SIGINT', () => { stopSync(); log('stopped by user'); process.exit(0); });
 log(`watching — checking every ${POLL}s. Leave this window open. Ctrl+C to stop.`);
 log(SEND_ENABLED
@@ -492,6 +516,8 @@ for (;;) {
     if (r.msgs || r.chats) log(`${r.msgs} new message(s), ${r.chats} chat(s) updated`);
     await sendQueued();
     fails = 0;
+    // Telegram trouble is logged and ignored: it must never stop the WhatsApp import
+    try { await TG.tick(); } catch (e) { log('telegram check failed:', (e.message || e).toString().slice(0, 160)); }
   } catch (e) {
     fails++;
     log('problem:', (e.message || e).toString().slice(0, 200));

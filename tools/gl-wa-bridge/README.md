@@ -118,6 +118,25 @@ window and run step 7 again. Worth turning into a scheduled task once it's prove
 
 ---
 
+## Telegram cards (optional, off by default)
+
+When a customer has waited 3 minutes with no reply, a card arrives in your
+Telegram with their message and MIA's draft replies. Tap a draft, read it, tap
+**Yes, send**. The reply goes through the CRM outbox, so it carries the name in
+bold and the same send limits. Nothing is sent without your tap. Voice notes get
+no card. Needs `SEND_ENABLED=1`.
+
+Turn it on by filling `TELEGRAM_TOKEN` and `TELEGRAM_JOIN_CODE` in `.env`
+(see `.env.example`), restart the bridge, then send your bot
+`/start <your join code>` once. Chats that are already waiting when you first
+link are not announced; only new ones are. Buttons: EN / BM / 中文, Mute (that
+number never gets a card; `/unmute` clears them), Skip. `/status` shows the
+settings. Customer messages pass through Telegram and the MIA function to make
+the cards.
+
+Do not run the old MIA bridge (the Baileys one in `Grandlab\gl-wa-bridge`) at
+the same time. It fights over the WhatsApp session and over the bot.
+
 ## What this does not do
 
 Broadcasts and blasts. That needs the official WhatsApp Business API on a
