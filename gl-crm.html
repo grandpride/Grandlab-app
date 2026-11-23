@@ -102,6 +102,14 @@ input:focus{outline:none;border-color:var(--gold-ink)}
 .whois{display:flex;align-items:center;gap:7px;flex-wrap:wrap;padding:8px 12px 0;font-size:11.5px;color:var(--text2);background:var(--card2)}
 .whois input{border:1px solid var(--border);border-radius:6px;padding:3px 8px;font-size:12px;font-family:inherit;font-weight:700;width:120px;background:var(--card);color:inherit}
 #tWhoNote{flex:1 1 180px;min-width:0}
+.whois select{border:1px solid var(--line2);border-radius:6px;padding:3px 6px;font-size:12px;
+  font-family:inherit;font-weight:700;background:var(--card);color:inherit;max-width:130px}
+.whois .mvbtn{padding:3px 10px}
+#vSet input{border:1px solid var(--line2);border-radius:7px;padding:6px 10px;font-size:13px;
+  font-family:inherit;background:var(--card);color:inherit;min-width:0}
+.msg .by{display:block;font-size:10.5px;font-weight:800;letter-spacing:.2px;
+  color:var(--blue);margin-bottom:2px}
+.msg .by.byph{color:var(--ink2);font-weight:700;font-style:italic}
 .replyNote.err{color:var(--red)}
 /* ---- shell: sidebar + view area ---- */
 .shell{display:flex;align-items:stretch;min-height:calc(100vh - 42px)}
@@ -327,6 +335,7 @@ table.t2 tbody tr:hover{background:var(--blue-soft)}
       <div id="vReports" class="pad hide"></div>
       <div id="vAds"     class="pad hide"></div>
       <div id="vTasks"   class="pad hide"></div>
+      <div id="vSet"     class="pad hide"></div>
       <div id="vSoon"    class="pad hide"></div>
 
     </div>
@@ -347,10 +356,7 @@ table.t2 tbody tr:hover{background:var(--blue-soft)}
     </div>
     <div class="rec" id="tRec"></div>
     <div class="thread" id="tThread"></div>
-    <div class="whois">Replying as
-      <input id="tWho" placeholder="your name" maxlength="24" autocomplete="off">
-      <span id="tWhoNote">&mdash; your name goes on the front of each reply, so the customer knows who answered.</span>
-    </div>
+    <div class="whois" id="tWhoWrap"></div>
     <div class="reply" id="tReply">
       <textarea id="tBox" rows="2" placeholder="Type a reply…"></textarea>
       <button class="btn" id="tSend" onclick="sendReply()">Send</button>
@@ -369,6 +375,7 @@ const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;',
 const RM=n=>'RM'+(Math.round((Number(n)||0)*100)/100).toLocaleString('en-MY',{minimumFractionDigits:2,maximumFractionDigits:2});
 
 let CHATS=[], LASTMSG={}, CUR=null, OVER={}, VIEW='pipeline', TASKS=[], MONTHLY=[], LEADINFO={}, ADS=[], ADDAYS=30;
+let STAFF=[], ME=null, STAFF_FROM=null;
 
 const today=()=>new Date().toISOString().slice(0,10);
 /* Due today or already overdue — the only tasks worth putting a number on. */
@@ -391,7 +398,7 @@ const NAV=[
   {id:'calendar', ico:'&#9633;', label:'Booking',   href:'gl-staff-appointment-FINAL.html'},
   {id:'tasks',    ico:'&#10003;', label:'Tasks', count:()=>TASKS.filter(t=>!t.done&&dueSoon(t)).length, hot:true},
   {id:'autom',    ico:'&#8635;', label:'Automation', soon:'Rules like "nobody replied in 2 hours - tell reception" and "quiet for 7 days - suggest a follow-up".'},
-  {id:'settings', ico:'&#9881;', label:'Settings', soon:'How many days counts as quiet, who gets alerts, and your reply templates.'}
+  {id:'settings', ico:'&#9881;', label:'Settings'}
 ];
 
 function countCol(key){
@@ -409,7 +416,7 @@ function LEADS(){
 /* Bumped whenever this page changes, and shown at the bottom of the sidebar.
    GitHub Pages and an installed app both cache hard, so without this there is
    no way to tell "the fix is not deployed" from "the fix does not work". */
-const BUILD='2026-11-23l';
+const BUILD='2026-11-23m';
 
 function drawNav(){
   $('side').innerHTML = NAV.map(n=>{
@@ -428,9 +435,10 @@ function drawNav(){
 function go(id){
   VIEW=id;
   const soon=(NAV.find(n=>n.id===id)||{}).soon;
-  for(const v of ['vPipeline','vDash','vLeads','vReports','vAds','vTasks','vSoon'])
+  for(const v of ['vPipeline','vDash','vLeads','vReports','vAds','vTasks','vSet','vSoon'])
     $(v).classList.add('hide');
-  if(soon){
+  if(id==='settings'){ $('vSet').classList.remove('hide'); renderSettings(); }
+  else if(soon){
     $('vSoon').classList.remove('hide');
     $('vSoon').innerHTML='<div class="h1">'+esc((NAV.find(n=>n.id===id)||{}).label)+'</div>'
       +'<div class="h1s">Not built yet.</div><div class="soonbox">'+esc(soon)+'</div>';
@@ -766,6 +774,7 @@ async function load(){
     try{ const {data:li}=await sb.rpc('gl_crm_lead_info');
          (li||[]).forEach(x=>{ LEADINFO[x.chat_jid]=x; }); }catch(e){}
     try{ const {data:ad}=await sb.rpc('gl_crm_ads',{p_days:ADDAYS}); ADS=ad||[]; }catch(e){ ADS=[]; }
+    await loadStaff();
 
     await loadTasks();
     staleCheck();
@@ -806,20 +815,132 @@ async function openThread(jid){
   $('tRec').innerHTML='<div class="row"><span class="k">Customer</span><span>Looking up…</span></div>';
   $('tThread').innerHTML='<div class="msg sys">Loading…</div>';
   $('tBox').value=''; $('tReplyNote').textContent=''; $('tReplyNote').className='replyNote';
-  $('tWho').value=agentName();
-  $('tWhoNote').textContent = agentName()
-    ? '— every reply goes out as "'+agentName()+':", so the customer knows who answered.'
-    : '— leave blank to send with no name on the front.';
+  drawWho();
   loadRecord(CUR.phone);
   loadThread(jid);
 }
 function closeThread(){ $('ov').classList.add('hide'); CUR=null; }
+
+/* The strip above the reply box. Two shapes: a free-text name while no staff
+   have been set up, and a name + PIN sign-in once they have. */
+function drawWho(){
+  const box=$('tWhoWrap');
+  if(!staffMode()){
+    box.innerHTML='Replying as '
+      +'<input id="tWho" placeholder="your name" maxlength="24" autocomplete="off">'
+      +'<span id="tWhoNote"></span>';
+    const i=$('tWho'); i.value=agentName();
+    i.addEventListener('input',e=>{ setAgentName(e.target.value); whoNote(); });
+    whoNote();
+    return;
+  }
+  if(ME){
+    box.innerHTML='Replying as <b style="color:var(--text);font-size:12.5px">'+esc(ME.name)+'</b>'
+      +'<button class="mvbtn" onclick="signOutStaff()">Not me</button>'
+      +'<span id="tWhoNote">— every reply goes out as "'+esc(ME.name)+':", and is recorded against '+esc(ME.name)+'.</span>';
+    return;
+  }
+  box.innerHTML='Who is replying? '
+    +'<select id="tWhoSel">'+STAFF.filter(x=>x.active)
+       .map(x=>'<option value="'+esc(x.id)+'">'+esc(x.name)+'</option>').join('')+'</select>'
+    +'<input id="tWhoPin" type="password" inputmode="numeric" placeholder="PIN" maxlength="8" autocomplete="off" style="width:62px">'
+    +'<button class="mvbtn" onclick="signInStaff()">Sign in</button>'
+    +'<span id="tWhoNote">— so the customer sees who answered, and so you can see it later.</span>';
+  $('tWhoPin').addEventListener('keydown',e=>{ if(e.key==='Enter') signInStaff(); });
+}
+function whoNote(){
+  const n=$('tWhoNote'); if(!n) return;
+  const w=agentName();
+  n.textContent = w
+    ? '— every reply goes out as "'+w+':", so the customer knows who answered.'
+    : '— leave blank to send with no name on the front.';
+}
+async function signInStaff(){
+  const sel=$('tWhoSel'), pin=$('tWhoPin'), note=$('tReplyNote');
+  if(!sel) return;
+  note.className='replyNote'; note.textContent='Checking…';
+  try{
+    const {data,error}=await sb.rpc('gl_crm_staff_signin',{p_id:sel.value,p_pin:String(pin.value||'')});
+    if(error) throw error;
+    const row=(data&&data[0])||null;
+    if(!row) throw new Error('Wrong PIN');
+    meSet({id:row.id,name:row.name});
+    note.textContent=''; drawWho(); if(CUR) loadThread(CUR.chat_jid);
+  }catch(e){
+    note.className='replyNote err';
+    note.textContent=(e.message||String(e)).replace(/^.*Wrong PIN.*$/,'Wrong PIN.');
+    pin.value=''; pin.focus();
+  }
+}
+function signOutStaff(){ meSet(null); drawWho(); }
 
 /* ---- replying ----------------------------------------------------------
    The reply is queued in gl_wa_outbox; the bridge on the shop PC picks it up
    and sends it through WhatsApp. Nothing is sent from the browser, and the
    database refuses a reply to a chat that does not exist, so this can only
    ever answer somebody who messaged first. */
+/* ---- who is replying -------------------------------------------------
+   One WhatsApp number is shared by the whole counter, so the only way a
+   customer can tell Iqa from Alex is the name on the message, and the only
+   way WE can tell is to ask who is sitting there. Staff pick their name and
+   type a PIN; the PIN is checked on the server against a bcrypt hash that
+   never leaves it (the table itself is readable by nobody).
+
+   This is accountability, not security. Anyone holding the reception login
+   can still reach the data directly - the PIN says who typed a reply, it
+   does not lock anything down. Said plainly on the Settings screen too.
+
+   Until the first staff member is added nothing changes: the old free-text
+   name box stays, so this can never block reception from replying. */
+function meGet(){
+  try{
+    const raw=sessionStorage.getItem('gl_crm_me'); if(!raw) return null;
+    const m=JSON.parse(raw);
+    // a shift, not forever: an unattended PC should not stay signed in
+    if(!m || !m.id || (Date.now()-(m.at||0)) > 12*3600000) return null;
+    return m;
+  }catch(e){ return null; }
+}
+function meSet(m){
+  try{
+    if(m) sessionStorage.setItem('gl_crm_me', JSON.stringify({id:m.id,name:m.name,at:Date.now()}));
+    else sessionStorage.removeItem('gl_crm_me');
+  }catch(e){}
+  ME=m;
+}
+async function loadStaff(){
+  try{
+    const {data}=await sb.rpc('gl_crm_staff_list');
+    STAFF=data||[];
+    STAFF_FROM=STAFF.length
+      ? STAFF.reduce((m,x)=>{const t=new Date(x.created_at).getTime();return !m||t<m?t:m;},0)
+      : null;
+  }catch(e){ STAFF=[]; STAFF_FROM=null; }
+  ME=meGet();
+  // the name they signed in as may have been renamed or switched off since
+  if(ME && !STAFF.some(x=>x.id===ME.id && x.active)) meSet(null);
+}
+function staffMode(){ return STAFF.some(x=>x.active); }
+
+/* Work out who sent an outgoing message from the header it carries. The
+   header IS the record - a reply queued here always starts with the name, a
+   reply typed on the handset never does. Only counts from the day the first
+   staff member was added, so the whole of this year's history is not
+   mislabelled "from phone". */
+function senderOf(m){
+  if(!m || m.direction!=='out') return null;
+  const body=String(m.body||'');
+  for(const st of STAFF){
+    const n=String(st.name||'');
+    if(n && body.toLowerCase().startsWith(n.toLowerCase()+':'))
+      return {name:st.name, via:'crm', clean:body.slice(n.length+1).replace(/^\s*\n/,'')};
+  }
+  const t=m.wa_ts?new Date(m.wa_ts).getTime():0;
+  if(staffMode() && STAFF_FROM && t && t>=STAFF_FROM)
+    return {name:'sent from phone', via:'phone', clean:body};
+  return null;
+}
+
 /* Who is on reception right now. One WhatsApp number is shared, so the only
    way the customer can tell Iqa from Alex is if the name is on the message -
    the same trick ChatsHero uses. Kept per PC, not per customer. */
@@ -830,8 +951,9 @@ function agentName(){
 function setAgentName(v){
   try{ localStorage.setItem('gl_crm_agent', String(v||'').trim().slice(0,24)); }catch(e){}
 }
+function replyName(){ return (staffMode() && ME) ? ME.name : agentName(); }
 function withAgent(body){
-  const who=agentName();
+  const who=replyName();
   // don't stack a second name on a reply that already starts with one
   if(!who || body.toLowerCase().startsWith(who.toLowerCase()+':')) return body;
   return who+':\n'+body;
@@ -844,6 +966,11 @@ async function sendReply(){
   const body=withAgent(typed);
   note.className='replyNote';
   if(!typed){ note.textContent='Nothing to send.'; return; }
+  if(staffMode() && !ME){
+    note.className='replyNote err';
+    note.textContent='Pick who you are first, above the reply box.';
+    return;
+  }
   btn.disabled=true; box.disabled=true; note.textContent='Queueing…';
 
   // show it straight away so reception can see it went somewhere
@@ -854,7 +981,8 @@ async function sendReply(){
 
   try{
     const {error}=await sb.from('gl_wa_outbox')
-      .insert({chat_jid:CUR.chat_jid, phone:CUR.phone||null, body});
+      .insert({chat_jid:CUR.chat_jid, phone:CUR.phone||null, body,
+               staff_name: replyName()||null});
     if(error) throw error;
     box.value='';
     pend.textContent=body+'  ·  queued';
@@ -875,9 +1003,14 @@ async function loadThread(jid){
       .eq('chat_jid',jid).order('wa_ts',{ascending:true}).limit(500);
     const rows=data||[];
     $('tThread').innerHTML = rows.length ? rows.map(m=>{
-      const body=msgText(m);
-      return '<div class="msg '+(m.direction==='out'?'out':'in')+'">'+esc(body)
-        +'<span class="t">'+esc(dmy(m.wa_ts))+(m.sent_by&&m.direction==='out'?' · '+esc(m.sent_by):'')+'</span></div>';
+      const who=senderOf(m);
+      // the header is shown as a label instead of inside the bubble, so the
+      // thread does not read "Iqa: Iqa: ..."
+      const body=who&&who.via==='crm'&&who.clean ? who.clean : msgText(m);
+      return '<div class="msg '+(m.direction==='out'?'out':'in')+'">'
+        +(who?'<span class="by '+(who.via==='phone'?'byph':'')+'">'+esc(who.name)+'</span>':'')
+        +esc(body)
+        +'<span class="t">'+esc(dmy(m.wa_ts))+'</span></div>';
     }).join('') : '<div class="msg sys">No messages recorded for this chat.</div>';
     const t=$('tThread'); t.scrollTop=t.scrollHeight;
   }catch(e){
@@ -1356,6 +1489,83 @@ function renderReports(){
    +'</tbody></table></div>';
 }
 
+/* ---- Settings ----
+   Only the part that exists: who may reply, and under what name. The rest of
+   this screen (quiet threshold, the 12-hour nudge, alert recipients, reply
+   templates) is still the stored constants at the top of this file, and this
+   page says so rather than showing dead controls. */
+let SETEDIT=null;
+function renderSettings(){
+  const rows=STAFF.length ? STAFF.map(x=>
+      '<tr>'
+      +'<td><b>'+esc(x.name)+'</b></td>'
+      +'<td>'+(x.active?'<span class="chip rm">Can reply</span>':'<span class="chip chk">Switched off</span>')+'</td>'
+      +'<td>'+(x.last_seen_at?esc(dmyShort(x.last_seen_at)):'<span style="color:var(--ink2)">never</span>')+'</td>'
+      +'<td style="text-align:right">'
+        +'<button class="mvbtn" onclick="setEdit('+JSON.stringify(x.id).replace(/"/g,'&quot;')+')">Change</button> '
+        +'<button class="mvbtn" onclick="setActive('+JSON.stringify(x.id).replace(/"/g,'&quot;')+','+(!x.active)+')">'
+          +(x.active?'Switch off':'Switch on')+'</button>'
+      +'</td></tr>').join('')
+    : '<tr><td colspan="4" style="padding:18px;text-align:center;color:var(--ink2)">'
+      +'Nobody added yet &mdash; the reply box still uses the plain name box on each PC.</td></tr>';
+
+  const e=SETEDIT, isNew=(e==='new');
+  const cur=(!isNew&&e)?STAFF.find(x=>x.id===e):null;
+  const form=e ? '<div class="panel2"><div class="pt">'+(isNew?'Add someone':'Change '+esc(cur?cur.name:''))+'</div>'
+      +'<div style="padding:12px 14px;display:flex;gap:9px;flex-wrap:wrap;align-items:center">'
+      +'<input id="sfName" placeholder="Name" maxlength="24" value="'+esc(cur?cur.name:'')+'">'
+      +'<input id="sfPin" type="password" inputmode="numeric" maxlength="8" placeholder="'
+        +(isNew?'4-8 digit PIN':'new PIN (blank = keep)')+'" style="width:150px">'
+      +'<button class="mvbtn gw" onclick="setSave()">Save</button>'
+      +'<button class="mvbtn" onclick="SETEDIT=null;renderSettings()">Cancel</button>'
+      +'<span id="sfNote" style="flex:1 1 200px;font-size:11.5px;color:var(--ink2)"></span>'
+      +'</div></div>' : '';
+
+  $('vSet').innerHTML=
+    '<div class="h1">Settings</div>'
+   +'<div class="h1s">Who may reply from this board, and the name customers see on it.</div>'
+   +form
+   +'<div class="panel2"><div class="pt">Reception staff'
+     +'<button class="mvbtn" style="float:right;margin-top:-3px" onclick="SETEDIT=\'new\';renderSettings()">Add someone</button>'
+   +'</div>'
+   +'<table class="t2"><thead><tr><th>Name</th><th>Replying</th><th>Last signed in</th><th></th></tr></thead>'
+   +'<tbody>'+rows+'</tbody></table></div>'
+   +'<div class="soonbox">'
+     +'<b>What the PIN does, and what it does not.</b><br>'
+     +'It records who typed a reply and puts that name on the front of the message, '
+     +'so the customer knows who answered and you can see it afterwards. '
+     +'It is <b>not</b> a lock: everyone here still shares the one Grandlab login, so anyone '
+     +'who can open this board can still see every chat. Treat it as a name badge, not a key.<br><br>'
+     +'A sign-in lasts the shift &mdash; 12 hours, or until the browser is closed.<br><br>'
+     +'<b>Still fixed in the code, not here yet:</b> the 14-day quiet rule, the '+NUDGE_HOURS
+     +'-hour nudge on Waiting, who gets desktop alerts, and reply templates.'
+   +'</div>';
+}
+function setEdit(id){ SETEDIT=id; renderSettings(); }
+async function setSave(){
+  const note=$('sfNote'), nm=$('sfName').value.trim(), pin=$('sfPin').value.trim();
+  const isNew=(SETEDIT==='new');
+  note.style.color='var(--ink2)'; note.textContent='Saving…';
+  try{
+    const {error}=await sb.rpc('gl_crm_staff_save',
+      {p_id:isNew?null:SETEDIT, p_name:nm, p_pin:pin, p_active:true});
+    if(error) throw error;
+    SETEDIT=null; await loadStaff(); renderSettings(); drawWho();
+  }catch(e){
+    note.style.color='var(--red)';
+    note.textContent=(e.message||String(e)).replace(/^.*?:\s*/,'');
+  }
+}
+async function setActive(id,on){
+  const st=STAFF.find(x=>x.id===id); if(!st) return;
+  try{
+    const {error}=await sb.rpc('gl_crm_staff_save',{p_id:id,p_name:st.name,p_pin:'',p_active:on});
+    if(error) throw error;
+    await loadStaff(); renderSettings(); drawWho();
+  }catch(e){ alertLine('Could not change that: '+(e.message||e)); }
+}
+function alertLine(t){ $('statusLine').innerHTML='<span class="err">'+esc(t)+'</span>'; }
+
 /* ---- Tasks ---- */
 function taskRow(t){
   const chat=t.chat_jid?CHATS.find(c=>c.chat_jid===t.chat_jid):null;
@@ -1517,13 +1727,7 @@ async function doLogin(){
   $('main').classList.remove('hide'); load();
 }
 $('pass').addEventListener('keydown',e=>{ if(e.key==='Enter') doLogin(); });
-$('tWho').addEventListener('input',e=>{
-  setAgentName(e.target.value);
-  const w=agentName();
-  $('tWhoNote').textContent = w
-    ? '— every reply goes out as "'+w+':", so the customer knows who answered.'
-    : '— leave blank to send with no name on the front.';
-});
+
 $('q').addEventListener('input',render);
 document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeThread(); });
 boot();
