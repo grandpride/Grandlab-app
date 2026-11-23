@@ -409,7 +409,7 @@ function LEADS(){
 /* Bumped whenever this page changes, and shown at the bottom of the sidebar.
    GitHub Pages and an installed app both cache hard, so without this there is
    no way to tell "the fix is not deployed" from "the fix does not work". */
-const BUILD='2026-11-23k';
+const BUILD='2026-11-23l';
 
 function drawNav(){
   $('side').innerHTML = NAV.map(n=>{
@@ -598,6 +598,34 @@ function mvPicker(c,col,prompt){
     +' hours &mdash; is this done, or gone quiet?</div>'+opts+'</div>';
 }
 
+/* What to show when a message has no text of its own.
+   "[text]" told nobody anything. A WhatsApp message can reach the database
+   with an empty body for two different reasons and they deserve different
+   words: it was never text in the first place (a voice note, a photo), or
+   wacli could not open it at all — its own log calls that "no supported text
+   content", which covers reactions, edited and deleted messages, polls and
+   view-once. Media is in the database as a type but the file itself has not
+   been downloaded yet, so the label says that rather than pretending. */
+const MEDIA_LABEL={
+  voice:'\u{1F3A4} Voice note',
+  audio:'\u{1F50A} Audio',
+  image:'\u{1F5BC}\uFE0F Photo',
+  video:'\u{1F3AC} Video',
+  document:'\u{1F4C4} Document',
+  sticker:'Sticker',
+  location:'\u{1F4CD} Location'
+};
+function msgText(m){
+  const body=m&&m.body ? String(m.body) : '';
+  if(body.trim()) return body;
+  const t=String((m&&m.msg_type)||'').toLowerCase();
+  // only the ones that are really a file say so; a sticker or a pin is not
+  // something anybody wants downloaded
+  if(MEDIA_LABEL[t]) return MEDIA_LABEL[t]
+    + (['voice','audio','image','video','document'].includes(t) ? ' \u2014 not downloaded' : '');
+  return '(couldn\u2019t read this one \u2014 a reaction, an edit, or a type the bridge cannot open)';
+}
+
 function cardHtml(c,col){
   const a=agoTxt(c.last_in_at);
   const st=shortStage(c.stage);
@@ -615,7 +643,7 @@ function cardHtml(c,col){
   return '<div class="card'+(light?' lit lit-'+light:'')+'" onclick="openThread('+j+')">'
     +'<div class="nm">'+esc(hasName?c.name:(c.phone||'(no number)'))+'</div>'
     +(hasName?'<div class="ph">'+esc(c.phone||'—')+'</div>':'')
-    +(last?'<div class="last">'+(last.direction==='out'?'<b>You:</b> ':'')+esc(last.body||'['+(last.msg_type||'media')+']')+'</div>':'')
+    +(last?'<div class="last">'+(last.direction==='out'?'<b>You:</b> ':'')+esc(msgText(last))+'</div>':'')
     +'<div class="foot">'
       +srcChip(c.chat_jid)
       +(enq?'<span class="chip stage">'+esc(enq)+'</span>':(st?'<span class="chip stage">'+esc(st)+'</span>':''))
@@ -847,7 +875,7 @@ async function loadThread(jid){
       .eq('chat_jid',jid).order('wa_ts',{ascending:true}).limit(500);
     const rows=data||[];
     $('tThread').innerHTML = rows.length ? rows.map(m=>{
-      const body=m.body||('['+(m.msg_type||'media')+']');
+      const body=msgText(m);
       return '<div class="msg '+(m.direction==='out'?'out':'in')+'">'+esc(body)
         +'<span class="t">'+esc(dmy(m.wa_ts))+(m.sent_by&&m.direction==='out'?' · '+esc(m.sent_by):'')+'</span></div>';
     }).join('') : '<div class="msg sys">No messages recorded for this chat.</div>';
@@ -1114,7 +1142,7 @@ function renderLeads(){
              : '<span style="color:var(--ink2)">'+esc(i.src_label||'Not recorded')+'</span>')+'</td>'
          +'<td>'+(i.enquiry?'<span class="chip stage">'+esc(i.enquiry)+'</span>':'<span style="color:var(--ink2)">—</span>')+'</td>'
          +'<td style="max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'
-           +(last?(last.direction==='out'?'<b>You:</b> ':'')+esc(last.body||'['+(last.msg_type||'media')+']'):'<span style="color:var(--ink2)">—</span>')+'</td>'
+           +(last?(last.direction==='out'?'<b>You:</b> ':'')+esc(msgText(last)):'<span style="color:var(--ink2)">—</span>')+'</td>'
          +'<td>'+esc(label)+'</td>'
          +'<td class="'+a.cls+'" style="font-weight:800">'+esc(a.t)+'</td></tr>';
      }).join('')
