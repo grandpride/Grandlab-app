@@ -4,6 +4,13 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Grandlab CRM</title>
+<!-- Installs on the reception PC as its own window via Chrome/Edge "Install".
+     No service worker on purpose: a cached app shell would go stale and the
+     board must always show what the database says right now. -->
+<link rel="manifest" href="gl-crm.webmanifest">
+<meta name="theme-color" content="#F5C518">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="gl-backend-config.js"></script>
 <script>/* backend switch (docs/cf-migration-gl.md): ONLY when the switch is on for module "core" (gl-backend-config.js) or this device chose ?backend=cf, load gl-cf-client.js + gl-cf-page.js. Off = nothing else happens. */
@@ -107,6 +114,7 @@ input:focus{outline:none;border-color:var(--gold-ink)}
     <a class="back" href="gl-hub.html">&#8592; Hub</a>
     <div class="ttl">GRAND<span>LAB</span> CRM</div>
     <div class="grow"><input id="q" placeholder="Search name, phone or message…" autocomplete="off"></div>
+    <button class="btn btn2" id="alertBtn" onclick="toggleAlerts()" title="Pop up when a customer is waiting">&#128276; Alerts off</button>
     <button class="btn btn2" onclick="load()">Refresh</button>
   </div>
 
@@ -233,6 +241,7 @@ function render(){
   /* Longest wait at the top of "Needs reply" — that is the one losing money.
      Everywhere else, most recent first. */
   by.reply.sort((a,b)=>new Date(a.last_in_at||0)-new Date(b.last_in_at||0));
+  if(!q) alertNewReplies(by.reply);   // searching filters rows, so don't alert off a filtered list
 
   $('board').innerHTML = COLS.map(x=>{
     const list=by[x.key];
@@ -382,7 +391,46 @@ async function loadRecord(phone){
   }
 }
 
+/* ---- alerts -------------------------------------------------------------
+   Reception keeps this open all day, so the board should speak up instead of
+   waiting to be looked at. Only new arrivals in "Needs reply" raise a popup,
+   and never on the first load, or opening the app would fire fifteen at once. */
+let ALERTS = false, KNOWN_REPLY = null;
+
+function setAlertBtn(){
+  $('alertBtn').innerHTML = ALERTS ? '&#128276; Alerts on' : '&#128276; Alerts off';
+  $('alertBtn').style.background = ALERTS ? 'var(--gold)' : '';
+}
+async function toggleAlerts(){
+  if(ALERTS){ ALERTS=false; try{localStorage.setItem('gl_crm_alerts','0');}catch(e){} setAlertBtn(); return; }
+  if(!('Notification' in window)){ alert('This browser cannot show alerts.'); return; }
+  let p=Notification.permission;
+  if(p!=='granted') { try{ p=await Notification.requestPermission(); }catch(e){} }
+  if(p!=='granted'){ alert('Alerts are blocked for this site. Allow notifications in the browser settings, then try again.'); return; }
+  ALERTS=true; try{localStorage.setItem('gl_crm_alerts','1');}catch(e){} setAlertBtn();
+  new Notification('Grandlab CRM', {body:'Alerts are on. You will be told when a customer is waiting.', icon:'icon-192.png'});
+}
+function alertNewReplies(replyList){
+  const ids=new Set(replyList.map(c=>c.chat_jid));
+  if(KNOWN_REPLY===null){ KNOWN_REPLY=ids; return; }          // first load: just remember
+  const fresh=replyList.filter(c=>!KNOWN_REPLY.has(c.chat_jid));
+  KNOWN_REPLY=ids;
+  if(!ALERTS || !fresh.length || Notification.permission!=='granted') return;
+  const one=fresh[0];
+  const who=(one.name&&String(one.name).trim())?one.name:(one.phone||'A customer');
+  const body=fresh.length===1
+    ? who+' is waiting for a reply'
+    : fresh.length+' customers are waiting for a reply';
+  try{
+    const n=new Notification('Grandlab CRM', {body, icon:'icon-192.png', tag:'gl-crm-reply', renotify:true});
+    n.onclick=()=>{ window.focus(); if(fresh.length===1) openThread(one.chat_jid); n.close(); };
+  }catch(e){}
+}
+
 async function boot(){
+  try{ ALERTS = localStorage.getItem('gl_crm_alerts')==='1' && Notification.permission==='granted'; }catch(e){}
+  setAlertBtn();
+  setInterval(()=>{ if(!document.hidden && $('ov').classList.contains('hide')) load(); }, 60000);
   const {data}=await sb.auth.getSession();
   if(data&&data.session){ $('gate').classList.add('hide'); $('main').classList.remove('hide'); load(); }
   else $('gate').classList.remove('hide');
