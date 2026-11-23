@@ -50,7 +50,7 @@ input:focus{outline:none;border-color:var(--gold-ink)}
 .colh{padding:8px 10px;border-bottom:1px solid var(--border);font-weight:800;font-size:11.5px;
       text-transform:uppercase;letter-spacing:.03em;color:var(--text2);display:flex;gap:6px;align-items:center}
 .colh .n{background:var(--border);color:var(--text2);border-radius:9px;padding:0 6px;font-size:10.5px}
-.colh.c-talking{color:#0B5FAE} .colh.c-waiting{color:var(--amber)}
+.colh.c-reply{color:var(--red)} .colh.c-waiting{color:var(--amber)}
 .colh.c-ghost{color:var(--red)} .colh.c-paid{color:var(--green)}
 .collist{overflow-y:auto;padding:8px;display:flex;flex-direction:column;gap:7px}
 .card{background:var(--card);border:1px solid var(--border);border-radius:9px;padding:8px 9px;cursor:pointer}
@@ -63,6 +63,7 @@ input:focus{outline:none;border-color:var(--gold-ink)}
 .chip{display:inline-block;border-radius:4px;padding:0 6px;font-size:10.5px;font-weight:800;
       background:var(--border);color:var(--text2)}
 .chip.stage{background:#E7F0FA;color:#0B5FAE}
+.col.urgent{border-color:var(--red)}
 .chip.mem{background:var(--gold);color:#000}
 .chip.rm{background:#E6F4EA;color:var(--green)}
 .ago{font-size:10.5px;font-weight:800;margin-left:auto}
@@ -146,11 +147,12 @@ let CHATS=[], LASTMSG={}, CUR=null;
    talking / waiting / ghost / paid. Inventing new ones would have thrown away
    the stage flow the bridge has been writing since October. */
 const COLS=[
-  {key:'talking', label:'Talking',    cls:'c-talking'},
-  {key:'waiting', label:'Waiting',    cls:'c-waiting'},
-  {key:'ghost',   label:'Gone quiet', cls:'c-ghost'},
-  {key:'paid',    label:'Won',        cls:'c-paid'}
+  {key:'reply',   label:'Needs reply', cls:'c-reply'},
+  {key:'waiting', label:'Waiting on them', cls:'c-waiting'},
+  {key:'quiet',   label:'Gone quiet',  cls:'c-ghost'},
+  {key:'paid',    label:'Won',         cls:'c-paid'}
 ];
+const QUIET_DAYS=14;
 
 /* "Stage 7 - Gone quiet" -> "Gone quiet". The number is noise on a card. */
 function shortStage(s){
@@ -178,18 +180,37 @@ function waLink(phone){
   const d=String(phone||'').replace(/[^0-9]/g,'');
   return d.length>=9 ? 'https://wa.me/'+d : '';
 }
+/* Which column a chat belongs in.
+
+   The imported chats all carry status 'talking' because that is the database
+   default, which put 368 of 390 in one useless pile. So the column is worked
+   out from the conversation itself: who spoke last, and how long ago. That is
+   the question reception actually has — "who is waiting on me right now" —
+   and it is true for every chat, including the hundreds nobody ever staged.
+   The stage chip still shows on the card, so nothing MIA recorded is lost. */
 function colOf(c){
   const s=String(c.status||'').toLowerCase();
-  return COLS.some(x=>x.key===s) ? s : 'talking';
+  if(s==='paid') return 'paid';
+
+  const lastIn =c.last_in_at ? new Date(c.last_in_at).getTime() : 0;
+  const lastOut=c.last_out_at? new Date(c.last_out_at).getTime(): 0;
+  const newest=Math.max(lastIn,lastOut);
+  if(!newest) return 'quiet';
+
+  if(s==='ghost') return 'quiet';
+  if(Date.now()-newest > QUIET_DAYS*86400000) return 'quiet';
+  return lastIn > lastOut ? 'reply' : 'waiting';
 }
 
 function cardHtml(c){
   const a=agoTxt(c.last_in_at);
   const st=shortStage(c.stage);
   const last=LASTMSG[c.chat_jid];
+  // No name means an unsaved contact. Show the number once, not twice.
+  const hasName=!!(c.name&&String(c.name).trim());
   return '<div class="card" onclick="openThread('+JSON.stringify(c.chat_jid).replace(/"/g,'&quot;')+')">'
-    +'<div class="nm">'+esc(c.name||c.phone||'(no name)')+'</div>'
-    +'<div class="ph">'+esc(c.phone||'—')+'</div>'
+    +'<div class="nm">'+esc(hasName?c.name:(c.phone||'(no number)'))+'</div>'
+    +(hasName?'<div class="ph">'+esc(c.phone||'—')+'</div>':'')
     +(last?'<div class="last">'+(last.direction==='out'?'<b>You:</b> ':'')+esc(last.body||'['+(last.msg_type||'media')+']')+'</div>':'')
     +'<div class="foot">'
       +(st?'<span class="chip stage">'+esc(st)+'</span>':'')
@@ -209,6 +230,9 @@ function render(){
 
   const by={}; COLS.forEach(x=>by[x.key]=[]);
   rows.forEach(c=>by[colOf(c)].push(c));
+  /* Longest wait at the top of "Needs reply" — that is the one losing money.
+     Everywhere else, most recent first. */
+  by.reply.sort((a,b)=>new Date(a.last_in_at||0)-new Date(b.last_in_at||0));
 
   $('board').innerHTML = COLS.map(x=>{
     const list=by[x.key];
@@ -220,15 +244,22 @@ function render(){
   }).join('');
 
   // the money view: what this pipeline actually did
-  const won=rows.filter(c=>String(c.status).toLowerCase()==='paid');
-  const wonRM=won.reduce((s,c)=>s+(Number(c.paid_rm)||0),0);
-  const quiet=rows.filter(c=>['waiting','ghost'].includes(String(c.status).toLowerCase())).length;
+  /* No close-rate figure here on purpose. The denominator would be every
+     contact ever messaged - suppliers, staff, wrong numbers - so it reads as
+     a terrible number that means nothing. "Needs reply" is the one that costs
+     money today, so that is what goes first. */
+  const wonRM=by.paid.reduce((s,c)=>s+(Number(c.paid_rm)||0),0);
+  const oldest=by.reply.reduce((m,c)=>{
+    const t=c.last_in_at?new Date(c.last_in_at).getTime():0;
+    return t&&(!m||t<m)?t:m; },0);
   $('strip').innerHTML=
-     stat(rows.length,'Chats')
-    +stat(won.length,'Won','win')
+     stat(by.reply.length,'Needs reply', by.reply.length?'lost':'')
+    +stat(oldest?agoTxt(new Date(oldest).toISOString()).t:'—','Longest wait', by.reply.length?'lost':'')
+    +stat(by.waiting.length,'Waiting on them')
+    +stat(by.quiet.length,'Gone quiet')
+    +stat(by.paid.length,'Won','win')
     +stat(RM(wonRM),'Revenue tracked','win')
-    +stat(quiet,'Waiting / quiet','lost')
-    +stat(rows.length?Math.round(won.length/rows.length*100)+'%':'—','Close rate');
+    +stat(rows.length,'Chats');
 
   $('statusLine').textContent = rows.length ? rows.length+' of '+CHATS.length+' shown' : '';
   $('emptyBox').classList.toggle('hide', rows.length>0);
@@ -252,7 +283,7 @@ async function load(){
     const {data:msgs}=await sb.from('gl_wa_msg')
       .select('chat_jid,direction,body,msg_type,wa_ts')
       .order('wa_ts',{ascending:false})
-      .limit(1200);
+      .limit(3000);
     (msgs||[]).forEach(m=>{ if(!LASTMSG[m.chat_jid]) LASTMSG[m.chat_jid]=m; });
 
     staleCheck();
