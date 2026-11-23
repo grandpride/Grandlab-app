@@ -52,6 +52,9 @@ input:focus{outline:none;border-color:var(--gold-ink)}
 
 /* ---- board ---- */
 .board{display:flex;gap:10px;padding:10px;align-items:flex-start;overflow-x:auto}
+.sortbar{display:flex;align-items:center;gap:6px;padding:8px 12px 0;font-size:11.5px;color:var(--text2)}
+.sortbar button{border:1px solid var(--line2);background:var(--card);border-radius:6px;padding:3px 10px;font:inherit;font-size:11.5px;cursor:pointer;color:inherit}
+.sortbar button.on{background:var(--gold);border-color:var(--gold-ink);font-weight:700}
 .col{flex:1 1 238px;min-width:238px;background:var(--card2);border:1px solid var(--border);border-radius:10px;
      display:flex;flex-direction:column;max-height:calc(100vh - 190px)}
 .colh{padding:10px 12px;border-bottom:1px solid var(--border);font-weight:800;font-size:11.5px;
@@ -339,6 +342,7 @@ table.t2 tbody tr:hover{background:var(--blue-soft)}
 
       <div id="vPipeline">
         <div id="strip" class="strip"></div>
+        <div class="sortbar" id="sortBar"></div>
         <div id="board" class="board"></div>
         <div id="statusLine" class="status"></div>
         <div id="emptyBox" class="empty hide"></div>
@@ -431,7 +435,7 @@ function LEADS(){
 /* Bumped whenever this page changes, and shown at the bottom of the sidebar.
    GitHub Pages and an installed app both cache hard, so without this there is
    no way to tell "the fix is not deployed" from "the fix does not work". */
-const BUILD='2026-11-23o';
+const BUILD='2026-11-23p';
 
 function drawNav(){
   $('side').innerHTML = NAV.map(n=>{
@@ -709,6 +713,16 @@ async function setChatStatus(ev,jid,st){
   }
 }
 
+function sortMode(){ try{ return localStorage.getItem('gl_crm_sort')==='wait'?'wait':'new'; }catch(e){ return 'new'; } }
+function setSortMode(m){ try{ localStorage.setItem('gl_crm_sort',m); }catch(e){} render(); }
+function drawSortBar(){
+  const el=$('sortBar'); if(!el) return;
+  const m=sortMode();
+  el.innerHTML='Newest on top. Needs reply:'
+    +'<button class="'+(m==='new'?'on':'')+'" onclick="setSortMode(\'new\')">Newest first</button>'
+    +'<button class="'+(m==='wait'?'on':'')+'" onclick="setSortMode(\'wait\')" title="The customer who has waited longest is at the top">Longest wait first</button>';
+}
+
 function render(){
   const q=$('q').value.trim().toLowerCase();
   const rows=CHATS.filter(c=>{
@@ -720,9 +734,15 @@ function render(){
 
   const by={}; COLS.forEach(x=>by[x.key]=[]);
   rows.forEach(c=>by[colOf(c)].push(c));
-  /* Longest wait at the top of "Needs reply" — that is the one losing money.
-     Everywhere else, most recent first. */
-  by.reply.sort((a,b)=>new Date(a.last_in_at||0)-new Date(b.last_in_at||0));
+  /* Newest activity on top, in every column. "Activity" is whichever is later:
+     the customer's last message or ours, so a chat we just answered rises too
+     instead of sitting where its old customer message put it. Needs reply can
+     also be flipped to longest-wait-first, which is the one that is losing
+     money — reception's choice, remembered on this device. */
+  const act=c=>Math.max(c.last_in_at?new Date(c.last_in_at).getTime():0, c.last_out_at?new Date(c.last_out_at).getTime():0);
+  COLS.forEach(x=>by[x.key].sort((a,b)=>act(b)-act(a)));
+  if(sortMode()==='wait') by.reply.sort((a,b)=>new Date(a.last_in_at||0)-new Date(b.last_in_at||0));
+  drawSortBar();
   if(!q) alertNewReplies(by.reply);   // searching filters rows, so don't alert off a filtered list
 
   $('board').innerHTML = COLS.map(x=>{
