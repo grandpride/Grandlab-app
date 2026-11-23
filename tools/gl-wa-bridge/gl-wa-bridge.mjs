@@ -14,8 +14,8 @@
   Nothing secret is written to the screen or to any log.
 */
 
-import { spawnSync } from 'node:child_process';
-import { readFileSync, existsSync, writeFileSync } from 'node:fs';
+import { spawnSync, spawn } from 'node:child_process';
+import { readFileSync, existsSync, appendFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -47,8 +47,20 @@ const BATCH = Math.max(1, Number(ENV.BATCH_LIMIT || 300));
 for (const [k, v] of Object.entries({ SUPABASE_URL, SUPABASE_ANON: ANON, GL_EMAIL: EMAIL, GL_PASSWORD: PASS }))
   if (!v) die(`Missing ${k} in .env`);
 
-function die(msg) { console.error('\n  ' + msg + '\n'); process.exit(1); }
-const log = (...a) => console.log(new Date().toLocaleTimeString('en-GB'), ...a);
+function die(msg) { console.error('\n  ' + msg + '\n'); try{ logLine('STOPPED: '+msg); }catch(e){} process.exit(1); }
+
+/* Also written to bridge-log.txt so a problem can be looked at afterwards
+   instead of only existing in a console window somebody has closed. */
+const LOGFILE = join(HERE, 'bridge-log.txt');
+function logLine(s) {
+  const line = new Date().toISOString().replace('T',' ').slice(0,19) + '  ' + s;
+  try { appendFileSync(LOGFILE, line + '\n'); } catch (e) {}
+}
+const log = (...a) => {
+  const s = a.map(x => typeof x === 'string' ? x : JSON.stringify(x)).join(' ');
+  console.log(new Date().toLocaleTimeString('en-GB'), s);
+  logLine(s);
+};
 
 /* ---------- wacli ---------- */
 
@@ -304,6 +316,46 @@ async function backfillAll() {
   return { msgs, chats, seen, pages: page };
 }
 
+/* ---------- keeping wacli's local store fresh ----------
+
+   This is the part that is easy to miss. "wacli auth" syncs once at pairing;
+   after that the local store only moves forward while something is running
+   "wacli sync --follow". This bridge reads that store, so without a live sync
+   it happily reports "nothing new" forever while messages pile up on the
+   phone. So the bridge runs the sync itself, as a child process, and brings
+   it back if it dies.                                                        */
+
+let SYNC = null, syncRestarts = 0;
+
+function startSync() {
+  if (SYNC) return;
+  const args = (ACCOUNT ? ['--account', ACCOUNT] : []).concat(['sync', '--follow']);
+  try {
+    SYNC = spawn(WACLI, args, { stdio: ['ignore', 'pipe', 'pipe'] });
+  } catch (e) {
+    log('could not start the WhatsApp sync: ' + (e.message || e));
+    SYNC = null;
+    return;
+  }
+  log('WhatsApp sync started (keeps the local copy up to date)');
+
+  const note = buf => {
+    const t = String(buf).trim();
+    if (t) logLine('sync: ' + t.split('\n').slice(-2).join(' | ').slice(0, 300));
+  };
+  SYNC.stdout.on('data', note);
+  SYNC.stderr.on('data', note);
+
+  SYNC.on('exit', code => {
+    SYNC = null; syncRestarts++;
+    log(`WhatsApp sync stopped (code ${code}). Restarting in 10s…`);
+    if (syncRestarts > 50) { log('sync keeps dying — check "wacli auth" is still paired'); return; }
+    setTimeout(startSync, 10000);
+  });
+}
+
+function stopSync() { if (SYNC) { try { SYNC.kill(); } catch (e) {} SYNC = null; } }
+
 /* ---------- sending replies ----------
 
    The board queues a reply in gl_wa_outbox; this sends it. Deliberately
@@ -405,12 +457,18 @@ await login();
 log('signed in to Grandlab');
 
 if (cmd === 'backfill') {
+  log('syncing from WhatsApp first…');
+  const sy = spawnSync(WACLI, (ACCOUNT ? ['--account', ACCOUNT] : []).concat(['sync']),
+                       { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
+  if (sy.status !== 0) log('sync warning: ' + String(sy.stderr || '').trim().split('\n')[0]);
   const r = await backfillAll();
   log(`finished: ${r.pages} page(s), ${r.seen} messages read → ${r.msgs} new, ${r.chats} chats updated`);
   log('done. Open the CRM board to see them.');
   process.exit(0);
 }
 
+startSync();
+process.on('SIGINT', () => { stopSync(); log('stopped by user'); process.exit(0); });
 log(`watching — checking every ${POLL}s. Leave this window open. Ctrl+C to stop.`);
 log(SEND_ENABLED
   ? `replies from the CRM board are ON (max ${SEND_MAX_PER_CYCLE} per cycle, ${SEND_GAP_MS/1000}s apart)`

@@ -1,1 +1,3 @@
 tools/gl-wa-bridge/.env
+tools/gl-wa-bridge/bridge-log.txt
+tools/gl-wa-bridge/probe-output.txt
