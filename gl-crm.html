@@ -412,7 +412,7 @@ const $=id=>document.getElementById(id);
 const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const RM=n=>'RM'+(Math.round((Number(n)||0)*100)/100).toLocaleString('en-MY',{minimumFractionDigits:2,maximumFractionDigits:2});
 
-let CHATS=[], LASTMSG={}, CUR=null, OVER={}, VIEW='pipeline', TASKS=[], MONTHLY=[], LEADINFO={}, ADS=[], ADDAYS=30, AD_CODES=[], OPENAD='';
+let CHATS=[], LASTMSG={}, CUR=null, OVER={}, VIEW='pipeline', TASKS=[], MONTHLY=[], LEADINFO={}, ADS=[], ADDAYS=30, AD_CODES=[], ADCODEMAP={}, OPENAD='';
 let STAFF=[], ME=null, STAFF_FROM=null;
 
 const today=()=>new Date().toISOString().slice(0,10);
@@ -454,7 +454,7 @@ function LEADS(){
 /* Bumped whenever this page changes, and shown at the bottom of the sidebar.
    GitHub Pages and an installed app both cache hard, so without this there is
    no way to tell "the fix is not deployed" from "the fix does not work". */
-const BUILD='2026-11-23t';
+const BUILD='2026-11-23u';
 
 function drawNav(){
   $('side').innerHTML = NAV.map(n=>{
@@ -908,6 +908,7 @@ async function load(){
          (li||[]).forEach(x=>{ LEADINFO[x.chat_jid]=x; }); }catch(e){}
     try{ const {data:ad}=await sb.rpc('gl_crm_ads',{p_days:ADDAYS}); ADS=ad||[]; }catch(e){ ADS=[]; }
     try{ const {data:ac,error:ae}=await sb.rpc('gl_crm_ad_codes'); if(!ae&&Array.isArray(ac)) AD_CODES=ac; }catch(e){}
+    try{ const {data:cm,error:ce}=await sb.rpc('gl_crm_ad_code_map'); if(!ce&&Array.isArray(cm)){ ADCODEMAP={}; cm.forEach(r=>{ ADCODEMAP[String(r.ad_id)]=String(r.code||'').toUpperCase(); }); } }catch(e){}
     await loadStaff();
 
     await loadTasks();
@@ -1557,7 +1558,7 @@ function renderLeads(){
   if(LEADFILT.enq) rows=rows.filter(c=>(info(c.chat_jid).enquiry||'(not clear)')===LEADFILT.enq);
 
   const warm=rows.filter(c=>colOf(c)!=='quiet').length;
-  const fromAds=rows.filter(c=>info(c.chat_jid).src_kind==='ad').length;
+  const fromAds=rows.filter(c=>['ad','tagged','code'].includes(info(c.chat_jid).src_kind)).length;
 
   // the same four stages, but only for leads
   const counts=COLS.map(x=>({key:x.key,label:x.label,n:rows.filter(c=>colOf(c)===x.key).length}));
@@ -1573,7 +1574,7 @@ function renderLeads(){
    +'<div class="cards">'
      +kpi(rows.length,'Leads shown','','','&#9728;','#FEF3C7')
      +kpi(warm,'Still warm','active in the last 14 days','win','&#9679;','#DCFCE7')
-     +kpi(fromAds,'Traced to an advert', fromAds?'':'ad tagging not captured yet','','&#9650;','#EEF3FE')
+     +kpi(fromAds,'Traced to an advert', fromAds?'by tag, ad code or by hand':'none matched yet','','&#9650;','#EEF3FE')
    +'</div>'
    +'<div class="panel2" style="margin-bottom:14px"><div class="pt">Lead pipeline</div>'
      +counts.map(x=>'<div class="stagerow">'
@@ -1611,9 +1612,9 @@ function renderLeads(){
      :'<tr><td colspan="6" style="padding:20px;text-align:center;color:var(--ink2)">Nothing matches those filters.</td></tr>')
    +'</tbody></table></div>'
    +(rows.length>200?'<div class="h1s">Showing the newest 200.</div>':'')
-   +'<div class="soonbox" style="margin-top:14px"><b>Only '+fromAds+' leads trace back to an advert.</b> '
-     +'Your Meta ads and campaigns are already in the database and the link works &mdash; '
-     +'what is missing is the ad tag on the incoming message, which wacli does not hand over. '
+   +'<div class="soonbox" style="margin-top:14px"><b>'+fromAds+' of these leads are tied to an advert.</b> '
+     +'WhatsApp does not hand over the ad tag, so the link comes from the ad code in the ad&rsquo;s welcome message, '
+     +'or from the ad you picked by hand on the card. Chats with neither stay &ldquo;Not recorded&rdquo;. '
      +'Everything else here is worked out from the conversation itself.</div>';
 }
 
@@ -1677,6 +1678,44 @@ async function setAdDays(d){
   $('vAds').innerHTML='<div class="h1">Ads</div><div class="h1s">Loading '+d+' days…</div>';
   try{ const {data}=await sb.rpc('gl_crm_ads',{p_days:d}); ADS=data||[]; }catch(e){}
   renderAds();
+}
+
+/* Money and chats per ad code. Spend comes from Meta for every ad that carries
+   the code; chats are the ones we could tie to that code (found in the welcome
+   message, or picked by hand) that first wrote within the same window. */
+function adCodeTable(){
+  const num=v=>Number(v||0);
+  const since=Date.now()-ADDAYS*86400000;
+  const codes=(AD_CODES||[]).map(a=>a.code);
+  if(!codes.length) return '';
+  const rows=codes.map(code=>{
+    const mine=ADS.filter(a=>ADCODEMAP[String(a.ad_id)]===code);
+    const spend=mine.reduce((s,a)=>s+num(a.spend),0);
+    const meta=mine.reduce((s,a)=>s+num(a.conversations),0);
+    let chats=0, won=0, rm=0;
+    CHATS.forEach(c=>{
+      const li=LEADINFO[c.chat_jid]; if(!li) return;
+      if(!['tagged','code'].includes(li.src_kind) || String(li.src_label||'').toUpperCase()!==code) return;
+      const t=new Date(c.first_in_at||c.last_in_at||0).getTime();
+      if(!(t>=since)) return;
+      chats++;
+      if(wonAt(c)){ won++; rm+=Number((OVER[c.chat_jid]||{}).revenue)||0; }
+    });
+    return {code,offer:((AD_CODES.find(a=>a.code===code)||{}).offer)||'',spend,meta,chats,won,rm};
+  }).filter(r=>r.spend>0||r.chats>0).sort((a,b)=>b.spend-a.spend||b.chats-a.chats);
+  if(!rows.length) return '';
+  const tot=rows.reduce((t,r)=>({spend:t.spend+r.spend,chats:t.chats+r.chats,won:t.won+r.won,rm:t.rm+r.rm}),{spend:0,chats:0,won:0,rm:0});
+  return '<div class="panel2" style="margin-bottom:14px"><div class="pt">By ad code &mdash; last '+ADDAYS+' days</div>'
+    +'<div style="overflow-x:auto"><table class="t2"><thead><tr><th>Code</th><th>Spent</th><th>Meta counted</th><th>Chats tied</th><th>Cost / chat</th><th>Won</th><th>Won RM</th></tr></thead><tbody>'
+    +rows.map(r=>'<tr style="cursor:default"><td><b>'+esc(r.code)+'</b>'+(r.offer?'<div style="color:var(--ink2);font-size:11px">'+esc(r.offer)+'</div>':'')+'</td>'
+      +'<td>'+esc(RM(r.spend))+'</td><td>'+r.meta+'</td><td><b>'+r.chats+'</b></td>'
+      +'<td>'+(r.chats&&r.spend?esc(RM(r.spend/r.chats)):'&mdash;')+'</td>'
+      +'<td>'+r.won+'</td><td>'+(r.rm?esc(RM(r.rm)):'&mdash;')+'</td></tr>').join('')
+    +'<tr style="cursor:default;font-weight:800"><td>Total</td><td>'+esc(RM(tot.spend))+'</td><td></td><td>'+tot.chats+'</td>'
+      +'<td>'+(tot.chats&&tot.spend?esc(RM(tot.spend/tot.chats)):'&mdash;')+'</td><td>'+tot.won+'</td><td>'+(tot.rm?esc(RM(tot.rm)):'&mdash;')+'</td></tr>'
+    +'</tbody></table></div>'
+    +'<div style="padding:8px 14px;font-size:11px;color:var(--ink2)">&ldquo;Chats tied&rdquo; only counts chats where the ad code was found or picked, so it is a floor. '
+    +'Compare it with what Meta counted, not as a replacement for it.</div></div>';
 }
 
 function renderAds(){
@@ -1758,6 +1797,7 @@ function renderAds(){
      +kpi(imps?(clicks/imps*100).toFixed(2)+'%':'—','CTR',clicks.toLocaleString()+' clicks of '+imps.toLocaleString())
      +kpi(live.length,'Running now','of '+ADS.length+' with figures')
    +'</div>'
+   +adCodeTable()
    +(ADS.length?cards
      :'<div class="panel2"><div style="padding:22px;text-align:center;color:var(--ink2)">No ad figures synced yet.</div></div>')
    +'<div class="soonbox" style="margin-top:4px">'
