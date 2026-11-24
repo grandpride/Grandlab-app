@@ -13,7 +13,7 @@ window.GL_BACKEND_DEFAULT = "sb";
 window.GL_BACKEND_MODULES = {
   core:      "sb",   // shop floor + staff tools: Hub, job card, plate scan, appointments, POS, TV board, QC, commission, win-back...
   customer:  "sb",   // customer app (index.html) + customer / partner links (receipt, e-warranty, inspection, QC view, SA quote)
-  marketing: "sb",   // marketing analysis, ads report, marketing calendar
+  marketing: "cf",   // marketing analysis, ads report, marketing calendar
   claim:     "cf"    // GL Claim (expense claims)
 };
 
