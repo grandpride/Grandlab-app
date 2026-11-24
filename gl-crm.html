@@ -459,7 +459,7 @@ function LEADS(){
 /* Bumped whenever this page changes, and shown at the bottom of the sidebar.
    GitHub Pages and an installed app both cache hard, so without this there is
    no way to tell "the fix is not deployed" from "the fix does not work". */
-const BUILD='2026-11-24c';
+const BUILD='2026-11-24d';
 
 function drawNav(){
   $('side').innerHTML = NAV.map(n=>{
@@ -1200,7 +1200,7 @@ function miaOffer(jid,rows){
     +'<button class="lg" onclick="miaAsk()">Suggest a follow-up</button></div>'+miaNoteBox();
 }
 const MIA_FLIGHT={};         // key -> Promise<out>: one running call per chat+message, shared by the board and the open chat
-async function miaCallApi(rows,notes,extra,answer){
+async function miaCallApi(rows,notes,extra,answer,langs){
   const told=notes&&notes.length
     ? '\n\nInstructions for this reply from the shop (they come from the owner, so follow them and put them ahead of your usual order of questions):\n'
       +notes.map(n=>'- '+n).join('\n')
@@ -1217,15 +1217,16 @@ async function miaCallApi(rows,notes,extra,answer){
   const t0=Date.now();
   const r=await fetch(MIA_FN,{method:'POST',
     headers:{'Content-Type':'application/json',apikey:SUPABASE_ANON,Authorization:'Bearer '+token},
-    body:JSON.stringify({mode:'coach',messages:msgs,stage:'auto'})});
+    body:JSON.stringify(Object.assign({mode:'coach',messages:msgs,stage:'auto'},langs&&langs.length?{langs}:{}))});
   let out; try{ out=await r.json(); }catch(e){ throw new Error('MIA sent back something unreadable.'); }
   if(!r.ok||out.error) throw new Error(out.error||('Request failed ('+r.status+')'));
-  out._ms=Date.now()-t0;
+  out._ms=Date.now()-t0; out._langs=langs||null;
   return out;
 }
 function miaFlight(jid,key,rows,notes){
   if(MIA_FLIGHT[key]) return MIA_FLIGHT[key];
-  const p=miaCallApi(rows,notes,null,null).then(out=>{
+  const lg=miaGuessLang(rows.filter(m=>m.direction==='in'&&m.body).slice(-3).map(m=>m.body).join(' '));
+  const p=miaCallApi(rows,notes,null,null,[lg]).then(out=>{
     if(out.reply&&(out.reply.type==='reply'||out.reply.type==='clarify')) miaCacheSet(jid,key,out);
     if(typeof miaLogShown==='function') miaLogShown(jid,key,rows,notes,out);
     return out;
@@ -1277,7 +1278,26 @@ function miaClearNotes(){
   st.draft=''; st.out=null; st.extra=null; MIA_CACHE[st.jid]=null;
   miaAsk();
 }
-function miaSetLang(l){ if(MIA_STATE){ MIA_STATE.lang=l; miaDraw(); } }
+function miaHasLang(r,l){ const o=r&&r[l]; return !!(o&&(o.short||o.explain||o.push)); }
+/* The suggestion is first written in the customer's language only (a third of
+   the writing, so it arrives sooner). Another language is written on demand. */
+async function miaSetLang(l){
+  const st=MIA_STATE; if(!st) return;
+  st.lang=l;
+  const r=st.out&&st.out.reply;
+  if(r&&r.type==='reply'&&!miaHasLang(r,l)&&!st.busy){
+    const seq=MIA_SEQ; st.busy=true; st.err=''; st.langWait=l; miaDraw();
+    try{
+      const out=await miaCallApi(st.rows,st.notes,null,null,[l]);
+      if(MIA_STATE!==st||seq!==MIA_SEQ) return;
+      if(out.reply&&out.reply.type==='reply'&&miaHasLang(out.reply,l)){
+        r[l]=out.reply[l]; if(MIA_CACHE[st.jid]&&MIA_CACHE[st.jid].key===st.key) miaCacheSet(st.jid,st.key,st.out);
+      }
+    }catch(e){ if(MIA_STATE===st) st.err=e.message||String(e); }
+    st.busy=false; st.langWait=null;
+  }
+  miaDraw();
+}
 function miaDraw(){
   const el=$('tMia'), st=MIA_STATE; if(!el||!st) return;
   const typed=$('miaNote'); if(typed) st.draft=typed.value;
@@ -1292,7 +1312,7 @@ function miaDrawInner(){
   const head=(extra)=>'<div class="mh"><b>MIA suggests</b>'
     +MIA_LANGS.map(([k,l])=>'<button class="lg'+(st.lang===k?' on':'')+'" onclick="miaSetLang(\''+k+'\')">'+l+'</button>').join('')
     +'<span class="sp"></span>'+(extra||'')+'</div>';
-  if(st.busy){ el.innerHTML='<div class="mh"><b>MIA</b><span>Reading the chat and working out a reply…</span></div>'; return; }
+  if(st.busy){ el.innerHTML='<div class="mh"><b>MIA</b><span>'+(st.langWait?'Writing the '+esc(String(st.langWait).toUpperCase())+' version…':'Reading the chat and working out a reply…')+'</span></div>'; return; }
   if(st.err){
     el.innerHTML='<div class="mh"><b>MIA</b><span class="err">Could not get a suggestion: '+esc(st.err)+'</span>'
       +'<span class="sp"></span><button class="lg" onclick="miaAsk()">Try again</button></div>';
@@ -2266,7 +2286,8 @@ function miaCardState(c){
 function miaChipHtml(c){
   const s=miaCardState(c); if(!s) return '';
   const j=JSON.stringify(c.chat_jid).replace(/"/g,'&quot;');
-  if(s==='ready') return '<span class="chip miachip rdy" title="MIA has a reply ready. Open the chat.">MIA ready</span>';
+  if(s==='ready'){ const k=MIA_CACHE[c.chat_jid]; const q=k&&k.out&&k.out.reply&&k.out.reply.type==='clarify';
+    return q?'<span class="chip miachip rdy" title="MIA needs one quick answer from you first. Open the chat.">MIA has a question</span>':'<span class="chip miachip rdy" title="MIA has a reply ready. Open the chat.">MIA ready</span>'; }
   if(s==='thinking') return '<span class="chip miachip thk">MIA thinking…</span>';
   return '<span class="chip miachip bad" title="Tap to try again" onclick="event.stopPropagation();miaBgRetry('+j+')">MIA failed · retry</span>';
 }
