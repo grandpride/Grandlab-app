@@ -494,7 +494,7 @@ function LEADS(){
 /* Bumped whenever this page changes, and shown at the bottom of the sidebar.
    GitHub Pages and an installed app both cache hard, so without this there is
    no way to tell "the fix is not deployed" from "the fix does not work". */
-const BUILD='2026-11-24y';
+const BUILD='2026-11-24z';
 
 function drawNav(){
   $('side').innerHTML = NAV.map(n=>{
@@ -3171,10 +3171,10 @@ async function bkAvail(){
 function bkClose(){ if(CUR) delete MANUALBK[CUR.chat_jid]; drawBook(); }
 function drawBook(){
   const el=$('tBook'); if(!el) return;
-  BK=CUR?(bkDetect(CUR.chat_jid)||MANUALBK[CUR.chat_jid]||null):null;
+  BK=CUR?(MANUALBK[CUR.chat_jid]||bkDetect(CUR.chat_jid)||null):null;
   el.classList.remove('bkmodal');
   if(!BK){ el.classList.add('hide'); el.innerHTML=''; return; }
-  const ab=AUTOBK.map[BK.jid+'|'+BK.li];
+  const ab=BK.manual?null:AUTOBK.map[BK.jid+'|'+BK.li];
   if(ab&&ab.info&&ab.info!=='claiming'){
     el.classList.remove('hide');
     el.innerHTML='<div class="mh"><b>Auto-booking</b><span>'+esc(ab.info)+'</span>'
