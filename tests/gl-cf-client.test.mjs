@@ -755,7 +755,7 @@ test('config: GL_BACKEND_DEFAULT is "sb"; the four modules each say "sb" or "cf"
   assert.equal(win.GL_BACKEND_SOURCE('core'), 'default');
 });
 test('config: ?backend=cf is remembered for all modules; ?backend=sb while the module is "sb" just clears it (as before)', () => {
-  const c = loadConfig('?backend=cf');
+  const c = loadConfig('?backend=cf', { mods: { core: 'sb', customer: 'sb', marketing: 'sb', claim: 'sb' } });   // explicit words: independent of what the shipped file says today
   assert.equal(c.win.GL_BACKEND_PICK('core'), 'cf');
   assert.equal(c.ls.get('gl_backend'), 'cf');
   c.go(''); assert.equal(c.win.GL_BACKEND_PICK('claim'), 'cf');
