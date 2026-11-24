@@ -459,7 +459,7 @@ function LEADS(){
 /* Bumped whenever this page changes, and shown at the bottom of the sidebar.
    GitHub Pages and an installed app both cache hard, so without this there is
    no way to tell "the fix is not deployed" from "the fix does not work". */
-const BUILD='2026-11-24b';
+const BUILD='2026-11-24c';
 
 function drawNav(){
   $('side').innerHTML = NAV.map(n=>{
@@ -2249,7 +2249,7 @@ function liveStart(){
    skipped when the saved suggestion is still for the same last message), so
    the card says "MIA ready" and opening it is instant. Nothing is ever sent.
    --------------------------------------------------------------------------- */
-const MIA_BG={run:0,max:3,cap:15,st:{},queue:[]};
+const MIA_BG={run:0,max:3,cap:15,st:{},queue:[],budget:15,t0:Date.now()};   // 15 suggestions per page load; chats whose customer writes AFTER the page opened are always prepared
 function miaBgOn(){ try{ return localStorage.getItem('gl_crm_mia_bg')!=='0'; }catch(e){ return true; } }
 function miaBgToggle(){ try{ localStorage.setItem('gl_crm_mia_bg',miaBgOn()?'0':'1'); }catch(e){} drawSortBar(); if(miaBgOn()) miaBgScan(); }
 function miaReady(c){
@@ -2277,14 +2277,15 @@ function miaBgScan(force){
   const cand=CHATS.filter(c=>colOf(c)==='reply').sort((a,b)=>ms(b.last_in_at)-ms(a.last_in_at));
   let added=0;
   for(const c of cand){
-    if(added>=MIA_BG.cap) break;
+    const fresh=ms(c.last_in_at)>MIA_BG.t0;           // arrived while the page was open
+    if(!force&&!fresh&&MIA_BG.budget<=0) continue;
     if(miaReady(c)) continue;
     const l=LASTMSG[c.chat_jid];
     if(l&&l.direction==='in'&&!String(l.body||'').trim()) continue;          // voice note / photo: MIA cannot read it
     const j=MIA_BG.st[c.chat_jid];
     if(j&&ms(j.lastIn)===ms(c.last_in_at)&&(j.status==='thinking'||j.status==='queued'||(j.status==='failed'&&!force)||j.status==='skip')) continue;
     MIA_BG.st[c.chat_jid]={status:'queued',lastIn:c.last_in_at};
-    MIA_BG.queue.push(c.chat_jid); added++;
+    MIA_BG.queue.push(c.chat_jid); added++; if(!force&&!fresh) MIA_BG.budget--;
   }
   if(added) miaBgRender();
   miaBgPump();
