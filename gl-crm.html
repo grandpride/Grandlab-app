@@ -115,6 +115,10 @@ input:focus{outline:none;border-color:var(--gold-ink)}
 .msg .by.byph{color:var(--ink2);font-weight:700;font-style:italic}
 .replyNote.err{color:var(--red)}
 .mia{border-bottom:1px solid var(--border);background:#FFFBEB;padding:8px 12px;max-height:40vh;overflow-y:auto}
+.chip.miachip{font-size:10.5px;padding:1px 7px;border-radius:9px;border:1px solid transparent}
+.chip.rdy{background:#E3F6EA;color:#17803d;border-color:#a8dcb9}
+.chip.thk{background:#FFF4D6;color:#8a6200;border-color:#f0d98a}
+.chip.bad{background:#FDE7E7;color:#b3261e;border-color:#f0b4b0;cursor:pointer}
 .mia .mh{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:11.5px;color:var(--text2)}
 .mia .mh b{color:var(--text);font-size:12.5px;margin-right:2px}
 .mia .lg{border:1px solid var(--line2);background:var(--card);border-radius:6px;padding:2px 9px;font:inherit;font-size:11.5px;cursor:pointer;color:inherit}
@@ -387,6 +391,7 @@ table.t2 tbody tr:hover{background:var(--blue-soft)}
       <button class="btn btn2 btn-xs" onclick="toggleThreadAd()" title="Which ad did this customer come from?">Ad</button>
       <button class="btn btn2 btn-xs" onclick="followUp(1)" title="Remind me tomorrow">+1d</button>
       <button class="btn btn2 btn-xs" onclick="followUp(3)" title="Remind me in 3 days">+3d</button>
+      <button id="tNext" class="btn btn-xs" onclick="miaNextReady()" title="Jump to the next Needs-reply chat that has a MIA suggestion ready">Next ready &#9654;</button>
       <a id="tWa" class="btn btn-wa btn-xs" target="_blank" rel="noopener">WhatsApp</a>
       <button class="btn btn2 btn-xs" onclick="closeThread()">Close</button>
     </div>
@@ -454,7 +459,7 @@ function LEADS(){
 /* Bumped whenever this page changes, and shown at the bottom of the sidebar.
    GitHub Pages and an installed app both cache hard, so without this there is
    no way to tell "the fix is not deployed" from "the fix does not work". */
-const BUILD='2026-11-24a';
+const BUILD='2026-11-24b';
 
 function drawNav(){
   $('side').innerHTML = NAV.map(n=>{
@@ -771,6 +776,7 @@ function cardHtml(c,col){
           : (s==='paid'&&!won ? '<span class="chip mark" title="Marked won by hand — no job or payment found against this number">marked won</span>'
           : (Number(c.paid_rm)>0?'<span class="chip rm">'+esc(RM(c.paid_rm))+'</span>':'')))
       +adBtnHtml(c.chat_jid)
+      +(col==='reply'?miaChipHtml(c):'')
       +(light==='new'?'<span class="chip fresh">NEW</span>':'')
       +(s==='closed'?'<span class="chip chk">closed by you</span>':'')
       +'<span class="ago '+a.cls+'">'+a.t+'</span>'
@@ -809,7 +815,10 @@ function drawSortBar(){
   const m=sortMode();
   el.innerHTML='Newest on top. Needs reply:'
     +'<button class="'+(m==='new'?'on':'')+'" onclick="setSortMode(\'new\')">Newest first</button>'
-    +'<button class="'+(m==='wait'?'on':'')+'" onclick="setSortMode(\'wait\')" title="The customer who has waited longest is at the top">Longest wait first</button>';
+    +'<button class="'+(m==='wait'?'on':'')+'" onclick="setSortMode(\'wait\')" title="The customer who has waited longest is at the top">Longest wait first</button>'
+    +'<span style="margin-left:14px">MIA:</span>'
+    +'<button class="'+(miaBgOn()?'on':'')+'" onclick="miaBgToggle()" title="MIA prepares a suggestion for every Needs-reply chat in the background. Nothing is ever sent.">Auto-prepare '+(miaBgOn()?'ON':'OFF')+'</button>'
+    +'<button onclick="miaBgPrepareAll()" title="Prepare suggestions for every Needs-reply chat now">Prepare all</button>';
 }
 
 function render(){
@@ -919,6 +928,7 @@ async function load(){
     staleCheck();
     render();
     drawNav();
+    miaBgScan();
     if(VIEW==='dash') renderDash();
     else if(VIEW==='leads') renderLeads();
     else if(VIEW==='reports') renderReports();
@@ -1121,6 +1131,14 @@ function withAgent(body){
    --------------------------------------------------------------------------- */
 const MIA_FN=SUPABASE_URL+'/functions/v1/mia';
 const MIA_CACHE={};          // jid -> {key, out}
+(function(){ try{ const r=JSON.parse(localStorage.getItem('gl_crm_mia_cache')||'{}'); const now=Date.now();
+  Object.keys(r).forEach(j=>{ if(r[j]&&r[j].t&&now-r[j].t<24*3600e3) MIA_CACHE[j]={key:r[j].key,out:r[j].out,t:r[j].t}; }); }catch(e){} })();
+function miaCacheSet(jid,key,out){
+  MIA_CACHE[jid]={key,out,t:Date.now()};
+  try{ const keep=Object.keys(MIA_CACHE).filter(j=>MIA_CACHE[j]).sort((a,b)=>MIA_CACHE[b].t-MIA_CACHE[a].t).slice(0,40);
+    const o={}; keep.forEach(j=>{ o[j]={key:MIA_CACHE[j].key,out:MIA_CACHE[j].out,t:MIA_CACHE[j].t}; });
+    localStorage.setItem('gl_crm_mia_cache',JSON.stringify(o)); }catch(e){}
+}
 let MIA_STATE=null;          // what is on screen for the open chat
 let MIA_SEQ=0;               // ignore an answer that arrives for a chat we left
 let MIA_FILLED='';           // the last draft we put in the box
@@ -1163,7 +1181,13 @@ function miaOffer(jid,rows){
   MIA_STATE={jid,rows,key:key+'|'+notes.join('~'),notes,draft:'',lang:miaGuessLang(
       rows.filter(m=>m.direction==='in'&&m.body).slice(-3).map(m=>m.body).join(' ')),out:null,busy:false,err:'',extra:null};
   el.classList.remove('hide');
-  if(MIA_CACHE[jid]&&MIA_CACHE[jid].key===MIA_STATE.key){ MIA_STATE.out=MIA_CACHE[jid].out; miaDraw(); return; }
+  if(MIA_CACHE[jid]&&MIA_CACHE[jid].key===MIA_STATE.key){ MIA_STATE.out=MIA_CACHE[jid].out; MIA_STATE.extra=MIA_CACHE[jid].out.text||null; miaDraw(); return; }
+  if(MIA_FLIGHT[MIA_STATE.key]){                      // MIA is already working on this chat: join, do not ask twice
+    const st=MIA_STATE; st.busy=true; miaDraw();
+    MIA_FLIGHT[st.key].then(out=>{ if(MIA_STATE!==st) return; st.out=out; st.extra=out.text||null; st.busy=false; miaDraw(); })
+      .catch(e=>{ if(MIA_STATE!==st) return; st.err=e.message||String(e); st.busy=false; miaDraw(); });
+    return;
+  }
   if(textless){
     el.innerHTML='<div class="mh"><b>MIA</b></div><div class="say">Their last message is '
       +(['voice','audio'].includes(t)?'a voice note':t==='image'?'a photo':'something with no text')
@@ -1175,32 +1199,54 @@ function miaOffer(jid,rows){
   el.innerHTML='<div class="mh"><b>MIA</b><span>You wrote last.</span><span class="sp"></span>'
     +'<button class="lg" onclick="miaAsk()">Suggest a follow-up</button></div>'+miaNoteBox();
 }
-async function miaAsk(answer){
-  const st=MIA_STATE; if(!st||st.busy) return;
-  const seq=++MIA_SEQ; st.busy=true; st.err='';
-  const told=st.notes&&st.notes.length
+const MIA_FLIGHT={};         // key -> Promise<out>: one running call per chat+message, shared by the board and the open chat
+async function miaCallApi(rows,notes,extra,answer){
+  const told=notes&&notes.length
     ? '\n\nInstructions for this reply from the shop (they come from the owner, so follow them and put them ahead of your usual order of questions):\n'
-      +st.notes.map(n=>'- '+n).join('\n')
+      +notes.map(n=>'- '+n).join('\n')
       +'\nWrite the reply now. Only ask a question back if something essential is truly missing.'
     : '';
   const msgs=[{role:'user',content:[{type:'text',text:
-    'This is the WhatsApp chat so far, oldest first. Write what Grandlab should send next.\n\n'+miaTranscript(st.rows)+told}]}];
-  if(answer && st.extra){
-    msgs.push({role:'assistant',content:[{type:'text',text:st.extra}]});
+    'This is the WhatsApp chat so far, oldest first. Write what Grandlab should send next.\n\n'+miaTranscript(rows)+told}]}];
+  if(answer && extra){
+    msgs.push({role:'assistant',content:[{type:'text',text:extra}]});
     msgs.push({role:'user',content:[{type:'text',text:answer}]});
   }
+  const {data}=await sb.auth.getSession();
+  const token=(data&&data.session&&data.session.access_token)||SUPABASE_ANON;
+  const t0=Date.now();
+  const r=await fetch(MIA_FN,{method:'POST',
+    headers:{'Content-Type':'application/json',apikey:SUPABASE_ANON,Authorization:'Bearer '+token},
+    body:JSON.stringify({mode:'coach',messages:msgs,stage:'auto'})});
+  let out; try{ out=await r.json(); }catch(e){ throw new Error('MIA sent back something unreadable.'); }
+  if(!r.ok||out.error) throw new Error(out.error||('Request failed ('+r.status+')'));
+  out._ms=Date.now()-t0;
+  return out;
+}
+function miaFlight(jid,key,rows,notes){
+  if(MIA_FLIGHT[key]) return MIA_FLIGHT[key];
+  const p=miaCallApi(rows,notes,null,null).then(out=>{
+    if(out.reply&&(out.reply.type==='reply'||out.reply.type==='clarify')) miaCacheSet(jid,key,out);
+    if(typeof miaLogShown==='function') miaLogShown(jid,key,rows,notes,out);
+    return out;
+  });
+  MIA_FLIGHT[key]=p;
+  const done=()=>{ if(MIA_FLIGHT[key]===p) delete MIA_FLIGHT[key]; };
+  p.then(done,done);
+  return p;
+}
+async function miaAsk(answer){
+  const st=MIA_STATE; if(!st||st.busy) return;
+  const seq=++MIA_SEQ; st.busy=true; st.err='';
   miaDraw();
   try{
-    const {data}=await sb.auth.getSession();
-    const token=(data&&data.session&&data.session.access_token)||SUPABASE_ANON;
-    const r=await fetch(MIA_FN,{method:'POST',
-      headers:{'Content-Type':'application/json',apikey:SUPABASE_ANON,Authorization:'Bearer '+token},
-      body:JSON.stringify({mode:'coach',messages:msgs,stage:'auto'})});
-    let out; try{ out=await r.json(); }catch(e){ throw new Error('MIA sent back something unreadable.'); }
-    if(!r.ok||out.error) throw new Error(out.error||('Request failed ('+r.status+')'));
+    let out;
+    if(answer && st.extra){
+      out=await miaCallApi(st.rows,st.notes,st.extra,answer);
+      if(out.reply&&out.reply.type==='reply') miaCacheSet(st.jid,st.key,out);
+    }else out=await miaFlight(st.jid,st.key,st.rows,st.notes);
     if(seq!==MIA_SEQ) return;                    // they moved to another chat meanwhile
     st.out=out; st.extra=out.text||null;
-    if(out.reply&&out.reply.type==='reply') MIA_CACHE[st.jid]={key:st.key,out};
   }catch(e){
     if(seq!==MIA_SEQ) return;
     st.err=e.message||String(e);
@@ -2195,6 +2241,93 @@ function liveStart(){
     LIVE.chan=ch;
   }catch(e){ LIVE.rt='off'; }
 }
+
+/* ---------------------------------------------------------------------------
+   MIA IN THE BACKGROUND (24 Nov). Before: open a chat, wait for MIA, open the
+   next. Now every "Needs reply" chat gets a suggestion prepared in the
+   background (newest first, at most 3 calls running, at most 15 new per scan,
+   skipped when the saved suggestion is still for the same last message), so
+   the card says "MIA ready" and opening it is instant. Nothing is ever sent.
+   --------------------------------------------------------------------------- */
+const MIA_BG={run:0,max:3,cap:15,st:{},queue:[]};
+function miaBgOn(){ try{ return localStorage.getItem('gl_crm_mia_bg')!=='0'; }catch(e){ return true; } }
+function miaBgToggle(){ try{ localStorage.setItem('gl_crm_mia_bg',miaBgOn()?'0':'1'); }catch(e){} drawSortBar(); if(miaBgOn()) miaBgScan(); }
+function miaReady(c){
+  const k=MIA_CACHE[c.chat_jid]; if(!k||!k.key) return false;
+  const parts=k.key.split('|');
+  return ms(parts[1])===ms(c.last_in_at) && ms(parts[1])>0 && !(k.key.split('|')[2]);
+}
+function miaCardState(c){
+  if(miaReady(c)) return 'ready';
+  const j=MIA_BG.st[c.chat_jid];
+  if(j&&ms(j.lastIn)===ms(c.last_in_at)) return j.status==='thinking'||j.status==='queued'?'thinking':(j.status==='failed'?'failed':'');
+  return '';
+}
+function miaChipHtml(c){
+  const s=miaCardState(c); if(!s) return '';
+  const j=JSON.stringify(c.chat_jid).replace(/"/g,'&quot;');
+  if(s==='ready') return '<span class="chip miachip rdy" title="MIA has a reply ready. Open the chat.">MIA ready</span>';
+  if(s==='thinking') return '<span class="chip miachip thk">MIA thinking…</span>';
+  return '<span class="chip miachip bad" title="Tap to try again" onclick="event.stopPropagation();miaBgRetry('+j+')">MIA failed · retry</span>';
+}
+let MIA_BG_RT=null;
+function miaBgRender(){ clearTimeout(MIA_BG_RT); MIA_BG_RT=setTimeout(()=>{ try{ render(); }catch(e){} },400); }
+function miaBgScan(force){
+  if(!force&&!miaBgOn()) return;
+  const cand=CHATS.filter(c=>colOf(c)==='reply').sort((a,b)=>ms(b.last_in_at)-ms(a.last_in_at));
+  let added=0;
+  for(const c of cand){
+    if(added>=MIA_BG.cap) break;
+    if(miaReady(c)) continue;
+    const l=LASTMSG[c.chat_jid];
+    if(l&&l.direction==='in'&&!String(l.body||'').trim()) continue;          // voice note / photo: MIA cannot read it
+    const j=MIA_BG.st[c.chat_jid];
+    if(j&&ms(j.lastIn)===ms(c.last_in_at)&&(j.status==='thinking'||j.status==='queued'||(j.status==='failed'&&!force)||j.status==='skip')) continue;
+    MIA_BG.st[c.chat_jid]={status:'queued',lastIn:c.last_in_at};
+    MIA_BG.queue.push(c.chat_jid); added++;
+  }
+  if(added) miaBgRender();
+  miaBgPump();
+}
+function miaBgPrepareAll(){ miaBgScan(true); }
+function miaBgRetry(jid){
+  const c=CHATS.find(x=>x.chat_jid===jid); if(!c) return;
+  MIA_BG.st[jid]={status:'queued',lastIn:c.last_in_at}; MIA_BG.queue.push(jid); miaBgRender(); miaBgPump();
+}
+function miaBgPump(){
+  while(MIA_BG.run<MIA_BG.max && MIA_BG.queue.length){
+    const jid=MIA_BG.queue.shift();
+    MIA_BG.run++;
+    miaBgOne(jid).catch(()=>{}).then(()=>{ MIA_BG.run--; miaBgPump(); });
+  }
+}
+async function miaBgOne(jid){
+  const c=CHATS.find(x=>x.chat_jid===jid), j=MIA_BG.st[jid];
+  if(!c||!j) return;
+  try{
+    const {data,error}=await sb.from('gl_wa_msg').select('direction,sent_by,msg_type,body,wa_ts')
+      .eq('chat_jid',jid).order('wa_ts',{ascending:false}).limit(30);
+    if(error) throw error;
+    const rows=(data||[]).slice().reverse(); const last=rows[rows.length-1];
+    if(!last||last.direction!=='in'||!String(last.body||'').trim()){ j.status='skip'; return; }
+    const notes=MIA_NOTES[jid]||[];
+    const key=jid+'|'+last.wa_ts+'|'+notes.join('~');
+    if(MIA_CACHE[jid]&&MIA_CACHE[jid].key===key){ j.status='ready'; return; }
+    j.status='thinking'; miaBgRender();
+    await miaFlight(jid,key,rows,notes);
+    j.status='ready';
+  }catch(e){ j.status='failed'; }
+  miaBgRender();
+}
+function miaNextReady(){
+  const list=CHATS.filter(c=>colOf(c)==='reply').sort((a,b)=>ms(b.last_in_at)-ms(a.last_in_at));
+  const i=CUR?list.findIndex(c=>c.chat_jid===CUR.chat_jid):-1;
+  const order=list.slice(i+1).concat(list.slice(0,Math.max(0,i)));
+  const nx=order.find(c=>miaReady(c)&&(!CUR||c.chat_jid!==CUR.chat_jid));
+  if(nx){ openThread(nx.chat_jid); return; }
+  const n=$('tReplyNote'); if(n){ n.className='replyNote'; n.textContent='No other "Needs reply" chat has a MIA suggestion ready yet.'; }
+}
+function liveAfterChange(){ miaBgScan(); }
 
 async function boot(){
   try{ ALERTS = localStorage.getItem('gl_crm_alerts')==='1' && Notification.permission==='granted'; }catch(e){}
