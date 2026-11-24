@@ -2,7 +2,7 @@
   gl-wa-media — opens ONE voice note / photo when staff press Play in the CRM.
   Nothing is downloaded in bulk: only rows staff asked for in gl_wa_media_req.
   Off unless MEDIA_ENABLED=1 in .env. Never sends anything to WhatsApp.
-  Flow: queued row -> wacli media download (one file) -> private bucket gl-wa-media -> row 'done'.
+  Flow: queued row -> wacli media download (one file) -> private bucket gl-wa-media (Supabase, or R2 via gl-api when BACKEND=cloudflare) -> row 'done'.
 */
 import { spawnSync } from 'node:child_process';
 import { mkdtempSync, readdirSync, readFileSync, statSync, rmSync } from 'node:fs';
@@ -14,11 +14,12 @@ const MIME = { '.ogg':'audio/ogg', '.opus':'audio/ogg', '.oga':'audio/ogg', '.mp
 const MAX_BYTES = 25 * 1024 * 1024;
 const MAX_ATTEMPTS = 3;
 
-export function createMedia({ env, api, log, wacli, account, supabaseUrl, anon, getToken, relogin }) {
+export function createMedia({ env, api, log, wacli, account, supabaseUrl, anon, getToken, relogin, cfUpload = null }) {
   const ENABLED = /^(1|true|yes|on)$/i.test(String(env.MEDIA_ENABLED || ''));
   let busy = false, timer = null;
 
   async function upload(name, buf, mime, retry = true) {
+    if (cfUpload) { await cfUpload(name, buf, mime); return; }   // BACKEND=cloudflare: file goes to R2 (gl-wa-media bucket) via gl-api
     const r = await fetch(`${supabaseUrl}/storage/v1/object/gl-wa-media/${encodeURIComponent(name)}`, {
       method: 'POST',
       headers: { apikey: anon, Authorization: `Bearer ${getToken()}`, 'Content-Type': mime },

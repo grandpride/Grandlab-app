@@ -48,7 +48,17 @@ const ACCOUNT = ENV.WACLI_ACCOUNT || '';
 const POLL  = Math.max(10, Number(ENV.POLL_SECONDS || 30));
 const BATCH = Math.max(1, Number(ENV.BATCH_LIMIT || 300));
 
-for (const [k, v] of Object.entries({ SUPABASE_URL, SUPABASE_ANON: ANON, GL_EMAIL: EMAIL, GL_PASSWORD: PASS }))
+/* BACKEND = which Grandlab database the bridge writes to.
+     supabase   (default, empty) the laptop's Supabase - exactly as before
+     cloudflare (or cf)          the new system (gl-api on Cloudflare), switch night only. See README "Switch night". */
+const BACKEND_RAW = String(ENV.BACKEND || '').trim().toLowerCase();
+if (!['', 'supabase', 'cf', 'cloudflare'].includes(BACKEND_RAW)) die('BACKEND in .env must be "supabase" or "cloudflare" (got "' + BACKEND_RAW + '").');
+const BACKEND = (BACKEND_RAW === 'cf' || BACKEND_RAW === 'cloudflare') ? 'cloudflare' : 'supabase';
+const GL_API_BASE = (ENV.GL_API_BASE || 'https://gl-api.jimmykuek94.workers.dev').replace(/\/+$/, '');
+
+for (const [k, v] of Object.entries(BACKEND === 'cloudflare'
+  ? { GL_EMAIL: EMAIL, GL_PASSWORD: PASS, GL_API_BASE }
+  : { SUPABASE_URL, SUPABASE_ANON: ANON, GL_EMAIL: EMAIL, GL_PASSWORD: PASS }))
   if (!v) die(`Missing ${k} in .env`);
 
 function die(msg) { console.error('\n  ' + msg + '\n'); try{ logLine('STOPPED: '+msg); }catch(e){} process.exit(1); }
@@ -183,7 +193,13 @@ function normalise(m) {
 /* ---------- Supabase ---------- */
 
 let TOKEN = null;
+// BACKEND=cloudflare: the same four calls (login, api, media upload, MIA) go to gl-api instead (gl-wa-cf.mjs).
+// Loaded only then, so with BACKEND=supabase nothing below changes.
+const CF = BACKEND === 'cloudflare'
+  ? (await import('./gl-wa-cf.mjs')).createCf({ base: GL_API_BASE, email: EMAIL, password: PASS, log: (...a) => { try { logLine(a.join(' ')); } catch (e) {} } })
+  : null;
 async function login() {
+  if (CF) { try { TOKEN = await CF.login(); } catch (e) { die(String(e.message || e) + '\n  Check GL_EMAIL and GL_PASSWORD in .env (the same reception login works on the new system).'); } return; }
   const r = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
     method: 'POST',
     headers: { apikey: ANON, 'Content-Type': 'application/json' },
@@ -197,6 +213,7 @@ async function login() {
 }
 
 async function api(path, { method = 'GET', body, prefer } = {}, retry = true) {
+  if (CF) return CF.api(path, { method, body, prefer });
   const r = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
     method,
     headers: {
@@ -437,6 +454,7 @@ async function sendQueued() {
    drafts go through gl_wa_outbox and sendQueued() above, with all its limits. */
 
 async function miaCall(messages, retry = true) {
+  if (CF) return CF.miaCall(messages);
   const r = await fetch(`${SUPABASE_URL}/functions/v1/mia`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', apikey: ANON, Authorization: `Bearer ${TOKEN}` },
@@ -462,7 +480,8 @@ const WD = createWatchdog({
 });
 
 const PUSHER = createPush({ env: ENV, api, log });
-const MEDIA = createMedia({ env: ENV, api, log, wacli: WACLI, account: ACCOUNT, supabaseUrl: SUPABASE_URL, anon: ANON, getToken: () => TOKEN, relogin: login });
+const MEDIA = createMedia({ env: ENV, api, log, wacli: WACLI, account: ACCOUNT, supabaseUrl: SUPABASE_URL, anon: ANON, getToken: () => TOKEN, relogin: login,
+  cfUpload: CF ? (name, buf, mime) => CF.upload('gl-wa-media', name, buf, mime) : null });
 
 /* ---------- commands ---------- */
 
@@ -491,7 +510,7 @@ if (cmd === 'probe') {
 if (!['run', 'backfill'].includes(cmd)) die(`Unknown command "${cmd}". Use probe, backfill or run.`);
 
 await login();
-log('signed in to Grandlab');
+log(BACKEND === 'cloudflare' ? `signed in to Grandlab (NEW system, ${GL_API_BASE})` : 'signed in to Grandlab');
 
 if (cmd === 'backfill') {
   /* A one-shot sync, but never an open-ended one. Some versions of wacli keep
