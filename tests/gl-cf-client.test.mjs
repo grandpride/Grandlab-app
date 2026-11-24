@@ -535,6 +535,30 @@ test('PWA: booking slot counts on the new system -> rpc gl_slot_counts with the 
   assert.equal((src.match(/if\(window\.GLCF_PAGE\)\{\s*\/\* new system/g) || []).length, 2, 'both only when the new system is on');
   assert.ok(/gl_orders\?select=appointment_time&appointment_date=eq/.test(src) && /gl_orders\?select=id&appointment_date=eq/.test(src), 'old reads kept for the current system');
 });
+test('supabase-js writes: a link the page built to the OLD storage (QC add-on / SA quote / warranty photo) is saved as a gl/storage key; other values untouched', async () => {
+  const L = (b, p) => SB + '/storage/v1/object/public/' + b + '/' + p;
+  const sb = signedIn();
+  await sb.from('gl_sa_quotes').update({ front_photo: L('sa-quotes', 'q1/front_1.jpg'), issues: [{ remark: 'dent', photo: L('sa-quotes', 'q1/find_1_1.jpg') }], note: 'see ' + L('sa-quotes', 'x.jpg') + ' ok', status: 'sent' }).eq('id', 'q1');
+  let b = dbBody();
+  assert.equal(b.values.front_photo, 'gl/storage/sa-quotes/q1/front_1.jpg');
+  assert.deepEqual(b.values.issues, [{ remark: 'dent', photo: 'gl/storage/sa-quotes/q1/find_1_1.jpg' }]);
+  assert.equal(b.values.note, 'see ' + L('sa-quotes', 'x.jpg') + ' ok', 'a link inside longer text is not a whole value: left alone');
+  assert.equal(b.values.status, 'sent');
+  const w = signedIn();
+  await w.from('gl_warranties').insert({ cert_no: 'W1', photos: [L('gl-images', 'warranty-1-a.jpg'), 'gl/storage/gl-images/old.jpg'] });
+  assert.deepEqual(dbBody().values.photos, ['gl/storage/gl-images/warranty-1-a.jpg', 'gl/storage/gl-images/old.jpg']);
+  const r = signedIn(); reply({ data: { ok: true }, error: null });
+  await r.rpc('qc_addon_create', { p_id: 'u1', p_front: L('sa-quotes', 'qc/u1/front_1.jpg'), p_issues: [{ photo: L('sa-quotes', 'qc/u1/find_1_1.jpg'), remark: 'scratch' }], p_plate: 'ABC1234' });
+  assert.equal(calls[0].url, API + '/gl/api/rpc/qc_addon_create');
+  assert.equal(calls[0].body.p_front, 'gl/storage/sa-quotes/qc/u1/front_1.jpg');
+  assert.deepEqual(calls[0].body.p_issues, [{ photo: 'gl/storage/sa-quotes/qc/u1/find_1_1.jpg', remark: 'scratch' }]);
+  assert.equal(calls[0].body.p_plate, 'ABC1234');
+  const plain = { a: 1, b: ['x'] };
+  assert.equal(GLCF.oldLinksToKeys(plain), plain, 'no storage link: the very same object');
+  const n = signedIn();
+  await n.from('gl_jobs').update({ remark: 'hello' }).eq('id', 1);
+  assert.deepEqual(dbBody().values, { remark: 'hello' });
+});
 test('PWA: review-proof upload -> storage upload, and the saved old-style link becomes a gl/storage key', async () => {
   const c = cust(); store.set('gl_ba_token_cust', 't');
   reply({ data: { path: 'u/t_1_a.png', fullPath: 'gl-review-proofs/u/t_1_a.png', signedUrl: API + '/gl/files/x?exp=1&sig=2' }, error: null });
