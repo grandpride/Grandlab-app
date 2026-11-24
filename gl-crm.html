@@ -195,6 +195,19 @@ table.t2 tbody tr:hover{background:var(--sel);cursor:pointer}
   .nav .pill,.nav .ext{margin-left:5px}
 }
 @media(max-width:700px){ .col{flex:0 0 84vw;min-width:84vw;max-width:84vw} }
+/* Phone mode (24 Nov, additive): one column list, big tap targets, no zoom on the reply box */
+@media(max-width:700px){
+  .board{flex-direction:column;overflow-x:visible;padding:8px}
+  .col{flex:none;width:100%;min-width:0;max-width:none}
+  .card{padding:12px}
+  .mvbtn,.mia .lg,.sortbar button{min-height:36px}
+  .btn-xs{min-height:34px}
+  #tBox{font-size:16px;min-height:52px}
+  .panel{width:100%}
+  .slashmenu .si{padding:12px 10px}
+  #liveDot{bottom:62px}
+  .nlbox .nllist{grid-template-columns:1fr}
+}
 
 /* ---- surface refresh -------------------------------------------------
    Laid out like the CRM dashboards Jimmy referenced: a soft page behind
@@ -474,7 +487,7 @@ function LEADS(){
 /* Bumped whenever this page changes, and shown at the bottom of the sidebar.
    GitHub Pages and an installed app both cache hard, so without this there is
    no way to tell "the fix is not deployed" from "the fix does not work". */
-const BUILD='2026-11-24j';
+const BUILD='2026-11-24k';
 
 function drawNav(){
   $('side').innerHTML = NAV.map(n=>{
