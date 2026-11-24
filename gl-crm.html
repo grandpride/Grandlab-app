@@ -380,6 +380,7 @@ table.t2 tbody tr:hover{background:var(--blue-soft)}
       <div id="vReports" class="pad hide"></div>
       <div id="vAds"     class="pad hide"></div>
       <div id="vTasks"   class="pad hide"></div>
+      <div id="vLearn"   class="pad hide"></div>
       <div id="vSet"     class="pad hide"></div>
       <div id="vSoon"    class="pad hide"></div>
 
@@ -444,6 +445,7 @@ const NAV=[
   {grp:'Business'},
   {id:'ads',      ico:'&#9670;', label:'Ads'},
   {id:'reports',  ico:'&#9650;', label:'Reports'},
+  {id:'learn',    ico:'&#9733;', label:'MIA Learning'},
   {id:'calendar', ico:'&#9633;', label:'Booking',   href:'gl-staff-appointment-FINAL.html'},
   {id:'tasks',    ico:'&#10003;', label:'Tasks', count:()=>TASKS.filter(t=>!t.done&&dueSoon(t)).length, hot:true},
   {id:'autom',    ico:'&#8635;', label:'Automation', soon:'Rules like "nobody replied in 2 hours - tell reception" and "quiet for 7 days - suggest a follow-up".'},
@@ -465,7 +467,7 @@ function LEADS(){
 /* Bumped whenever this page changes, and shown at the bottom of the sidebar.
    GitHub Pages and an installed app both cache hard, so without this there is
    no way to tell "the fix is not deployed" from "the fix does not work". */
-const BUILD='2026-11-24g';
+const BUILD='2026-11-24h';
 
 function drawNav(){
   $('side').innerHTML = NAV.map(n=>{
@@ -484,7 +486,7 @@ function drawNav(){
 function go(id){
   VIEW=id;
   const soon=(NAV.find(n=>n.id===id)||{}).soon;
-  for(const v of ['vPipeline','vDash','vLeads','vReports','vAds','vTasks','vSet','vSoon'])
+  for(const v of ['vPipeline','vDash','vLeads','vReports','vAds','vTasks','vSet','vSoon','vLearn'])
     $(v).classList.add('hide');
   if(id==='settings'){ $('vSet').classList.remove('hide'); renderSettings(); }
   else if(soon){
@@ -496,6 +498,7 @@ function go(id){
   else if(id==='reports')   { $('vReports').classList.remove('hide'); renderReports(); }
   else if(id==='tasks')     { $('vTasks').classList.remove('hide');   renderTasks(); }
   else if(id==='ads')       { $('vAds').classList.remove('hide');     renderAds(); }
+  else if(id==='learn')     { $('vLearn').classList.remove('hide');   renderLearn(); }
   else                      { $('vPipeline').classList.remove('hide'); }
   drawNav();
   try{ location.hash=id; }catch(e){}
@@ -2455,6 +2458,163 @@ function miaNextReady(){
   const n=$('tReplyNote'); if(n){ n.className='replyNote'; n.textContent='No other "Needs reply" chat has a MIA suggestion ready yet.'; }
 }
 function liveAfterChange(){ miaBgScan(); }
+
+/* ---------------------------------------------------------------------------
+   MIA LEARNING (24 Nov). The Deck is what customers get told, so it only ever
+   changes with Jimmy's tap:
+     1. real customer questions + what staff really sent (gl_crm_mia_log) are
+        grouped by topic here;
+     2. "Make Deck card" writes a DRAFT into gl_deck with hidden=true, so MIA and
+        the Deck app cannot see it;
+     3. only "Publish" on a draft sets hidden=false. Nothing is ever deleted;
+        "Reject" just files it away.
+   --------------------------------------------------------------------------- */
+const LTOPICS=[
+ ['Job / vacancy',/kerja kosong|vacancy|jawatan|hiring|part ?time/i],
+ ['Warranty',/warranty|waranti|jaminan|guarantee|保固|保修/i],
+ ['Payment',/bayar|payment|\bpay\b|instal|\btng\b|card|transfer|deposit|ewallet|duitnow/i],
+ ['Promo / discount',/promo|discount|kurang|offer|diskaun|murah|cheaper/i],
+ ['Coating',/coating|ceramic|cancoat|mohs|infinite|nano|gyeon|镀膜/i],
+ ['PPF',/\bppf\b|paint protection/i],
+ ['Tint',/\btint|solar|film/i],
+ ['Wrap',/\bwrap|colour|color|warna/i],
+ ['Polish / scratch',/polish|scratch|calar|swirl|buff|paint correction/i],
+ ['Wash / interior',/\bwash|cuci|interior|detailing|seat|\bbau\b/i],
+ ['How long it takes',/berapa lama|how long|duration|\blama\b|siap/i],
+ ['Location / address',/lokasi|location|alamat|address|\bwhere\b|kat mana|di mana|waze|哪里/i],
+ ['Opening hours',/\bbuka\b|\bopen\b|tutup|operating|what time|pukul|opening/i],
+ ['Booking / slot',/\bbook|appointment|\bslot\b|available|esok|tomorrow|weekend|sabtu|ahad|预约/i],
+ ['Price / how much',/harga|berapa|price|how much|\bcost\b|\brate\b|quote|\brm ?\d|价/i]
+];
+let LEARN={rows:null,deck:null,busy:false,msg:'',edit:null};
+function learnState(){ try{ return JSON.parse(localStorage.getItem('gl_crm_learn_state')||'{}'); }catch(e){ return {}; } }
+function learnSet(t,v){ const st=learnState(); if(v) st[t]=v; else delete st[t]; try{ localStorage.setItem('gl_crm_learn_state',JSON.stringify(st)); }catch(e){} renderLearn(); }
+const LPRICE=/harga|berapa|price|how much|\bcost\b|\brate\b|quote|\brm ?\d|价/i;
+const LSERV=['Coating','PPF','Tint','Wrap','Polish / scratch','Wash / interior'];
+function learnTopic(q){
+  if(LPRICE.test(q)){ const sv=LTOPICS.find(([n,re])=>LSERV.includes(n)&&re.test(q)); return sv?('Price \u00b7 '+sv[0]):'Price / how much'; }
+  for(const [n,re] of LTOPICS) if(re.test(q)) return n; return null; }
+function learnRe(topic){
+  if(topic.indexOf('Price \u00b7 ')===0){ const sv=LTOPICS.find(x=>x[0]===topic.slice(8)); return sv?new RegExp('(?=.*(?:'+LPRICE.source+'))(?=.*(?:'+sv[1].source+'))','i'):LPRICE; }
+  return (LTOPICS.find(x=>x[0]===topic)||[])[1]; }
+async function learnLoad(){
+  if(LEARN.busy) return; LEARN.busy=true; LEARN.msg='Loading…'; renderLearn();
+  try{
+    const [a,b]=await Promise.all([sb.rpc('gl_crm_mia_learn',{p_days:60}),
+      sb.from('gl_deck').select('slug,tab,grp,title,triggers,hidden,content,sort,updated_at').order('sort',{ascending:true}).limit(500)]);
+    if(a.error) throw a.error; if(b.error) throw b.error;
+    LEARN.rows=a.data||[]; LEARN.deck=b.data||[]; LEARN.msg='';
+  }catch(e){ LEARN.msg='Could not load: '+(e.message||e); }
+  LEARN.busy=false; renderLearn();
+}
+function learnGroups(){
+  const g={};
+  (LEARN.rows||[]).forEach(r=>{
+    const q=String(r.question_clean||'').trim(); if(q.length<4) return;
+    const t=learnTopic(q); if(!t) return;
+    const x=g[t]||(g[t]={topic:t,n:0,replies:[],phr:[],as_is:0,edited:0,own:0,crm:0});
+    x.n++;
+    if(!x.phr.includes(q.slice(0,90))&&x.phr.length<40) x.phr.push(q.slice(0,90));
+    const sr=String(r.sent_clean||'').trim(); if(sr.length>=20) x.replies.push({t:sr,ts:r.ts});
+    if(r.source==='crm'){ x.crm++; if(r.used==='as_is')x.as_is++; else if(r.used==='edited')x.edited++; else if(r.used==='own_words')x.own++; }
+  });
+  return Object.values(g).sort((a,b)=>b.n-a.n);
+}
+function learnCovered(topic){
+  const re=learnRe(topic); if(!re) return [];
+  return (LEARN.deck||[]).filter(c=>c.tab==='replies'&&!c.hidden&&re.test(String(c.title||'')+' '+((c.triggers||[]).join(' ')))).map(c=>c.slug);
+}
+function learnDrafts(){ return (LEARN.deck||[]).filter(c=>c.hidden&&String(c.grp||'')==='learned'); }
+async function learnMake(topic){
+  const g=learnGroups().find(x=>x.topic===topic); if(!g) return;
+  const reps=g.replies.slice().sort((a,b)=>new Date(b.ts)-new Date(a.ts)).filter(r=>r.t.length<=900);
+  if(!reps.length){ LEARN.msg='No real staff reply found for this topic yet.'; return renderLearn(); }
+  const base=reps[0].t.replace(/\[name\]/g,'{H}');
+  const lang=miaGuessLang(base);
+  const say={en:'',bm:'',zh:''}; say[lang]=base;
+  const shortest=reps.map(r=>r.t.replace(/\[name\]/g,'{H}')).sort((a,b)=>a.length-b.length)[0];
+  const sh={en:'',bm:'',zh:''}; sh[miaGuessLang(shortest)]=shortest;
+  const slug='l-'+topic.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')+'-'+new Date().toISOString().slice(0,10).replace(/-/g,'');
+  const maxSort=Math.max(0,...(LEARN.deck||[]).filter(c=>c.tab==='replies').map(c=>c.sort||0));
+  const phr=g.phr.filter(x=>x.length<=60).slice(0,8);
+  const row={tab:'replies',grp:'learned',slug,title:'"'+(phr[0]||topic)+'"',subtitle:'DRAFT from '+g.n+' real chats ('+topic+') - check every number before Publish',
+    sort:maxSort+1,kb_keys:[],triggers:phr,hidden:true,
+    content:{say,why:'Drafted from what staff really sent to this question. Written in the language they used; the other languages are empty, ask MIA to translate once you are happy with the wording.',
+      alts:{short:sh,push:{en:'',bm:'',zh:''}},avoid:['Quoting a price you have not checked against the catalogue'],
+      notes:['Real customer wording: '+g.phr.slice(0,6).join(' | '),'Needs Jimmy approval. Remove any customer-specific detail before Publish.']}};
+  const {error}=await sb.from('gl_deck').insert(row);
+  LEARN.msg=error?('Could not save draft: '+error.message):'Draft saved (hidden, not live). Scroll to "Draft cards waiting for you".';
+  await learnLoad();
+}
+async function learnPublish(slug){
+  if(!confirm('Publish this card? MIA and the Deck will use it with customers straight away.')) return;
+  const {error}=await sb.from('gl_deck').update({hidden:false,grp:'learned-live'}).eq('slug',slug);
+  LEARN.msg=error?('Could not publish: '+error.message):'Published. It is live in the Deck now (MIA sees it within 5 minutes).';
+  await learnLoad();
+}
+async function learnReject(slug){
+  const {error}=await sb.from('gl_deck').update({hidden:true,grp:'learned-rejected'}).eq('slug',slug);
+  LEARN.msg=error?('Could not reject: '+error.message):'Rejected (kept, hidden, never deleted).';
+  await learnLoad();
+}
+async function learnSaveEdit(slug){
+  const c=(LEARN.deck||[]).find(x=>x.slug===slug); if(!c) return;
+  const content=JSON.parse(JSON.stringify(c.content||{})); content.say=content.say||{};
+  ['en','bm','zh'].forEach(l=>{ const el=$('le_'+l); if(el) content.say[l]=el.value; });
+  const {error}=await sb.from('gl_deck').update({title:$('le_title').value,content}).eq('slug',slug);
+  LEARN.edit=null; LEARN.msg=error?('Could not save: '+error.message):'Saved (still a hidden draft).';
+  await learnLoad();
+}
+function renderLearn(){
+  const el=$('vLearn'); if(!el) return;
+  if(!LEARN.rows&&!LEARN.busy){ learnLoad(); }
+  const st=learnState();
+  const groups=learnGroups();
+  const drafts=learnDrafts();
+  const total=(LEARN.rows||[]).length, crm=(LEARN.rows||[]).filter(r=>r.source==='crm').length;
+  let h='<div class="h1">MIA Learning</div><div class="h1s">Real customer questions and what the team really answered. Nothing here changes the Deck by itself.</div>'
+   +'<div class="cards">'+kpi(total,'Questions logged','last 60 days (history + live)','','&#9733;','#EEF3FE')
+   +kpi(crm,'With a MIA suggestion','logged live since today','','&#9679;','#DCFCE7')
+   +kpi(drafts.length,'Drafts waiting','hidden, not live','','&#9998;','#FEF3C7')+'</div>';
+  if(LEARN.msg) h+='<div class="note" style="margin:8px 0">'+esc(LEARN.msg)+'</div>';
+  h+='<div class="panel2" style="margin-bottom:14px"><div class="pt">Draft cards waiting for you ('+drafts.length+')</div>';
+  if(!drafts.length) h+='<div style="padding:10px 14px;color:var(--text2);font-size:12px">No drafts. Press "Make Deck card" on a topic below.</div>';
+  drafts.forEach(c=>{
+    const say=(c.content&&c.content.say)||{}; const j=JSON.stringify(c.slug).replace(/"/g,'&quot;');
+    h+='<div style="padding:10px 14px;border-top:1px solid var(--line2)"><b>'+esc(c.title)+'</b> <span style="color:var(--text2);font-size:11px">'+esc(c.subtitle||'')+'</span>';
+    if(LEARN.edit===c.slug){
+      h+='<div style="margin-top:6px"><input id="le_title" style="width:100%" value="'+esc(c.title)+'">'
+        +['en','bm','zh'].map(l=>'<div style="font-size:11px;margin-top:4px">'+l.toUpperCase()+'</div><textarea id="le_'+l+'" rows="4" style="width:100%">'+esc(say[l]||'')+'</textarea>').join('')
+        +'<button class="btn btn-xs" onclick="learnSaveEdit('+j+')">Save</button> <button class="btn btn2 btn-xs" onclick="LEARN.edit=null;renderLearn()">Cancel</button></div>';
+    }else{
+      h+=['en','bm','zh'].filter(l=>say[l]).map(l=>'<div style="white-space:pre-wrap;font-size:12px;margin:6px 0;padding:6px 8px;background:var(--card);border:1px solid var(--line2);border-radius:6px"><b>'+l.toUpperCase()+'</b> '+esc(say[l])+'</div>').join('')
+        +'<div style="font-size:11px;color:var(--text2)">Triggers: '+esc((c.triggers||[]).join(' | '))+'</div>'
+        +'<div style="margin-top:6px"><button class="btn btn-xs" onclick="learnPublish('+j+')">Publish (goes live)</button> '
+        +'<button class="btn btn2 btn-xs" onclick="LEARN.edit='+j+';renderLearn()">Edit</button> '
+        +'<button class="btn btn2 btn-xs" onclick="learnReject('+j+')">Reject</button></div>';
+    }
+    h+='</div>';
+  });
+  h+='</div><div class="panel2"><div class="pt">Questions customers keep asking</div>';
+  if(!LEARN.rows) h+='<div style="padding:12px 14px;color:var(--text2)">Loading…</div>';
+  let hidden=0;
+  groups.forEach(g=>{
+    if(st[g.topic]){ hidden++; return; }
+    const cov=learnCovered(g.topic); const t=JSON.stringify(g.topic).replace(/"/g,'&quot;');
+    const last=g.replies.slice().sort((a,b)=>new Date(b.ts)-new Date(a.ts))[0];
+    h+='<div style="padding:10px 14px;border-top:1px solid var(--line2)"><b>'+esc(g.topic)+'</b> &middot; asked <b>'+g.n+'</b>&times; &middot; staff answered '+g.replies.length+'&times;'
+      +(g.crm?' &middot; MIA used as-is '+g.as_is+', edited '+g.edited+', own words '+g.own:'')
+      +' &middot; '+(cov.length?'<span class="chip rdy">Deck: '+esc(cov.slice(0,3).join(', '))+'</span>':'<span class="chip bad">No Deck card</span>')
+      +'<div style="font-size:11.5px;color:var(--text2);margin-top:4px">Customers wrote: '+g.phr.slice(0,5).map(x=>'&ldquo;'+esc(x)+'&rdquo;').join(' &middot; ')+'</div>'
+      +(last?'<div style="font-size:11.5px;margin-top:4px;padding:6px 8px;background:var(--card);border:1px solid var(--line2);border-radius:6px;white-space:pre-wrap"><b>Staff really sent:</b> '+esc(last.t.slice(0,320))+(last.t.length>320?'…':'')+'</div>':'')
+      +'<div style="margin-top:6px"><button class="btn btn-xs" onclick="learnMake('+t+')">Make Deck card</button> '
+      +'<button class="btn btn2 btn-xs" onclick="learnSet('+t+',\'covered\')">Already covered</button> '
+      +'<button class="btn btn2 btn-xs" onclick="learnSet('+t+',\'ignored\')">Ignore</button></div></div>';
+  });
+  if(hidden) h+='<div style="padding:8px 14px;font-size:11.5px;color:var(--text2)">'+hidden+' topic(s) marked covered/ignored on this device. <a href="#learn" onclick="try{localStorage.removeItem(\'gl_crm_learn_state\')}catch(e){};renderLearn();return false">Show them again</a></div>';
+  h+='</div>';
+  el.innerHTML=h;
+}
 
 async function boot(){
   try{ ALERTS = localStorage.getItem('gl_crm_alerts')==='1' && Notification.permission==='granted'; }catch(e){}

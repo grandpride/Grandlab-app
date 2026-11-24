@@ -26,6 +26,7 @@ function Q(table){
     const t=window.__DB[table]||(window.__DB[table]=[]);
     if(q.op==='insert'){ (Array.isArray(q.payload)?q.payload:[q.payload]).forEach(r=>t.push(Object.assign({id:t.length+1,status:'queued',created_at:new Date().toISOString()},r))); return {data:null,error:null}; }
     let rows=t.filter(r=>q.filters.every(f=>f(r)));
+    if(q.op==='update'){ rows.forEach(r=>Object.assign(r,q.payload)); return {data:null,error:null}; }
     if(q.ord){const [c,asc]=q.ord;rows=rows.slice().sort((a,b)=>{const x=a[c]||'',y=b[c]||'';return (x<y?-1:x>y?1:0)*(asc?1:-1);});}
     if(q.lim!=null) rows=rows.slice(0,q.lim);
     rows=rows.map(r=>Object.assign({},r));
