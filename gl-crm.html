@@ -427,6 +427,7 @@ table.t2 tbody tr:hover{background:var(--blue-soft)}
     <div class="mia hide" id="tBook" style="background:#E0F2FE;border-color:#7DD3FC"></div>
     <div class="mia hide" id="tMaint" style="background:#F3E8FF;border-color:#D8B4FE"></div>
     <div class="mia hide" id="tAppt" style="background:#E8F8EE;border-color:#9AD9B0"></div>
+    <div class="mia hide" id="tFollow" style="background:#FFF6E0;border-color:#F0D58A"></div>
     <div class="mia hide" id="tMia"></div>
     <div class="thread" id="tThread"></div>
     <div class="whois" id="tWhoWrap"></div>
@@ -491,7 +492,7 @@ function LEADS(){
 /* Bumped whenever this page changes, and shown at the bottom of the sidebar.
    GitHub Pages and an installed app both cache hard, so without this there is
    no way to tell "the fix is not deployed" from "the fix does not work". */
-const BUILD='2026-11-24q';
+const BUILD='2026-11-24r';
 
 function drawNav(){
   $('side').innerHTML = NAV.map(n=>{
@@ -814,7 +815,7 @@ function cardHtml(c,col){
           : (Number(c.paid_rm)>0?'<span class="chip rm">'+esc(RM(c.paid_rm))+'</span>':'')))
       +adBtnHtml(c.chat_jid)
       +((col==='reply'||col==='waiting')?miaChipHtml(c):'')
-      +maintChip(c)+apptChip(c)
+      +maintChip(c)+apptChip(c)+followChip(c)
       +(col==='notlead'?'<span class="chip nlr">'+esc(NL_LABEL[c.not_lead_reason]||'Not a lead')+'</span>':nlHintChip(c))
       +(light==='new'?'<span class="chip fresh">NEW</span>':'')
       +(s==='closed'?'<span class="chip chk">closed by you</span>':'')
@@ -997,7 +998,7 @@ async function load(){
     LEADINFO={};
     try{ const {data:li}=await sb.rpc('gl_crm_lead_info');
          (li||[]).forEach(x=>{ LEADINFO[x.chat_jid]=x; }); }catch(e){}
-    await loadMaint(); await loadAppt();
+    await loadMaint(); await loadAppt(); await loadFollow();
     await loadTemplates(); await loadAutoBook();
     try{ const {data:nh,error:ne}=await sb.rpc('gl_crm_notlead_hint'); if(!ne&&Array.isArray(nh)){ NLHINT={}; nh.forEach(x=>{ if(x.reason) NLHINT[x.chat_jid]=x; }); } }catch(e){}
     try{ const {data:ad}=await sb.rpc('gl_crm_ads',{p_days:ADDAYS}); ADS=ad||[]; }catch(e){ ADS=[]; }
@@ -1046,7 +1047,7 @@ async function openThread(jid){
   $('tThread').innerHTML='<div class="msg sys">Loading…</div>';
   $('tBox').value=''; $('tReplyNote').textContent=''; $('tReplyNote').className='replyNote';
   miaReset();
-  drawMaint(); drawAppt();
+  drawMaint(); drawAppt(); drawFollow();
   drawBook();
   { const ta=$('tAd'); if(ta){ ta.dataset.open='0'; } drawThreadAd(); }
   drawWho();
@@ -2822,6 +2823,57 @@ function apptFill(lang){
   APPT_SEEN[a.id]=1; try{ localStorage.setItem('gl_crm_appt_rem',JSON.stringify(APPT_SEEN)); }catch(e){}
   $('tReplyNote').className='replyNote'; $('tReplyNote').textContent='Appointment reminder is in the box. Read it, then press Send.';
   box.focus(); drawAppt();
+}
+
+/* AFTER-JOB FOLLOW-UP (draft only). A job finished (stage 'done') in the last 4 days, at least 3 hours ago,
+   is matched to its chat by phone (last 8 digits). The chat gets a tag and a panel that fills the reply box
+   with a thank-you + review request. A person reads it and presses Send. Nothing is sent by itself. */
+const REVIEW_URL='https://g.page/r/CQuFOKTEdhA9EBM/review';
+let FOLLOW={};
+const FOLLOW_SEEN=(()=>{ try{ return JSON.parse(localStorage.getItem('gl_crm_follow')||'{}'); }catch(e){ return {}; } })();
+function titleCase(t){ return String(t||'').toLowerCase().replace(/\b[a-z]/g,m=>m.toUpperCase()).trim(); }
+async function loadFollow(){
+  try{
+    const since=new Date(Date.now()-4*864e5).toISOString(), until=new Date(Date.now()-3*3600e3).toISOString();
+    const {data,error}=await sb.from('gl_jobs').select('id,name,hp,plate,model,services,stage,updated_at').eq('stage','done').gte('updated_at',since).lte('updated_at',until).order('updated_at',{ascending:false}).limit(120);
+    if(error||!Array.isArray(data)) return;
+    const byKey={}; CHATS.forEach(c=>{ const k=String(c.phone||'').replace(/\D/g,'').slice(-8); if(k.length>=7) byKey[k]=c; });
+    FOLLOW={};
+    data.forEach(j=>{
+      const k=String(j.hp||'').replace(/\D/g,'').slice(-8); const c=k.length>=7&&byKey[k]; if(!c) return;
+      const sv=(Array.isArray(j.services)?j.services:[]).map(x=>x&&x.desc).filter(Boolean).slice(0,2).join(' + ');
+      if(!FOLLOW[c.chat_jid]) FOLLOW[c.chat_jid]={id:j.id,at:j.updated_at,name:titleCase(j.name),car:titleCase(j.model),plate:j.plate||'',service:sv};
+    });
+  }catch(e){}
+}
+function followText(c,f,lang){
+  const nm=f.name||(c.name&&String(c.name).trim())||''; const car=f.car||'kereta anda'; const sv=f.service;
+  if(lang==='bm') return 'Hai'+(nm?' '+nm:'')+', terima kasih pilih Grandlab! \u{1F64F} '+car+(sv?' ('+sv+')':'')+' dah siap. Kalau ada apa2 yang tak kena, bagitau kami kat sini ye. Kalau berpuas hati, boleh tolong bagi review Google, sangat membantu kami: '+REVIEW_URL;
+  if(lang==='zh') return (nm?nm+' ':'老板')+'好哦 \u{1F60A} 谢谢你选择 Grandlab！你的'+(f.car||'车')+(sv?'（'+sv+'）':'')+'已经做好了。如果有任何地方不满意，直接跟我们说就可以哦。如果满意的话，可以帮我们留个 Google review 吗？真的很有帮助：'+REVIEW_URL;
+  return 'Hi'+(nm?' '+nm:'')+', thank you for choosing Grandlab! \u{1F64F} Your '+(f.car||'car')+(sv?' ('+sv+')':'')+' is done. If anything does not look right, just message us here and we will sort it out. If you are happy with the result, a quick Google review would really help us: '+REVIEW_URL;
+}
+function followDays(f){ return Math.max(0,Math.floor((Date.now()-new Date(f.at).getTime())/864e5)); }
+function followChip(c){
+  const f=FOLLOW[c.chat_jid]; if(!f) return '';
+  const d=followDays(f);
+  return '<span class="chip nlr" style="background:#FFEFC2" title="'+esc(f.service||'Job done')+'">Job done '+(d===0?'today':d+'d ago')+(FOLLOW_SEEN[f.id]?' &#10003;':'')+'</span>';
+}
+function drawFollow(){
+  const el=$('tFollow'); if(!el) return;
+  const f=CUR&&FOLLOW[CUR.chat_jid];
+  if(!f){ el.classList.add('hide'); el.innerHTML=''; return; }
+  const d=followDays(f);
+  el.classList.remove('hide');
+  el.innerHTML='<div class="mh"><b>Job finished '+(d===0?'today':d+' day'+(d>1?'s':'')+' ago')+'</b><span>'+esc(f.service||'')+(f.plate?' &middot; '+esc(f.plate):'')+(FOLLOW_SEEN[f.id]?' &middot; follow-up prepared':'')+'</span><span class="sp"></span>'
+    +'<button class="lg" onclick="followFill(\'en\')">Thank-you + review EN</button><button class="lg" onclick="followFill(\'bm\')">BM</button><button class="lg" onclick="followFill(\'zh\')">中文</button></div>'
+    +'<div class="why">Puts a thank-you and Google review request in the reply box. Read it, change anything, then press Send. Nothing is sent by itself.</div>';
+}
+function followFill(lang){
+  const f=CUR&&FOLLOW[CUR.chat_jid]; if(!f) return;
+  const box=$('tBox'); box.value=followText(CUR,f,lang);
+  FOLLOW_SEEN[f.id]=1; try{ localStorage.setItem('gl_crm_follow',JSON.stringify(FOLLOW_SEEN)); }catch(e){}
+  $('tReplyNote').className='replyNote'; $('tReplyNote').textContent='Follow-up is in the box. Read it, then press Send.';
+  box.focus(); drawFollow();
 }
 
 /* ---------------------------------------------------------------------------
