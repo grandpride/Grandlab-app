@@ -94,6 +94,7 @@ input:focus{outline:none;border-color:var(--gold-ink)}
 .msg{max-width:78%;padding:7px 10px;border-radius:10px;font-size:12.5px;white-space:pre-wrap;word-break:break-word}
 .msg.in{background:var(--card);align-self:flex-start;border:1px solid var(--border)}
 .msg.out{background:#DCF8C6;align-self:flex-end}
+.mbox{margin-top:5px}.mbtn{border:1px solid var(--border);background:var(--card);border-radius:14px;padding:4px 12px;font-size:12px;cursor:pointer}.mst{font-size:11px;color:var(--text2)}
 .msg .t{display:block;color:var(--text2);font-size:10px;margin-top:3px}
 .msg.sys{align-self:center;background:transparent;color:var(--text2);font-size:11px;max-width:100%}
 .msg.pending{background:#EFEFEF;align-self:flex-end;color:var(--text2);font-style:italic}
@@ -489,7 +490,7 @@ function LEADS(){
 /* Bumped whenever this page changes, and shown at the bottom of the sidebar.
    GitHub Pages and an installed app both cache hard, so without this there is
    no way to tell "the fix is not deployed" from "the fix does not work". */
-const BUILD='2026-11-24m';
+const BUILD='2026-11-24n';
 
 function drawNav(){
   $('side').innerHTML = NAV.map(n=>{
@@ -1525,10 +1526,57 @@ async function sendReply(){
   }
 }
 
+/* Voice notes / photos: press Play -> the bridge fetches that ONE file -> private bucket -> signed link.
+   Nothing is downloaded in bulk. State is kept in MEDIA so a live refresh does not wipe the player. */
+const MEDIA={};   // wa_id -> {st:'idle'|'wait'|'done'|'fail', url, msg}
+function mediaHtml(wa,t){
+  const m=MEDIA[wa]||{st:'idle'};
+  if(m.st==='done'&&m.url)
+    return '<div class="mbox">'+(t==='image'
+      ? '<a href="'+esc(m.url)+'" target="_blank" rel="noopener"><img src="'+esc(m.url)+'" style="max-width:220px;max-height:220px;border-radius:8px"></a>'
+      : '<audio controls preload="metadata" src="'+esc(m.url)+'" style="max-width:100%"></audio>')+'</div>';
+  if(m.st==='wait') return '<div class="mbox"><span class="mst">Getting it from the phone… (about 10-20 s)</span></div>';
+  return '<div class="mbox"><button class="mbtn" data-wa="'+esc(wa)+'" data-t="'+esc(t)+'">'+(t==='image'?'\u{1F5BC}️ Show photo':'▶ Play')+'</button>'
+    +(m.st==='fail'?' <span class="mst" style="color:#c0392b">'+esc(m.msg||'could not open')+' — tap to retry</span>':'')+'</div>';
+}
+async function mediaSign(path){
+  const {data,error}=await sb.storage.from('gl-wa-media').createSignedUrl(path,3600);
+  if(error||!data) throw new Error((error&&error.message)||'no link');
+  return data.signedUrl;
+}
+async function mediaOpen(wa,t){
+  const jid=CUR&&CUR.chat_jid; if(!jid||(MEDIA[wa]&&MEDIA[wa].st==='wait')) return;
+  MEDIA[wa]={st:'wait'}; loadThread(jid,true);
+  try{
+    let {data:ex}=await sb.from('gl_wa_media_req').select('id,status,path,error').eq('wa_id',wa).limit(1);
+    let row=(ex||[])[0];
+    if(!row){
+      const {error}=await sb.from('gl_wa_media_req').insert({wa_id:wa,chat_jid:jid});
+      if(error) throw new Error(error.message);
+    }else if(row.status==='failed'){
+      await sb.from('gl_wa_media_req').update({status:'queued',attempts:0,error:null}).eq('id',row.id);
+    }
+    const t0=Date.now();
+    for(;;){
+      if(Date.now()-t0>120000) throw new Error('took too long — is the bridge running?');
+      const {data:r}=await sb.from('gl_wa_media_req').select('status,path,error').eq('wa_id',wa).limit(1);
+      const x=(r||[])[0];
+      if(x&&x.status==='done'&&x.path){ MEDIA[wa]={st:'done',url:await mediaSign(x.path)}; break; }
+      if(x&&x.status==='failed') throw new Error(x.error||'could not download');
+      await new Promise(r=>setTimeout(r,2000));
+    }
+  }catch(e){ MEDIA[wa]={st:'fail',msg:String(e.message||e).slice(0,120)}; }
+  if(CUR&&CUR.chat_jid===jid) loadThread(jid,true);
+}
+document.addEventListener('click',e=>{
+  const b=e.target.closest&&e.target.closest('.mbtn'); if(!b) return;
+  mediaOpen(b.getAttribute('data-wa'),b.getAttribute('data-t'));
+});
+
 async function loadThread(jid,quiet){
   try{
     const {data}=await sb.from('gl_wa_msg')
-      .select('direction,sent_by,msg_type,body,wa_ts')
+      .select('direction,sent_by,msg_type,body,wa_ts,wa_id')
       .eq('chat_jid',jid).order('wa_ts',{ascending:true}).limit(500);
     const rows=data||[];
     CUR_ROWS[jid]=rows;
@@ -1536,10 +1584,13 @@ async function loadThread(jid,quiet){
       const who=senderOf(m);
       // the header is shown as a label instead of inside the bubble, so the
       // thread does not read "Iqa: Iqa: ..."
-      const body=who&&who.via==='crm'&&who.clean ? who.clean : msgText(m);
+      const mt=String(m.msg_type||'').toLowerCase();
+      const isMedia=!String(m.body||'').trim()&&m.wa_id&&['voice','audio','image'].includes(mt);
+      const body=isMedia ? (MEDIA_LABEL[mt]||'') : (who&&who.via==='crm'&&who.clean ? who.clean : msgText(m));
       return '<div class="msg '+(m.direction==='out'?'out':'in')+'">'
         +(who?'<span class="by '+(who.via==='phone'?'byph':'')+'">'+esc(who.name)+'</span>':'')
         +esc(body)
+        +(isMedia?mediaHtml(m.wa_id,mt):'')
         +'<span class="t">'+esc(dmy(m.wa_ts))+'</span></div>';
     }).join('') : '<div class="msg sys">No messages recorded for this chat.</div>';
     if(CUR&&CUR.chat_jid===jid&&(!quiet||!BK||BK.li!==miaLastIn(rows))) drawBook();

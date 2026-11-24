@@ -20,6 +20,7 @@ import { dirname, join } from 'node:path';
 import { createTelegram } from './gl-wa-telegram.mjs';
 import { createWatchdog } from './gl-wa-watchdog.mjs';
 import { createPush } from './gl-wa-push.mjs';
+import { createMedia } from './gl-wa-media.mjs';
 import { fileURLToPath } from 'node:url';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -461,6 +462,7 @@ const WD = createWatchdog({
 });
 
 const PUSHER = createPush({ env: ENV, api, log });
+const MEDIA = createMedia({ env: ENV, api, log, wacli: WACLI, account: ACCOUNT, supabaseUrl: SUPABASE_URL, anon: ANON, getToken: () => TOKEN, relogin: login });
 
 /* ---------- commands ---------- */
 
@@ -516,6 +518,7 @@ if (cmd === 'backfill') {
 
 startSync();
 TG.start();
+MEDIA.start();
 process.on('SIGINT', () => { stopSync(); log('stopped by user'); process.exit(0); });
 log(`watching — checking every ${POLL}s. Leave this window open. Ctrl+C to stop.`);
 log(SEND_ENABLED

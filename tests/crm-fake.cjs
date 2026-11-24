@@ -40,7 +40,8 @@ window.supabase={createClient(){return{
   rpc:async(n,a)=>{window.__LOG.push({rpc:n,args:a,at:Date.now()});const f=window.__RPC[n];const d=f?await f(a):[];return {data:d,error:null};},
   auth:{getSession:async()=>({data:{session:{access_token:'t',user:{id:'9684de35-a49c-4630-b02b-a1deb8d52e6f'}}}}),signInWithPassword:async()=>({data:{},error:null}),onAuthStateChange(){return{data:{subscription:{unsubscribe(){}}}}}},
   channel(){const ch={on(a,b,cb){window.__CH.push({b,cb});return ch;},subscribe(cb){cb&&cb('SUBSCRIBED');return ch;}};return ch;},
-  removeChannel(){}
+  removeChannel(){},
+  storage:{from(){return{createSignedUrl:async p=>({data:{signedUrl:'https://files.test/'+p+'?t=1'},error:null})};}}
 };}};
 `;
 exports.setup = async function(page, htmlPath){
