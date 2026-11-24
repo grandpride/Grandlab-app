@@ -12,6 +12,7 @@ function Q(table){
     eq(c,v){q.filters.push(r=>r[c]===v);return api;},
     in(c,a){q.filters.push(r=>a.includes(r[c]));return api;},
     gt(c,v){q.filters.push(r=>r[c]&&new Date(r[c])>new Date(v));return api;},
+    lte(c,v){q.filters.push(r=>r[c]&&new Date(r[c])<=new Date(v));return api;},
     gte(c,v){q.filters.push(r=>r[c]&&new Date(r[c])>=new Date(v));return api;},
     or(str){const parts=str.split(',').map(p=>{const m=/^(\\w+)\\.gt\\.(.+)$/.exec(p);return r=>r[m[1]]&&new Date(r[m[1]])>new Date(m[2]);});q.filters.push(r=>parts.some(f=>f(r)));return api;},
     insert(row){q.op='insert';q.payload=row;return api;},

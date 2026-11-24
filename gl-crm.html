@@ -422,6 +422,7 @@ table.t2 tbody tr:hover{background:var(--blue-soft)}
     </div>
     <div class="rec" id="tRec"></div>
     <div class="adtag hide" id="tAd"></div>
+    <div class="mia hide" id="tBook" style="background:#E0F2FE;border-color:#7DD3FC"></div>
     <div class="mia hide" id="tMaint" style="background:#F3E8FF;border-color:#D8B4FE"></div>
     <div class="mia hide" id="tMia"></div>
     <div class="thread" id="tThread"></div>
@@ -487,7 +488,7 @@ function LEADS(){
 /* Bumped whenever this page changes, and shown at the bottom of the sidebar.
    GitHub Pages and an installed app both cache hard, so without this there is
    no way to tell "the fix is not deployed" from "the fix does not work". */
-const BUILD='2026-11-24k';
+const BUILD='2026-11-24l';
 
 function drawNav(){
   $('side').innerHTML = NAV.map(n=>{
@@ -1043,6 +1044,7 @@ async function openThread(jid){
   $('tBox').value=''; $('tReplyNote').textContent=''; $('tReplyNote').className='replyNote';
   miaReset();
   drawMaint();
+  drawBook();
   { const ta=$('tAd'); if(ta){ ta.dataset.open='0'; } drawThreadAd(); }
   drawWho();
   loadRecord(CUR.phone);
@@ -1539,6 +1541,7 @@ async function loadThread(jid,quiet){
         +esc(body)
         +'<span class="t">'+esc(dmy(m.wa_ts))+'</span></div>';
     }).join('') : '<div class="msg sys">No messages recorded for this chat.</div>';
+    if(CUR&&CUR.chat_jid===jid&&(!quiet||!BK||BK.li!==miaLastIn(rows))) drawBook();
     const o=OPT[jid];
     if(o&&o.body&&!(rows.length&&rows[rows.length-1].direction==='out'&&new Date(rows[rows.length-1].wa_ts).getTime()>=o.at-60000)){
       $('tThread').insertAdjacentHTML('beforeend','<div class="msg pending">'+esc(o.body)+'  ·  queued</div>');
@@ -2767,6 +2770,126 @@ async function tplToggle(id){
   const t=TPLS.find(x=>x.id===id); if(!t) return;
   try{ const {error}=await sb.rpc('gl_crm_template_save',{p_id:id,p_name:t.name,p_kind:t.kind,p_body:t.body,p_active:!t.active,p_sort:t.sort}); if(error) throw error; await loadTemplates(); renderSettings(); }
   catch(e){ alertLine('Could not change that: '+(e.message||e)); }
+}
+
+/* ---------------------------------------------------------------------------
+   BOOKING FROM THE CUSTOMER'S FORM REPLY (24 Nov). When the customer answers the
+   booking form ("Name: ...", "Plate: ..." lines, BM/EN/ZH), the fields are parsed
+   and shown in an editable card. ONE click books it into gl_bookings exactly the
+   way gl-staff-appointment-FINAL.html does (walk-in: customer_id null, details
+   packed in notes, status pending, source whatsapp, same 5 slots, 2 per slot) and
+   queues the confirmation through gl_wa_outbox. Never automatic; it checks for a
+   double booking and a full slot first.
+   --------------------------------------------------------------------------- */
+const BK_SLOTS=['9:00 AM','10:00 AM','11:00 AM','1:30 PM','3:00 PM'];
+const BK_SLOT24={'9:00 AM':'09:00','10:00 AM':'10:00','11:00 AM':'11:00','1:30 PM':'13:30','3:00 PM':'15:00'};
+const BK_KEYS=[['name',/^(name|nama|full name|姓名|名字)$/i],['plate',/^(plate|plate no|plate number|no\.? ?plat|nombor plat|plat|车牌|车牌号)$/i],
+  ['car',/^(car|car model|model|kereta|model kereta|车型|车)$/i],['service',/^(service|servis|perkhidmatan|jenis servis|服务|项目)$/i],
+  ['date',/^(preferred date|date|tarikh|tarikh pilihan|日期)$/i],['time',/^(preferred time|time|masa|masa pilihan|时间)$/i]];
+const BK_DONE={};
+function bkParse(text){
+  const f={};
+  String(text||'').split(/\n+/).forEach(line=>{
+    const m=/^\s*([^:：]{2,26})\s*[:：]\s*(.+?)\s*$/.exec(line); if(!m) return;
+    const k=BK_KEYS.find(([n,re])=>re.test(m[1].trim())); if(k&&!f[k[0]]) f[k[0]]=m[2].trim();
+  });
+  return f;
+}
+function bkDate(txt){
+  const t=String(txt||'').trim().toLowerCase(); if(!t) return '';
+  const today=new Date(); today.setHours(0,0,0,0);
+  const iso=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  if(/^(today|hari ini|今天)/.test(t)) return iso(today);
+  if(/^(tomorrow|esok|明天)/.test(t)){ const d=new Date(today); d.setDate(d.getDate()+1); return iso(d); }
+  let m=/(\d{4})-(\d{1,2})-(\d{1,2})/.exec(t); if(m) return m[1]+'-'+m[2].padStart(2,'0')+'-'+m[3].padStart(2,'0');
+  const MON={jan:1,feb:2,mar:3,apr:4,may:5,mei:5,jun:6,jul:7,aug:8,ogos:8,sep:9,sept:9,oct:10,okt:10,nov:11,dec:12,dis:12};
+  m=/(\d{1,2})[\/\-.](\d{1,2})(?:[\/\-.](\d{2,4}))?/.exec(t);
+  let d,mo,y;
+  if(m){ d=+m[1]; mo=+m[2]; y=m[3]?+m[3]:0; }
+  else{ m=/(\d{1,2})\s*(?:st|nd|rd|th)?\s*([a-z]{3,9})\.?\s*(\d{4})?/.exec(t); if(!m||!MON[m[2].slice(0,4)]&&!MON[m[2].slice(0,3)]) return ''; d=+m[1]; mo=MON[m[2].slice(0,4)]||MON[m[2].slice(0,3)]; y=m[3]?+m[3]:0; }
+  if(!y){ y=today.getFullYear(); if(new Date(y,mo-1,d)<today) y++; } else if(y<100) y+=2000;
+  if(mo<1||mo>12||d<1||d>31) return '';
+  return iso(new Date(y,mo-1,d));
+}
+function bkSlot(txt){
+  const m=/(\d{1,2})(?:[:.](\d{2}))?\s*(am|pm|a\.m|p\.m)?/i.exec(String(txt||'')); if(!m) return '';
+  let h=+m[1], mi=m[2]?+m[2]:0; const ap=(m[3]||'').toLowerCase();
+  if(ap.startsWith('p')&&h<12) h+=12; if(ap.startsWith('a')&&h===12) h=0;
+  if(!ap&&h>=1&&h<=6) h+=12;                         // "3" / "1.30" means afternoon
+  const mins=h*60+mi; let best='',bd=1e9;
+  BK_SLOTS.forEach(sl=>{ const [a,b]=BK_SLOT24[sl].split(':'); const dd=Math.abs((+a)*60+(+b)-mins); if(dd<bd){ bd=dd; best=sl; } });
+  return bd<=45?best:'';
+}
+function bkDetect(jid){
+  const rows=CUR_ROWS[jid]||[]; const c=CHATS.find(x=>x.chat_jid===jid);
+  const q=miaQuestion(rows); if(!q) return null;
+  const f=bkParse(q);
+  const n=Object.keys(f).length;
+  if(n<3||!(f.date||f.time)||!(f.plate||f.name)) return null;
+  const li=miaLastIn(rows);
+  return {jid,li,name:f.name||(c&&c.name)||'',phone:String((c&&c.phone)||'').replace(/\D/g,''),plate:(f.plate||'').toUpperCase(),car:f.car||'',
+    service:f.service||'',date:bkDate(f.date),slot:bkSlot(f.time)||'',timeRaw:f.time||'',remark:''};
+}
+let BK=null;
+function drawBook(){
+  const el=$('tBook'); if(!el) return;
+  BK=CUR?bkDetect(CUR.chat_jid):null;
+  if(!BK){ el.classList.add('hide'); el.innerHTML=''; return; }
+  if(BK_DONE[BK.jid+'|'+BK.li]){ el.classList.remove('hide'); el.innerHTML='<div class="mh"><b>Booking request</b><span>'+esc(BK_DONE[BK.jid+'|'+BK.li])+'</span></div>'; return; }
+  const inp=(id,lbl,v,type)=>'<label style="font-size:11px;color:var(--text2);display:block;margin-top:4px">'+lbl+'<input id="bk_'+id+'" type="'+(type||'text')+'" value="'+esc(v||'')+'" style="width:100%;display:block"></label>';
+  el.classList.remove('hide');
+  el.innerHTML='<div class="mh"><b>Booking request detected</b><span>Check the values, fix anything, then press the button. Nothing is booked until you do.</span></div>'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:0 10px">'+inp('name','Name',BK.name)+inp('phone','Phone',BK.phone)+inp('plate','Plate',BK.plate)+inp('car','Car model',BK.car)+'</div>'
+    +inp('service','Service',BK.service)
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:0 10px">'+inp('date','Date',BK.date,'date')
+    +'<label style="font-size:11px;color:var(--text2);display:block;margin-top:4px">Time slot<select id="bk_slot" style="width:100%;display:block"><option value="">(pick a slot)</option>'
+    +BK_SLOTS.map(x=>'<option'+(x===BK.slot?' selected':'')+'>'+x+'</option>').join('')+'</select></label></div>'
+    +(BK.timeRaw&&!BK.slot?'<div class="why">Customer wrote the time as &ldquo;'+esc(BK.timeRaw)+'&rdquo;, which is not one of the 5 slots. Pick a slot.</div>':'')
+    +inp('remark','Remark (optional)','')
+    +'<div class="mh" style="margin-top:8px"><button class="lg on" id="bk_go" onclick="bkBook()">Book it + send confirmation</button><span id="bk_note" style="font-size:11.5px"></span></div>';
+}
+async function bkBook(){
+  const g=id=>(($('bk_'+id)||{}).value||'').trim();
+  const note=$('bk_note'), btn=$('bk_go');
+  const fail=t=>{ note.className='err'; note.textContent=t; btn.disabled=false; };
+  if(!BK||!CUR) return;
+  const v={name:g('name'),phone:g('phone').replace(/\D/g,''),plate:g('plate').toUpperCase(),car:g('car'),service:g('service'),date:g('date'),slot:g('slot'),remark:g('remark')};
+  if(!v.date) return fail('Date is needed.'); if(!v.slot) return fail('Pick a time slot.'); if(!v.service) return fail('Service is needed.');
+  if(!v.phone&&!v.plate) return fail('Need a phone or a plate.');
+  if(staffMode()&&!ME) return fail('Pick who you are first, above the reply box.');
+  btn.disabled=true; note.className=''; note.textContent='Checking…';
+  try{
+    // 1. double booking / full slot
+    const {data:day,error:de}=await sb.from('gl_bookings').select('scheduled_at,notes,status').gte('scheduled_at',v.date+'T00:00:00+08:00').lte('scheduled_at',v.date+'T23:59:59+08:00');
+    if(de) throw de;
+    const live=(day||[]).filter(r=>String(r.status||'').toLowerCase()!=='cancelled');
+    const same=live.find(r=>{ const n=String(r.notes||''); return (v.plate&&n.toUpperCase().includes('PLATE: '+v.plate)) || (v.phone&&n.replace(/\D/g,'').includes(v.phone.slice(-8))&&/Phone:/i.test(n)); });
+    if(same) return fail('Already booked on that date for this plate/phone. Not booked again.');
+    const used=live.filter(r=>String(r.notes||'').includes('[slot:'+v.slot+']')).length;
+    if(used>=2) return fail('That slot is full (2 of 2). Pick another.');
+    // 2. same insert as the staff appointment page (walk-in: details in notes)
+    let custId=null;
+    if(v.phone){ try{ const {data:ex}=await sb.from('gl_profiles').select('id').or('phone.eq.+'+v.phone+',phone.eq.'+v.phone).limit(1).maybeSingle(); if(ex) custId=ex.id; }catch(e){} }
+    const notes=['Name: '+v.name,'Phone: '+v.phone,'Car: '+v.car,'Plate: '+v.plate].concat(v.remark?['Remark: '+v.remark]:[]).concat(['[slot:'+v.slot+']']).join(' | ');
+    const {error:ie}=await sb.from('gl_bookings').insert({customer_id:custId,vehicle_id:null,service_id:null,service_name:v.service,
+      scheduled_at:v.date+'T'+BK_SLOT24[v.slot]+':00+08:00',status:'pending',source:'whatsapp',lead_source:null,is_returning:false,
+      referral_by_name:null,referral_by_ref:null,notes});
+    if(ie) throw ie;
+    // 3. confirmation: queued through the outbox, skipped if the same text went to this chat in the last 10 minutes
+    const dt=new Date(v.date+'T12:00:00').toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short',year:'numeric'});
+    const tpl=(TPLS.find(t=>/appointment confirmation/i.test(t.name)&&t.active)||{}).body
+      ||'Hi {name}, your appointment is confirmed:\nDate: {date}\nTime: {time}\nService: {service}\nSee you at Grandlab.';
+    const text=tpl.replace(/\{name\}/g,v.name||'').replace(/\{date\}/g,dt).replace(/\{time\}/g,v.slot).replace(/\{service\}/g,v.service).replace(/ ,/g,',').replace(/ {2,}/g,' ');
+    const body=withAgent(text);
+    let sent=false;
+    const {data:dup}=await sb.from('gl_wa_outbox').select('id').eq('chat_jid',CUR.chat_jid).eq('body',body).gte('created_at',new Date(Date.now()-600000).toISOString()).limit(1);
+    if(!(dup&&dup.length)){
+      const {error:oe}=await sb.from('gl_wa_outbox').insert({chat_jid:CUR.chat_jid,phone:CUR.phone||null,body,staff_name:replyName()||null});
+      if(oe) throw oe; sent=true; optSent(CUR,body);
+    }
+    BK_DONE[BK.jid+'|'+BK.li]='Booked '+dt+', '+v.slot+(sent?'. Confirmation queued.':'. Confirmation was already queued.');
+    drawBook();
+  }catch(e){ fail('Could not book: '+(e.message||e)); }
 }
 
 async function boot(){
