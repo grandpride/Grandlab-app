@@ -25,7 +25,7 @@
       Pages that load supabase-js twice (gl-jobcard, gl-platescan) re-apply this with GLCF_PAGE.rewrap().
    2. fetch() to the Grandlab Supabase server (/rest/v1, /rest/v1/rpc, /storage/v1/object, /auth/v1) is answered
       by GLCF.handleSupabaseFetch -> the new API. /functions/v1/<name> goes to the new server route in
-      GLCF.FUNCTION_ROUTES (gl-cf-client.js: POST /gl/api/fn/<name>, DOKU create -> /gl/api/fn/doku-create);
+      GLCF.FUNCTION_ROUTES (gl-cf-client.js: POST /gl/api/fn/<name>, DOKU create -> /gl/api/fn/doku/create, push-send -> /gl/api/push/send);
       a route set to null there is blocked with a clear error.
    3. Customer PWA only: a login saved by the old system (localStorage.gl_session) is put aside as gl_session_sb
       (the guard puts it back on ?backend=sb), and a new-system token without a matching gl_session is signed out

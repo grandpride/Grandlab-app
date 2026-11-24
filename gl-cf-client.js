@@ -96,12 +96,12 @@
      /gl/api/fn/<name>[/<sub>] (FUNCTION_DEFAULT_PREFIX). */
   var FUNCTION_DEFAULT_PREFIX = '/gl/api/fn/';
   var FUNCTION_ROUTES = {
-    'doku/create':         '/gl/api/fn/doku-create',   // index.html online payment (DOKU Checkout), customer login
-    'doku-sandbox/create': '/gl/api/fn/doku-create',   // same, while the app pointed at the sandbox function
+    'doku/create':         '/gl/api/fn/doku/create',   // index.html online payment (DOKU Checkout), customer login (gl-platform src/gl/fn-routes.ts)
+    'doku-sandbox/create': '/gl/api/fn/doku/create',   // same, while the app pointed at the sandbox function
     'doku':                null,                       // other doku paths (/notify = DOKU webhook, server to server)
     'doku-sandbox':        null,
     'senangpay':           null,                       // superseded by DOKU
-    'push-send':           '/gl/api/fn/push-send',     // grandlab-admin.html, grandlab-notify.html (needs admin/staff login)
+    'push-send':           '/gl/api/push/send',        // grandlab-admin.html, grandlab-notify.html (staff login; the Worker's route is /gl/api/push/send, not /fn/)
     'meta-sync':           '/gl/api/fn/meta-sync',     // gl-ads.html "Sync now" (functions.invoke)
     'mia':                 '/gl/api/fn/mia',           // gl-mia.html
     'agent-desk':          '/gl/api/fn/agent-desk',    // gl-agents.html, gl-tower.html
@@ -112,7 +112,7 @@
     'inspect':  '/gl/public/inspect',    // gl-inspect.html "share" link (?t=<token>) -> was <Supabase>/functions/v1/inspect
     'sa-quote': '/gl/public/sa-quote'    // (not built by a page today; gl-sa-quote links gl-sa-accept.html directly)
   };
-  // "doku/create" -> "/gl/api/fn/doku-create"; null when blocked
+  // "doku/create" -> "/gl/api/fn/doku/create"; null when blocked
   function functionRoute(name, sub) {
     name = String(name || '').replace(/^\/+|\/+$/g, '');
     sub = String(sub || '').replace(/^\/+|\/+$/g, '');
@@ -750,14 +750,16 @@
         p = Promise.resolve({ data: null, error: err, count: null, status: 0, statusText: '' });
       } else if (this._rpc) {
         var pub = this._anon || guest() || PUBLIC_RPCS.indexOf(this._rpc.name) >= 0;
-        p = postJSON('/rpc/' + encodeURIComponent(this._rpc.name), this._rpc.args || {}, this._signal, pub ? 'public' : 'api').then(function (r) {
+        p = postJSON('/rpc/' + encodeURIComponent(this._rpc.name), oldLinksToKeys(this._rpc.args || {}), this._signal, pub ? 'public' : 'api').then(function (r) {
           return { data: r.data, error: r.error, count: null, status: r.status, statusText: r.statusText };
         });
       } else if (!this._op) {
         p = Promise.resolve({ data: null, error: { message: 'gl-cf-client: from(' + this._table + ') needs select/insert/update/upsert/delete', code: 'CF_BAD_QUERY', details: null, hint: null }, count: null, status: 0, statusText: '' });
       } else {
         this._guest = guest();
-        p = postJSON('/db', this.toJSON(), this._signal, (this._anon || this._guest) ? 'public' : 'api');
+        var dbBody = this.toJSON();
+        if (dbBody.values !== undefined) dbBody.values = oldLinksToKeys(dbBody.values);   // links the page built to the OLD storage -> keys
+        p = postJSON('/db', dbBody, this._signal, (this._anon || this._guest) ? 'public' : 'api');
         if (this._embeds) p = p.then(function (r) { return self._attachEmbeds(r); });
         if (this._localOr) p = p.then(function (r) { return self._applyLocalOr(r); });
       }
@@ -1168,6 +1170,21 @@
     });
   }
 
+  /* supabase-js style writes (sb.from(..).insert/update/upsert, sb.rpc(..)): a few staff pages upload a photo with
+     sb.storage...upload() and then SAVE a link they build themselves: <Supabase>/storage/v1/object/public/<bucket>/<path>
+     (gl-qc-addon, gl-sa-quote, gl-warranty-admin). On the new system that file lives in R2 only, so such a link would
+     be dead. Same conversion as the direct-REST path: whole string values -> bare key gl/storage/<bucket>/<path>,
+     which the server signs on read. Anything without such a link is returned untouched (same object). */
+  function oldLinksToKeys(v) {
+    if (v == null || typeof v !== 'object') return v;
+    var s;
+    try { s = JSON.stringify(v); } catch (e) { return v; }
+    if (typeof s !== 'string' || s.indexOf('/storage/v1/object/') < 0) return v;
+    var t = storageUrlsToKeys(s);
+    if (t === s) return v;
+    try { return JSON.parse(t); } catch (e) { return v; }
+  }
+
   // Better Auth session -> the JSON Supabase's /auth/v1/verify and /token return (+ _cf marker)
   function supaSession(s) {
     if (!s) return null;
@@ -1401,6 +1418,7 @@
     isAnonRequest: isAnonRequest,
     normalizePhone: normalizePhone,
     storageUrlsToKeys: storageUrlsToKeys,
+    oldLinksToKeys: oldLinksToKeys,
     storageUrlsToSigned: storageUrlsToSigned,
     SUPABASE_ORIGIN: SUPABASE_ORIGIN
   };

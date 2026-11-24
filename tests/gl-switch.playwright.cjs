@@ -9,7 +9,7 @@
 //    The only extra request allowed with the switch off is the new go-live setting file gl-backend-config.js.
 // B. Switch ON (?backend=cf), mocked Worker: pages talk to /gl/api/* with the Bearer token and never to Supabase,
 //    the Grandpride gp_staff check still uses supabase-js, realtime polls, the customer PWA logs in by SMS code,
-//    keeps the old login aside and gets it back with ?backend=sb, DOKU payment goes to /gl/api/fn/doku-create.
+//    keeps the old login aside and gets it back with ?backend=sb, DOKU payment goes to /gl/api/fn/doku/create.
 //    EVERY switched page: loads with no Supabase request; guest pages read /gl/public/* without a token; staff pages
 //    without a login of their own offer a sign-in; edge functions go to /gl/api/fn/*.
 // C. Go-live setting (gl-backend-config.js replaced by the mock server): one module flipped to "cf" moves only its
@@ -180,7 +180,7 @@ async function onRun(browser, base, page, opts) {
       if (pth === '/gl/auth/sign-in/email') return body && body.password === 'pw' ? J(200, { token: 'raw', user: STAFF }, { 'set-auth-token': 'staff.SIGNED' }) : J(401, { message: 'Invalid email or password' });
       if (pth.startsWith('/gl/api/fn/')) {
         if (!/^Bearer (staff|cust)\.SIGNED$/.test(auth)) return J(401, { error: 'unauthenticated' });
-        if (pth === '/gl/api/fn/doku-create') return J(200, { url: 'https://pay.mock/doku', order_ref: body && body.order_ref });
+        if (pth === '/gl/api/fn/doku/create') return J(200, { url: 'https://pay.mock/doku', order_ref: body && body.order_ref });
         return J(200, { ok: true, fn: pth.slice(11) });
       }
       if (pth === '/gl/api/db' || pth === '/gl/public/db') {
@@ -385,14 +385,14 @@ const FIRST_ELEVEN = ['gl-claim.html', 'gl-marketing.html', 'gl-ads.html', 'gl-m
     ok(st.gl_ba_token_cust === 'cust.SIGNED' && !('gl_ba_token' in st), 'ON index: customer token not kept apart from staff token');
     const refreshed = await p.evaluate(async () => { SESSION.expires_at = Math.floor(Date.now() / 1000) + 10; const r = await refreshSession(); return { r, tok: SESSION.access_token }; });
     ok(refreshed.r === true && refreshed.tok === 'cust.SIGNED', 'ON index: refreshSession failed ' + JSON.stringify(refreshed));
-    // DOKU online payment: the page's own call (anon key in the headers) -> /gl/api/fn/doku-create with the customer token
+    // DOKU online payment: the page's own call (anon key in the headers) -> /gl/api/fn/doku/create with the customer token
     const pay = await p.evaluate(async () => { const r = await fetch(SENANGPAY_FN + '/create', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + SUPA_ANON, apikey: SUPA_ANON }, body: JSON.stringify({ order_ref: 'GL-T1', amount: 50 }) }); return { status: r.status, j: await r.json() }; });
-    const dk = rec.api.filter((x) => x.path === '/gl/api/fn/doku-create');
+    const dk = rec.api.filter((x) => x.path === '/gl/api/fn/doku/create');
     ok(pay.status === 200 && pay.j.url === 'https://pay.mock/doku' && dk.length === 1 && dk[0].auth === 'Bearer cust.SIGNED' && dk[0].body.order_ref === 'GL-T1', 'ON index: DOKU create not routed ' + JSON.stringify({ pay, dk }));
     const notify = await p.evaluate(async () => { const r = await fetch(SENANGPAY_FN + '/notify', { method: 'POST', body: '{}' }); return r.status; });
     ok(notify === 400, 'ON index: doku/notify not blocked');
     ok(rec.supabase.length === 0, 'ON index: Supabase contacted after login: ' + rec.supabase.join(', '));
-    console.log('ON   index.html: old login put aside; ' + pub.length + ' public reads without token; SMS login -> ' + sess.user.id + '; refresh ok; DOKU create -> /gl/api/fn/doku-create (customer token); /notify blocked');
+    console.log('ON   index.html: old login put aside; ' + pub.length + ' public reads without token; SMS login -> ' + sess.user.id + '; refresh ok; DOKU create -> /gl/api/fn/doku/create (customer token); /notify blocked');
     await p.goto(n.base + '/index.html', { waitUntil: 'load' }); await p.waitForTimeout(2000);
     st = await ls(p);
     ok(st.gl_session && JSON.parse(st.gl_session)._cf && st.gl_ba_token_cust === 'cust.SIGNED', 'ON index reload: lost the new-system login');

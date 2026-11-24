@@ -5175,8 +5175,15 @@ async function loadSlots(){
   // fetch bookings already made for this date to count per-time usage
   let counts={};
   try{
+    if(window.GLCF_PAGE){
+      /* new system: a customer only reads their OWN orders, so the shared slot count comes from the server
+         (gl_slot_counts: counts per time only, no names or cars; decision Q4). Old system: unchanged read below. */
+      const r=await fetch(`${SUPA_URL}/rest/v1/rpc/gl_slot_counts`,{method:"POST",headers:authHeaders(),body:JSON.stringify({p_date:_bkState.date})});
+      if(r.ok){ const rows=await r.json(); (rows||[]).forEach(o=>{ if(o.appointment_time){ counts[o.appointment_time]=Number(o.count)||0; } }); }
+    }else{
     const r=await fetch(`${SUPA_URL}/rest/v1/gl_orders?select=appointment_time&appointment_date=eq.${_bkState.date}&status=eq.upcoming`,{headers:authHeaders()});
     if(r.ok){ const rows=await r.json(); rows.forEach(o=>{ if(o.appointment_time){ counts[o.appointment_time]=(counts[o.appointment_time]||0)+1; } }); }
+    }
   }catch(e){}
   const cap=BOOKING_CFG.slotsPerTime||2;
   el.innerHTML=`<div class="slot-grid">${BOOKING_CFG.times.map(t=>{
@@ -5197,8 +5204,14 @@ async function confirmBooking(){
   if(!_bkState.time){ err.textContent='Pick a time slot.'; return; }
   // re-check the slot isn't full (race safety)
   try{
+    if(window.GLCF_PAGE){
+      /* new system: count from the server (own-orders-only reads would always look empty) */
+      const r=await fetch(`${SUPA_URL}/rest/v1/rpc/gl_slot_counts`,{method:"POST",headers:authHeaders(),body:JSON.stringify({p_date:_bkState.date,p_time:_bkState.time})});
+      if(r.ok){ const rows=await r.json(); const n=(rows||[]).reduce((a,o)=>a+(Number(o.count)||0),0); if(n>=(BOOKING_CFG.slotsPerTime||2)){ err.textContent='Sorry, that slot just filled up. Pick another time.'; loadSlots(); return; } }
+    }else{
     const r=await fetch(`${SUPA_URL}/rest/v1/gl_orders?select=id&appointment_date=eq.${_bkState.date}&appointment_time=eq.${encodeURIComponent(_bkState.time)}&status=eq.upcoming`,{headers:authHeaders()});
     if(r.ok){ const rows=await r.json(); if(rows.length>=(BOOKING_CFG.slotsPerTime||2)){ err.textContent='Sorry, that slot just filled up. Pick another time.'; loadSlots(); return; } }
+    }
   }catch(e){}
   try{
     const r=await fetch(`${SUPA_URL}/rest/v1/gl_orders`,{method:"POST",headers:authHeaders(),

@@ -522,6 +522,43 @@ test('PWA: rpc with the user token -> /gl/api/rpc; anon rpc -> /gl/public/rpc', 
   assert.equal(calls[1].url, API + '/gl/public/rpc/gl_app_spin_status');
   assert.equal(calls[1].init.headers.Authorization, undefined);
 });
+test('PWA: booking slot counts on the new system -> rpc gl_slot_counts with the customer token (index.html), old read kept for "sb"', async () => {
+  const c = cust(); store.set('gl_ba_token_cust', 't');
+  reply({ data: [{ appointment_time: '10:00 AM', count: 2 }], error: null });
+  const x = await rest(c, SB + '/rest/v1/rpc/gl_slot_counts', { method: 'POST', headers: userH('t'), body: JSON.stringify({ p_date: '2026-12-01' }) });
+  assert.equal(calls[0].url, API + '/gl/api/rpc/gl_slot_counts');
+  assert.equal(calls[0].init.headers.Authorization, 'Bearer t');
+  assert.deepEqual(JSON.parse(calls[0].init.body), { p_date: '2026-12-01' });
+  assert.deepEqual(x.json, [{ appointment_time: '10:00 AM', count: 2 }]);
+  const src = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
+  assert.equal((src.match(/rest\/v1\/rpc\/gl_slot_counts/g) || []).length, 2, 'loadSlots + confirmBooking use gl_slot_counts');
+  assert.equal((src.match(/if\(window\.GLCF_PAGE\)\{\s*\/\* new system/g) || []).length, 2, 'both only when the new system is on');
+  assert.ok(/gl_orders\?select=appointment_time&appointment_date=eq/.test(src) && /gl_orders\?select=id&appointment_date=eq/.test(src), 'old reads kept for the current system');
+});
+test('supabase-js writes: a link the page built to the OLD storage (QC add-on / SA quote / warranty photo) is saved as a gl/storage key; other values untouched', async () => {
+  const L = (b, p) => SB + '/storage/v1/object/public/' + b + '/' + p;
+  const sb = signedIn();
+  await sb.from('gl_sa_quotes').update({ front_photo: L('sa-quotes', 'q1/front_1.jpg'), issues: [{ remark: 'dent', photo: L('sa-quotes', 'q1/find_1_1.jpg') }], note: 'see ' + L('sa-quotes', 'x.jpg') + ' ok', status: 'sent' }).eq('id', 'q1');
+  let b = dbBody();
+  assert.equal(b.values.front_photo, 'gl/storage/sa-quotes/q1/front_1.jpg');
+  assert.deepEqual(b.values.issues, [{ remark: 'dent', photo: 'gl/storage/sa-quotes/q1/find_1_1.jpg' }]);
+  assert.equal(b.values.note, 'see ' + L('sa-quotes', 'x.jpg') + ' ok', 'a link inside longer text is not a whole value: left alone');
+  assert.equal(b.values.status, 'sent');
+  const w = signedIn();
+  await w.from('gl_warranties').insert({ cert_no: 'W1', photos: [L('gl-images', 'warranty-1-a.jpg'), 'gl/storage/gl-images/old.jpg'] });
+  assert.deepEqual(dbBody().values.photos, ['gl/storage/gl-images/warranty-1-a.jpg', 'gl/storage/gl-images/old.jpg']);
+  const r = signedIn(); reply({ data: { ok: true }, error: null });
+  await r.rpc('qc_addon_create', { p_id: 'u1', p_front: L('sa-quotes', 'qc/u1/front_1.jpg'), p_issues: [{ photo: L('sa-quotes', 'qc/u1/find_1_1.jpg'), remark: 'scratch' }], p_plate: 'ABC1234' });
+  assert.equal(calls[0].url, API + '/gl/api/rpc/qc_addon_create');
+  assert.equal(calls[0].body.p_front, 'gl/storage/sa-quotes/qc/u1/front_1.jpg');
+  assert.deepEqual(calls[0].body.p_issues, [{ photo: 'gl/storage/sa-quotes/qc/u1/find_1_1.jpg', remark: 'scratch' }]);
+  assert.equal(calls[0].body.p_plate, 'ABC1234');
+  const plain = { a: 1, b: ['x'] };
+  assert.equal(GLCF.oldLinksToKeys(plain), plain, 'no storage link: the very same object');
+  const n = signedIn();
+  await n.from('gl_jobs').update({ remark: 'hello' }).eq('id', 1);
+  assert.deepEqual(dbBody().values, { remark: 'hello' });
+});
 test('PWA: review-proof upload -> storage upload, and the saved old-style link becomes a gl/storage key', async () => {
   const c = cust(); store.set('gl_ba_token_cust', 't');
   reply({ data: { path: 'u/t_1_a.png', fullPath: 'gl-review-proofs/u/t_1_a.png', signedUrl: API + '/gl/files/x?exp=1&sig=2' }, error: null });
@@ -707,15 +744,18 @@ function loadConfig(search, settings) {
   if (settings) { if (settings.def) win.GL_BACKEND_DEFAULT = settings.def; if (settings.mods) win.GL_BACKEND_MODULES = settings.mods; }
   return { win, ls, go: (q) => { win.location.search = q || ''; } };
 }
-test('config: ships as the old system for every module (GL_BACKEND_DEFAULT "sb", all modules "sb")', () => {
+test('config: GL_BACKEND_DEFAULT is "sb"; the four modules each say "sb" or "cf"; a page follows its module word (no device choice); unknown module follows the default', () => {
   const { win } = loadConfig('');
   assert.equal(win.GL_BACKEND_DEFAULT, 'sb');
-  assert.deepEqual(JSON.parse(JSON.stringify(win.GL_BACKEND_MODULES)), { core: 'sb', customer: 'sb', marketing: 'sb', claim: 'sb' });
-  for (const m of ['core', 'customer', 'marketing', 'claim', undefined, 'unknown']) assert.equal(win.GL_BACKEND_PICK(m), 'sb', String(m));
+  const mods = JSON.parse(JSON.stringify(win.GL_BACKEND_MODULES));
+  assert.deepEqual(Object.keys(mods).sort(), ['claim', 'core', 'customer', 'marketing']);
+  for (const [m, v] of Object.entries(mods)) { assert.ok(v === 'sb' || v === 'cf', m + ' = ' + v); assert.equal(win.GL_BACKEND_PICK(m), v, m); }
+  assert.equal(mods.core, mods.customer, 'core and customer always flip together (shop and customer app write the same rows)');
+  for (const m of [undefined, 'unknown']) assert.equal(win.GL_BACKEND_PICK(m), 'sb', String(m));
   assert.equal(win.GL_BACKEND_SOURCE('core'), 'default');
 });
 test('config: ?backend=cf is remembered for all modules; ?backend=sb while the module is "sb" just clears it (as before)', () => {
-  const c = loadConfig('?backend=cf');
+  const c = loadConfig('?backend=cf', { mods: { core: 'sb', customer: 'sb', marketing: 'sb', claim: 'sb' } });   // explicit words: independent of what the shipped file says today
   assert.equal(c.win.GL_BACKEND_PICK('core'), 'cf');
   assert.equal(c.ls.get('gl_backend'), 'cf');
   c.go(''); assert.equal(c.win.GL_BACKEND_PICK('claim'), 'cf');
@@ -769,13 +809,14 @@ test('GLCF.enabled(module) / applyUrlSwitch follow gl-backend-config.js when it 
 });
 
 /* ---------- edge functions ---------- */
-test('functions: route table (one place) — every function the pages call has a new route; DOKU create -> doku-create', () => {
+test('functions: route table (one place) — every function the pages call has a new route; DOKU create -> doku/create, push-send -> push/send (the Worker routes)', () => {
   const R = GLCF.functionRoute;
-  assert.equal(R('doku', 'create'), '/gl/api/fn/doku-create');
-  assert.equal(R('doku-sandbox', 'create'), '/gl/api/fn/doku-create');
+  assert.equal(R('doku', 'create'), '/gl/api/fn/doku/create');
+  assert.equal(R('doku-sandbox', 'create'), '/gl/api/fn/doku/create');
   assert.equal(R('doku', 'notify'), null, 'DOKU webhook is server to server');
   assert.equal(R('senangpay', 'create'), null);
-  for (const n of ['push-send', 'meta-sync', 'mia', 'agent-desk', 'warranty-email']) assert.equal(R(n), '/gl/api/fn/' + n);
+  assert.equal(R('push-send'), '/gl/api/push/send', 'gl-platform registers push at /gl/api/push/send, not /gl/api/fn/push-send');
+  for (const n of ['meta-sync', 'mia', 'agent-desk', 'warranty-email']) assert.equal(R(n), '/gl/api/fn/' + n);
   assert.equal(R('something-new'), '/gl/api/fn/something-new', 'not listed -> /gl/api/fn/<name>');
   assert.equal(R('bad name'), null);
   assert.ok(Object.isFrozen(GLCF.FUNCTION_ROUTES) === false && typeof GLCF.FUNCTION_ROUTES === 'object');
@@ -828,14 +869,14 @@ test('functions.invoke: not signed in -> error, no request; blocked route -> CF_
   const c = await s3.functions.invoke('meta-sync');
   assert.equal(c.error.name, 'FunctionsFetchError');
 });
-test('functions fetch (PWA DOKU): ${SENANGPAY_FN}/create with the ANON key -> /gl/api/fn/doku-create with the CUSTOMER token, same body; apikey not sent', async () => {
+test('functions fetch (PWA DOKU): ${SENANGPAY_FN}/create with the ANON key -> /gl/api/fn/doku/create with the CUSTOMER token, same body; apikey not sent', async () => {
   const c = cust(); store.set('gl_ba_token_cust', 'cust.SIGNED');
   reply({ url: 'https://pay.doku/abc' }, 200, { 'content-type': 'application/json' });
   const body = JSON.stringify({ order_ref: 'GL-1', amount: 100 });
   const r = await GLCF.handleFunctionFetch(c, SB + '/functions/v1/doku/create', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + ANON, apikey: ANON }, body });
   assert.equal(r.status, 200);
   assert.deepEqual(await r.json(), { url: 'https://pay.doku/abc' });
-  assert.equal(calls[0].url, API + '/gl/api/fn/doku-create');
+  assert.equal(calls[0].url, API + '/gl/api/fn/doku/create');
   assert.equal(calls[0].init.headers.authorization, 'Bearer cust.SIGNED');
   assert.equal(calls[0].init.headers.apikey, undefined);
   assert.equal(calls[0].init.headers['content-type'], 'application/json');
@@ -850,7 +891,7 @@ test('functions fetch: blocked (doku/notify) -> 400 JSON; not signed in -> 401 J
   assert.equal(calls.length, 0);
   const s = signedIn();
   await GLCF.handleFunctionFetch(s, SB + '/functions/v1/push-send?dry=1', { method: 'POST', headers: { Authorization: 'Bearer svc', apikey: 'svc' }, body: '{"title":"t"}' });
-  assert.equal(calls[0].url, API + '/gl/api/fn/push-send?dry=1');
+  assert.equal(calls[0].url, API + '/gl/api/push/send?dry=1');
   assert.equal(calls[0].init.headers.authorization, 'Bearer tok.sig');
   assert.equal(GLCF.handleFunctionFetch(s, SB + '/rest/v1/x', {}), null, 'not a function URL');
 });
