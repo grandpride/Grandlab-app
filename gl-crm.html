@@ -490,7 +490,7 @@ function LEADS(){
 /* Bumped whenever this page changes, and shown at the bottom of the sidebar.
    GitHub Pages and an installed app both cache hard, so without this there is
    no way to tell "the fix is not deployed" from "the fix does not work". */
-const BUILD='2026-11-24n';
+const BUILD='2026-11-24o';
 
 function drawNav(){
   $('side').innerHTML = NAV.map(n=>{
@@ -1325,7 +1325,18 @@ function miaLogSent(jid,typed){
 const CUR_ROWS={};
 
 const MIA_FLIGHT={};         // key -> Promise<out>: one running call per chat+message, shared by the board and the open chat
-async function miaCallApi(rows,notes,extra,answer,langs){
+function miaAdNote(jid,rows){
+  const li=(jid&&LEADINFO[jid])||{};
+  if(li.src_kind&&li.src_kind!=='unknown'&&li.src_label&&li.src_label!=='Not recorded'){
+    const what=li.campaign||li.src_label;
+    return '\n\nWhere this customer came from: '+li.src_label+(li.campaign?' ('+li.campaign+')':'')+'. They are most likely asking about: '+what+'. Answer for that offer; do not ask them what they want if it is clear from this.';
+  }
+  const first=(rows||[]).find(m=>m.direction==='in'&&m.body);
+  if(first&&/^\s*sila bagi tau bos kete model/i.test(first.body))
+    return '\n\nThis customer tapped a Facebook/Instagram ad, but which promo is not recorded. Do not guess the offer. If the price or package depends on it, ask once which promo or ad they saw.';
+  return '';
+}
+async function miaCallApi(rows,notes,extra,answer,langs,jid){
   const told=notes&&notes.length
     ? '\n\nInstructions for this reply from the shop (they come from the owner, so follow them and put them ahead of your usual order of questions):\n'
       +notes.map(n=>'- '+n).join('\n')
@@ -1336,7 +1347,7 @@ async function miaCallApi(rows,notes,extra,answer,langs){
     ? '\n\nThe customer has NOT answered our last message for about '+Math.max(1,Math.round((Date.now()-ms(lastR.wa_ts))/3600000))+' hours. Write a short, warm follow-up reminder that picks up exactly what we told them (name the thing we offered or asked) and makes it easy for them to reply in one line. Do not repeat the whole earlier message, do not pressure, do not invent prices.'
     : '';
   const msgs=[{role:'user',content:[{type:'text',text:
-    'This is the WhatsApp chat so far, oldest first. Write what Grandlab should send next.\n\n'+miaTranscript(rows)+remind+told}]}];
+    'This is the WhatsApp chat so far, oldest first. Write what Grandlab should send next.\n\n'+miaTranscript(rows)+remind+miaAdNote(jid,rows)+told}]}];
   if(answer && extra){
     msgs.push({role:'assistant',content:[{type:'text',text:extra}]});
     msgs.push({role:'user',content:[{type:'text',text:answer}]});
@@ -1355,7 +1366,7 @@ async function miaCallApi(rows,notes,extra,answer,langs){
 function miaFlight(jid,key,rows,notes){
   if(MIA_FLIGHT[key]) return MIA_FLIGHT[key];
   const lg=miaGuessLang(rows.filter(m=>m.direction==='in'&&m.body).slice(-3).map(m=>m.body).join(' '));
-  const p=miaCallApi(rows,notes,null,null,[lg]).then(out=>{
+  const p=miaCallApi(rows,notes,null,null,[lg],jid).then(out=>{
     if(out.reply&&(out.reply.type==='reply'||out.reply.type==='clarify')) miaCacheSet(jid,key,out);
     if(typeof miaLogShown==='function') miaLogShown(jid,key,rows,notes,out);
     return out;
@@ -1372,7 +1383,7 @@ async function miaAsk(answer){
   try{
     let out;
     if(answer && st.extra){
-      out=await miaCallApi(st.rows,st.notes,st.extra,answer);
+      out=await miaCallApi(st.rows,st.notes,st.extra,answer,null,st.jid);
       if(out.reply&&out.reply.type==='reply') miaCacheSet(st.jid,st.key,out);
     }else out=await miaFlight(st.jid,st.key,st.rows,st.notes);
     if(seq!==MIA_SEQ) return;                    // they moved to another chat meanwhile
@@ -1417,7 +1428,7 @@ async function miaSetLang(l){
   if(r&&r.type==='reply'&&!miaHasLang(r,l)&&!st.busy){
     const seq=MIA_SEQ; st.busy=true; st.err=''; st.langWait=l; miaDraw();
     try{
-      const out=await miaCallApi(st.rows,st.notes,null,null,[l]);
+      const out=await miaCallApi(st.rows,st.notes,null,null,[l],st.jid);
       if(MIA_STATE!==st||seq!==MIA_SEQ) return;
       if(out.reply&&out.reply.type==='reply'&&miaHasLang(out.reply,l)){
         r[l]=out.reply[l]; if(MIA_CACHE[st.jid]&&MIA_CACHE[st.jid].key===st.key) miaCacheSet(st.jid,st.key,st.out);
