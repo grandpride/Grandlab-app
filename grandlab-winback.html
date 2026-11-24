@@ -209,7 +209,7 @@ Reply here to reserve your slot 🙏</textarea>
 (function(){try{var M='core',on;if(typeof GL_BACKEND_PICK==='function'){on=GL_BACKEND_PICK(M)==='cf';}else{var m=/[?&]backend=(cf|sb)(?:&|$)/.exec(location.search);if(m){if(m[1]==='cf')localStorage.setItem('gl_backend','cf');else localStorage.removeItem('gl_backend');}on=localStorage.getItem('gl_backend')==='cf';}if(on){window.GLCF_PAGE_CFG={page:'grandlab-winback',module:M};document.write('<script src="gl-cf-client.js"><\/script><script src="gl-cf-page.js"><\/script>');}}catch(e){}})();</script>
 <script>
 const SUPABASE_URL="https://db.grandlab.com.my";
-const SUPABASE_ANON="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzkzMDY5NDExLCJleHAiOjE5NTA3NDk0MTF9.IcbPnDCd9p6Z-_FNMvzfg9k6ayX7IpC48zdGacAD_qw";
+const SUPABASE_ANON="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzk1NTA1MzQ0LCJleHAiOjE5NTMxODUzNDR9.0bpqXnozYeGoVm7S5F7I9SGCrD6yrv25IgGG-ql7SZA";
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON,{auth:{persistSession:true,autoRefreshToken:true,storageKey:'gl_auth'}});
 const $=id=>document.getElementById(id);
 let ROWS=[];

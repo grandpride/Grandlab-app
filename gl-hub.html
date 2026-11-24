@@ -51,7 +51,7 @@ html,body{height:100%;background:var(--bg);font-family:-apple-system,BlinkMacSys
 /* Show only the tiles this person is allowed to open (set in Staff Manager). */
 (function(){
   var GP_URL='https://gpdb.grandlab.com.my';
-  var GP_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzkzMDY5NDExLCJleHAiOjE5NTA3NDk0MTF9.ql0qv5ycO4qPDfzLZDdZvjMBqWJMxDRwS8m8HZxUuss';
+  var GP_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzk1NTA1MzQ0LCJleHAiOjE5NTMxODUzNDR9.0bpqXnozYeGoVm7S5F7I9SGCrD6yrv25IgGG-ql7SZA';
   var MASTER=['admin@grandpride.com'];
   var MAP={
     'gl-platescan.html':'platescan','gl-inspect.html':'inspect','gl-qc.html':'qc','gl-qc-addon.html':'qc',
@@ -71,7 +71,7 @@ html,body{height:100%;background:var(--bg);font-family:-apple-system,BlinkMacSys
   window.addEventListener('DOMContentLoaded',function(){
     (async function(){
       try{
-        var gl=supabase.createClient('https://db.grandlab.com.my','eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzkzMDY5NDExLCJleHAiOjE5NTA3NDk0MTF9.IcbPnDCd9p6Z-_FNMvzfg9k6ayX7IpC48zdGacAD_qw',
+        var gl=supabase.createClient('https://db.grandlab.com.my','eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzk1NTA1MzQ0LCJleHAiOjE5NTMxODUzNDR9.0bpqXnozYeGoVm7S5F7I9SGCrD6yrv25IgGG-ql7SZA',
           {auth:{persistSession:true,autoRefreshToken:true,storageKey:'gl_auth'}});
         var s=await gl.auth.getSession();
         if(!s.data.session)return;
@@ -344,7 +344,7 @@ html,body{height:100%;background:var(--bg);font-family:-apple-system,BlinkMacSys
 <script>/* backend switch: this page loads supabase-js again; only when the switch is on (gl-cf-page.js loaded) re-apply it to this copy. Off = nothing happens. */try{if(window.GLCF_PAGE)GLCF_PAGE.rewrap();}catch(e){}</script>
 <script>
 const SUPABASE_URL="https://db.grandlab.com.my";
-const SUPABASE_ANON="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzkzMDY5NDExLCJleHAiOjE5NTA3NDk0MTF9.IcbPnDCd9p6Z-_FNMvzfg9k6ayX7IpC48zdGacAD_qw";
+const SUPABASE_ANON="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzk1NTA1MzQ0LCJleHAiOjE5NTMxODUzNDR9.0bpqXnozYeGoVm7S5F7I9SGCrD6yrv25IgGG-ql7SZA";
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON,{auth:{persistSession:true,autoRefreshToken:true,storageKey:'gl_auth'}});
 const $=id=>document.getElementById(id);
 

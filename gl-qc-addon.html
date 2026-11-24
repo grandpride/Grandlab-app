@@ -195,7 +195,7 @@ table.rep td.n{text-align:right;white-space:nowrap}
 (function(){
   var APP_KEY = 'qc';
   var GP_URL = 'https://gpdb.grandlab.com.my';
-  var GP_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzkzMDY5NDExLCJleHAiOjE5NTA3NDk0MTF9.ql0qv5ycO4qPDfzLZDdZvjMBqWJMxDRwS8m8HZxUuss';
+  var GP_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzk1NTA1MzQ0LCJleHAiOjE5NTMxODUzNDR9.0bpqXnozYeGoVm7S5F7I9SGCrD6yrv25IgGG-ql7SZA';
   var MASTER = ['admin@grandpride.com'];
   function deny(msg){
     document.documentElement.innerHTML =
@@ -207,7 +207,7 @@ table.rep td.n{text-align:right;white-space:nowrap}
   }
   (async function(){
     try{
-      var gl = supabase.createClient('https://db.grandlab.com.my', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzkzMDY5NDExLCJleHAiOjE5NTA3NDk0MTF9.IcbPnDCd9p6Z-_FNMvzfg9k6ayX7IpC48zdGacAD_qw',
+      var gl = supabase.createClient('https://db.grandlab.com.my', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzk1NTA1MzQ0LCJleHAiOjE5NTMxODUzNDR9.0bpqXnozYeGoVm7S5F7I9SGCrD6yrv25IgGG-ql7SZA',
         {auth:{persistSession:true,autoRefreshToken:true,storageKey:'gl_auth'}});
       var s = await gl.auth.getSession();
       if(!s.data.session) return;
@@ -229,7 +229,7 @@ table.rep td.n{text-align:right;white-space:nowrap}
 'use strict';
 
 var SB_URL = 'https://db.grandlab.com.my';
-var SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzkzMDY5NDExLCJleHAiOjE5NTA3NDk0MTF9.IcbPnDCd9p6Z-_FNMvzfg9k6ayX7IpC48zdGacAD_qw';
+var SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzk1NTA1MzQ0LCJleHAiOjE5NTMxODUzNDR9.0bpqXnozYeGoVm7S5F7I9SGCrD6yrv25IgGG-ql7SZA';
 var BUCKET = 'sa-quotes';                 // existing public bucket, files go under qc/<id>/
 var BASE = location.origin + location.pathname.replace(/[^\/]*$/, '');
 var VIEW = BASE + 'gl-qc-view.html';
