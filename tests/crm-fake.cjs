@@ -9,13 +9,14 @@ function Q(table){
     select(){ if(q.op==='select') q.op='select'; return api; },
     order(c,o){q.ord=[c,(o&&o.ascending)!==false];return api;},
     limit(n){q.lim=n;return api;},
-    eq(c,v){q.filters.push(r=>r[c]===v);return api;},
+    eq(c,v){q.filters.push(r=>String(r[c])===String(v));return api;},
     in(c,a){q.filters.push(r=>a.includes(r[c]));return api;},
     gt(c,v){q.filters.push(r=>r[c]&&new Date(r[c])>new Date(v));return api;},
     lte(c,v){q.filters.push(r=>r[c]&&new Date(r[c])<=new Date(v));return api;},
     gte(c,v){q.filters.push(r=>r[c]&&new Date(r[c])>=new Date(v));return api;},
     or(str){const parts=str.split(',').map(p=>{const m=/^(\\w+)\\.gt\\.(.+)$/.exec(p);return r=>r[m[1]]&&new Date(r[m[1]])>new Date(m[2]);});q.filters.push(r=>parts.some(f=>f(r)));return api;},
     insert(row){q.op='insert';q.payload=row;return api;},
+    upsert(row){q.op='upsert';q.payload=row;return api;},
     update(row){q.op='update';q.payload=row;return api;},
     single(){q.single=true;return api;},
     maybeSingle(){q.single=true;return api;},
@@ -25,7 +26,8 @@ function Q(table){
     window.__LOG.push({table,op:q.op,at:Date.now()});
     const delay=(window.__DELAY&&window.__DELAY[table])||0; if(delay) await new Promise(r=>setTimeout(r,delay));
     const t=window.__DB[table]||(window.__DB[table]=[]);
-    if(q.op==='insert'){ (Array.isArray(q.payload)?q.payload:[q.payload]).forEach(r=>t.push(Object.assign({id:t.length+1,status:'queued',created_at:new Date().toISOString()},r))); return {data:null,error:null}; }
+    if(q.op==='upsert'){ const r=q.payload; const ex=t.find(x=>x.key===r.key); if(ex) Object.assign(ex,r); else t.push(Object.assign({},r)); return {data:null,error:null}; }
+    if(q.op==='insert'){ const made=[]; for(const r of (Array.isArray(q.payload)?q.payload:[q.payload])){ if(table==='gl_crm_autobook'&&t.find(x=>x.key===r.key)) return {data:null,error:{message:'duplicate key',code:'23505'}}; const row=Object.assign({id:t.length+1,status:'queued',created_at:new Date().toISOString()},r); t.push(row); made.push(row); } return {data:q.single?(made[0]||null):made,error:null}; }
     let rows=t.filter(r=>q.filters.every(f=>f(r)));
     if(q.op==='update'){ rows.forEach(r=>Object.assign(r,q.payload)); return {data:null,error:null}; }
     if(q.ord){const [c,asc]=q.ord;rows=rows.slice().sort((a,b)=>{const x=a[c]||'',y=b[c]||'';return (x<y?-1:x>y?1:0)*(asc?1:-1);});}

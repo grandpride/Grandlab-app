@@ -490,7 +490,7 @@ function LEADS(){
 /* Bumped whenever this page changes, and shown at the bottom of the sidebar.
    GitHub Pages and an installed app both cache hard, so without this there is
    no way to tell "the fix is not deployed" from "the fix does not work". */
-const BUILD='2026-11-24o';
+const BUILD='2026-11-24p';
 
 function drawNav(){
   $('side').innerHTML = NAV.map(n=>{
@@ -997,7 +997,7 @@ async function load(){
     try{ const {data:li}=await sb.rpc('gl_crm_lead_info');
          (li||[]).forEach(x=>{ LEADINFO[x.chat_jid]=x; }); }catch(e){}
     await loadMaint();
-    await loadTemplates();
+    await loadTemplates(); await loadAutoBook();
     try{ const {data:nh,error:ne}=await sb.rpc('gl_crm_notlead_hint'); if(!ne&&Array.isArray(nh)){ NLHINT={}; nh.forEach(x=>{ if(x.reason) NLHINT[x.chat_jid]=x; }); } }catch(e){}
     try{ const {data:ad}=await sb.rpc('gl_crm_ads',{p_days:ADDAYS}); ADS=ad||[]; }catch(e){ ADS=[]; }
     try{ const {data:ac,error:ae}=await sb.rpc('gl_crm_ad_codes'); if(!ae&&Array.isArray(ac)) AD_CODES=ac; }catch(e){}
@@ -2172,7 +2172,7 @@ function renderSettings(){
    +'</div>'
    +'<table class="t2"><thead><tr><th>Name</th><th>Replying</th><th>Last signed in</th><th></th></tr></thead>'
    +'<tbody>'+rows+'</tbody></table></div>'
-   +tplSettingsHtml()
+   +tplSettingsHtml()+autoBookSettingsHtml()
    +'<div class="soonbox">'
      +'<b>What the PIN does, and what it does not.</b><br>'
      +'It records who typed a reply and puts that name on the front of the message, '
@@ -2550,7 +2550,7 @@ function miaNextReady(){
   if(nx){ openThread(nx.chat_jid); return; }
   const n=$('tReplyNote'); if(n){ n.className='replyNote'; n.textContent='No other "Needs reply" chat has a MIA suggestion ready yet.'; }
 }
-function liveAfterChange(){ miaBgScan(); }
+function liveAfterChange(ch){ miaBgScan(); try{ autoBookScan(ch); }catch(e){} }
 
 /* ---------------------------------------------------------------------------
    MIA LEARNING (24 Nov). The Deck is what customers get told, so it only ever
@@ -2898,6 +2898,14 @@ function drawBook(){
   const el=$('tBook'); if(!el) return;
   BK=CUR?bkDetect(CUR.chat_jid):null;
   if(!BK){ el.classList.add('hide'); el.innerHTML=''; return; }
+  const ab=AUTOBK.map[BK.jid+'|'+BK.li];
+  if(ab&&ab.info&&ab.info!=='claiming'){
+    el.classList.remove('hide');
+    el.innerHTML='<div class="mh"><b>Auto-booking</b><span>'+esc(ab.info)+'</span>'
+      +(ab.booking_id&&/^booked/.test(ab.info)?' <button class="mvbtn" onclick="bkUndo('+JSON.stringify(BK.jid+'|'+BK.li).replace(/"/g,'&quot;')+')">Undo (cancel)</button>':'')+'</div>'
+      +(/^skipped|^failed/.test(ab.info)?'<div class="why">Not booked automatically. You can still book it by hand below.</div>':'');
+    if(/^booked|^cancelled/.test(ab.info)) return;
+  }
   if(BK_DONE[BK.jid+'|'+BK.li]){ el.classList.remove('hide'); el.innerHTML='<div class="mh"><b>Booking request</b><span>'+esc(BK_DONE[BK.jid+'|'+BK.li])+'</span></div>'; return; }
   const inp=(id,lbl,v,type)=>'<label style="font-size:11px;color:var(--text2);display:block;margin-top:4px">'+lbl+'<input id="bk_'+id+'" type="'+(type||'text')+'" value="'+esc(v||'')+'" style="width:100%;display:block"></label>';
   el.classList.remove('hide');
@@ -2953,6 +2961,98 @@ async function bkBook(){
     BK_DONE[BK.jid+'|'+BK.li]='Booked '+dt+', '+v.slot+(sent?'. Confirmation queued.':'. Confirmation was already queued.');
     drawBook();
   }catch(e){ fail('Could not book: '+(e.message||e)); }
+}
+
+/* AUTO-BOOK (step 1 only). Off by default; the switch lives in Settings and is shared by every device
+   (row 'enabled' in gl_crm_autobook). It only acts on the structured booking FORM the customer sends back,
+   and only when everything is clear. One claim row per form means two open screens can never book twice.
+   It books and shows an Undo on the chat. It does NOT send any WhatsApp confirmation. */
+const AUTOBK={on:false,map:{},busy:false};
+async function loadAutoBook(){
+  try{
+    const {data,error}=await sb.from('gl_crm_autobook').select('key,info,booking_id,at').order('at',{ascending:false}).limit(300);
+    if(error) return;
+    AUTOBK.map={}; (data||[]).forEach(r=>{ if(r.key==='enabled') AUTOBK.on=r.info==='on'; else AUTOBK.map[r.key]=r; });
+  }catch(e){}
+}
+async function autoBookToggle(){
+  const next=!AUTOBK.on;
+  if(next&&!confirm('Switch ON auto-booking?\n\nWhen a customer sends back the filled booking form with everything clear, the CRM creates the booking by itself (no WhatsApp confirmation is sent). You can undo each one on the chat.')) return;
+  const {error}=await sb.from('gl_crm_autobook').upsert({key:'enabled',info:next?'on':'off',at:new Date().toISOString()},{onConflict:'key'});
+  if(error){ alert('Could not change it: '+error.message); return; }
+  AUTOBK.on=next; renderSettings();
+}
+function autoBookSettingsHtml(){
+  return '<div class="panel2" style="margin-top:14px"><div class="pt">Auto-booking (step 1)'
+    +'<button class="mvbtn" style="float:right;margin-top:-3px" onclick="autoBookToggle()">'+(AUTOBK.on?'Switch off':'Switch on')+'</button></div>'
+    +'<div style="padding:8px 12px;font-size:12px">Status: '+(AUTOBK.on?'<span class="chip rm">ON</span>':'<span class="chip chk">OFF</span>')
+    +'<div style="color:var(--ink2);margin-top:4px">Books by itself only when the customer sends back the filled booking form with name, plate, service, a future date (within 60 days) and one of the 5 time slots, the slot is not full and there is no double booking. No WhatsApp confirmation is sent. Each one shows an Undo on the chat.</div></div></div>';
+}
+function bkDetectRows(rows,c){
+  const q=miaQuestion(rows); if(!q) return null;
+  const f=bkParse(q); const n=Object.keys(f).length;
+  if(n<3||!(f.date||f.time)||!(f.plate||f.name)) return null;
+  return {jid:c.chat_jid,li:miaLastIn(rows),n,name:f.name||c.name||'',phone:String(c.phone||'').replace(/\D/g,''),plate:(f.plate||'').toUpperCase(),
+    car:f.car||'',service:f.service||'',date:bkDate(f.date),slot:bkSlot(f.time)||''};
+}
+function bkIsoToday(){ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function bkClear(d){
+  if(!d||!d.li) return 'no form';
+  if(!d.name||!d.plate||!d.service) return 'name, plate or service missing';
+  if(d.phone.length<9) return 'no phone on the chat';
+  if(!d.date||!d.slot) return 'date or slot unclear';
+  const t=bkIsoToday(); const max=new Date(); max.setDate(max.getDate()+60);
+  const mx=max.getFullYear()+'-'+String(max.getMonth()+1).padStart(2,'0')+'-'+String(max.getDate()).padStart(2,'0');
+  if(d.date<t||d.date>mx) return 'date not within the next 60 days';
+  return '';
+}
+async function bkAuto(d){
+  const key=d.jid+'|'+d.li;
+  if(AUTOBK.map[key]) return;
+  const {error:ce}=await sb.from('gl_crm_autobook').insert({key,info:'claiming'});
+  if(ce) return;                                                    // another screen already took it (or no access)
+  AUTOBK.map[key]={key,info:'claiming'};
+  const done=async(info,id)=>{ AUTOBK.map[key]={key,info,booking_id:id||null}; try{ await sb.from('gl_crm_autobook').update({info,booking_id:id||null}).eq('key',key); }catch(e){} if(CUR&&CUR.chat_jid===d.jid) drawBook(); };
+  try{
+    const {data:day,error:de}=await sb.from('gl_bookings').select('scheduled_at,notes,status').gte('scheduled_at',d.date+'T00:00:00+08:00').lte('scheduled_at',d.date+'T23:59:59+08:00');
+    if(de) throw de;
+    const live=(day||[]).filter(r=>String(r.status||'').toLowerCase()!=='cancelled');
+    const same=live.find(r=>{ const n=String(r.notes||''); return (d.plate&&n.toUpperCase().includes('PLATE: '+d.plate)) || (d.phone&&n.replace(/\D/g,'').includes(d.phone.slice(-8))&&/Phone:/i.test(n)); });
+    if(same) return done('skipped: already booked that day');
+    const used=live.filter(r=>String(r.notes||'').includes('[slot:'+d.slot+']')).length;
+    if(used>=2) return done('skipped: slot full');
+    let custId=null;
+    try{ const {data:ex}=await sb.from('gl_profiles').select('id').or('phone.eq.+'+d.phone+',phone.eq.'+d.phone).limit(1).maybeSingle(); if(ex) custId=ex.id; }catch(e){}
+    const notes=['Name: '+d.name,'Phone: '+d.phone,'Car: '+d.car,'Plate: '+d.plate,'Auto-booked from WhatsApp form','[slot:'+d.slot+']'].join(' | ');
+    const {data:ins,error:ie}=await sb.from('gl_bookings').insert({customer_id:custId,vehicle_id:null,service_id:null,service_name:d.service,
+      scheduled_at:d.date+'T'+BK_SLOT24[d.slot]+':00+08:00',status:'pending',source:'whatsapp',lead_source:null,is_returning:false,
+      referral_by_name:null,referral_by_ref:null,notes}).select('id').single();
+    if(ie) throw ie;
+    await done('booked '+d.date+' '+d.slot+' '+d.service,String(ins&&ins.id||''));
+  }catch(e){ await done('failed: '+String(e.message||e).slice(0,120)); }
+}
+async function bkUndo(key){
+  const r=AUTOBK.map[key]; if(!r||!r.booking_id) return;
+  if(!confirm('Cancel this booking?')) return;
+  const {error}=await sb.from('gl_bookings').update({status:'cancelled'}).eq('id',r.booking_id);
+  if(error){ alert('Could not cancel: '+error.message); return; }
+  r.info='cancelled by staff'; try{ await sb.from('gl_crm_autobook').update({info:r.info}).eq('key',key); }catch(e){}
+  drawBook();
+}
+async function autoBookScan(jids){
+  if(!AUTOBK.on||AUTOBK.busy) return;
+  AUTOBK.busy=true;
+  try{
+    for(const jid of (jids||[]).slice(0,5)){
+      const c=CHATS.find(x=>x.chat_jid===jid); if(!c) continue;
+      const lm=LASTMSG[jid]; if(!lm||lm.direction!=='in') continue;
+      const {data}=await sb.from('gl_wa_msg').select('direction,sent_by,msg_type,body,wa_ts').eq('chat_jid',jid).order('wa_ts',{ascending:false}).limit(30);
+      const rows=(data||[]).slice().reverse();
+      const d=bkDetectRows(rows,c); if(!d||bkClear(d)) continue;
+      await bkAuto(d);
+    }
+  }catch(e){}
+  AUTOBK.busy=false;
 }
 
 /* ---------------------------------------------------------------------------
