@@ -492,7 +492,7 @@ function LEADS(){
 /* Bumped whenever this page changes, and shown at the bottom of the sidebar.
    GitHub Pages and an installed app both cache hard, so without this there is
    no way to tell "the fix is not deployed" from "the fix does not work". */
-const BUILD='2026-11-24t';
+const BUILD='2026-11-24u';
 
 function drawNav(){
   $('side').innerHTML = NAV.map(n=>{
@@ -1017,7 +1017,12 @@ async function load(){
     else if(VIEW==='tasks') renderTasks();
     else if(VIEW==='ads') renderAds();
   }catch(e){
-    $('statusLine').innerHTML='<span class="err">Could not load: '+esc(e.message||e)+'</span>';
+    // stale login token (e.g. after the server keys were rotated): get a fresh one once, then retry
+    if(!window.__tokRetry && /No suitable key|wrong key type|invalid jwt|JWT/i.test(String(e&&e.message||e)) && sb.auth.refreshSession){
+      window.__tokRetry=true;
+      try{ const r=await sb.auth.refreshSession(); if(r&&r.data&&r.data.session){ return load(); } }catch(_){}
+    }
+    $('statusLine').innerHTML='<span class="err">Could not load: '+esc(e.message||e)+(window.__tokRetry?' — log out of the Hub and log in again':'')+'</span>';
   }
 }
 
