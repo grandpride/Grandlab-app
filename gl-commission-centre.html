@@ -39,6 +39,7 @@ html,body{background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,"Seg
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script src="gl-backend-config.js"></script>
+<script src="gl-gp-read.js"></script>
 <script>/* backend switch (docs/cf-migration-gl.md): ONLY when the switch is on for module "core" (gl-backend-config.js) or this device chose ?backend=cf, load gl-cf-client.js + gl-cf-page.js. Off = nothing else happens. */
 (function(){try{var M='core',on;if(typeof GL_BACKEND_PICK==='function'){on=GL_BACKEND_PICK(M)==='cf';}else{var m=/[?&]backend=(cf|sb)(?:&|$)/.exec(location.search);if(m){if(m[1]==='cf')localStorage.setItem('gl_backend','cf');else localStorage.removeItem('gl_backend');}on=localStorage.getItem('gl_backend')==='cf';}if(on){window.GLCF_PAGE_CFG={page:'gl-commission-centre',module:M,hubLogin:true};document.write('<script src="gl-cf-client.js"><\/script><script src="gl-cf-page.js"><\/script>');}}catch(e){}})();</script>
 <script>
@@ -65,9 +66,9 @@ html,body{background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,"Seg
       if(!s.data.session) return;
       var email = (s.data.session.user.email||'').toLowerCase();
       if(MASTER.indexOf(email) >= 0) return;
-      var gp = supabase.createClient(GP_URL, GP_ANON, {auth:{persistSession:false,storageKey:'gp_read'}});
-      var r = await gp.from('gp_staff').select('name,apps').ilike('email', email).maybeSingle();
-      if(r.error || !r.data){ deny('This login is not in the staff list. Ask the manager to add you.'); return; }
+      var r = await GLGP.me(s.data.session.access_token);   // gl-gp-read.js: GET /gl/gpread/me (own staff row only)
+      if(r.error&&GLGP.GUARD_FAIL_OPEN) return;   // the staff-list check itself could not run: let them in (switch: gl-gp-read.js)
+      if(r.error||!r.data){ deny('This login is not in the staff list. Ask the manager to add you.'); return; }
       var apps = r.data.apps;
       if(typeof apps === 'string'){ try{ apps = JSON.parse(apps); }catch(e){ apps = []; } }
       if(!Array.isArray(apps)) apps = [];

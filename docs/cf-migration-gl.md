@@ -85,10 +85,11 @@ Everyone → change the word back to `"sb"` and push. Data written to the new sy
 | customer PWA | index.html | direct REST/auth/storage `fetch` answered by `GLCF.handleSupabaseFetch` (customer token / public routes) |
 | used without a login (`public`) | receipt, gl-warranty, gl-inspect-view, gl-qc-view, gl-sa-accept (links sent to customers / partners), gl-freewash, gl-spin, gl-giveaway (shop kiosks), q (QR router) | no bar; with no login every data call goes to `/gl/public/db` / `/gl/public/rpc/:name` **without a token** (like the anon key today); with a login on the device (e.g. a kiosk tablet signed in as reception), to `/gl/api/*`. |
 
-The **Grandpride access check** (`gp_staff.apps`, read with the anon key from `gpdb.grandlab.com.my` in 13 pages) and
-the Grandpride reads in gl-tower / gl-tower-lite / gl-academy / gl-statement / gl-ladder / gl-qc / gl-qc-addon (client
-`gp`) are NOT switched here: `createClient(<Grandpride URL>)` still returns real supabase-js. They move with the
-Grandpride switch.
+The **Grandpride reads** (the access check `gp_staff.apps` in 14 pages + the Hub tile filter in gl-hub / gl-hub-v3, the people / attendance / fleet
+in gl-tower / gl-tower-lite, the staff sync in gl-academy) go to gl-api `GET /gl/gpread/me|tower|staff-apps` through `gl-gp-read.js`, on **both**
+switch settings (the old gateway `gpdb.grandlab.com.my` is stopped). The token is the Cloudflare login on "cf" and the Grandlab Supabase login
+(`gl_auth`) on "sb". If the staff-list check itself cannot run, the guarded pages let the person in (`GLGP.GUARD_FAIL_OPEN = true` in `gl-gp-read.js`;
+set it to `false` to block instead); only a clear "not in the staff list / no access to this app" blocks. Tests: `tests/gl-gp-read.test.mjs`, `tests/gl-gp-read.playwright.cjs`.
 
 ## Status per page (switch on, signed in on the new system)
 

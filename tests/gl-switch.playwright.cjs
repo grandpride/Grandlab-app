@@ -125,6 +125,7 @@ async function record(browser, base, page, query, mode, seed) {
   rec.requests = rec.requests.filter((x, i, a) => !media.test(x) || a.indexOf(x) === i);
   rec.config = rec.requests.filter((x) => /\/gl-backend-config\.js$/.test(x));
   rec.requests = rec.requests.filter((x) => !/\/gl-backend-config\.js$/.test(x));
+  rec.requests = rec.requests.filter((x) => !/\/gl-gp-read\.js$/.test(x));   // Grandpride read helper (tests/gl-gp-read.*): one static file, no data request while no token / MASTER
   rec.console.sort(); rec.errors.sort(); rec.requests.sort();
   return rec;
 }
@@ -297,7 +298,10 @@ const FIRST_ELEVEN = ['gl-claim.html', 'gl-marketing.html', 'gl-ads.html', 'gl-m
       }
       if (page === 'gl-hub-v3.html') {
         const gp = sbCalls.concat(await p.evaluate(() => window.__sbCalls || [])).filter((u) => u.indexOf('gpdb.grandlab.com.my') >= 0);
-        ok(gp.length >= 1, label + ': Grandpride gp_staff check no longer uses supabase-js');
+        ok(gp.length === 0, label + ': still creates a supabase-js client for the old Grandpride gateway');
+        ok(rec.requests.every((x) => x.indexOf('gpdb.grandlab.com.my') < 0), label + ': request to gpdb.grandlab.com.my');
+        const me = rec.api.filter((x) => x.path === '/gl/gpread/me');
+        ok(me.length >= 1 && me.every((x) => x.auth === 'Bearer staff.SIGNED'), label + ': Grandpride staff check is not GET /gl/gpread/me with the staff token: ' + JSON.stringify(me));
       }
       if (page === 'gl-ads.html') {
         await p.evaluate(() => syncNow()); await p.waitForTimeout(800);
