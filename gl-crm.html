@@ -115,6 +115,11 @@ input:focus{outline:none;border-color:var(--gold-ink)}
 .msg .by.byph{color:var(--ink2);font-weight:700;font-style:italic}
 .replyNote.err{color:var(--red)}
 .mia{border-bottom:1px solid var(--border);background:#FFFBEB;padding:8px 12px;max-height:40vh;overflow-y:auto}
+.nlbox{margin:10px 12px 0}
+.nlbox .nlh{cursor:pointer;font-size:12px;font-weight:700;color:var(--text2);padding:6px 10px;border:1px dashed var(--line2);border-radius:8px;display:inline-block}
+.nlbox .nllist{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:8px;margin-top:8px}
+.chip.nlhint{background:#EEF3FE;color:#0B5FAE;border:1px solid #A9C8E8;font-size:10.5px;cursor:pointer}
+.chip.nlr{background:#EDE9FE;color:#5B21B6;font-size:10.5px}
 .chip.miachip{font-size:10.5px;padding:1px 7px;border-radius:9px;border:1px solid transparent}
 .chip.rdy{background:#E3F6EA;color:#17803d;border-color:#a8dcb9}
 .chip.thk{background:#FFF4D6;color:#8a6200;border-color:#f0d98a}
@@ -365,6 +370,7 @@ table.t2 tbody tr:hover{background:var(--blue-soft)}
         <div id="strip" class="strip"></div>
         <div class="sortbar" id="sortBar"></div>
         <div id="board" class="board"></div>
+        <div id="notLeadBox" class="nlbox"></div>
         <div id="statusLine" class="status"></div>
         <div id="emptyBox" class="empty hide"></div>
       </div>
@@ -452,14 +458,14 @@ function countCol(key){
 function LEADS(){
   return CHATS.filter(c=>{
     const o=OVER[c.chat_jid]||{};
-    return !o.is_customer && !(o.jobs>0);
+    return !o.is_customer && !(o.jobs>0) && colOf(c)!=='notlead';
   });
 }
 
 /* Bumped whenever this page changes, and shown at the bottom of the sidebar.
    GitHub Pages and an installed app both cache hard, so without this there is
    no way to tell "the fix is not deployed" from "the fix does not work". */
-const BUILD='2026-11-24d';
+const BUILD='2026-11-24e';
 
 function drawNav(){
   $('side').innerHTML = NAV.map(n=>{
@@ -586,6 +592,9 @@ function colOf(c){
      writes again afterwards, their new message is newer than the mark and the
      card comes back to Needs reply by itself. */
   if(s==='ghost' && c.ghost_at && new Date(c.ghost_at).getTime() >= lastIn) return 'quiet';
+  /* "Not a lead" (vacancy, no car, wrong tap...). Same rule as the quiet mark: it
+     holds until the customer writes again, then the chat comes back to be read. */
+  if(s==='notlead' && c.not_lead_at && new Date(c.not_lead_at).getTime() >= lastIn) return 'notlead';
   const unanswered = lastIn > lastOut;
   const gone = Date.now()-newest > QUIET_DAYS*86400000;
   /* An open message comes first — paid, ghosted or neither. A customer who
@@ -655,7 +664,8 @@ function mvPicker(c,col,prompt){
      (col!=='paid'  ? b('gw','paid','Won','Money came in from this conversation') : '')
     +(col!=='closed'? b('','closed','Done','Finished, no sale — stop the light, keep the chat') : '')
     +(col!=='quiet' ? b('gq','ghost','Gone quiet','They stopped replying') : '')
-    +b('gx','talking','Active','Clear the mark and work it out from the messages again');
+    +b('gx','talking','Active','Clear the mark and work it out from the messages again')
+    +NL_REASONS.map(([k,l])=>'<button class="mvbtn gq" title="Not a real lead: '+esc(l)+'" onclick="setNotLead(event,'+j+',\''+k+'\')">Not a lead: '+esc(l)+'</button>').join('');
   if(!prompt) return '<div class="decide">'+opts+'</div>';
   return '<div class="decide"><div class="dq">No reply in over '+NUDGE_HOURS
     +' hours &mdash; is this done, or gone quiet?</div>'+opts+'</div>';
@@ -777,6 +787,7 @@ function cardHtml(c,col){
           : (Number(c.paid_rm)>0?'<span class="chip rm">'+esc(RM(c.paid_rm))+'</span>':'')))
       +adBtnHtml(c.chat_jid)
       +(col==='reply'?miaChipHtml(c):'')
+      +(col==='notlead'?'<span class="chip nlr">'+esc(NL_LABEL[c.not_lead_reason]||'Not a lead')+'</span>':nlHintChip(c))
       +(light==='new'?'<span class="chip fresh">NEW</span>':'')
       +(s==='closed'?'<span class="chip chk">closed by you</span>':'')
       +'<span class="ago '+a.cls+'">'+a.t+'</span>'
@@ -785,6 +796,42 @@ function cardHtml(c,col){
     +(showPicker?mvPicker(c,col,light==='amber'):'')
     +(OPENAD===c.chat_jid?'<div class="decide adpick" onclick="event.stopPropagation()">'+adPicker(c.chat_jid)+'</div>':'')
     +'</div>';
+}
+
+
+/* "Not a lead": vacancy / no car / wrong tap / selling cars / unclear voice. Kept
+   out of Leads and the cost-per-lead numbers, but never deleted — they sit in a
+   collapsed list under the board with the reason, and come back by themselves
+   if the customer writes again after the mark. */
+const NL_REASONS=[['vacancy','Vacancy'],['nocar','No car'],['wrongtap','Wrong tap'],['selling','Selling cars / other'],['voice','Unclear voice']];
+const NL_LABEL={vacancy:'Vacancy',nocar:'No car',wrongtap:'Wrong tap',selling:'Selling cars / other',voice:'Unclear voice',other:'Other'};
+let NL_OPEN=false, NLHINT={};
+function drawNotLead(list){
+  const el=$('notLeadBox'); if(!el) return;
+  if(!list.length){ el.innerHTML=''; return; }
+  el.innerHTML='<div class="nlh" onclick="NL_OPEN=!NL_OPEN;render()">'+(NL_OPEN?'&#9662;':'&#9656;')+' Not a lead <b>'+list.length+'</b> &middot; kept out of Leads and cost per lead</div>'
+    +(NL_OPEN?'<div class="nllist">'+list.map(c=>cardHtml(c,'notlead')).join('')+'</div>':'');
+}
+async function setNotLead(ev,jid,reason){
+  if(ev) ev.stopPropagation();
+  const c=CHATS.find(x=>x.chat_jid===jid); if(!c) return;
+  const was={status:c.status,ghost_at:c.ghost_at,r:c.not_lead_reason,at:c.not_lead_at};
+  c.status='notlead'; c.not_lead_reason=reason; c.not_lead_at=new Date().toISOString(); c.ghost_at=null;
+  OPENMV=''; render(); drawNav();
+  try{
+    const {error}=await sb.rpc('gl_crm_set_notlead',{p_jid:jid,p_reason:reason});
+    if(error) throw error;
+  }catch(e){
+    c.status=was.status; c.ghost_at=was.ghost_at; c.not_lead_reason=was.r; c.not_lead_at=was.at; render(); drawNav();
+    $('statusLine').innerHTML='<span class="err">Could not mark that chat: '+esc(e.message||e)+'</span>';
+  }
+}
+function nlHintChip(c){
+  if(String(c.status||'').toLowerCase()==='notlead') return '';
+  const h=NLHINT[c.chat_jid]; if(!h) return '';
+  const o=OVER[c.chat_jid]||{}; if(o.is_customer||o.jobs>0) return '';
+  const j=JSON.stringify(c.chat_jid).replace(/"/g,'&quot;');
+  return '<span class="chip nlhint" title="'+esc('Based on: '+(h.snippet||''))+'" onclick="setNotLead(event,'+j+',\''+h.reason+'\')">Looks like: '+esc(NL_LABEL[h.reason]||h.reason)+' &middot; tap to confirm</span>';
 }
 
 /* One row, one column, and only ever the status column — see
@@ -830,7 +877,7 @@ function render(){
       .some(v=>String(v==null?'':v).toLowerCase().includes(q));
   });
 
-  const by={}; COLS.forEach(x=>by[x.key]=[]);
+  const by={notlead:[]}; COLS.forEach(x=>by[x.key]=[]);
   rows.forEach(c=>by[colOf(c)].push(c));
   /* Newest activity on top, in every column. "Activity" is whichever is later:
      the customer's last message or ours, so a chat we just answered rises too
@@ -852,6 +899,7 @@ function render(){
       +(list.length?list.map(c=>cardHtml(c,x.key)).join(''):'<div class="empty" style="padding:14px;font-size:11.5px">Nothing here</div>')
       +'</div></div>';
   }).join('');
+  drawNotLead(by.notlead);
 
   // the money view: what this pipeline actually did
   /* No close-rate figure here on purpose. The denominator would be every
@@ -884,7 +932,7 @@ function render(){
 }
 const stat=(v,k,cls)=>'<div class="stat '+(cls||'')+'"><div class="v">'+esc(v)+'</div><div class="k">'+esc(k)+'</div></div>';
 
-const CHAT_COLS='chat_jid,phone,name,stage,status,ghost_at,first_in_at,last_in_at,last_out_at,booked_at,paid_at,paid_rm,remark,updated_at';
+const CHAT_COLS='chat_jid,phone,name,stage,status,ghost_at,first_in_at,last_in_at,last_out_at,booked_at,paid_at,paid_rm,remark,updated_at,not_lead_reason,not_lead_at';
 async function load(){
   $('statusLine').textContent='Loading…';
   try{
@@ -919,6 +967,7 @@ async function load(){
     LEADINFO={};
     try{ const {data:li}=await sb.rpc('gl_crm_lead_info');
          (li||[]).forEach(x=>{ LEADINFO[x.chat_jid]=x; }); }catch(e){}
+    try{ const {data:nh,error:ne}=await sb.rpc('gl_crm_notlead_hint'); if(!ne&&Array.isArray(nh)){ NLHINT={}; nh.forEach(x=>{ if(x.reason) NLHINT[x.chat_jid]=x; }); } }catch(e){}
     try{ const {data:ad}=await sb.rpc('gl_crm_ads',{p_days:ADDAYS}); ADS=ad||[]; }catch(e){ ADS=[]; }
     try{ const {data:ac,error:ae}=await sb.rpc('gl_crm_ad_codes'); if(!ae&&Array.isArray(ac)) AD_CODES=ac; }catch(e){}
     try{ const {data:cm,error:ce}=await sb.rpc('gl_crm_ad_code_map'); if(!ce&&Array.isArray(cm)){ ADCODEMAP={}; cm.forEach(r=>{ ADCODEMAP[String(r.ad_id)]=String(r.code||'').toUpperCase(); }); } }catch(e){}
@@ -1771,26 +1820,27 @@ function adCodeTable(){
     const mine=ADS.filter(a=>ADCODEMAP[String(a.ad_id)]===code);
     const spend=mine.reduce((s,a)=>s+num(a.spend),0);
     const meta=mine.reduce((s,a)=>s+num(a.conversations),0);
-    let chats=0, won=0, rm=0;
+    let chats=0, won=0, rm=0, nl=0;
     CHATS.forEach(c=>{
       const li=LEADINFO[c.chat_jid]; if(!li) return;
       if(!['tagged','code'].includes(li.src_kind) || String(li.src_label||'').toUpperCase()!==code) return;
       const t=new Date(c.first_in_at||c.last_in_at||0).getTime();
       if(!(t>=since)) return;
+      if(String(c.status||'').toLowerCase()==='notlead'){ nl++; return; }
       chats++;
       if(wonAt(c)){ won++; rm+=Number((OVER[c.chat_jid]||{}).revenue)||0; }
     });
-    return {code,offer:((AD_CODES.find(a=>a.code===code)||{}).offer)||'',spend,meta,chats,won,rm};
-  }).filter(r=>r.spend>0||r.chats>0).sort((a,b)=>b.spend-a.spend||b.chats-a.chats);
+    return {code,offer:((AD_CODES.find(a=>a.code===code)||{}).offer)||'',spend,meta,chats,nl,won,rm};
+  }).filter(r=>r.spend>0||r.chats>0||r.nl>0).sort((a,b)=>b.spend-a.spend||b.chats-a.chats);
   if(!rows.length) return '';
   const tot=rows.reduce((t,r)=>({spend:t.spend+r.spend,chats:t.chats+r.chats,won:t.won+r.won,rm:t.rm+r.rm}),{spend:0,chats:0,won:0,rm:0});
   return '<div class="panel2" style="margin-bottom:14px"><div class="pt">By ad code &mdash; last '+ADDAYS+' days</div>'
-    +'<div style="overflow-x:auto"><table class="t2"><thead><tr><th>Code</th><th>Spent</th><th>Meta counted</th><th>Chats tied</th><th>Cost / chat</th><th>Won</th><th>Won RM</th></tr></thead><tbody>'
+    +'<div style="overflow-x:auto"><table class="t2"><thead><tr><th>Code</th><th>Spent</th><th>Meta counted</th><th>Real leads</th><th>Not a lead</th><th>Cost / chat</th><th>Won</th><th>Won RM</th></tr></thead><tbody>'
     +rows.map(r=>'<tr style="cursor:default"><td><b>'+esc(r.code)+'</b>'+(r.offer?'<div style="color:var(--ink2);font-size:11px">'+esc(r.offer)+'</div>':'')+'</td>'
-      +'<td>'+esc(RM(r.spend))+'</td><td>'+r.meta+'</td><td><b>'+r.chats+'</b></td>'
+      +'<td>'+esc(RM(r.spend))+'</td><td>'+r.meta+'</td><td><b>'+r.chats+'</b></td><td>'+(r.nl||'&mdash;')+'</td>'
       +'<td>'+(r.chats&&r.spend?esc(RM(r.spend/r.chats)):'&mdash;')+'</td>'
       +'<td>'+r.won+'</td><td>'+(r.rm?esc(RM(r.rm)):'&mdash;')+'</td></tr>').join('')
-    +'<tr style="cursor:default;font-weight:800"><td>Total</td><td>'+esc(RM(tot.spend))+'</td><td></td><td>'+tot.chats+'</td>'
+    +'<tr style="cursor:default;font-weight:800"><td>Total</td><td>'+esc(RM(tot.spend))+'</td><td></td><td>'+tot.chats+'</td><td>'+rows.reduce((t,r)=>t+r.nl,0)+'</td>'
       +'<td>'+(tot.chats&&tot.spend?esc(RM(tot.spend/tot.chats)):'&mdash;')+'</td><td>'+tot.won+'</td><td>'+(tot.rm?esc(RM(tot.rm)):'&mdash;')+'</td></tr>'
     +'</tbody></table></div>'
     +'<div style="padding:8px 14px;font-size:11px;color:var(--ink2)">&ldquo;Chats tied&rdquo; only counts chats where the ad code was found or picked, so it is a floor. '
