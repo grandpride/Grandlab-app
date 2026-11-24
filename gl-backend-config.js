@@ -11,8 +11,8 @@
    opens ?backend=auto. Switch-over day: change the words below (one-line commits). Going back: change them back. */
 window.GL_BACKEND_DEFAULT = "sb";
 window.GL_BACKEND_MODULES = {
-  core:      "sb",   // shop floor + staff tools: Hub, job card, plate scan, appointments, POS, TV board, QC, commission, win-back...
-  customer:  "sb",   // customer app (index.html) + customer / partner links (receipt, e-warranty, inspection, QC view, SA quote)
+  core:      "cf",   // shop floor + staff tools: Hub, job card, plate scan, appointments, POS, TV board, QC, commission, win-back...
+  customer:  "cf",   // customer app (index.html) + customer / partner links (receipt, e-warranty, inspection, QC view, SA quote)
   marketing: "cf",   // marketing analysis, ads report, marketing calendar
   claim:     "cf"    // GL Claim (expense claims)
 };
