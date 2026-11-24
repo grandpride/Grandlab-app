@@ -19,6 +19,7 @@ import { readFileSync, existsSync, appendFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { createTelegram } from './gl-wa-telegram.mjs';
 import { createWatchdog } from './gl-wa-watchdog.mjs';
+import { createPush } from './gl-wa-push.mjs';
 import { fileURLToPath } from 'node:url';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -227,6 +228,7 @@ async function push(rows) {
     prefer: 'resolution=ignore-duplicates,return=representation'
   });
   const newCount = Array.isArray(inserted) ? inserted.length : 0;
+  try { await PUSHER.onNew(inserted); } catch (e) { /* phone alerts must never stop the import */ }
 
   // one summary per chat from this batch
   const byChat = new Map();
@@ -457,6 +459,8 @@ const WD = createWatchdog({
   stateFile: join(HERE, 'wa-watchdog-state.json'),
   tgStateFile: join(HERE, 'telegram-state.json')
 });
+
+const PUSHER = createPush({ env: ENV, api, log });
 
 /* ---------- commands ---------- */
 

@@ -370,6 +370,7 @@ table.t2 tbody tr:hover{background:var(--blue-soft)}
     <a class="back" href="gl-hub.html">&#8592; Hub</a>
     <div class="ttl">GRAND<span>LAB</span> CRM</div>
     <div class="grow"><input id="q" placeholder="Search name, phone or message…" autocomplete="off"></div>
+    <button class="btn btn2" id="pushBtn" onclick="pushToggle()" title="Notify this phone/computer when a customer writes, even when the CRM is closed">&#128241; Phone alerts</button>
     <button class="btn btn2" id="alertBtn" onclick="toggleAlerts()" title="Pop up when a customer is waiting">&#128276; Alerts off</button>
     <button class="btn btn2" onclick="load()">Refresh</button>
   </div>
@@ -488,7 +489,7 @@ function LEADS(){
 /* Bumped whenever this page changes, and shown at the bottom of the sidebar.
    GitHub Pages and an installed app both cache hard, so without this there is
    no way to tell "the fix is not deployed" from "the fix does not work". */
-const BUILD='2026-11-24l';
+const BUILD='2026-11-24m';
 
 function drawNav(){
   $('side').innerHTML = NAV.map(n=>{
@@ -2892,11 +2893,49 @@ async function bkBook(){
   }catch(e){ fail('Could not book: '+(e.message||e)); }
 }
 
+/* ---------------------------------------------------------------------------
+   PHONE ALERTS / WEB PUSH (24 Nov). Each person taps "Phone alerts" once on their
+   own phone or computer and allows notifications. The subscription is saved with
+   gl_crm_push_save (reception only); the bridge on the shop PC sends the pushes
+   (staged: NEW-FROM-CLAUDE\push). Android Chrome works as normal. iPhone only
+   works after "Add to Home Screen", iOS 16.4 or newer.
+   --------------------------------------------------------------------------- */
+const VAPID_PUBLIC='BCkM_OFFX66gIN6m63Jo6oCKoU0bfnV50pNZsm8BUm5RctDXWFBYHwTJHjCSSZ5g_wembAeVx0iaH4Vru6Uyhvo';
+function b64u(s){ const p='='.repeat((4-s.length%4)%4); const r=atob((s+p).replace(/-/g,'+').replace(/_/g,'/')); return Uint8Array.from([...r].map(c=>c.charCodeAt(0))); }
+async function pushReg(){
+  if(!('serviceWorker' in navigator)||!('PushManager' in window)) return null;
+  const scope=new URL('gl-crm.html',location.href).pathname;
+  return navigator.serviceWorker.register('gl-crm-sw.js',{scope});
+}
+async function pushDraw(){
+  const b=$('pushBtn'); if(!b) return;
+  let on=false;
+  try{ const r=await pushReg(); if(r){ const sub=await r.pushManager.getSubscription(); on=!!sub&&Notification.permission==='granted'; } }catch(e){}
+  b.innerHTML='&#128241; Phone alerts '+(on?'on':'off'); b.style.background=on?'var(--gold)':'';
+}
+async function pushToggle(){
+  try{
+    if(!('serviceWorker' in navigator)||!('PushManager' in window)){
+      alert('This browser cannot do phone alerts. On iPhone: open the CRM in Safari, tap Share, Add to Home Screen, open it from the home screen, then try again (iOS 16.4 or newer).'); return; }
+    const r=await pushReg(); await navigator.serviceWorker.ready;
+    let sub=await r.pushManager.getSubscription();
+    if(sub){ await sub.unsubscribe(); await pushDraw(); return; }   // the saved row stays; the bridge ignores dead ones
+    const perm=await Notification.requestPermission();
+    if(perm!=='granted'){ alert('Notifications were not allowed. Allow them for this site in the browser settings, then try again.'); return; }
+    sub=await r.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:b64u(VAPID_PUBLIC)});
+    const {error}=await sb.rpc('gl_crm_push_save',{p_sub:sub.toJSON(),p_staff:(typeof replyName==='function'&&replyName())||null});
+    if(error) throw error;
+    await pushDraw();
+    alert('Done. This device will get a notification when a customer writes (once the shop PC bridge push is switched on).');
+  }catch(e){ alert('Could not turn on phone alerts: '+(e.message||e)); }
+}
+
 async function boot(){
   try{ ALERTS = localStorage.getItem('gl_crm_alerts')==='1' && Notification.permission==='granted'; }catch(e){}
   setTimeout(checkForUpdate, 20000);
   setInterval(checkForUpdate, 15*60000);
   setAlertBtn();
+  pushDraw();
   setInterval(()=>{ if(!document.hidden && $('ov').classList.contains('hide')) load(); }, 5*60000);   // full reload is rare now
   liveStart();
   const want=(location.hash||'').replace('#','');
