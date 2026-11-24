@@ -802,6 +802,10 @@ function renderHistRows(){
     </div>`).join('');
 }
 
+// same phone = same core digits (leading 60 or 0 dropped): 012-345 6789, 60123456789 and +60 12 345 6789 are one number.
+// Same rule as phoneCore() in the Worker, so the page finds the customer however the number was stored or typed.
+const phoneCore=p=>String(p==null?'':p).replace(/\D/g,'').replace(/^(60|0)/,'');
+
 async function saveProfile(){
   const name=$('eName').value.trim();
   const phone=$('ePhone').value.trim();
@@ -836,10 +840,13 @@ async function saveProfile(){
       }
       if(!existing && phone){
         // server-side phone match (gl_walkin has 5000+ rows; fetch-all caps at 1000)
-        const digits=phone.replace(/\D/g,'');
-        const {data}=await sb.from('gl_walkin').select('id,phone').ilike('phone','%'+digits+'%').limit(50);
-        const hit=(data||[]).find(r=>String(r.phone||'').replace(/\D/g,'')===digits);
-        if(hit) existing={id:hit.id};
+        // core digits, not full digits: a number saved as +6012... or 012... or 6012... is the same customer
+        const core=phoneCore(phone);
+        if(core){
+          const {data}=await sb.from('gl_walkin').select('id,phone').ilike('phone','%'+core+'%').limit(50);
+          const hit=(data||[]).find(r=>phoneCore(r.phone)===core);
+          if(hit) existing={id:hit.id};
+        }
       }
       if(existing){
         walkinId=existing.id;
@@ -851,14 +858,14 @@ async function saveProfile(){
           // duplicate (phone,plate) slipped past our lookup (e.g. stored plate has
           // extra spaces/case). Recover: find the real row and UPDATE it instead.
           if((error.code==='23505')||/duplicate key|unique constraint/i.test(error.message||'')){
-            const digits=(phone||'').replace(/\D/g,'');
+            const digits=phoneCore(phone);
             const platN=plate.toUpperCase().replace(/\s+/g,'');
             let hit=null;
             const {data:byPlate}=await sb.from('gl_walkin').select('id,phone,plate').ilike('plate','%'+platN+'%').limit(50);
-            hit=(byPlate||[]).find(r=>String(r.plate||'').toUpperCase().replace(/\s+/g,'')===platN && (!digits||String(r.phone||'').replace(/\D/g,'')===digits));
+            hit=(byPlate||[]).find(r=>String(r.plate||'').toUpperCase().replace(/\s+/g,'')===platN && (!digits||phoneCore(r.phone)===digits));
             if(!hit && digits){
               const {data:byPhone}=await sb.from('gl_walkin').select('id,phone').ilike('phone','%'+digits+'%').limit(50);
-              hit=(byPhone||[]).find(r=>String(r.phone||'').replace(/\D/g,'')===digits);
+              hit=(byPhone||[]).find(r=>phoneCore(r.phone)===digits);
             }
             if(hit){
               walkinId=hit.id;

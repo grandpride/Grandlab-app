@@ -511,6 +511,9 @@ function bkSetType(t){
 
 const esc=s=>(s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const normPhone=p=>(p||'').replace(/[^0-9]/g,'');
+// same phone = same core digits (leading 60 or 0 dropped): 012-345 6789, 60123456789 and +60 12 345 6789 are one number.
+// Same rule as phoneCore() in the Worker, so the page finds the customer however the number was stored or typed.
+const phoneCore=p=>String(p==null?'':p).replace(/\D/g,'').replace(/^(60|0)/,'');
 /* Normalize a Malaysian phone to 60-prefixed digits:
    0116... -> 60116..., 116... -> 60116..., 60116... -> unchanged. */
 function normMY_(raw){
@@ -931,10 +934,13 @@ $('save').onclick=async()=>{
         if(!ex2 && phone){
           // server-side phone match (gl_walkin is large; fetch-all misses rows
           // beyond the 1000-row cap)
-          const digits=String(phone).replace(/\D/g,'');
-          const {data}=await sb.from('gl_walkin').select('id,phone').ilike('phone','%'+digits+'%').limit(50);
-          const hit=(data||[]).find(r=>String(r.phone||'').replace(/\D/g,'')===digits);
-          if(hit) ex2={id:hit.id};
+          // compare core digits, not the full digits: a number saved as +6012... or 012... or 6012... is the same customer
+          const core=phoneCore(phone);
+          if(core){
+            const {data}=await sb.from('gl_walkin').select('id,phone').ilike('phone','%'+core+'%').limit(50);
+            const hit=(data||[]).find(r=>phoneCore(r.phone)===core);
+            if(hit) ex2={id:hit.id};
+          }
         }
         const wkBody={ name:nm||null, phone:'+'+phone, plate:plate||null, model:carModel||null };
         if(ex2){ await sb.from('gl_walkin').update(wkBody).eq('id',ex2.id); }
