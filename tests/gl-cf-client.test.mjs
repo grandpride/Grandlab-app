@@ -522,6 +522,19 @@ test('PWA: rpc with the user token -> /gl/api/rpc; anon rpc -> /gl/public/rpc', 
   assert.equal(calls[1].url, API + '/gl/public/rpc/gl_app_spin_status');
   assert.equal(calls[1].init.headers.Authorization, undefined);
 });
+test('PWA: booking slot counts on the new system -> rpc gl_slot_counts with the customer token (index.html), old read kept for "sb"', async () => {
+  const c = cust(); store.set('gl_ba_token_cust', 't');
+  reply({ data: [{ appointment_time: '10:00 AM', count: 2 }], error: null });
+  const x = await rest(c, SB + '/rest/v1/rpc/gl_slot_counts', { method: 'POST', headers: userH('t'), body: JSON.stringify({ p_date: '2026-12-01' }) });
+  assert.equal(calls[0].url, API + '/gl/api/rpc/gl_slot_counts');
+  assert.equal(calls[0].init.headers.Authorization, 'Bearer t');
+  assert.deepEqual(JSON.parse(calls[0].init.body), { p_date: '2026-12-01' });
+  assert.deepEqual(x.json, [{ appointment_time: '10:00 AM', count: 2 }]);
+  const src = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
+  assert.equal((src.match(/rest\/v1\/rpc\/gl_slot_counts/g) || []).length, 2, 'loadSlots + confirmBooking use gl_slot_counts');
+  assert.equal((src.match(/if\(window\.GLCF_PAGE\)\{\s*\/\* new system/g) || []).length, 2, 'both only when the new system is on');
+  assert.ok(/gl_orders\?select=appointment_time&appointment_date=eq/.test(src) && /gl_orders\?select=id&appointment_date=eq/.test(src), 'old reads kept for the current system');
+});
 test('PWA: review-proof upload -> storage upload, and the saved old-style link becomes a gl/storage key', async () => {
   const c = cust(); store.set('gl_ba_token_cust', 't');
   reply({ data: { path: 'u/t_1_a.png', fullPath: 'gl-review-proofs/u/t_1_a.png', signedUrl: API + '/gl/files/x?exp=1&sig=2' }, error: null });
