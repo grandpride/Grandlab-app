@@ -115,6 +115,11 @@ input:focus{outline:none;border-color:var(--gold-ink)}
 .msg .by.byph{color:var(--ink2);font-weight:700;font-style:italic}
 .replyNote.err{color:var(--red)}
 .mia{border-bottom:1px solid var(--border);background:#FFFBEB;padding:8px 12px;max-height:40vh;overflow-y:auto}
+.slashmenu{margin:0 12px;border:1px solid var(--line2);border-radius:8px;background:var(--card);max-height:200px;overflow:auto;box-shadow:0 -4px 14px rgba(0,0,0,.08)}
+.slashmenu .si{padding:7px 10px;cursor:pointer;font-size:12.5px;border-bottom:1px solid var(--line2)}
+.slashmenu .si:last-child{border-bottom:0}
+.slashmenu .si.on,.slashmenu .si:hover{background:var(--gold)}
+.slashmenu .si small{display:block;color:var(--text2);font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .nlbox{margin:10px 12px 0}
 .nlbox .nlh{cursor:pointer;font-size:12px;font-weight:700;color:var(--text2);padding:6px 10px;border:1px dashed var(--line2);border-radius:8px;display:inline-block}
 .nlbox .nllist{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:8px;margin-top:8px}
@@ -408,6 +413,7 @@ table.t2 tbody tr:hover{background:var(--blue-soft)}
     <div class="mia hide" id="tMia"></div>
     <div class="thread" id="tThread"></div>
     <div class="whois" id="tWhoWrap"></div>
+    <div id="tSlash" class="slashmenu hide"></div>
     <div class="reply" id="tReply">
       <textarea id="tBox" rows="2" placeholder="Type a reply…"></textarea>
       <button class="btn" id="tSend" onclick="sendReply()">Send</button>
@@ -468,7 +474,7 @@ function LEADS(){
 /* Bumped whenever this page changes, and shown at the bottom of the sidebar.
    GitHub Pages and an installed app both cache hard, so without this there is
    no way to tell "the fix is not deployed" from "the fix does not work". */
-const BUILD='2026-11-24i';
+const BUILD='2026-11-24j';
 
 function drawNav(){
   $('side').innerHTML = NAV.map(n=>{
@@ -975,6 +981,7 @@ async function load(){
     try{ const {data:li}=await sb.rpc('gl_crm_lead_info');
          (li||[]).forEach(x=>{ LEADINFO[x.chat_jid]=x; }); }catch(e){}
     await loadMaint();
+    await loadTemplates();
     try{ const {data:nh,error:ne}=await sb.rpc('gl_crm_notlead_hint'); if(!ne&&Array.isArray(nh)){ NLHINT={}; nh.forEach(x=>{ if(x.reason) NLHINT[x.chat_jid]=x; }); } }catch(e){}
     try{ const {data:ad}=await sb.rpc('gl_crm_ads',{p_days:ADDAYS}); ADS=ad||[]; }catch(e){ ADS=[]; }
     try{ const {data:ac,error:ae}=await sb.rpc('gl_crm_ad_codes'); if(!ae&&Array.isArray(ac)) AD_CODES=ac; }catch(e){}
@@ -2086,6 +2093,7 @@ function renderSettings(){
    +'</div>'
    +'<table class="t2"><thead><tr><th>Name</th><th>Replying</th><th>Last signed in</th><th></th></tr></thead>'
    +'<tbody>'+rows+'</tbody></table></div>'
+   +tplSettingsHtml()
    +'<div class="soonbox">'
      +'<b>What the PIN does, and what it does not.</b><br>'
      +'It records who typed a reply and puts that name on the front of the message, '
@@ -2094,7 +2102,7 @@ function renderSettings(){
      +'who can open this board can still see every chat. Treat it as a name badge, not a key.<br><br>'
      +'A sign-in lasts the shift &mdash; 12 hours, or until the browser is closed.<br><br>'
      +'<b>Still fixed in the code, not here yet:</b> the 14-day quiet rule, the '+NUDGE_HOURS
-     +'-hour nudge on Waiting, who gets desktop alerts, and reply templates.'
+     +'-hour nudge on Waiting, and who gets desktop alerts.'
    +'</div>';
 }
 function setEdit(id){ SETEDIT=id; renderSettings(); }
@@ -2667,6 +2675,85 @@ function maintFill(lang){
   const box=$('tBox'); box.value=maintText(CUR,m,lang);
   $('tReplyNote').className='replyNote'; $('tReplyNote').textContent='Maintenance reminder is in the box. Read it, then press Send.';
   box.focus();
+}
+
+/* ---------------------------------------------------------------------------
+   SLASH TEMPLATES (24 Nov). Type "/" in the reply box to pick a saved message
+   (gl_crm_template, managed in Settings). Placeholders we know are filled from
+   the chat and the maintenance record; the rest stay in {braces} for reception
+   to fill. Picking only fills the box; a human presses Send.
+   --------------------------------------------------------------------------- */
+let TPLS=[], TPL_SEL=0, TPL_LIST=[];
+async function loadTemplates(){
+  try{ const {data,error}=await sb.rpc('gl_crm_template_list'); if(!error&&Array.isArray(data)) TPLS=data; }catch(e){}
+}
+function tplFill(body,c){
+  const m=c&&MAINT[c.chat_jid]; const o=c&&OVER[c.chat_jid]||{};
+  const nm=(c&&c.name&&String(c.name).trim())||(m&&m.cust_name)||o.cust_name||'';
+  const v={name:nm,plate:m?m.plate:'',car:m?m.model:'',due_date:m?m.due_date:''};
+  let t=String(body||'');
+  if(!nm) t=t.replace(/ \{name\}/g,'').replace(/\{name\}/g,'');
+  return t.replace(/\{(\w+)\}/g,(x,k)=> (v[k]!==undefined&&v[k]!=='') ? v[k] : x).replace(/ {2,}/g,' ');
+}
+function slashDraw(){
+  const box=$('tBox'), el=$('tSlash'); if(!box||!el) return;
+  const v=box.value;
+  if(!/^\/[^\n]{0,30}$/.test(v)){ el.classList.add('hide'); return; }
+  const q=v.slice(1).trim().toLowerCase();
+  TPL_LIST=TPLS.filter(t=>t.active&&(!q||(t.name+' '+t.kind).toLowerCase().includes(q)));
+  if(TPL_SEL>=TPL_LIST.length) TPL_SEL=0;
+  if(!TPL_LIST.length){ el.innerHTML='<div class="si" style="color:var(--text2)">No saved message matches. Manage them in Settings.</div>'; el.classList.remove('hide'); return; }
+  el.innerHTML=TPL_LIST.map((t,i)=>'<div class="si'+(i===TPL_SEL?' on':'')+'" onmousedown="event.preventDefault();slashPick('+i+')"><b>'+esc(t.name)+'</b><small>'+esc(String(t.body).replace(/\n/g,' / '))+'</small></div>').join('');
+  el.classList.remove('hide');
+}
+function slashPick(i){
+  const t=TPL_LIST[i]; if(!t) return;
+  const box=$('tBox'); box.value=tplFill(t.body,CUR);
+  $('tSlash').classList.add('hide');
+  $('tReplyNote').className='replyNote'; $('tReplyNote').textContent='Template "'+t.name+'" is in the box. Fill any {brackets}, then press Send.';
+  box.focus();
+}
+(function(){
+  const box=document.getElementById('tBox'); if(!box) return;
+  box.addEventListener('input',()=>{ TPL_SEL=0; slashDraw(); });
+  box.addEventListener('keydown',e=>{
+    const el=$('tSlash'); if(!el||el.classList.contains('hide')||!TPL_LIST.length) return;
+    if(e.key==='ArrowDown'){ e.preventDefault(); TPL_SEL=(TPL_SEL+1)%TPL_LIST.length; slashDraw(); }
+    else if(e.key==='ArrowUp'){ e.preventDefault(); TPL_SEL=(TPL_SEL+TPL_LIST.length-1)%TPL_LIST.length; slashDraw(); }
+    else if(e.key==='Enter'&&!e.shiftKey){ e.preventDefault(); slashPick(TPL_SEL); }
+    else if(e.key==='Escape'){ e.stopPropagation(); el.classList.add('hide'); }
+  });
+})();
+let TPLEDIT=null;
+function tplSettingsHtml(){
+  const j=id=>JSON.stringify(id).replace(/"/g,'&quot;');
+  const rows=TPLS.map(t=>'<tr><td><b>'+esc(t.name)+'</b><div style="font-size:11px;color:var(--ink2)">'+esc(t.kind)+'</div></td>'
+    +'<td>'+(t.active?'<span class="chip rm">On</span>':'<span class="chip chk">Off</span>')+'</td>'
+    +'<td style="text-align:right"><button class="mvbtn" onclick="TPLEDIT='+j(t.id)+';renderSettings()">Change</button> '
+    +'<button class="mvbtn" onclick="tplToggle('+j(t.id)+')">'+(t.active?'Switch off':'Switch on')+'</button></td></tr>').join('');
+  let form='';
+  if(TPLEDIT!==null){
+    const t=TPLEDIT==='new'?{name:'',kind:'general',body:'',sort:100,active:true}:TPLS.find(x=>x.id===TPLEDIT)||{};
+    form='<div class="panel2" style="margin-bottom:10px;padding:12px"><input id="tfName" placeholder="Name" style="width:100%;margin-bottom:6px" value="'+esc(t.name||'')+'">'
+      +'<textarea id="tfBody" rows="7" style="width:100%" placeholder="Message. You can use {name} {plate} {car} {due_date} {date} {time} {service}">'+esc(t.body||'')+'</textarea>'
+      +'<div style="margin-top:6px"><button class="mvbtn" onclick="tplSave()">Save</button> <button class="mvbtn" onclick="TPLEDIT=null;renderSettings()">Cancel</button> <span id="tfNote" style="font-size:11.5px;color:var(--ink2)"></span></div></div>';
+  }
+  return '<div class="panel2" style="margin-top:14px"><div class="pt">Saved messages (type / in the reply box)'
+    +'<button class="mvbtn" style="float:right;margin-top:-3px" onclick="TPLEDIT=\'new\';renderSettings()">Add one</button></div>'+form
+    +'<table class="t2"><thead><tr><th>Name</th><th>Status</th><th></th></tr></thead><tbody>'+(rows||'<tr><td colspan="3" style="padding:14px;color:var(--ink2)">None yet.</td></tr>')+'</tbody></table></div>';
+}
+async function tplSave(){
+  const t=TPLEDIT==='new'?{}:TPLS.find(x=>x.id===TPLEDIT)||{};
+  try{
+    const {error}=await sb.rpc('gl_crm_template_save',{p_id:TPLEDIT==='new'?null:TPLEDIT,p_name:$('tfName').value,p_kind:t.kind||'general',p_body:$('tfBody').value,p_active:t.active===undefined?true:t.active,p_sort:t.sort||100});
+    if(error) throw error;
+    TPLEDIT=null; await loadTemplates(); renderSettings();
+  }catch(e){ $('tfNote').style.color='var(--red)'; $('tfNote').textContent=(e.message||String(e)).replace(/^.*?:\s*/,''); }
+}
+async function tplToggle(id){
+  const t=TPLS.find(x=>x.id===id); if(!t) return;
+  try{ const {error}=await sb.rpc('gl_crm_template_save',{p_id:id,p_name:t.name,p_kind:t.kind,p_body:t.body,p_active:!t.active,p_sort:t.sort}); if(error) throw error; await loadTemplates(); renderSettings(); }
+  catch(e){ alertLine('Could not change that: '+(e.message||e)); }
 }
 
 async function boot(){
