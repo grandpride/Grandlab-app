@@ -18,6 +18,7 @@ import { spawnSync, spawn } from 'node:child_process';
 import { readFileSync, existsSync, appendFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { createTelegram } from './gl-wa-telegram.mjs';
+import { createWatchdog } from './gl-wa-watchdog.mjs';
 import { fileURLToPath } from 'node:url';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -450,6 +451,13 @@ const TG = createTelegram({
   crmUrl: ENV.CRM_URL || 'https://app.grandlab.com.my/gl-crm.html'
 });
 
+/* quiet-bridge alert (Telegram). Read-only, wrapped, can never stop the import loop */
+const WD = createWatchdog({
+  env: ENV, api, log,
+  stateFile: join(HERE, 'wa-watchdog-state.json'),
+  tgStateFile: join(HERE, 'telegram-state.json')
+});
+
 /* ---------- commands ---------- */
 
 const cmd = (process.argv[2] || 'run').toLowerCase();
@@ -518,6 +526,7 @@ for (;;) {
     fails = 0;
     // Telegram trouble is logged and ignored: it must never stop the WhatsApp import
     try { await TG.tick(); } catch (e) { log('telegram check failed:', (e.message || e).toString().slice(0, 160)); }
+    try { await WD.tick(); } catch (e) { /* never stops the import */ }
   } catch (e) {
     fails++;
     log('problem:', (e.message || e).toString().slice(0, 200));
