@@ -423,6 +423,7 @@ table.t2 tbody tr:hover{background:var(--blue-soft)}
       <button class="btn btn2 btn-xs" onclick="closeThread()">Close</button>
     </div>
     <div class="rec" id="tRec"></div>
+    <div class="rec hide" id="tForm"></div>
     <div class="adtag hide" id="tAd"></div>
     <div class="mia hide" id="tBook" style="background:#E0F2FE;border-color:#7DD3FC"></div>
     <div class="mia hide" id="tMaint" style="background:#F3E8FF;border-color:#D8B4FE"></div>
@@ -492,7 +493,7 @@ function LEADS(){
 /* Bumped whenever this page changes, and shown at the bottom of the sidebar.
    GitHub Pages and an installed app both cache hard, so without this there is
    no way to tell "the fix is not deployed" from "the fix does not work". */
-const BUILD='2026-11-24u';
+const BUILD='2026-11-24v';
 
 function drawNav(){
   $('side').innerHTML = NAV.map(n=>{
@@ -1049,6 +1050,7 @@ async function openThread(jid){
   const w=waLink(CUR.phone);
   $('tWa').style.display=w?'':'none'; if(w) $('tWa').href=w;
   $('tRec').innerHTML='<div class="row"><span class="k">Customer</span><span>Looking up…</span></div>';
+  $('tForm').classList.add('hide'); $('tForm').innerHTML='';
   $('tThread').innerHTML='<div class="msg sys">Loading…</div>';
   $('tBox').value=''; $('tReplyNote').textContent=''; $('tReplyNote').className='replyNote';
   miaReset();
@@ -1663,7 +1665,8 @@ async function loadRecord(phone){
     if(!h) h=row('Customer','Not in Grandlab records yet — new enquiry.');
     if(CUR&&CUR.remark) h+=row('Note', esc(CUR.remark));
     h+='<div class="row" style="margin-top:5px"><span class="k"></span><span>'
-      +'<a class="btn btn2 btn-xs" target="_blank" rel="noopener" href="gl-customers.html">Open in GL Customers</a></span></div>';
+      +'<a class="btn btn2 btn-xs" target="_blank" rel="noopener" href="gl-customers.html">Open in GL Customers</a> <button class="btn btn2 btn-xs" onclick="custFormOpen()">Save customer</button></span></div>';
+    window.__REC={name:(p&&p.name)||((cars.find(c=>c.name)||{}).name)||(CUR&&CUR.name)||'',plate:'',model:''};
     $('tRec').innerHTML=h;
     loadRecordExtra(key,p,CUR&&CUR.chat_jid);
   }catch(e){
@@ -2951,6 +2954,40 @@ function rsDraw(){
     +st.map(x=>'<div style="font-size:11.5px;margin:2px 0">'+esc(x.name)+': '+x.n+' replies, typical '+rsMin(x.median)+'</div>').join('')
     +'<div style="font-size:11px;color:var(--ink2);margin-top:4px">Replies sent from the phone carry no name, so they cannot be told apart. Send from the CRM (with your name picked) to be counted by name.</div></div>';
   el.innerHTML=h;
+}
+
+/* ===== SAVE CUSTOMER (added 24 Nov): add/fill name, plate, car from the chat. Saved by the staff-only RPC gl_crm_save_customer
+   (never overwrites a name/car already on file; the name also shows in the chat list). ===== */
+function custFormOpen(){
+  if(!CUR) return;
+  const r=window.__REC||{name:CUR.name||'',plate:'',model:''};
+  $('tForm').classList.remove('hide');
+  $('tForm').innerHTML='<div style="font-weight:700;margin-bottom:6px">Save customer details</div>'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">'
+    +'<input id="cfName" placeholder="Name" value="'+esc(r.name||'')+'" style="grid-column:1/3">'
+    +'<input id="cfPlate" placeholder="Plate (optional)" style="text-transform:uppercase">'
+    +'<input id="cfModel" placeholder="Car model (optional)">'
+    +'</div><div style="margin-top:6px;display:flex;gap:6px;align-items:center">'
+    +'<button class="btn btn-xs" id="cfSave" onclick="custFormSave()">Save</button>'
+    +'<button class="btn btn2 btn-xs" onclick="$(\'tForm\').classList.add(\'hide\')">Cancel</button>'
+    +'<span id="cfMsg" style="color:var(--text2)"></span></div>';
+}
+async function custFormSave(){
+  if(!CUR) return;
+  const name=$('cfName').value.trim(), plate=$('cfPlate').value.trim(), model=$('cfModel').value.trim();
+  if(!name&&!plate){ $('cfMsg').textContent='Enter a name or a plate.'; return; }
+  $('cfSave').disabled=true; $('cfMsg').textContent='Saving…';
+  try{
+    const {data,error}=await sb.rpc('gl_crm_save_customer',{p_chat_jid:CUR.chat_jid,p_phone:CUR.phone||'',p_name:name,p_plate:plate,p_model:model});
+    if(error) throw error;
+    if(!data||!data.ok){ $('cfMsg').textContent=data&&data.reason==='no_phone'?'This chat has no phone number.':'Nothing saved.'; $('cfSave').disabled=false; return; }
+    const say={car_added:'Saved. Car added.',customer_added:'Saved. New customer added.',plate_already_exists_filled_blanks:'That plate is already on file. Blank fields filled.',name_filled_if_blank:'Saved.'};
+    let m=say[data.action]||'Saved.';
+    if(data.kept_name) m+=' Name on file kept: '+data.kept_name+'.';
+    if(name){ CUR.name=name; $('tNm').textContent=name; try{ render(); }catch(e){} }
+    $('cfMsg').textContent=m; $('cfSave').disabled=false;
+    loadRecord(CUR.phone);
+  }catch(e){ $('cfMsg').textContent='Could not save: '+(e.message||e); $('cfSave').disabled=false; }
 }
 
 /* ---------------------------------------------------------------------------
