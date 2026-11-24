@@ -1537,6 +1537,38 @@
       }).join('');
   }
 
+  /* "Learned from real chats": cards Jimmy published from MIA Learning in the last
+     14 days (group learned-live), with the real customer wording behind them.
+     Read-marker is per phone/browser only. Additive; does not touch any card. */
+  function seenMap() { try { return JSON.parse(localStorage.getItem('gl_deck_seen') || '{}'); } catch (e) { return {}; } }
+  function markSeen() {
+    var m = seenMap();
+    state.deck.forEach(function (d) { if (d.grp === 'learned-live') m[d.slug] = 1; });
+    try { localStorage.setItem('gl_deck_seen', JSON.stringify(m)); } catch (e) { /* UI state only */ }
+    renderList();
+  }
+  window.glMarkLearnedSeen = markSeen;
+  function learnedBox() {
+    var cut = Date.now() - 14 * 86400000;
+    var list = state.deck.filter(function (d) {
+      return d.grp === 'learned-live' && (!d.updated_at || new Date(d.updated_at).getTime() >= cut);
+    });
+    if (!list.length) return '';
+    var seen = seenMap();
+    var unread = list.filter(function (d) { return !seen[d.slug]; }).length;
+    var rows = list.map(function (d) {
+      var notes = (d.content && d.content.notes) || [];
+      var wording = notes.filter(function (n) { return /^Real customer wording/i.test(n); })[0] || '';
+      return '<div style="padding:6px 0;border-top:1px solid rgba(0,0,0,.08)">' +
+        (seen[d.slug] ? '' : '<b style="color:#B45309">NEW </b>') + '<b>' + esc(d.title) + '</b>' +
+        (wording ? '<div style="font-size:12px;opacity:.75;margin-top:2px">' + esc(wording) + '</div>' : '') + '</div>';
+    }).join('');
+    return '<div style="margin:0 0 12px;padding:10px 12px;border-radius:10px;background:#FEF3C7;border:1px solid #F5D77E">' +
+      '<b>Learned from real chats</b> &middot; ' + list.length + ' card' + (list.length === 1 ? '' : 's') + ' added in the last 2 weeks' +
+      (unread ? ' (' + unread + ' unread)' : '') +
+      ' <button onclick="glMarkLearnedSeen()" style="float:right;font-size:12px">Mark as read</button>' + rows + '</div>';
+  }
+
   function renderList() {
     var box = $('list');
     var html = '';
@@ -1560,6 +1592,8 @@
       box.innerHTML = html;
       return;
     }
+
+    html += learnedBox();
 
     var items = state.deck.filter(function (d) {
       if (d.tab !== state.tab) return false;
