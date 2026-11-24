@@ -492,7 +492,7 @@ function LEADS(){
 /* Bumped whenever this page changes, and shown at the bottom of the sidebar.
    GitHub Pages and an installed app both cache hard, so without this there is
    no way to tell "the fix is not deployed" from "the fix does not work". */
-const BUILD='2026-11-24s';
+const BUILD='2026-11-24t';
 
 function drawNav(){
   $('side').innerHTML = NAV.map(n=>{
@@ -1660,9 +1660,36 @@ async function loadRecord(phone){
     h+='<div class="row" style="margin-top:5px"><span class="k"></span><span>'
       +'<a class="btn btn2 btn-xs" target="_blank" rel="noopener" href="gl-customers.html">Open in GL Customers</a></span></div>';
     $('tRec').innerHTML=h;
+    loadRecordExtra(key,p,CUR&&CUR.chat_jid);
   }catch(e){
     $('tRec').innerHTML='<div class="row"><span class="k">Customer</span><span class="err">Lookup failed: '+esc(e.message||e)+'</span></div>';
   }
+}
+
+/* Extra customer history (added 24 Nov, appended below the existing rows): total spend, recent jobs, packages left.
+   Read-only, filtered on the server by the phone's last 8 digits. A failure here never hides the rest of the panel. */
+function dOnly(x){ try{ return new Date(x).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}); }catch(e){ return ''; } }
+async function loadRecordExtra(key,prof,jid){
+  try{
+    const [jr,pk]=await Promise.all([
+      sb.from('gl_jobs').select('plate,model,services,created_at,total,stage').ilike('hp','%'+key).order('created_at',{ascending:false}).limit(5),
+      sb.from('gl_packages').select('service_name,total_uses,used_uses,status,expires_at,vehicle_label').ilike('phone_key','%'+key).eq('status','active').limit(8)
+    ]);
+    if(!CUR||CUR.chat_jid!==jid) return;
+    const row=(k,v)=>'<div class="row"><span class="k">'+esc(k)+'</span><span>'+v+'</span></div>';
+    const o=OVER[jid]||{}; let h='';
+    if(Number(o.jobs)>0) h+=row('Spent',esc(RM(o.revenue))+' <span style="color:var(--text2)">over '+esc(o.jobs)+' job'+(Number(o.jobs)>1?'s':'')+(o.first_job?', customer since '+esc(dOnly(o.first_job)):'')+'</span>');
+    const jobs=(jr&&jr.data)||[];
+    if(jobs.length) h+=row('Recent jobs',jobs.map(j=>{
+      const sv=(Array.isArray(j.services)?j.services:[]).map(x=>x&&x.desc).filter(Boolean).slice(0,2).join(' + ')||'(no services listed)';
+      const d=j.created_at?dOnly(new Date(Number(j.created_at)).toISOString()):'';
+      return '<div style="margin-bottom:3px"><b>'+esc(j.plate||'')+'</b> '+esc(d)+'<br><span style="color:var(--text2)">'+esc(sv)+'</span></div>';
+    }).join(''));
+    const pk2=((pk&&pk.data)||[]).filter(x=>(Number(x.total_uses)||0)-(Number(x.used_uses)||0)>0);
+    if(pk2.length) h+=row('Packages left',pk2.map(x=>esc(x.service_name||'Package')+': <b>'+((Number(x.total_uses)||0)-(Number(x.used_uses)||0))+'</b> of '+esc(x.total_uses)
+      +(x.vehicle_label?' ('+esc(x.vehicle_label)+')':'')+(x.expires_at?' <span style="color:var(--text2)">until '+esc(dOnly(x.expires_at))+'</span>':'')).join('<br>'));
+    if(h){ const el=$('tRec'); const link=el.lastElementChild; if(link) link.insertAdjacentHTML('beforebegin',h); else el.insertAdjacentHTML('beforeend',h); }
+  }catch(e){}
 }
 
 /* ---- alerts -------------------------------------------------------------

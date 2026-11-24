@@ -10,6 +10,7 @@ function Q(table){
     order(c,o){q.ord=[c,(o&&o.ascending)!==false];return api;},
     limit(n){q.lim=n;return api;},
     eq(c,v){q.filters.push(r=>String(r[c])===String(v));return api;},
+    ilike(c,v){const needle=String(v).split('%').join('').toLowerCase();q.filters.push(r=>String(r[c]||'').toLowerCase().includes(needle));return api;},
     in(c,a){q.filters.push(r=>a.includes(r[c]));return api;},
     gt(c,v){q.filters.push(r=>r[c]&&new Date(r[c])>new Date(v));return api;},
     lte(c,v){q.filters.push(r=>r[c]&&new Date(r[c])<=new Date(v));return api;},
