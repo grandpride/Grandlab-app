@@ -744,11 +744,14 @@ function loadConfig(search, settings) {
   if (settings) { if (settings.def) win.GL_BACKEND_DEFAULT = settings.def; if (settings.mods) win.GL_BACKEND_MODULES = settings.mods; }
   return { win, ls, go: (q) => { win.location.search = q || ''; } };
 }
-test('config: ships as the old system for every module (GL_BACKEND_DEFAULT "sb", all modules "sb")', () => {
+test('config: GL_BACKEND_DEFAULT is "sb"; the four modules each say "sb" or "cf"; a page follows its module word (no device choice); unknown module follows the default', () => {
   const { win } = loadConfig('');
   assert.equal(win.GL_BACKEND_DEFAULT, 'sb');
-  assert.deepEqual(JSON.parse(JSON.stringify(win.GL_BACKEND_MODULES)), { core: 'sb', customer: 'sb', marketing: 'sb', claim: 'sb' });
-  for (const m of ['core', 'customer', 'marketing', 'claim', undefined, 'unknown']) assert.equal(win.GL_BACKEND_PICK(m), 'sb', String(m));
+  const mods = JSON.parse(JSON.stringify(win.GL_BACKEND_MODULES));
+  assert.deepEqual(Object.keys(mods).sort(), ['claim', 'core', 'customer', 'marketing']);
+  for (const [m, v] of Object.entries(mods)) { assert.ok(v === 'sb' || v === 'cf', m + ' = ' + v); assert.equal(win.GL_BACKEND_PICK(m), v, m); }
+  assert.equal(mods.core, mods.customer, 'core and customer always flip together (shop and customer app write the same rows)');
+  for (const m of [undefined, 'unknown']) assert.equal(win.GL_BACKEND_PICK(m), 'sb', String(m));
   assert.equal(win.GL_BACKEND_SOURCE('core'), 'default');
 });
 test('config: ?backend=cf is remembered for all modules; ?backend=sb while the module is "sb" just clears it (as before)', () => {
