@@ -465,7 +465,7 @@ function LEADS(){
 /* Bumped whenever this page changes, and shown at the bottom of the sidebar.
    GitHub Pages and an installed app both cache hard, so without this there is
    no way to tell "the fix is not deployed" from "the fix does not work". */
-const BUILD='2026-11-24e';
+const BUILD='2026-11-24f';
 
 function drawNav(){
   $('side').innerHTML = NAV.map(n=>{
@@ -1248,6 +1248,48 @@ function miaOffer(jid,rows){
   el.innerHTML='<div class="mh"><b>MIA</b><span>You wrote last.</span><span class="sp"></span>'
     +'<button class="lg" onclick="miaAsk()">Suggest a follow-up</button></div>'+miaNoteBox();
 }
+/* ---------------------------------------------------------------------------
+   MIA LOG (24 Nov). Every suggestion MIA shows, and what was really sent after
+   it, is stored in gl_crm_mia_log through two reception-only RPCs: the customer's
+   words, the notes given to MIA, the suggestion, how long it took, which Deck
+   cards were used, and the reply that went out (as_is / edited / own_words / none).
+   Phone numbers, plates and names are stripped into the *_clean columns on the
+   server. Nothing here can send, change or delete a message.
+   --------------------------------------------------------------------------- */
+function miaQuestion(rows){
+  const out=[]; for(let i=rows.length-1;i>=0;i--){ const m=rows[i]; if(m.direction!=='in') break;
+    const t=String(m.body||'').trim(); if(t) out.unshift(t); else out.unshift('['+(m.msg_type||'media')+']'); }
+  return out.join('\n');
+}
+function miaLastIn(rows){ for(let i=rows.length-1;i>=0;i--) if(rows[i].direction==='in') return rows[i].wa_ts; return null; }
+function miaFlat(reply){ const a=[]; if(reply&&reply.type==='reply') ['en','bm','zh'].forEach(l=>['short','explain','push'].forEach(k=>{ const t=reply[l]&&reply[l][k]; if(t) a.push(String(t)); })); return a; }
+function miaLogShown(jid,key,rows,notes,out){
+  try{
+    const li=miaLastIn(rows); if(!li||!out||!out.reply) return;
+    sb.rpc('gl_crm_mia_log_shown',{p_jid:jid,p_last_in:li,p_question:miaQuestion(rows),p_notes:notes||[],
+      p_type:out.reply.type,p_sug:out.reply,p_lang:(out._langs||[])[0]||null,p_cards:out.cards_used||[],p_ms:out._ms||null,
+      p_by:(typeof replyName==='function'&&replyName())||null}).then(()=>{},()=>{});
+  }catch(e){}
+}
+const normTxt=t=>String(t||'').toLowerCase().replace(/\s+/g,' ').replace(/[^\p{L}\p{N} ]/gu,'').trim();
+function miaUsedHow(jid,li,typed){
+  const k=MIA_CACHE[jid]; if(!k||!k.out||ms((k.key||'').split('|')[1])!==ms(li)) return 'none';
+  const sug=miaFlat(k.out.reply); if(!sug.length) return 'none';
+  const n=normTxt(typed);
+  if(sug.some(x=>normTxt(x)===n)) return 'as_is';
+  const A=new Set(n.split(' ')); let best=0;
+  sug.forEach(x=>{ const B=new Set(normTxt(x).split(' ')); let i=0; A.forEach(w=>{ if(B.has(w)) i++; }); const u=A.size+B.size-i; if(u) best=Math.max(best,i/u); });
+  return best>=0.5?'edited':'own_words';
+}
+function miaLogSent(jid,typed){
+  try{
+    const rows=CUR_ROWS[jid]||[]; const li=miaLastIn(rows); if(!li) return;
+    sb.rpc('gl_crm_mia_log_sent',{p_jid:jid,p_last_in:li,p_question:miaQuestion(rows),p_sent:typed,
+      p_used:miaUsedHow(jid,li,typed),p_by:(typeof replyName==='function'&&replyName())||null}).then(()=>{},()=>{});
+  }catch(e){}
+}
+const CUR_ROWS={};
+
 const MIA_FLIGHT={};         // key -> Promise<out>: one running call per chat+message, shared by the board and the open chat
 async function miaCallApi(rows,notes,extra,answer,langs){
   const told=notes&&notes.length
@@ -1434,6 +1476,7 @@ async function sendReply(){
     if(error) throw error;
     box.value='';
     optSent(CUR,body);
+    miaLogSent(CUR.chat_jid,typed);
     pend.textContent=body+'  ·  queued';
     note.textContent='Queued. The bridge on the shop PC sends it within a minute — it will appear in the thread once WhatsApp confirms.';
   }catch(e){
@@ -1451,6 +1494,7 @@ async function loadThread(jid,quiet){
       .select('direction,sent_by,msg_type,body,wa_ts')
       .eq('chat_jid',jid).order('wa_ts',{ascending:true}).limit(500);
     const rows=data||[];
+    CUR_ROWS[jid]=rows;
     $('tThread').innerHTML = rows.length ? rows.map(m=>{
       const who=senderOf(m);
       // the header is shown as a label instead of inside the bubble, so the
