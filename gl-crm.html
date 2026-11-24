@@ -465,7 +465,7 @@ function LEADS(){
 /* Bumped whenever this page changes, and shown at the bottom of the sidebar.
    GitHub Pages and an installed app both cache hard, so without this there is
    no way to tell "the fix is not deployed" from "the fix does not work". */
-const BUILD='2026-11-24f';
+const BUILD='2026-11-24g';
 
 function drawNav(){
   $('side').innerHTML = NAV.map(n=>{
@@ -786,7 +786,7 @@ function cardHtml(c,col){
           : (s==='paid'&&!won ? '<span class="chip mark" title="Marked won by hand — no job or payment found against this number">marked won</span>'
           : (Number(c.paid_rm)>0?'<span class="chip rm">'+esc(RM(c.paid_rm))+'</span>':'')))
       +adBtnHtml(c.chat_jid)
-      +(col==='reply'?miaChipHtml(c):'')
+      +((col==='reply'||col==='waiting')?miaChipHtml(c):'')
       +(col==='notlead'?'<span class="chip nlr">'+esc(NL_LABEL[c.not_lead_reason]||'Not a lead')+'</span>':nlHintChip(c))
       +(light==='new'?'<span class="chip fresh">NEW</span>':'')
       +(s==='closed'?'<span class="chip chk">closed by you</span>':'')
@@ -1266,6 +1266,7 @@ function miaFlat(reply){ const a=[]; if(reply&&reply.type==='reply') ['en','bm',
 function miaLogShown(jid,key,rows,notes,out){
   try{
     const li=miaLastIn(rows); if(!li||!out||!out.reply) return;
+    if(rows.length&&rows[rows.length-1].direction==='out') return;      // reminders are not logged as questions
     sb.rpc('gl_crm_mia_log_shown',{p_jid:jid,p_last_in:li,p_question:miaQuestion(rows),p_notes:notes||[],
       p_type:out.reply.type,p_sug:out.reply,p_lang:(out._langs||[])[0]||null,p_cards:out.cards_used||[],p_ms:out._ms||null,
       p_by:(typeof replyName==='function'&&replyName())||null}).then(()=>{},()=>{});
@@ -1297,8 +1298,12 @@ async function miaCallApi(rows,notes,extra,answer,langs){
       +notes.map(n=>'- '+n).join('\n')
       +'\nWrite the reply now. Only ask a question back if something essential is truly missing.'
     : '';
+  const lastR=rows[rows.length-1];
+  const remind=(lastR&&lastR.direction==='out')
+    ? '\n\nThe customer has NOT answered our last message for about '+Math.max(1,Math.round((Date.now()-ms(lastR.wa_ts))/3600000))+' hours. Write a short, warm follow-up reminder that picks up exactly what we told them (name the thing we offered or asked) and makes it easy for them to reply in one line. Do not repeat the whole earlier message, do not pressure, do not invent prices.'
+    : '';
   const msgs=[{role:'user',content:[{type:'text',text:
-    'This is the WhatsApp chat so far, oldest first. Write what Grandlab should send next.\n\n'+miaTranscript(rows)+told}]}];
+    'This is the WhatsApp chat so far, oldest first. Write what Grandlab should send next.\n\n'+miaTranscript(rows)+remind+told}]}];
   if(answer && extra){
     msgs.push({role:'assistant',content:[{type:'text',text:extra}]});
     msgs.push({role:'user',content:[{type:'text',text:answer}]});
@@ -2366,40 +2371,45 @@ function liveStart(){
 const MIA_BG={run:0,max:3,cap:15,st:{},queue:[],budget:15,t0:Date.now()};   // 15 suggestions per page load; chats whose customer writes AFTER the page opened are always prepared
 function miaBgOn(){ try{ return localStorage.getItem('gl_crm_mia_bg')!=='0'; }catch(e){ return true; } }
 function miaBgToggle(){ try{ localStorage.setItem('gl_crm_mia_bg',miaBgOn()?'0':'1'); }catch(e){} drawSortBar(); if(miaBgOn()) miaBgScan(); }
+/* The moment the suggestion is "for": the customer's last message for a Needs-reply
+   chat, or OUR last message for a chat that has waited 12h+ on them (a reminder). */
+function miaStamp(c){ return colOf(c)==='waiting' ? c.last_out_at : c.last_in_at; }
 function miaReady(c){
   const k=MIA_CACHE[c.chat_jid]; if(!k||!k.key) return false;
   const parts=k.key.split('|');
-  return ms(parts[1])===ms(c.last_in_at) && ms(parts[1])>0 && !(k.key.split('|')[2]);
+  return ms(parts[1])===ms(miaStamp(c)) && ms(parts[1])>0 && !(k.key.split('|')[2]);
 }
 function miaCardState(c){
   if(miaReady(c)) return 'ready';
   const j=MIA_BG.st[c.chat_jid];
-  if(j&&ms(j.lastIn)===ms(c.last_in_at)) return j.status==='thinking'||j.status==='queued'?'thinking':(j.status==='failed'?'failed':'');
+  if(j&&ms(j.lastIn)===ms(miaStamp(c))) return j.status==='thinking'||j.status==='queued'?'thinking':(j.status==='failed'?'failed':'');
   return '';
 }
 function miaChipHtml(c){
   const s=miaCardState(c); if(!s) return '';
   const j=JSON.stringify(c.chat_jid).replace(/"/g,'&quot;');
   if(s==='ready'){ const k=MIA_CACHE[c.chat_jid]; const q=k&&k.out&&k.out.reply&&k.out.reply.type==='clarify';
+    if(colOf(c)==='waiting') return '<span class="chip miachip rdy" title="MIA wrote a reminder based on what we last told them. Open the chat, read it, press Send.">MIA reminder ready</span>';
     return q?'<span class="chip miachip rdy" title="MIA needs one quick answer from you first. Open the chat.">MIA has a question</span>':'<span class="chip miachip rdy" title="MIA has a reply ready. Open the chat.">MIA ready</span>'; }
-  if(s==='thinking') return '<span class="chip miachip thk">MIA thinking…</span>';
+  if(s==='thinking') return '<span class="chip miachip thk">'+(colOf(c)==='waiting'?'MIA writing reminder…':'MIA thinking…')+'</span>';
   return '<span class="chip miachip bad" title="Tap to try again" onclick="event.stopPropagation();miaBgRetry('+j+')">MIA failed · retry</span>';
 }
 let MIA_BG_RT=null;
 function miaBgRender(){ clearTimeout(MIA_BG_RT); MIA_BG_RT=setTimeout(()=>{ try{ render(); }catch(e){} },400); }
 function miaBgScan(force){
   if(!force&&!miaBgOn()) return;
-  const cand=CHATS.filter(c=>colOf(c)==='reply').sort((a,b)=>ms(b.last_in_at)-ms(a.last_in_at));
+  const cand=CHATS.filter(c=>{ const k=colOf(c); return k==='reply'||(k==='waiting'&&lightOf(c,'waiting')==='amber'); })
+    .sort((a,b)=>(colOf(a)==='reply'?0:1)-(colOf(b)==='reply'?0:1)||ms(b.last_in_at)-ms(a.last_in_at));
   let added=0;
   for(const c of cand){
-    const fresh=ms(c.last_in_at)>MIA_BG.t0;           // arrived while the page was open
+    const fresh=colOf(c)==='reply'&&ms(c.last_in_at)>MIA_BG.t0;           // arrived while the page was open
     if(!force&&!fresh&&MIA_BG.budget<=0) continue;
     if(miaReady(c)) continue;
     const l=LASTMSG[c.chat_jid];
     if(l&&l.direction==='in'&&!String(l.body||'').trim()) continue;          // voice note / photo: MIA cannot read it
     const j=MIA_BG.st[c.chat_jid];
-    if(j&&ms(j.lastIn)===ms(c.last_in_at)&&(j.status==='thinking'||j.status==='queued'||(j.status==='failed'&&!force)||j.status==='skip')) continue;
-    MIA_BG.st[c.chat_jid]={status:'queued',lastIn:c.last_in_at};
+    if(j&&ms(j.lastIn)===ms(miaStamp(c))&&(j.status==='thinking'||j.status==='queued'||(j.status==='failed'&&!force)||j.status==='skip')) continue;
+    MIA_BG.st[c.chat_jid]={status:'queued',lastIn:miaStamp(c)};
     MIA_BG.queue.push(c.chat_jid); added++; if(!force&&!fresh) MIA_BG.budget--;
   }
   if(added) miaBgRender();
@@ -2408,7 +2418,7 @@ function miaBgScan(force){
 function miaBgPrepareAll(){ miaBgScan(true); }
 function miaBgRetry(jid){
   const c=CHATS.find(x=>x.chat_jid===jid); if(!c) return;
-  MIA_BG.st[jid]={status:'queued',lastIn:c.last_in_at}; MIA_BG.queue.push(jid); miaBgRender(); miaBgPump();
+  MIA_BG.st[jid]={status:'queued',lastIn:miaStamp(c)}; MIA_BG.queue.push(jid); miaBgRender(); miaBgPump();
 }
 function miaBgPump(){
   while(MIA_BG.run<MIA_BG.max && MIA_BG.queue.length){
@@ -2425,7 +2435,8 @@ async function miaBgOne(jid){
       .eq('chat_jid',jid).order('wa_ts',{ascending:false}).limit(30);
     if(error) throw error;
     const rows=(data||[]).slice().reverse(); const last=rows[rows.length-1];
-    if(!last||last.direction!=='in'||!String(last.body||'').trim()){ j.status='skip'; return; }
+    const wantOut=colOf(c)==='waiting';
+    if(!last||(wantOut?last.direction!=='out':last.direction!=='in')||!String(last.body||'').trim()){ j.status='skip'; return; }
     const notes=MIA_NOTES[jid]||[];
     const key=jid+'|'+last.wa_ts+'|'+notes.join('~');
     if(MIA_CACHE[jid]&&MIA_CACHE[jid].key===key){ j.status='ready'; return; }
