@@ -425,7 +425,7 @@ table.t2 tbody tr:hover{background:var(--blue-soft)}
     <div class="rec" id="tRec"></div>
     <div class="rec hide" id="tForm"></div>
     <div class="adtag hide" id="tAd"></div>
-    <div class="mia hide" id="tBook" style="background:#E0F2FE;border-color:#7DD3FC"></div>
+    <div class="mia hide" id="tBook" style="background:#E0F2FE;border-color:#7DD3FC;flex:0 0 auto;max-height:62vh;overflow-y:auto"></div>
     <div class="mia hide" id="tMaint" style="background:#F3E8FF;border-color:#D8B4FE"></div>
     <div class="mia hide" id="tAppt" style="background:#E8F8EE;border-color:#9AD9B0"></div>
     <div class="mia hide" id="tFollow" style="background:#FFF6E0;border-color:#F0D58A"></div>
@@ -493,7 +493,7 @@ function LEADS(){
 /* Bumped whenever this page changes, and shown at the bottom of the sidebar.
    GitHub Pages and an installed app both cache hard, so without this there is
    no way to tell "the fix is not deployed" from "the fix does not work". */
-const BUILD='2026-11-24w';
+const BUILD='2026-11-24x';
 
 function drawNav(){
   $('side').innerHTML = NAV.map(n=>{
@@ -3192,7 +3192,7 @@ function drawBook(){
     +(BK.timeRaw&&!BK.slot?'<div class="why">Customer wrote the time as &ldquo;'+esc(BK.timeRaw)+'&rdquo;, which is not one of the 5 slots. Pick a slot.</div>':'')
     +inp('remark','Remark (optional)','')
     +'<div class="mh" style="margin-top:8px"><button class="lg on" id="bk_go" onclick="bkBook()">Book it + send confirmation</button><span id="bk_note" style="font-size:11.5px"></span></div>';
-  if(BK.manual) el.querySelector('.mh span').textContent='Click the services, pick date and slot, then press the button. Nothing is booked until you do.';
+  if(BK.manual) el.querySelector('.mh b').textContent='Book appointment'; el.querySelector('.mh span').textContent='Click the services, pick date and slot, then press the button. Nothing is booked until you do.';
   const dEl=$('bk_date'); if(dEl) dEl.addEventListener('change',bkAvail);
   loadSvc().then(()=>{ bkSvcDraw(); bkAvail(); });
 }
