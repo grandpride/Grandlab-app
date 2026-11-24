@@ -137,6 +137,14 @@ the cards.
 Do not run the old MIA bridge (the Baileys one in `Grandlab\gl-wa-bridge`) at
 the same time. It fights over the WhatsApp session and over the bot.
 
+## Switch night (Supabase -> new Cloudflare system)
+
+Off until the core switch night. Full steps, with SAFE / CHANGES DATA on each, are in the gl-platform repo:
+`docs/step9/wa-bridge.md`. In short: stop the bridge at the freeze, then in `.env` set `BACKEND=cloudflare`
+(`GL_API_BASE` is already filled in), start it, and run `node gl-wa-bridge.mjs backfill` once to fill the gap (it only adds
+what is missing). Way back: `BACKEND=supabase` (or empty) and restart. `SUPABASE_*` are ignored on `cloudflare`.
+Voice notes and photos then go to the new system's file storage instead of Supabase storage.
+
 ## What this does not do
 
 Broadcasts and blasts. That needs the official WhatsApp Business API on a

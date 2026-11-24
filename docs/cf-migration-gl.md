@@ -179,8 +179,14 @@ Server-side only (no page calls them; must run on the Worker at go-live): crons 
 
 ## Outside this repo: Google Sheet mirror and WhatsApp bridge
 
-Neither is in this repo, so neither follows the switch. Both talk to Supabase directly and **must be re-pointed on
+Neither follows the page switch. Both talk to Supabase directly and **must be re-pointed on
 the night their data goes live**, or the new system's sales / chats never reach them.
+
+**Update (24 Nov 2026):** both are now built with an off-by-default backend switch, tested locally. Sheet mirror:
+`gl-sheet-mirror-v3.gs` in this repo (Script Property `BACKEND` = `supabase` | `cf`; it reads through a read-only key route, not a
+staff login: this replaces points 1-3 of the sheet section below). WhatsApp bridge: `tools/gl-wa-bridge/` (the code IS in this repo;
+`.env` line `BACKEND=cloudflare` + `gl-wa-cf.mjs`). Install and switch steps: `docs/step9/sheet-mirror-v3.md`,
+`docs/step9/wa-bridge.md` and `docs/step9/external-switch.md` in the gl-platform repo.
 
 ### Google Sheet mirror (`gl-sheet-mirror-v2.gs`, Apps Script, time-triggered)
 
