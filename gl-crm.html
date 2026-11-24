@@ -493,7 +493,7 @@ function LEADS(){
 /* Bumped whenever this page changes, and shown at the bottom of the sidebar.
    GitHub Pages and an installed app both cache hard, so without this there is
    no way to tell "the fix is not deployed" from "the fix does not work". */
-const BUILD='2026-11-24v';
+const BUILD='2026-11-24w';
 
 function drawNav(){
   $('side').innerHTML = NAV.map(n=>{
@@ -1665,8 +1665,8 @@ async function loadRecord(phone){
     if(!h) h=row('Customer','Not in Grandlab records yet — new enquiry.');
     if(CUR&&CUR.remark) h+=row('Note', esc(CUR.remark));
     h+='<div class="row" style="margin-top:5px"><span class="k"></span><span>'
-      +'<a class="btn btn2 btn-xs" target="_blank" rel="noopener" href="gl-customers.html">Open in GL Customers</a> <button class="btn btn2 btn-xs" onclick="custFormOpen()">Save customer</button></span></div>';
-    window.__REC={name:(p&&p.name)||((cars.find(c=>c.name)||{}).name)||(CUR&&CUR.name)||'',plate:'',model:''};
+      +'<a class="btn btn2 btn-xs" target="_blank" rel="noopener" href="gl-customers.html">Open in GL Customers</a> <button class="btn btn2 btn-xs" onclick="custFormOpen()">Save customer</button> <button class="btn btn2 btn-xs" onclick="bkManual()">Book appointment</button></span></div>';
+    window.__REC={name:(p&&p.name)||((cars.find(c=>c.name)||{}).name)||(CUR&&CUR.name)||'',plate:(cars[0]&&cars[0].plate)||'',model:(cars[0]&&cars[0].model)||''};
     $('tRec').innerHTML=h;
     loadRecordExtra(key,p,CUR&&CUR.chat_jid);
   }catch(e){
@@ -3127,10 +3127,49 @@ function bkDetect(jid){
   return {jid,li,name:f.name||(c&&c.name)||'',phone:String((c&&c.phone)||'').replace(/\D/g,''),plate:(f.plate||'').toUpperCase(),car:f.car||'',
     service:f.service||'',date:bkDate(f.date),slot:bkSlot(f.time)||'',timeRaw:f.time||'',remark:''};
 }
-let BK=null;
+let BK=null; const MANUALBK={}; let SVC=null;
+async function loadSvc(){
+  if(SVC) return SVC;
+  try{ const {data}=await sb.from('gl_services').select('name,category,hidden,sort_order').order('sort_order',{ascending:true}).limit(1000);
+    SVC=(data||[]).filter(x=>x.name&&!x.hidden); }catch(e){ SVC=[]; }
+  return SVC;
+}
+function bkManual(){
+  if(!CUR) return; const r=window.__REC||{};
+  const tm=new Date(Date.now()+86400000+8*3600000).toISOString().slice(0,10);
+  MANUALBK[CUR.chat_jid]={jid:CUR.chat_jid,li:'m',manual:true,name:r.name||CUR.name||'',phone:String(CUR.phone||'').replace(/\D/g,''),plate:(r.plate||'').toUpperCase(),car:r.model||'',service:'',date:tm,slot:'',timeRaw:'',remark:''};
+  delete BK_DONE[CUR.chat_jid+'|m'];
+  drawBook(); const el=$('tBook'); if(el&&el.scrollIntoView) el.scrollIntoView({block:'nearest'});
+}
+function bkSvcDraw(){
+  const box=$('bk_svbox'); if(!box||!SVC) return;
+  const q=(($('bk_svq')||{}).value||'').toLowerCase().trim();
+  const cur=(($('bk_service')||{}).value||'').split(' + ').map(x=>x.trim()).filter(Boolean);
+  let list=SVC.filter(x=>!q||(x.name+' '+(x.category||'')).toLowerCase().includes(q));
+  const more=list.length>40; list=list.slice(0,40);
+  box.innerHTML=list.map((x,i)=>'<button type="button" class="mvbtn" style="margin:2px;'+(cur.includes(x.name)?'background:#0EA5E9;color:#fff':'')+'" data-n="'+esc(x.name)+'" onclick="bkSvcPick(this)">'+esc(x.name)+'</button>').join('')
+    +(more?'<div class="why">Type to narrow the list…</div>':'')+(!list.length?'<div class="why">No match.</div>':'');
+}
+function bkSvcPick(b){
+  const n=b.getAttribute('data-n'); const el=$('bk_service'); if(!el) return;
+  let cur=el.value.split(' + ').map(x=>x.trim()).filter(Boolean);
+  cur=cur.includes(n)?cur.filter(x=>x!==n):cur.concat([n]);
+  el.value=cur.join(' + '); bkSvcDraw();
+}
+async function bkAvail(){
+  const d=($('bk_date')||{}).value, sel=$('bk_slot'); if(!d||!sel) return;
+  try{
+    const {data}=await sb.from('gl_bookings').select('notes,status').gte('scheduled_at',d+'T00:00:00+08:00').lte('scheduled_at',d+'T23:59:59+08:00');
+    const live=(data||[]).filter(r=>String(r.status||'').toLowerCase()!=='cancelled');
+    const keep=sel.value;
+    sel.innerHTML='<option value="">(pick a slot)</option>'+BK_SLOTS.map(x=>{ const n=live.filter(r=>String(r.notes||'').includes('[slot:'+x+']')).length;
+      return '<option value="'+x+'"'+(n>=2?' disabled':'')+'>'+x+(n>=2?' — FULL':(n?' — '+n+' booked':''))+'</option>'; }).join('');
+    if(keep) sel.value=keep;
+  }catch(e){}
+}
 function drawBook(){
   const el=$('tBook'); if(!el) return;
-  BK=CUR?bkDetect(CUR.chat_jid):null;
+  BK=CUR?(bkDetect(CUR.chat_jid)||MANUALBK[CUR.chat_jid]||null):null;
   if(!BK){ el.classList.add('hide'); el.innerHTML=''; return; }
   const ab=AUTOBK.map[BK.jid+'|'+BK.li];
   if(ab&&ab.info&&ab.info!=='claiming'){
@@ -3145,13 +3184,17 @@ function drawBook(){
   el.classList.remove('hide');
   el.innerHTML='<div class="mh"><b>Booking request detected</b><span>Check the values, fix anything, then press the button. Nothing is booked until you do.</span></div>'
     +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:0 10px">'+inp('name','Name',BK.name)+inp('phone','Phone',BK.phone)+inp('plate','Plate',BK.plate)+inp('car','Car model',BK.car)+'</div>'
-    +inp('service','Service',BK.service)
+    +inp('service','Service (click below to add / remove)',BK.service)
+    +'<input id="bk_svq" placeholder="Search services…" oninput="bkSvcDraw()" style="width:100%;display:block;margin-top:4px"><div id="bk_svbox" style="max-height:120px;overflow:auto;margin-top:2px"></div>'
     +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:0 10px">'+inp('date','Date',BK.date,'date')
     +'<label style="font-size:11px;color:var(--text2);display:block;margin-top:4px">Time slot<select id="bk_slot" style="width:100%;display:block"><option value="">(pick a slot)</option>'
     +BK_SLOTS.map(x=>'<option'+(x===BK.slot?' selected':'')+'>'+x+'</option>').join('')+'</select></label></div>'
     +(BK.timeRaw&&!BK.slot?'<div class="why">Customer wrote the time as &ldquo;'+esc(BK.timeRaw)+'&rdquo;, which is not one of the 5 slots. Pick a slot.</div>':'')
     +inp('remark','Remark (optional)','')
     +'<div class="mh" style="margin-top:8px"><button class="lg on" id="bk_go" onclick="bkBook()">Book it + send confirmation</button><span id="bk_note" style="font-size:11.5px"></span></div>';
+  if(BK.manual) el.querySelector('.mh span').textContent='Click the services, pick date and slot, then press the button. Nothing is booked until you do.';
+  const dEl=$('bk_date'); if(dEl) dEl.addEventListener('change',bkAvail);
+  loadSvc().then(()=>{ bkSvcDraw(); bkAvail(); });
 }
 async function bkBook(){
   const g=id=>(($('bk_'+id)||{}).value||'').trim();
