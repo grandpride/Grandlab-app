@@ -96,12 +96,12 @@
      /gl/api/fn/<name>[/<sub>] (FUNCTION_DEFAULT_PREFIX). */
   var FUNCTION_DEFAULT_PREFIX = '/gl/api/fn/';
   var FUNCTION_ROUTES = {
-    'doku/create':         '/gl/api/fn/doku-create',   // index.html online payment (DOKU Checkout), customer login
-    'doku-sandbox/create': '/gl/api/fn/doku-create',   // same, while the app pointed at the sandbox function
+    'doku/create':         '/gl/api/fn/doku/create',   // index.html online payment (DOKU Checkout), customer login (gl-platform src/gl/fn-routes.ts)
+    'doku-sandbox/create': '/gl/api/fn/doku/create',   // same, while the app pointed at the sandbox function
     'doku':                null,                       // other doku paths (/notify = DOKU webhook, server to server)
     'doku-sandbox':        null,
     'senangpay':           null,                       // superseded by DOKU
-    'push-send':           '/gl/api/fn/push-send',     // grandlab-admin.html, grandlab-notify.html (needs admin/staff login)
+    'push-send':           '/gl/api/push/send',        // grandlab-admin.html, grandlab-notify.html (staff login; the Worker's route is /gl/api/push/send, not /fn/)
     'meta-sync':           '/gl/api/fn/meta-sync',     // gl-ads.html "Sync now" (functions.invoke)
     'mia':                 '/gl/api/fn/mia',           // gl-mia.html
     'agent-desk':          '/gl/api/fn/agent-desk',    // gl-agents.html, gl-tower.html
@@ -112,7 +112,7 @@
     'inspect':  '/gl/public/inspect',    // gl-inspect.html "share" link (?t=<token>) -> was <Supabase>/functions/v1/inspect
     'sa-quote': '/gl/public/sa-quote'    // (not built by a page today; gl-sa-quote links gl-sa-accept.html directly)
   };
-  // "doku/create" -> "/gl/api/fn/doku-create"; null when blocked
+  // "doku/create" -> "/gl/api/fn/doku/create"; null when blocked
   function functionRoute(name, sub) {
     name = String(name || '').replace(/^\/+|\/+$/g, '');
     sub = String(sub || '').replace(/^\/+|\/+$/g, '');

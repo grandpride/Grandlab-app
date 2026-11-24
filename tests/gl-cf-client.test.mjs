@@ -769,13 +769,14 @@ test('GLCF.enabled(module) / applyUrlSwitch follow gl-backend-config.js when it 
 });
 
 /* ---------- edge functions ---------- */
-test('functions: route table (one place) — every function the pages call has a new route; DOKU create -> doku-create', () => {
+test('functions: route table (one place) — every function the pages call has a new route; DOKU create -> doku/create, push-send -> push/send (the Worker routes)', () => {
   const R = GLCF.functionRoute;
-  assert.equal(R('doku', 'create'), '/gl/api/fn/doku-create');
-  assert.equal(R('doku-sandbox', 'create'), '/gl/api/fn/doku-create');
+  assert.equal(R('doku', 'create'), '/gl/api/fn/doku/create');
+  assert.equal(R('doku-sandbox', 'create'), '/gl/api/fn/doku/create');
   assert.equal(R('doku', 'notify'), null, 'DOKU webhook is server to server');
   assert.equal(R('senangpay', 'create'), null);
-  for (const n of ['push-send', 'meta-sync', 'mia', 'agent-desk', 'warranty-email']) assert.equal(R(n), '/gl/api/fn/' + n);
+  assert.equal(R('push-send'), '/gl/api/push/send', 'gl-platform registers push at /gl/api/push/send, not /gl/api/fn/push-send');
+  for (const n of ['meta-sync', 'mia', 'agent-desk', 'warranty-email']) assert.equal(R(n), '/gl/api/fn/' + n);
   assert.equal(R('something-new'), '/gl/api/fn/something-new', 'not listed -> /gl/api/fn/<name>');
   assert.equal(R('bad name'), null);
   assert.ok(Object.isFrozen(GLCF.FUNCTION_ROUTES) === false && typeof GLCF.FUNCTION_ROUTES === 'object');
@@ -828,14 +829,14 @@ test('functions.invoke: not signed in -> error, no request; blocked route -> CF_
   const c = await s3.functions.invoke('meta-sync');
   assert.equal(c.error.name, 'FunctionsFetchError');
 });
-test('functions fetch (PWA DOKU): ${SENANGPAY_FN}/create with the ANON key -> /gl/api/fn/doku-create with the CUSTOMER token, same body; apikey not sent', async () => {
+test('functions fetch (PWA DOKU): ${SENANGPAY_FN}/create with the ANON key -> /gl/api/fn/doku/create with the CUSTOMER token, same body; apikey not sent', async () => {
   const c = cust(); store.set('gl_ba_token_cust', 'cust.SIGNED');
   reply({ url: 'https://pay.doku/abc' }, 200, { 'content-type': 'application/json' });
   const body = JSON.stringify({ order_ref: 'GL-1', amount: 100 });
   const r = await GLCF.handleFunctionFetch(c, SB + '/functions/v1/doku/create', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + ANON, apikey: ANON }, body });
   assert.equal(r.status, 200);
   assert.deepEqual(await r.json(), { url: 'https://pay.doku/abc' });
-  assert.equal(calls[0].url, API + '/gl/api/fn/doku-create');
+  assert.equal(calls[0].url, API + '/gl/api/fn/doku/create');
   assert.equal(calls[0].init.headers.authorization, 'Bearer cust.SIGNED');
   assert.equal(calls[0].init.headers.apikey, undefined);
   assert.equal(calls[0].init.headers['content-type'], 'application/json');
@@ -850,7 +851,7 @@ test('functions fetch: blocked (doku/notify) -> 400 JSON; not signed in -> 401 J
   assert.equal(calls.length, 0);
   const s = signedIn();
   await GLCF.handleFunctionFetch(s, SB + '/functions/v1/push-send?dry=1', { method: 'POST', headers: { Authorization: 'Bearer svc', apikey: 'svc' }, body: '{"title":"t"}' });
-  assert.equal(calls[0].url, API + '/gl/api/fn/push-send?dry=1');
+  assert.equal(calls[0].url, API + '/gl/api/push/send?dry=1');
   assert.equal(calls[0].init.headers.authorization, 'Bearer tok.sig');
   assert.equal(GLCF.handleFunctionFetch(s, SB + '/rest/v1/x', {}), null, 'not a function URL');
 });

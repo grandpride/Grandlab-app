@@ -103,7 +103,7 @@ gl-platform `docs/step7/gl-api.md`; until it exists that call returns `PGRST202`
 | `gl-marketing.html` | marketing | works | composite `onConflict` `ym,bucket`, `campaign_name,period_start,period_end`. |
 | `gl-ads.html` | marketing | works | **"Sync now"** → `POST /gl/api/fn/meta-sync {force:true}` (needs the route). `gl_wa_chat`/`gl_wa_msg` come from the WhatsApp bridge (below). |
 | `gl-mkt-calendar.html` | marketing | works | composite `onConflict` `ym,task_key`. |
-| `index.html` (customer PWA) | customer | works / partial | SMS login, profile, cars, packages, orders, check-in, bookings, referral, spin, rewards, wallet, review proofs. **Online payment (DOKU)**: `${SENANGPAY_FN}/create` now → `POST /gl/api/fn/doku-create` (same body, customer token) — needs Agent K's route; `doku/notify` is server-to-server and blocked from the browser. Push: subscriptions saved to the new `gl_push_subs`; pushes need `/gl/api/fn/push-send` + the 3 crons on the Worker. Slot counting across customers (`gl_orders` by date) now returns only the caller's orders (server TODO). |
+| `index.html` (customer PWA) | customer | works / partial | SMS login, profile, cars, packages, orders, check-in, bookings, referral, spin, rewards, wallet, review proofs. **Online payment (DOKU)**: `${SENANGPAY_FN}/create` now → `POST /gl/api/fn/doku/create` (same body, customer token; route exists on the Worker); `doku/notify` is server-to-server and blocked from the browser. Push: subscriptions saved to the new `gl_push_subs`; pushes need `/gl/api/push/send` + the 3 crons on the Worker. Slot counting across customers (`gl_orders` by date) now returns only the caller's orders (server TODO). |
 | `gl-hub-v3.html` | core | works | needs `gl_customer_list`. |
 | `gl-hub.html` | core | works | own login; Grandpride gate unchanged. |
 | `gl-platescan.html` | core | works | embedded selects done by the client as a 2nd query. |
@@ -124,8 +124,8 @@ gl-platform `docs/step7/gl-api.md`; until it exists that call returns `PGRST202`
 | `gl-sa-admin.html`, `gl-sa-quote.html` | core | partial | need `sa_add_partner`, `sa_quote_cancel`, `sa_quote_make_job`, view `gl_sa_comm_ledger`. |
 | `gl-quote.html` | core | partial | needs `gl_quote_check_customer`. Its two `or()`s on `gl_services`: 1st on the server, 2nd applied in the browser. |
 | `gl-mia.html` | core | partial | needs staff login (bar) + `gl_mia_login`, `gl_mia_user_*`; chat → `/gl/api/fn/mia`. |
-| `grandlab-admin.html` | core | works (data) | as the **admin** login (role `admin`); image uploads → storage `gl-images`; push → `/gl/api/fn/push-send`. |
-| `grandlab-notify.html` | core | works | push → `/gl/api/fn/push-send` with the staff login (the URL/key boxes are ignored on the new system). |
+| `grandlab-admin.html` | core | works (data) | as the **admin** login (role `admin`); image uploads → storage `gl-images`; push → `/gl/api/push/send`. |
+| `grandlab-notify.html` | core | works | push → `/gl/api/push/send` with the staff login (the URL/key boxes are ignored on the new system). |
 | `gl-freewash.html`, `gl-spin.html`, `gl-giveaway.html` (kiosks) | core | partial | guests may only read the catalogue (`gl_car_brands`, `gl_car_models`, `gl_spin_prizes` work). Their writes (`gl_walkin`, `gl_free_wash`, `gl_bookings`) and RPCs (`gl_walkin_find`, `gl_lookup_*`, `gl_spin_record`, `gl_spin_phone_taken`, `gl_freewash_plate_taken`) need **either** the kiosk tablet signed in as reception (then all go to `/gl/api/*`) **or** token/kiosk routes on the server. |
 | `q.html` (My-QR router) | core | works | a staff device signed in on the new system (`gl_ba_token`) is recognised as staff (one guarded line) → referral code looked up on `/gl/api/db` → gl-customers. |
 | `receipt.html` | customer | needs server | `gl_receipt_by_invoice` on `/gl/public/rpc` (public, token). |
@@ -162,10 +162,10 @@ without a request. A route set to `null` is blocked with a clear 400 message.
 
 | Function (page) | Today | New route |
 |---|---|---|
-| `doku` `/create` (index.html online payment) | `db.grandlab.com.my/functions/v1/doku/create` (anon key) | `POST /gl/api/fn/doku-create` (customer token) |
-| `doku-sandbox` `/create` | sandbox | `POST /gl/api/fn/doku-create` |
+| `doku` `/create` (index.html online payment) | `db.grandlab.com.my/functions/v1/doku/create` (anon key) | `POST /gl/api/fn/doku/create` (customer token) |
+| `doku-sandbox` `/create` | sandbox | `POST /gl/api/fn/doku/create` |
 | `doku` `/notify`, `doku-sandbox`, `senangpay` | DOKU webhook / old | `null` (blocked from the browser; DOKU calls the Worker directly) |
-| `push-send` (grandlab-admin, grandlab-notify) | service/anon key, **no auth check** today | `POST /gl/api/fn/push-send` (staff/admin login) |
+| `push-send` (grandlab-admin, grandlab-notify) | service/anon key, **no auth check** today | `POST /gl/api/push/send` (staff login) |
 | `meta-sync` (gl-ads "Sync now") | `functions.invoke` | `POST /gl/api/fn/meta-sync` |
 | `mia` (gl-mia) | anon key | `POST /gl/api/fn/mia` |
 | `agent-desk` (gl-agents, gl-tower) | staff JWT | `POST /gl/api/fn/agent-desk` |
@@ -273,7 +273,7 @@ Generated from all 47 pages (every `from()`/`rpc()`/REST call) minus the server'
 
 | Needed | For | Route |
 |---|---|---|
-| `/gl/api/fn/<name>` for `doku-create`, `push-send`, `meta-sync`, `mia`, `agent-desk`, `warranty-email` | index, grandlab-admin/notify, gl-ads, gl-mia, gl-agents/gl-tower, gl-warranty-admin | POST, same body as the edge function, Bearer login (Agent K) |
+| `/gl/api/fn/doku/create`, `/gl/api/push/send`, `/gl/api/fn/<name>` for `meta-sync`, `mia`, `agent-desk`, `warranty-email` | index, grandlab-admin/notify, gl-ads, gl-mia, gl-agents/gl-tower, gl-warranty-admin | POST, same body as the edge function, Bearer login (Agent K) |
 | `GET /gl/public/inspect?t=` | gl-inspect share link | preview tags + redirect to gl-inspect-view (old `inspect` function) |
 | public (token) RPCs: `get_inspection`, `qc_addon_public`, `sa_quote_public/view/catalogue/accept/confirm/decline`, `gl_receipt_by_invoice`, `gl_warranty_find` | gl-inspect-view, gl-qc-view, gl-sa-accept, receipt, gl-warranty | `/gl/public/rpc/:name` (today only `gl_app_spin_status` there) |
 | view **`gl_sa_comm_ledger`** (select, staff) | gl-commission-centre, gl-sa-admin | `/gl/api/db` (not in the policy list) |
@@ -359,7 +359,7 @@ Per page (tables → ops; `count` = head/count query; `or` = uses or()):
     jobcard / TV board / tower(-lite) polling ticks reload `gl_jobs`, gl-ads "Sync now" → `/gl/api/fn/meta-sync`,
     bar sign-in on gl-claim (wrong password shown, then signed in), grandlab-admin service-key REST → `/gl/api/db`
     with the staff token, q.html staff route, the full customer PWA flow (old login aside, SMS login, refresh,
-    **DOKU create → `/gl/api/fn/doku-create` with the customer token**, `/notify` blocked, logout, back to `sb`).
+    **DOKU create → `/gl/api/fn/doku/create` with the customer token**, `/notify` blocked, logout, back to `sb`).
   - **C. Go-live setting** (the mock server serves edited copies of `gl-backend-config.js`): `claim:"cf"` → gl-claim on
     the new system with no `?backend`, no tag, gl-hub-v3 / gl-jobcard unchanged; `?backend=sb` remembered fallback;
     `?backend=auto` back; `marketing:"cf"` → exactly the 3 marketing pages move; `GL_BACKEND_DEFAULT:"cf"` + `"default"`
