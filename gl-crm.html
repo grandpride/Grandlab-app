@@ -492,7 +492,7 @@ function LEADS(){
 /* Bumped whenever this page changes, and shown at the bottom of the sidebar.
    GitHub Pages and an installed app both cache hard, so without this there is
    no way to tell "the fix is not deployed" from "the fix does not work". */
-const BUILD='2026-11-24r';
+const BUILD='2026-11-24s';
 
 function drawNav(){
   $('side').innerHTML = NAV.map(n=>{
@@ -1759,6 +1759,7 @@ function monthlyChart(rows){
 }
 
 function renderDash(){
+  setTimeout(rsAttach,0);
   const over=Object.values(OVER);
   const rev=over.reduce((s,o)=>s+(Number(o.revenue)||0),0);
   const known=over.filter(o=>o.is_customer).length;
@@ -2874,6 +2875,50 @@ function followFill(lang){
   FOLLOW_SEEN[f.id]=1; try{ localStorage.setItem('gl_crm_follow',JSON.stringify(FOLLOW_SEEN)); }catch(e){}
   $('tReplyNote').className='replyNote'; $('tReplyNote').textContent='Follow-up is in the box. Read it, then press Send.';
   box.focus(); drawFollow();
+}
+
+/* REPLY SPEED (Dashboard). Read-only report from gl_crm_reply_stats: how long the shop takes to answer
+   after a customer writes. Business hours 9:00-19:00 shown separately because night messages skew it. */
+let RS={days:14,data:null,busy:false};
+function rsMin(m){ m=Number(m); if(!isFinite(m)) return '-'; if(m<1) return '<1 min'; if(m<60) return Math.round(m)+' min'; if(m<1440) return (m/60).toFixed(1)+' h'; return (m/1440).toFixed(1)+' d'; }
+async function rsLoad(days){
+  if(days) RS.days=days;
+  if(RS.busy) return; RS.busy=true;
+  try{ const {data,error}=await sb.rpc('gl_crm_reply_stats',{p_days:RS.days,p_from_hour:9,p_to_hour:19}); RS.data=error?null:data; RS.err=error&&error.message; }catch(e){ RS.data=null; RS.err=String(e.message||e); }
+  RS.busy=false; rsDraw();
+}
+function rsAttach(){
+  const v=$('vDash'); if(!v||$('rsBox')) return;
+  v.insertAdjacentHTML('beforeend','<div class="panel2" id="rsBox" style="margin-top:14px"></div>');
+  rsDraw(); if(!RS.data) rsLoad();
+}
+function rsDraw(){
+  const el=$('rsBox'); if(!el) return;
+  const d=RS.data;
+  const btn=n=>'<button class="mvbtn'+(RS.days===n?' on':'')+'" onclick="rsLoad('+n+')">'+n+' days</button> ';
+  let h='<div class="pt">Reply speed <span style="float:right">'+btn(7)+btn(14)+btn(30)+'</span></div>';
+  if(!d){ el.innerHTML=h+'<div style="padding:12px;color:var(--ink2)">'+(RS.err?'Could not load: '+esc(RS.err):'Loading…')+'</div>'; return; }
+  const b=d.biz||{}, a=d.all||{};
+  const tile=(v,l,s)=>'<div style="flex:1 1 130px;padding:8px 10px"><div style="font-size:22px;font-weight:700">'+v+'</div><div style="font-size:12px">'+l+'</div><div style="font-size:11px;color:var(--ink2)">'+s+'</div></div>';
+  h+='<div style="display:flex;flex-wrap:wrap">'
+    +tile(rsMin(b.median),'Typical reply time','9am-7pm, '+(b.n||0)+' questions')
+    +tile((b.within10==null?'-':b.within10+'%'),'Answered in 10 min','9am-7pm')
+    +tile((b.within60==null?'-':b.within60+'%'),'Answered in 1 hour','9am-7pm')
+    +tile(d.unanswered_1h,'Still waiting 1h+','no reply yet, any time')
+    +'</div>'
+    +'<div style="padding:0 12px 6px;font-size:11.5px;color:var(--ink2)">Slowest 1 in 10 (9am-7pm): '+rsMin(b.p90)+'. All hours: typical '+rsMin(a.median)+', '+(a.within60==null?'-':a.within60)+'% within 1 hour.</div>';
+  const hrs=(d.byhour||[]).filter(x=>x.h>=8&&x.h<=23);
+  const mx=Math.max(1,...hrs.map(x=>Math.min(Number(x.median)||0,120)));
+  h+='<div style="padding:6px 12px"><div style="font-size:12px;font-weight:600;margin-bottom:4px">Typical reply time by hour (bar capped at 2 h)</div>'
+    +hrs.map(x=>{ const m=Number(x.median)||0; const w=Math.max(2,Math.round(100*Math.min(m,120)/mx)); const bad=m>30;
+      return '<div style="display:flex;align-items:center;gap:8px;font-size:11.5px;margin:2px 0"><span style="width:44px">'+String(x.h).padStart(2,'0')+':00</span>'
+        +'<span style="flex:1;background:var(--bg2,#eef);height:9px;border-radius:5px;overflow:hidden"><span style="display:block;height:9px;width:'+w+'%;background:'+(bad?'#d33':'#1a9d4b')+'"></span></span>'
+        +'<span style="width:70px;text-align:right">'+rsMin(m)+'</span><span style="width:54px;color:var(--ink2)">'+x.n+' q</span></div>'; }).join('')+'</div>';
+  const st=d.bystaff||[];
+  h+='<div style="padding:6px 12px 10px"><div style="font-size:12px;font-weight:600;margin-bottom:4px">By who replied</div>'
+    +st.map(x=>'<div style="font-size:11.5px;margin:2px 0">'+esc(x.name)+': '+x.n+' replies, typical '+rsMin(x.median)+'</div>').join('')
+    +'<div style="font-size:11px;color:var(--ink2);margin-top:4px">Replies sent from the phone carry no name, so they cannot be told apart. Send from the CRM (with your name picked) to be counted by name.</div></div>';
+  el.innerHTML=h;
 }
 
 /* ---------------------------------------------------------------------------
