@@ -404,6 +404,7 @@ table.t2 tbody tr:hover{background:var(--blue-soft)}
     </div>
     <div class="rec" id="tRec"></div>
     <div class="adtag hide" id="tAd"></div>
+    <div class="mia hide" id="tMaint" style="background:#F3E8FF;border-color:#D8B4FE"></div>
     <div class="mia hide" id="tMia"></div>
     <div class="thread" id="tThread"></div>
     <div class="whois" id="tWhoWrap"></div>
@@ -467,7 +468,7 @@ function LEADS(){
 /* Bumped whenever this page changes, and shown at the bottom of the sidebar.
    GitHub Pages and an installed app both cache hard, so without this there is
    no way to tell "the fix is not deployed" from "the fix does not work". */
-const BUILD='2026-11-24h';
+const BUILD='2026-11-24i';
 
 function drawNav(){
   $('side').innerHTML = NAV.map(n=>{
@@ -790,6 +791,7 @@ function cardHtml(c,col){
           : (Number(c.paid_rm)>0?'<span class="chip rm">'+esc(RM(c.paid_rm))+'</span>':'')))
       +adBtnHtml(c.chat_jid)
       +((col==='reply'||col==='waiting')?miaChipHtml(c):'')
+      +maintChip(c)
       +(col==='notlead'?'<span class="chip nlr">'+esc(NL_LABEL[c.not_lead_reason]||'Not a lead')+'</span>':nlHintChip(c))
       +(light==='new'?'<span class="chip fresh">NEW</span>':'')
       +(s==='closed'?'<span class="chip chk">closed by you</span>':'')
@@ -868,12 +870,14 @@ function drawSortBar(){
     +'<button class="'+(m==='wait'?'on':'')+'" onclick="setSortMode(\'wait\')" title="The customer who has waited longest is at the top">Longest wait first</button>'
     +'<span style="margin-left:14px">MIA:</span>'
     +'<button class="'+(miaBgOn()?'on':'')+'" onclick="miaBgToggle()" title="MIA prepares a suggestion for every Needs-reply chat in the background. Nothing is ever sent.">Auto-prepare '+(miaBgOn()?'ON':'OFF')+'</button>'
+    +(Object.keys(MAINT).length?'<span style="margin-left:14px">Coating:</span><button class="'+(MAINT_ONLY?'on':'')+'" onclick="maintToggle()" title="Only chats whose coating maintenance is due within 7 days or overdue">Maintenance due ('+Object.keys(MAINT).length+')</button>':'')
     +'<button onclick="miaBgPrepareAll()" title="Prepare suggestions for every Needs-reply chat now">Prepare all</button>';
 }
 
 function render(){
   const q=$('q').value.trim().toLowerCase();
   const rows=CHATS.filter(c=>{
+    if(MAINT_ONLY&&!MAINT[c.chat_jid]) return false;
     if(!q) return true;
     const last=LASTMSG[c.chat_jid];
     return [c.name,c.phone,c.stage,c.status,c.remark,last&&last.body]
@@ -970,6 +974,7 @@ async function load(){
     LEADINFO={};
     try{ const {data:li}=await sb.rpc('gl_crm_lead_info');
          (li||[]).forEach(x=>{ LEADINFO[x.chat_jid]=x; }); }catch(e){}
+    await loadMaint();
     try{ const {data:nh,error:ne}=await sb.rpc('gl_crm_notlead_hint'); if(!ne&&Array.isArray(nh)){ NLHINT={}; nh.forEach(x=>{ if(x.reason) NLHINT[x.chat_jid]=x; }); } }catch(e){}
     try{ const {data:ad}=await sb.rpc('gl_crm_ads',{p_days:ADDAYS}); ADS=ad||[]; }catch(e){ ADS=[]; }
     try{ const {data:ac,error:ae}=await sb.rpc('gl_crm_ad_codes'); if(!ae&&Array.isArray(ac)) AD_CODES=ac; }catch(e){}
@@ -1017,6 +1022,7 @@ async function openThread(jid){
   $('tThread').innerHTML='<div class="msg sys">Loading…</div>';
   $('tBox').value=''; $('tReplyNote').textContent=''; $('tReplyNote').className='replyNote';
   miaReset();
+  drawMaint();
   { const ta=$('tAd'); if(ta){ ta.dataset.open='0'; } drawThreadAd(); }
   drawWho();
   loadRecord(CUR.phone);
@@ -2614,6 +2620,53 @@ function renderLearn(){
   if(hidden) h+='<div style="padding:8px 14px;font-size:11.5px;color:var(--text2)">'+hidden+' topic(s) marked covered/ignored on this device. <a href="#learn" onclick="try{localStorage.removeItem(\'gl_crm_learn_state\')}catch(e){};renderLearn();return false">Show them again</a></div>';
   h+='</div>';
   el.innerHTML=h;
+}
+
+/* ---------------------------------------------------------------------------
+   MAINTENANCE DUE (24 Nov). gl_crm_maint_due() is read-only: from the job card
+   history it finds the last coating job per customer (grade from the service
+   text), adds the interval (Cancoat 2 months, Cancoat Pro 3, Mohs / C0.02 4,
+   Infinite / Matte 6) and returns those due in the next 7 days or overdue by up
+   to 60 days, matched to chats by the last 8 digits of the phone. The chat gets a
+   chip, a filter, and a reminder drafted into the reply box on request. Nothing
+   is sent by itself.
+   --------------------------------------------------------------------------- */
+let MAINT={}, MAINT_ONLY=false;
+async function loadMaint(){
+  try{ const {data,error}=await sb.rpc('gl_crm_maint_due',{p_days:7,p_overdue_days:60});
+    if(error||!Array.isArray(data)) return;
+    MAINT={}; data.forEach(r=>{ if(r.chat_jid&&r.months) MAINT[r.chat_jid]=r; });
+  }catch(e){}
+}
+function maintChip(c){
+  const m=MAINT[c.chat_jid]; if(!m) return '';
+  const d=Number(m.days_left);
+  return '<span class="chip nlr" style="background:#F3E8FF" title="'+esc(m.grade+' coating, last done '+m.last_service+', due '+m.due_date)+'">Maintenance '+(d<0?'overdue '+(-d)+'d':(d===0?'due today':'due in '+d+'d'))+'</span>';
+}
+function maintToggle(){ MAINT_ONLY=!MAINT_ONLY; render(); }
+function maintText(c,m,lang){
+  const nm=(c.name&&String(c.name).trim())||m.cust_name||'';
+  const car=[m.model,m.plate?('('+m.plate+')'):''].filter(Boolean).join(' ')||'kereta anda';
+  const due=m.due_date;
+  if(lang==='bm') return 'Hai'+(nm?' '+nm:'')+', ini Grandlab. Maintenance coating ('+m.grade+') untuk '+car+' sepatutnya dibuat sekitar '+due+'. Nak kami aturkan slot? Bagitau tarikh dan masa yang sesuai ya.';
+  return 'Hi'+(nm?' '+nm:'')+', this is Grandlab. The coating maintenance ('+m.grade+') for '+car+' is due around '+due+'. Shall we book a slot for you? Just tell us the date and time that suits you.';
+}
+function drawMaint(){
+  const el=$('tMaint'); if(!el) return;
+  const m=CUR&&MAINT[CUR.chat_jid];
+  if(!m){ el.classList.add('hide'); el.innerHTML=''; return; }
+  const d=Number(m.days_left);
+  el.classList.remove('hide');
+  el.innerHTML='<div class="mh"><b>Maintenance '+(d<0?'overdue by '+(-d)+' days':(d===0?'due today':'due in '+d+' days'))+'</b>'
+    +'<span>'+esc(m.grade)+' &middot; last done '+esc(m.last_service)+' &middot; every '+m.months+' months</span><span class="sp"></span>'
+    +'<button class="lg" onclick="maintFill(\'en\')">Reminder EN</button><button class="lg" onclick="maintFill(\'bm\')">Reminder BM</button></div>'
+    +'<div class="why">Puts a reminder in the reply box. Read it, change anything, then press Send. Nothing is sent by itself.</div>';
+}
+function maintFill(lang){
+  const m=CUR&&MAINT[CUR.chat_jid]; if(!m) return;
+  const box=$('tBox'); box.value=maintText(CUR,m,lang);
+  $('tReplyNote').className='replyNote'; $('tReplyNote').textContent='Maintenance reminder is in the box. Read it, then press Send.';
+  box.focus();
 }
 
 async function boot(){
