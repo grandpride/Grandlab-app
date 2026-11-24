@@ -454,7 +454,7 @@ function LEADS(){
 /* Bumped whenever this page changes, and shown at the bottom of the sidebar.
    GitHub Pages and an installed app both cache hard, so without this there is
    no way to tell "the fix is not deployed" from "the fix does not work". */
-const BUILD='2026-11-23u';
+const BUILD='2026-11-24a';
 
 function drawNav(){
   $('side').innerHTML = NAV.map(n=>{
@@ -875,15 +875,17 @@ function render(){
 }
 const stat=(v,k,cls)=>'<div class="stat '+(cls||'')+'"><div class="v">'+esc(v)+'</div><div class="k">'+esc(k)+'</div></div>';
 
+const CHAT_COLS='chat_jid,phone,name,stage,status,ghost_at,first_in_at,last_in_at,last_out_at,booked_at,paid_at,paid_rm,remark,updated_at';
 async function load(){
   $('statusLine').textContent='Loading…';
   try{
     const {data:chats,error}=await sb.from('gl_wa_chat')
-      .select('chat_jid,phone,name,stage,status,ghost_at,first_in_at,last_in_at,last_out_at,booked_at,paid_at,paid_rm,remark')
+      .select(CHAT_COLS)
       .order('last_in_at',{ascending:false,nullsFirst:false})
       .limit(400);
     if(error) throw error;
     CHATS=chats||[];
+    CHATS.forEach(applyOpt);
 
     /* One query for the preview line on every card, newest first, then keep
        the first per chat. Cheaper than a query per card. */
@@ -893,6 +895,8 @@ async function load(){
       .order('wa_ts',{ascending:false})
       .limit(3000);
     (msgs||[]).forEach(m=>{ if(!LASTMSG[m.chat_jid]) LASTMSG[m.chat_jid]=m; });
+    Object.keys(OPT).forEach(j=>{ const o=OPT[j]; if(o&&o.prev){ const l=LASTMSG[j]; if(!l||new Date(l.wa_ts).getTime()<o.at) LASTMSG[j]=o.prev; } });
+    LIVE.lastFull=Date.now(); liveMark(true);
 
     /* Who each chat actually is, in Grandlab terms - customer or not, how many
        jobs, how much spent. One call for all of them; doing it per card would
@@ -1314,6 +1318,7 @@ async function sendReply(){
                staff_name: replyName()||null});
     if(error) throw error;
     box.value='';
+    optSent(CUR,body);
     pend.textContent=body+'  ·  queued';
     note.textContent='Queued. The bridge on the shop PC sends it within a minute — it will appear in the thread once WhatsApp confirms.';
   }catch(e){
@@ -1325,7 +1330,7 @@ async function sendReply(){
   }
 }
 
-async function loadThread(jid){
+async function loadThread(jid,quiet){
   try{
     const {data}=await sb.from('gl_wa_msg')
       .select('direction,sent_by,msg_type,body,wa_ts')
@@ -1341,8 +1346,16 @@ async function loadThread(jid){
         +esc(body)
         +'<span class="t">'+esc(dmy(m.wa_ts))+'</span></div>';
     }).join('') : '<div class="msg sys">No messages recorded for this chat.</div>';
+    const o=OPT[jid];
+    if(o&&o.body&&!(rows.length&&rows[rows.length-1].direction==='out'&&new Date(rows[rows.length-1].wa_ts).getTime()>=o.at-60000)){
+      $('tThread').insertAdjacentHTML('beforeend','<div class="msg pending">'+esc(o.body)+'  ·  queued</div>');
+    }
     const t=$('tThread'); t.scrollTop=t.scrollHeight;
-    if(CUR && CUR.chat_jid===jid) miaOffer(jid,rows);
+    if(CUR && CUR.chat_jid===jid){
+      const lastTs=rows.length?rows[rows.length-1].wa_ts:null;
+      const known=MIA_STATE&&MIA_STATE.jid===jid&&MIA_STATE.rows.length?MIA_STATE.rows[MIA_STATE.rows.length-1].wa_ts:null;
+      if(!quiet||lastTs!==known) miaOffer(jid,rows);
+    }
   }catch(e){
     $('tThread').innerHTML='<div class="msg sys">Could not load messages: '+esc(e.message||e)+'</div>';
   }
@@ -2071,12 +2084,125 @@ async function checkForUpdate(){
   });
 })();
 
+
+/* ---------------------------------------------------------------------------
+   LIVE UPDATES (24 Nov). Before: the whole board reloaded every 60s, and not at
+   all while a chat was open or the tab was in the background, so a customer
+   reply could sit unseen for minutes. Now:
+   - Supabase Realtime on gl_wa_chat / gl_wa_msg pushes a change straight away
+   - a light poll every 10s asks ONLY for chats changed since the watermark
+     (about 60 ms, a few KB) and is the safety net if realtime is down
+   - the full reload (about 1 s, 440 KB) runs every 5 minutes
+   - going back to the tab refreshes at once
+   --------------------------------------------------------------------------- */
+const LIVE={wm:null,busy:false,lastOk:0,lastFull:0,rt:'off',chan:null,timer:null};
+const OPT={};   // jid -> {at,prevOut,until,body,prev}  optimistic "we just replied"
+function ms(t){ return t?new Date(t).getTime():0; }
+
+/* A reply is queued, then the bridge sends it, then wacli reports it, then the
+   bridge imports it: up to a minute. Until the server shows it, treat the chat
+   as answered NOW so it moves to "Waiting on them" at once and cannot flip
+   back after the next refresh. Dropped as soon as the server's own
+   last_out_at moves past what it was when we sent, or after 20 minutes. */
+function optSent(c,body){
+  if(!c) return;
+  const at=Date.now();
+  OPT[c.chat_jid]={at,prevOut:ms(c.last_out_at),until:at+20*60000,body,
+    prev:{chat_jid:c.chat_jid,direction:'out',body,msg_type:'text',wa_ts:new Date(at).toISOString()}};
+  applyOpt(c);
+  LASTMSG[c.chat_jid]=OPT[c.chat_jid].prev;
+  render(); drawNav();
+}
+function applyOpt(c){
+  const o=OPT[c.chat_jid]; if(!o) return;
+  const srv=ms(c.last_out_at);
+  if(srv>o.prevOut || Date.now()>o.until){ delete OPT[c.chat_jid]; return; }
+  c.last_out_at=new Date(Math.max(srv,o.at)).toISOString();
+}
+
+function liveWm(){
+  let m=0; CHATS.forEach(c=>{ m=Math.max(m,ms(c.updated_at),ms(c.last_in_at),ms(c.last_out_at)); });
+  return m;
+}
+function liveMark(ok){
+  if(ok) LIVE.lastOk=Date.now();
+  liveDraw();
+}
+function liveDraw(){
+  let el=$('liveDot');
+  if(!el){
+    el=document.createElement('div'); el.id='liveDot';
+    el.style.cssText='position:fixed;left:10px;bottom:8px;z-index:50;font:11px system-ui,sans-serif;color:#667;background:rgba(255,255,255,.92);border:1px solid #dde;border-radius:10px;padding:2px 8px;display:flex;gap:5px;align-items:center;pointer-events:none';
+    document.body.appendChild(el);
+  }
+  const age=LIVE.lastOk?Math.round((Date.now()-LIVE.lastOk)/1000):null;
+  const fresh=age!==null&&age<30;
+  el.innerHTML='<span style="width:8px;height:8px;border-radius:50%;background:'+(fresh?'#1a9d4b':'#d33')+'"></span>'
+    +(age===null?'connecting…':(fresh?'live':'stale')+' · updated '+(age<3?'just now':age+'s ago'));
+}
+async function liveRefresh(){
+  if(LIVE.busy||!CHATS.length) return;
+  LIVE.busy=true;
+  try{
+    const wm=new Date(Math.max(0,liveWm()-120000)).toISOString();
+    const {data,error}=await sb.from('gl_wa_chat').select(CHAT_COLS)
+      .or('updated_at.gt.'+wm+',last_in_at.gt.'+wm+',last_out_at.gt.'+wm).limit(200);
+    if(error) throw error;
+    const rows=data||[];
+    const changed=[];
+    rows.forEach(r=>{
+      const cur=CHATS.find(c=>c.chat_jid===r.chat_jid);
+      const diff=!cur||ms(cur.last_in_at)!==ms(r.last_in_at)||ms(cur.last_out_at)!==ms(r.last_out_at)
+        ||cur.status!==r.status||ms(cur.ghost_at)!==ms(r.ghost_at)||cur.name!==r.name||cur.remark!==r.remark||cur.stage!==r.stage||ms(cur.updated_at)!==ms(r.updated_at);
+      if(cur){ Object.assign(cur,r); applyOpt(cur); } else { applyOpt(r); CHATS.unshift(r); }
+      if(diff) changed.push(r.chat_jid);
+    });
+    if(changed.length){
+      const {data:ms_}=await sb.from('gl_wa_msg').select('chat_jid,direction,body,msg_type,wa_ts')
+        .in('chat_jid',changed).order('wa_ts',{ascending:false}).limit(changed.length*4);
+      const seen={};
+      (ms_||[]).forEach(m=>{ if(seen[m.chat_jid]) return; seen[m.chat_jid]=1;
+        const o=OPT[m.chat_jid]; if(o&&ms(m.wa_ts)<o.at) return; LASTMSG[m.chat_jid]=m; });
+      staleCheck(); render(); drawNav();
+      if(VIEW==='dash') renderDash(); else if(VIEW==='leads') renderLeads();
+      if(CUR&&changed.includes(CUR.chat_jid)) loadThread(CUR.chat_jid,true);
+      if(typeof liveAfterChange==='function') liveAfterChange(changed);
+    }
+    // a queued reply that failed to send must not look answered
+    const pend=Object.keys(OPT);
+    if(pend.length){
+      try{
+        const since=new Date(Math.min(...pend.map(j=>OPT[j].at))-60000).toISOString();
+        const {data:ob}=await sb.from('gl_wa_outbox').select('chat_jid,status').in('chat_jid',pend).eq('status','failed').gte('created_at',since);
+        (ob||[]).forEach(r=>{ delete OPT[r.chat_jid]; const c=CHATS.find(x=>x.chat_jid===r.chat_jid); if(c){ const f=ms(c.last_out_at); } });
+        if((ob||[]).length) { await load(); }
+      }catch(e){}
+    }
+    liveMark(true);
+  }catch(e){ liveDraw(); }
+  LIVE.busy=false;
+}
+function liveKick(){ clearTimeout(LIVE.kt); LIVE.kt=setTimeout(liveRefresh,300); }
+function liveStart(){
+  setInterval(()=>{ if(!document.hidden) liveRefresh(); },10000);
+  setInterval(liveDraw,5000);
+  document.addEventListener('visibilitychange',()=>{ if(!document.hidden){ liveRefresh(); if(Date.now()-LIVE.lastFull>60000 && $('ov').classList.contains('hide')) load(); } });
+  try{
+    const ch=sb.channel('gl-crm-live')
+      .on('postgres_changes',{event:'*',schema:'public',table:'gl_wa_chat'},liveKick)
+      .on('postgres_changes',{event:'INSERT',schema:'public',table:'gl_wa_msg'},liveKick)
+      .subscribe(st=>{ LIVE.rt=st; });
+    LIVE.chan=ch;
+  }catch(e){ LIVE.rt='off'; }
+}
+
 async function boot(){
   try{ ALERTS = localStorage.getItem('gl_crm_alerts')==='1' && Notification.permission==='granted'; }catch(e){}
   setTimeout(checkForUpdate, 20000);
   setInterval(checkForUpdate, 15*60000);
   setAlertBtn();
-  setInterval(()=>{ if(!document.hidden && $('ov').classList.contains('hide')) load(); }, 60000);
+  setInterval(()=>{ if(!document.hidden && $('ov').classList.contains('hide')) load(); }, 5*60000);   // full reload is rare now
+  liveStart();
   const want=(location.hash||'').replace('#','');
   if(NAV.some(n=>n.id===want)) VIEW=want;
   drawNav(); go(VIEW);
