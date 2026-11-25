@@ -826,10 +826,26 @@ async function saveProfile(){
   //    now lives in gl_packages + gl_pending, not here, to avoid duplicates)
   const row={name,phone,plate,model,car_type};
   let walkinId=CUR&&CUR.walkinId;
+  // One walk-in row per (phone, plate). The Worker writes the phone in +60 format, so the number can now match ANOTHER row of the
+  // same car (shop data has duplicate rows per plate). Then: save onto the row that already holds this phone+plate, don't fail.
+  const isDup=e=>!!e&&((e.code==='23505')||/duplicate key|unique constraint/i.test(e.message||''));
+  const writeWalkin=async(id)=>{
+    const {error}=await sb.from('gl_walkin').update(row).eq('id',id);
+    if(!error) return id;
+    if(!isDup(error)) throw error;
+    const core=phoneCore(phone), platN=plate.toUpperCase().replace(/\s+/g,'');
+    const others=r=>String(r.id)!==String(id) && phoneCore(r.phone)===core && String(r.plate||'').toUpperCase().replace(/\s+/g,'')===platN;
+    let {data:cand}=await sb.from('gl_walkin').select('id,phone,plate').eq('plate',plate).limit(50);
+    let holder=(cand||[]).find(others);
+    if(!holder){ const r2=await sb.from('gl_walkin').select('id,phone,plate').ilike('plate','%'+platN+'%').limit(50); holder=(r2.data||[]).find(others); }
+    if(!holder) throw error;
+    const {error:e2}=await sb.from('gl_walkin').update(row).eq('id',holder.id);
+    if(e2) throw e2;
+    return holder.id;
+  };
   try{
     if(walkinId){
-      const {error}=await sb.from('gl_walkin').update(row).eq('id',walkinId);
-      if(error) throw error;
+      walkinId=await writeWalkin(walkinId);
     } else {
       // find an existing walk-in for this car so we UPDATE instead of duplicating.
       // match by plate first (strongest key for a car), else by normalized phone.
@@ -849,9 +865,7 @@ async function saveProfile(){
         }
       }
       if(existing){
-        walkinId=existing.id;
-        const {error}=await sb.from('gl_walkin').update(row).eq('id',walkinId);
-        if(error) throw error;
+        walkinId=await writeWalkin(existing.id);
       } else {
         const {data,error}=await sb.from('gl_walkin').insert(row).select('id').maybeSingle();
         if(error){
@@ -868,9 +882,7 @@ async function saveProfile(){
               hit=(byPhone||[]).find(r=>phoneCore(r.phone)===digits);
             }
             if(hit){
-              walkinId=hit.id;
-              const {error:uerr}=await sb.from('gl_walkin').update(row).eq('id',walkinId);
-              if(uerr) throw uerr;
+              walkinId=await writeWalkin(hit.id);
             } else { throw error; }
           } else { throw error; }
         } else {
