@@ -343,7 +343,7 @@
 var SB_URL = "https://db.grandlab.com.my";   // built in (self-hosted, since Oct 2026)
 var SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzk1NTA1MzQ0LCJleHAiOjE5NTMxODUzNDR9.0bpqXnozYeGoVm7S5F7I9SGCrD6yrv25IgGG-ql7SZA"; // public anon key, same as the other staff apps
 var BUCKET = "gl-claims";
-var APP_VERSION = "1.5.1 (secure login)";
+var APP_VERSION = "1.5.2 (PDF text fix)";
 
 var sb = null;
 var ME = null;
@@ -1114,10 +1114,10 @@ function pdfHeader(doc, title, sub){
   doc.rect(0, 0, 210, 26, "F");
   doc.setTextColor(GOLD[0], GOLD[1], GOLD[2]);
   doc.setFont("helvetica", "bold"); doc.setFontSize(15);
-  doc.text(title, 12, 13);
+  doc.text(sane(title), 12, 13);
   doc.setTextColor(210, 210, 214);
   doc.setFont("helvetica", "normal"); doc.setFontSize(9);
-  doc.text(sub, 12, 20);
+  doc.text(sane(sub), 12, 20);
 }
 
 async function makePDF(batch, items){
@@ -1145,15 +1145,20 @@ async function makePDF(batch, items){
   y += 6;
 
   doc.setFont("helvetica", "normal"); doc.setFontSize(9);
+  var DESC_W = 68;   // 98 -> 166mm, leaving the amount column clear
   items.forEach(function(it, n){
-    if(y > 262){
+    var lines = doc.splitTextToSize(sane(it.description || "-"), DESC_W);
+    if(lines.length > 2){ lines = [lines[0], clip(doc, lines[1] + " " + lines[2], DESC_W)]; }
+    var rowH = lines.length > 1 ? 10.5 : 7;
+
+    if(y + rowH > 258){
       doc.addPage();
       pdfHeader(doc, "EXPENSE CLAIM  " + batch.batch_no, "continued");
       y = 38;
     }
     if(n % 2 === 1){
       doc.setFillColor(244, 244, 246);
-      doc.rect(11, y - 4.6, 187, 7, "F");
+      doc.rect(11, y - 4.6, 187, rowH, "F");
     }
     doc.setTextColor(60, 60, 66);
     doc.text(String(n + 1), X.n, y);
@@ -1161,11 +1166,11 @@ async function makePDF(batch, items){
     doc.text(clip(doc, it.expense_type || "-", 26), X.type, y);
     doc.text(clip(doc, it.purpose || "-", 24), X.purp, y);
     doc.setTextColor(25, 25, 30);
-    doc.text(clip(doc, it.description || "-", 70), X.desc, y);
+    doc.text(lines, X.desc, y);
     doc.setFont("helvetica", "bold");
     doc.text(Number(it.amount).toFixed(2), 198, y, { align:"right" });
     doc.setFont("helvetica", "normal");
-    y += 7;
+    y += rowH;
   });
 
   y += 2;
@@ -1234,11 +1239,36 @@ async function makePDF(batch, items){
   await finishPdf(doc, batch.batch_no + ".pdf", batch.id);
 }
 
+// jsPDF's built-in fonts are Latin-1 only. Anything outside that range is
+// drawn as mojibake AND measured wrongly, so text overflows its column.
+// Fold the common offenders down to ASCII, drop the rest.
+var SANE_MAP = {
+  "\u2192":"->", "\u2190":"<-", "\u21d2":"=>", "\u279c":"->", "\u27a4":"->",
+  "\u2013":"-", "\u2014":"-", "\u2212":"-", "\u2022":"-",
+  "\u2018":"'", "\u2019":"'", "\u201c":'"', "\u201d":'"', "\u2026":"...",
+  "\u20b9":"RM", "\u00a0":" ", "\u2122":"(TM)"
+};
+function sane(s){
+  s = String(s == null ? "" : s);
+  var out = "";
+  for(var i = 0; i < s.length; i++){
+    var ch = s[i], code = s.charCodeAt(i);
+    if(SANE_MAP[ch]) { out += SANE_MAP[ch]; continue; }
+    if(code === 9 || code === 10 || code === 13){ out += " "; continue; }
+    if(code < 32) continue;                   // other control characters
+    if(code <= 255){ out += ch; continue; }   // Latin-1 renders fine
+    if(code >= 0xD800 && code <= 0xDBFF) i++; // emoji = one surrogate pair
+    out += "?";                               // anything else (emoji, CJK)
+  }
+  return out.replace(/\s+/g, " ").trim();
+}
+
 function clip(doc, text, maxW){
-  text = String(text || "");
-  if(doc.getTextWidth(text) <= maxW) return text;
-  while(text.length > 1 && doc.getTextWidth(text + "…") > maxW) text = text.slice(0, -1);
-  return text + "…";
+  text = sane(text);
+  var w = doc.getTextWidth(text);
+  if(!(w > maxW)) return text;                // also covers NaN
+  while(text.length > 1 && doc.getTextWidth(text + "...") > maxW) text = text.slice(0, -1);
+  return text + "...";
 }
 
 async function monthlyPDF(){
@@ -1280,7 +1310,7 @@ async function monthlyPDF(){
     doc.setFont("helvetica","normal"); doc.setFontSize(9.5);
     Object.keys(map).sort(function(a,b){ return map[b]-map[a]; }).forEach(function(k){
       doc.setTextColor(60,60,66);
-      doc.text(k, 14, y);
+      doc.text(clip(doc, k, 120), 14, y);
       doc.setFont("helvetica","bold"); doc.setTextColor(25,25,30);
       doc.text("RM " + map[k].toFixed(2), 198, y, { align:"right" });
       doc.setFont("helvetica","normal");
