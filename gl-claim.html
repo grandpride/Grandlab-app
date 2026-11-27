@@ -343,7 +343,7 @@
 var SB_URL = "https://db.grandlab.com.my";   // built in (self-hosted, since Oct 2026)
 var SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzk1NTA1MzQ0LCJleHAiOjE5NTMxODUzNDR9.0bpqXnozYeGoVm7S5F7I9SGCrD6yrv25IgGG-ql7SZA"; // public anon key, same as the other staff apps
 var BUCKET = "gl-claims";
-var APP_VERSION = "1.5.2 (PDF text fix)";
+var APP_VERSION = "1.5.3 (PDF text fix + rebuild)";
 
 var sb = null;
 var ME = null;
@@ -986,16 +986,17 @@ async function loadHistory(){
       '<div style="text-align:right">' +
         '<div class="amt num">' + money(b.total) + "</div>" +
         '<button class="small" style="margin-top:6px" onclick="rebuildPDF(\'' + b.id + '\')">PDF</button>' +
+        '<button class="small ghost" style="margin-top:6px" onclick="rebuildPDF(\'' + b.id + '\', true)">Rebuild</button>' +
       "</div></div>";
   }).join("");
 }
-async function rebuildPDF(batchId){
+async function rebuildPDF(batchId, force){
   busy("Loading claim…");
   var b = await sb.from("gl_claim_batches").select("*").eq("id", batchId).single();
   if(b.error){ done(); return toast("Could not load that claim.", true); }
 
-  // already generated once — reuse the stored file instead of rebuilding
-  if(b.data.pdf_url){
+  // already generated once — reuse the stored file unless a rebuild was asked for
+  if(b.data.pdf_url && !force){
     try {
       var res = await fetch(b.data.pdf_url, { mode:"cors" });
       if(res.ok){
